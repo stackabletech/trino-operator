@@ -36,11 +36,6 @@ properties:
             file: "node.properties"
       datatype:
         type: "string"
-      recommendedValues:
-        - fromVersion: "0.0.0"
-          value: "production"
-      allowedValues:
-        - "production"
       roles:
         - name: "coordinator"
           required: true
@@ -100,10 +95,29 @@ properties:
             file: "config.properties"
       datatype:
         type: "bool"
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "false"
       roles:
         - name: "coordinator"
           required: true
         - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+
+  - property: &nodeSchedulerIncludeCoordinator
+      propertyNames:
+        - name: "node-scheduler.include-coordinator"
+          kind:
+            type: "file"
+            file: "config.properties"
+      datatype:
+        type: "bool"
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "false"
+      roles:
+        - name: "coordinator"
           required: true
       asOfVersion: "0.0.0"
 
@@ -193,14 +207,11 @@ properties:
       datatype:
         type: "string"
         unit: *unitUri
-      defaultValues:
-        - fromVersion: "0.0.0"
-          value: "2GB"
       roles:
         - name: "coordinator"
-          required: true
+          required: false
         - name: "worker"
-          required: true
+          required: false
       asOfVersion: "0.0.0"
 
 ###################################################################################################

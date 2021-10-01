@@ -31,8 +31,21 @@ use strum_macros::EnumIter;
 pub const APP_NAME: &str = "trino";
 pub const MANAGED_BY: &str = "trino-operator";
 
+pub const NODE_ENVIRONMENT: &str = "node.environment";
+pub const NODE_ID: &str = "node.id";
+pub const NODE_DATA_DIR: &str = "node.data-dir";
+pub const COORDINATOR: &str = "coordinator";
+pub const HTTP_SERVER_PORT: &str = "http-server.http.port";
+pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
+pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
+pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-node";
+pub const DISCOVERY_URI: &str = "discovery.uri";
+pub const IO_TRINO: &str = "io.trino";
+
 pub const CONFIG_MAP_TYPE_DATA: &str = "data";
 pub const CONFIG_MAP_TYPE_ID: &str = "id";
+
+pub const CONFIG_DIR_NAME: &str = "conf";
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
@@ -44,10 +57,12 @@ pub const CONFIG_MAP_TYPE_ID: &str = "id";
     namespaced
 )]
 #[kube(status = "TrinoClusterStatus")]
+#[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
     pub version: TrinoVersion,
-    pub coordinators: Role<CoordinatorConfig>,
-    pub workers: Role<WorkerConfig>,
+    pub coordinators: Role<TrinoConfig>,
+    pub workers: Role<TrinoConfig>,
+    pub node_environment: String,
 }
 
 #[derive(
@@ -71,7 +86,10 @@ impl TrinoRole {
 
         vec![
             format!("trino-server-{}/bin/launcher", parsed_version.patch),
+            // run or start?
             "start".to_string(),
+            "--etc-dir=".to_string(),
+            format!("{{{{configroot}}}}/{}", CONFIG_DIR_NAME),
         ]
     }
 }
@@ -130,53 +148,20 @@ impl HasClusterExecutionStatus for TrinoCluster {
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CoordinatorConfig {}
-
-// TODO: These all should be "Property" Enums that can be either simple or complex where complex allows forcing/ignoring errors and/or warnings
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkerConfig {}
-
-impl Configuration for CoordinatorConfig {
-    type Configurable = TrinoCluster;
-
-    fn compute_env(
-        &self,
-        _resource: &Self::Configurable,
-        _role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        let mut result = BTreeMap::new();
-
-        // TODO: Readd if we want jmx metrics gathered
-        //if let Some(metrics_port) = self.metrics_port {
-        //    result.insert(METRICS_PORT.to_string(), Some(metrics_port.to_string()));
-        // }
-        Ok(result)
-    }
-
-    fn compute_cli(
-        &self,
-        _resource: &Self::Configurable,
-        _role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        Ok(BTreeMap::new())
-    }
-
-    fn compute_files(
-        &self,
-        _resource: &Self::Configurable,
-        _role_name: &str,
-        _file: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        let mut result = BTreeMap::new();
-
-        // TODO: Insert configs here
-
-        Ok(result)
-    }
+pub struct TrinoConfig {
+    pub node_id: Option<String>,
+    pub node_data_dir: Option<String>,
+    pub coordinator: Option<bool>,
+    pub http_server_http_port: Option<u16>,
+    pub query_max_memory: Option<String>,
+    pub query_max_memory_per_node: Option<String>,
+    pub query_max_total_memory_per_node: Option<String>,
+    // TODO: read from coordiantor(s)
+    pub discovery_uri: Option<String>,
+    pub io_trino: Option<String>,
 }
 
-impl Configuration for WorkerConfig {
+impl Configuration for TrinoConfig {
     type Configurable = TrinoCluster;
 
     fn compute_env(
@@ -203,13 +188,60 @@ impl Configuration for WorkerConfig {
 
     fn compute_files(
         &self,
-        _resource: &Self::Configurable,
+        resource: &Self::Configurable,
         _role_name: &str,
         _file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
 
-        // TODO: Insert configs here
+        result.insert(
+            NODE_ENVIRONMENT.to_string(),
+            Some(resource.spec.node_environment.clone()),
+        );
+
+        if let Some(node_id) = &self.node_id {
+            result.insert(NODE_ID.to_string(), Some(node_id.to_string()));
+        }
+
+        if let Some(node_data_dir) = &self.node_data_dir {
+            result.insert(NODE_DATA_DIR.to_string(), Some(node_data_dir.to_string()));
+        }
+
+        if let Some(coordinator) = &self.coordinator {
+            result.insert(COORDINATOR.to_string(), Some(coordinator.to_string()));
+        }
+
+        if let Some(http_server_http_port) = &self.http_server_http_port {
+            result.insert(
+                HTTP_SERVER_PORT.to_string(),
+                Some(http_server_http_port.to_string()),
+            );
+        }
+
+        if let Some(query_max_memory) = &self.query_max_memory {
+            result.insert(
+                QUERY_MAX_MEMORY.to_string(),
+                Some(query_max_memory.to_string()),
+            );
+        }
+
+        if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
+            result.insert(
+                QUERY_MAX_MEMORY_PER_NODE.to_string(),
+                Some(query_max_memory_per_node.to_string()),
+            );
+        }
+
+        if let Some(query_max_total_memory_per_node) = &self.query_max_total_memory_per_node {
+            result.insert(
+                QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
+                Some(query_max_total_memory_per_node.to_string()),
+            );
+        }
+
+        if let Some(io_trino) = &self.io_trino {
+            result.insert(IO_TRINO.to_string(), Some(io_trino.to_string()));
+        }
 
         Ok(result)
     }
@@ -235,6 +267,10 @@ pub enum TrinoVersion {
     #[serde(rename = "0.0.361")]
     #[strum(serialize = "0.0.361")]
     v361,
+
+    #[serde(rename = "0.0.362")]
+    #[strum(serialize = "0.0.362")]
+    v362,
 }
 
 impl TrinoVersion {
@@ -326,9 +362,9 @@ impl HasCurrentCommand for TrinoClusterStatus {
 #[cfg(test)]
 mod tests {
     use crate::TrinoVersion;
+    use semver::Version;
     use stackable_operator::versioning::{Versioning, VersioningState};
     use std::str::FromStr;
-    use semver::Version;
 
     #[test]
     fn test_trino_version_versioning() {

@@ -3,7 +3,8 @@ kind: TrinoCluster
 metadata:
   name: simple
 spec:
-  version: "0.0.361"
+  version: "0.0.362"
+  nodeEnvironment: production
   coordinators:
     roleGroups:
       default:
@@ -12,7 +13,12 @@ spec:
             - operator: In
               key: kubernetes.io/hostname
               values:
-                - main-1.stackable.demo
+                - worker-1.stackable.demo
+                - worker-2.stackable.demo
+                - worker-3.stackable.demo
+        config:
+          coordinator: true
+          nodeId: "12345"
   workers:
     roleGroups:
       default:
@@ -24,4 +30,6 @@ spec:
                 - worker-1.stackable.demo
                 - worker-2.stackable.demo
                 - worker-3.stackable.demo
-        replicas: 2
+        replicas: 0
+        config:
+          nodeId: "123456"

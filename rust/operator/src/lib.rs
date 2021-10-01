@@ -1,30 +1,21 @@
-mod error;
 use crate::error::Error;
-use stackable_trino_crd::commands::{Restart, Start, Stop};
+mod error;
 
 use async_trait::async_trait;
-use k8s_openapi::api::core::v1::{ConfigMap, EnvVar, Pod};
+use k8s_openapi::api::core::v1::{ConfigMap, Pod};
 use kube::api::{ListParams, ResourceExt};
 use kube::Api;
 use kube::CustomResourceExt;
 use product_config::types::PropertyNameKind;
 use product_config::ProductConfigManager;
-use stackable_trino_crd::{
-    TrinoCluster, TrinoClusterSpec, TrinoRole, TrinoVersion, APP_NAME, CONFIG_MAP_TYPE_DATA,
-    CONFIG_MAP_TYPE_ID,
-};
-use stackable_operator::builder::{
-    ContainerBuilder, ContainerPortBuilder, ObjectMetaBuilder, PodBuilder,
-};
+use stackable_operator::builder::{ContainerBuilder, ObjectMetaBuilder, PodBuilder};
 use stackable_operator::client::Client;
 use stackable_operator::command::materialize_command;
 use stackable_operator::configmap;
 use stackable_operator::controller::Controller;
 use stackable_operator::controller::{ControllerStrategy, ReconciliationState};
 use stackable_operator::error::OperatorResult;
-use stackable_operator::identity::{
-    LabeledPodIdentityFactory, NodeIdentity, PodIdentity, PodToNodeMapping,
-};
+use stackable_operator::identity::{LabeledPodIdentityFactory, PodIdentity, PodToNodeMapping};
 use stackable_operator::labels;
 use stackable_operator::labels::{
     build_common_labels_for_all_managed_resources, get_recommended_labels,
@@ -47,6 +38,11 @@ use stackable_operator::scheduler::{
 use stackable_operator::status::HasClusterExecutionStatus;
 use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
+use stackable_trino_crd::commands::{Restart, Start, Stop};
+use stackable_trino_crd::{
+    TrinoCluster, TrinoClusterSpec, TrinoRole, TrinoVersion, APP_NAME, CONFIG_MAP_TYPE_DATA,
+    CONFIG_MAP_TYPE_ID,
+};
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::pin::Pin;
@@ -62,9 +58,10 @@ const SHOULD_BE_SCRAPED: &str = "monitoring.stackable.tech/should_be_scraped";
 
 const CONFIG_MAP_TYPE_CONF: &str = "config";
 
-// TODO: adapt to Trino/.. config files
-// const PROPERTIES_FILE: &str = "zoo.cfg";
-// const CONFIG_DIR_NAME: &str = "conf";
+pub const CONFIG_PROPERTIES: &str = "config.properties";
+pub const JVM_CONFIG: &str = "jvm.config";
+pub const NODE_PROPERTIES: &str = "node.properties";
+pub const LOG_PROPERTIES: &str = "log.properties";
 
 type TrinoReconcileResult = ReconcileResult<error::Error>;
 
@@ -275,46 +272,26 @@ impl TrinoState {
         let mut config_maps = HashMap::new();
         let mut cm_conf_data = BTreeMap::new();
 
-        let LOG4J_CONFIG = include_str!("log4j.properties");
+        for (property_name_kind, config) in validated_config {
+            match property_name_kind {
+                PropertyNameKind::File(file_name)
+                    if file_name == CONFIG_PROPERTIES
+                        || file_name == NODE_PROPERTIES
+                        || file_name == LOG_PROPERTIES =>
+                {
+                    let mut transformed_config: BTreeMap<String, Option<String>> = config
+                        .iter()
+                        .map(|(k, v)| (k.clone(), Some(v.clone())))
+                        .collect();
 
-        let DATANODE_SITE = format!(
-            "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>
-<configuration>
-<property>
-<name>dfs.datanode.data.dir</name>
-<value>file:///tmp/trino/dn</value>
-</property>
-</configuration>"
-        );
-        let NAMENODE_SITE = format!(
-            "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>
-<configuration>
-<property>
-<name>dfs.namenode.name.dir</name>
-<value>file:///tmp/trino/nn</value>
-</property>
-</configuration>"
-        );
-        let CORE_SITE = format!(
-            "<?xml-stylesheet type=\"text/xsl\" href=\"configuration.xsl\"?>
-<configuration>
-<property>
-<name>fs.defaultFS</name>
-<value>trino://main-1.stackable.demo</value>
-</property>
-</configuration>"
-        );
+                    let config_properties = product_config::writer::to_java_properties_string(
+                        transformed_config.iter(),
+                    )?;
 
-        match role {
-            TrinoRole::Coordinator => {
-                cm_conf_data.insert("trino-site.xml".to_string(), NAMENODE_SITE);
-                cm_conf_data.insert("core-site.xml".to_string(), CORE_SITE);
-                cm_conf_data.insert("log4j.properties".to_string(), LOG4J_CONFIG.to_string());
-            }
-            TrinoRole::Worker => {
-                cm_conf_data.insert("trino-site.xml".to_string(), DATANODE_SITE);
-                cm_conf_data.insert("core-site.xml".to_string(), CORE_SITE);
-                cm_conf_data.insert("log4j.properties".to_string(), LOG4J_CONFIG.to_string());
+                    cm_conf_data.insert(file_name.to_string(), config_properties);
+                }
+                PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
+                _ => {}
             }
         }
 
@@ -396,6 +373,14 @@ impl TrinoState {
 
         let mut cb = ContainerBuilder::new(&format!("trino-{}", role.to_string()));
         cb.image(version.package_name());
+
+        //cb.command(vec![
+        //    format!("trino-server-{}/bin/launcher", version.to_string()),
+        //    "run".to_string(),
+        //    "--etc-dir=",
+        //    format!("{{{{configroot}}}}/{}", CONFIG_DIR_NAME),
+        //]);
+        //        cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");
 
         cb.command(role.get_command(&version));
         cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");
@@ -711,21 +696,42 @@ impl ControllerStrategy for TrinoStrategy {
 
         eligible_nodes.insert(
             TrinoRole::Coordinator.to_string(),
-            role_utils::find_nodes_that_fit_selectors(&context.client, None, &trino_spec.coordinators)
-                .await?,
+            role_utils::find_nodes_that_fit_selectors(
+                &context.client,
+                None,
+                &trino_spec.coordinators,
+            )
+            .await?,
         );
 
         trace!("Eligible Nodes: {:?}", eligible_nodes);
 
         let mut roles = HashMap::new();
+
         roles.insert(
             TrinoRole::Worker.to_string(),
-            (vec![], context.resource.spec.workers.clone().into()),
+            (
+                vec![
+                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+                    PropertyNameKind::File(JVM_CONFIG.to_string()),
+                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+                ],
+                context.resource.spec.workers.clone().into(),
+            ),
         );
 
         roles.insert(
             TrinoRole::Coordinator.to_string(),
-            (vec![], context.resource.spec.coordinators.clone().into()),
+            (
+                vec![
+                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+                    PropertyNameKind::File(JVM_CONFIG.to_string()),
+                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+                ],
+                context.resource.spec.coordinators.clone().into(),
+            ),
         );
 
         let role_config = transform_all_roles_to_config(&context.resource, roles);

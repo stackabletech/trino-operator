@@ -31,6 +31,36 @@ spec:
                       type: object
                     config:
                       nullable: true
+                      properties:
+                        coordinator:
+                          nullable: true
+                          type: boolean
+                        discoveryUri:
+                          nullable: true
+                          type: string
+                        httpServerHttpPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        ioTrino:
+                          nullable: true
+                          type: string
+                        nodeDataDir:
+                          nullable: true
+                          type: string
+                        nodeId:
+                          nullable: true
+                          type: string
+                        queryMaxMemory:
+                          nullable: true
+                          type: string
+                        queryMaxMemoryPerNode:
+                          nullable: true
+                          type: string
+                        queryMaxTotalMemoryPerNode:
+                          nullable: true
+                          type: string
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -54,6 +84,36 @@ spec:
                             type: object
                           config:
                             nullable: true
+                            properties:
+                              coordinator:
+                                nullable: true
+                                type: boolean
+                              discoveryUri:
+                                nullable: true
+                                type: string
+                              httpServerHttpPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              ioTrino:
+                                nullable: true
+                                type: string
+                              nodeDataDir:
+                                nullable: true
+                                type: string
+                              nodeId:
+                                nullable: true
+                                type: string
+                              queryMaxMemory:
+                                nullable: true
+                                type: string
+                              queryMaxMemoryPerNode:
+                                nullable: true
+                                type: string
+                              queryMaxTotalMemoryPerNode:
+                                nullable: true
+                                type: string
                             type: object
                           configOverrides:
                             additionalProperties:
@@ -108,10 +168,13 @@ spec:
                   required:
                     - roleGroups
                   type: object
+                nodeEnvironment:
+                  type: string
                 version:
                   enum:
                     - 0.0.360
                     - 0.0.361
+                    - 0.0.362
                   type: string
                 workers:
                   properties:
@@ -122,6 +185,36 @@ spec:
                       type: object
                     config:
                       nullable: true
+                      properties:
+                        coordinator:
+                          nullable: true
+                          type: boolean
+                        discoveryUri:
+                          nullable: true
+                          type: string
+                        httpServerHttpPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        ioTrino:
+                          nullable: true
+                          type: string
+                        nodeDataDir:
+                          nullable: true
+                          type: string
+                        nodeId:
+                          nullable: true
+                          type: string
+                        queryMaxMemory:
+                          nullable: true
+                          type: string
+                        queryMaxMemoryPerNode:
+                          nullable: true
+                          type: string
+                        queryMaxTotalMemoryPerNode:
+                          nullable: true
+                          type: string
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -145,6 +238,36 @@ spec:
                             type: object
                           config:
                             nullable: true
+                            properties:
+                              coordinator:
+                                nullable: true
+                                type: boolean
+                              discoveryUri:
+                                nullable: true
+                                type: string
+                              httpServerHttpPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              ioTrino:
+                                nullable: true
+                                type: string
+                              nodeDataDir:
+                                nullable: true
+                                type: string
+                              nodeId:
+                                nullable: true
+                                type: string
+                              queryMaxMemory:
+                                nullable: true
+                                type: string
+                              queryMaxMemoryPerNode:
+                                nullable: true
+                                type: string
+                              queryMaxTotalMemoryPerNode:
+                                nullable: true
+                                type: string
                             type: object
                           configOverrides:
                             additionalProperties:
@@ -201,6 +324,7 @@ spec:
                   type: object
               required:
                 - coordinators
+                - nodeEnvironment
                 - version
                 - workers
               type: object
@@ -286,12 +410,14 @@ spec:
                       enum:
                         - 0.0.360
                         - 0.0.361
+                        - 0.0.362
                       nullable: true
                       type: string
                     target:
                       enum:
                         - 0.0.360
                         - 0.0.361
+                        - 0.0.362
                       nullable: true
                       type: string
                   type: object
