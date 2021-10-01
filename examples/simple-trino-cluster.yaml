@@ -3,7 +3,7 @@ kind: TrinoCluster
 metadata:
   name: simple
 spec:
-  version: "361"
+  version: "0.0.361"
   coordinators:
     roleGroups:
       default:

@@ -1624,7 +1624,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-crd"
-version = "0.4.1-nightly"
+version = "0.1.0-nightly"
 dependencies = [
  "duplicate",
  "indoc",
@@ -1646,7 +1646,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-operator"
-version = "0.4.1-nightly"
+version = "0.1.0-nightly"
 dependencies = [
  "async-trait",
  "futures",
@@ -1666,7 +1666,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-operator-binary"
-version = "0.4.1-nightly"
+version = "0.1.0-nightly"
 dependencies = [
  "built",
  "clap",

@@ -395,7 +395,7 @@ impl TrinoState {
         recommended_labels.insert(ID_LABEL.to_string(), pod_id.id().to_string());
 
         let mut cb = ContainerBuilder::new(&format!("trino-{}", role.to_string()));
-        cb.image("hadoop:3.2.2".to_string());
+        cb.image(version.package_name());
 
         cb.command(role.get_command(&version));
         cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");

@@ -67,11 +67,11 @@ impl TrinoRole {
     ///
     /// * `version` - Current specified cluster version
     pub fn get_command(&self, version: &TrinoVersion) -> Vec<String> {
+        let parsed_version = Version::parse(version.to_string().as_ref()).unwrap();
+
         vec![
-            format!("{}/bin/trino", version.package_name()),
-            "--config".to_string(),
-            "{{configroot}}/conf".to_string(),
-            self.to_string(),
+            format!("trino-server-{}/bin/launcher", parsed_version.patch),
+            "start".to_string(),
         ]
     }
 }
@@ -228,18 +228,18 @@ impl Configuration for WorkerConfig {
     strum_macros::EnumString,
 )]
 pub enum TrinoVersion {
-    #[serde(rename = "360")]
-    #[strum(serialize = "360")]
+    #[serde(rename = "0.0.360")]
+    #[strum(serialize = "0.0.360")]
     v360,
 
-    #[serde(rename = "361")]
-    #[strum(serialize = "361")]
+    #[serde(rename = "0.0.361")]
+    #[strum(serialize = "0.0.361")]
     v361,
 }
 
 impl TrinoVersion {
     pub fn package_name(&self) -> String {
-        format!("trino-{}", self.to_string())
+        format!("trino-server:{}", self.to_string())
     }
 }
 
@@ -328,19 +328,20 @@ mod tests {
     use crate::TrinoVersion;
     use stackable_operator::versioning::{Versioning, VersioningState};
     use std::str::FromStr;
+    use semver::Version;
 
     #[test]
     fn test_trino_version_versioning() {
         assert_eq!(
-            TrinoVersion::v3_4_14.versioning_state(&TrinoVersion::v3_5_8),
+            TrinoVersion::v361.versioning_state(&TrinoVersion::v361),
             VersioningState::ValidUpgrade
         );
         assert_eq!(
-            TrinoVersion::v3_5_8.versioning_state(&TrinoVersion::v3_4_14),
+            TrinoVersion::v361.versioning_state(&TrinoVersion::v361),
             VersioningState::ValidDowngrade
         );
         assert_eq!(
-            TrinoVersion::v3_4_14.versioning_state(&TrinoVersion::v3_4_14),
+            TrinoVersion::v361.versioning_state(&TrinoVersion::v361),
             VersioningState::NoOp
         );
     }
@@ -363,5 +364,11 @@ mod tests {
             TrinoVersion::v360.package_name(),
             format!("trino-server-{}", TrinoVersion::v360.to_string())
         );
+    }
+
+    #[test]
+    fn test_semver() {
+        let test = Version::parse("0.0.360").unwrap();
+        println!("{}", test);
     }
 }

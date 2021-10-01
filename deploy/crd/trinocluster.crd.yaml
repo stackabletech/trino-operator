@@ -110,8 +110,8 @@ spec:
                   type: object
                 version:
                   enum:
-                    - "360"
-                    - "361"
+                    - 0.0.360
+                    - 0.0.361
                   type: string
                 workers:
                   properties:
@@ -284,14 +284,14 @@ spec:
                   properties:
                     current:
                       enum:
-                        - "360"
-                        - "361"
+                        - 0.0.360
+                        - 0.0.361
                       nullable: true
                       type: string
                     target:
                       enum:
-                        - "360"
-                        - "361"
+                        - 0.0.360
+                        - 0.0.361
                       nullable: true
                       type: string
                   type: object
