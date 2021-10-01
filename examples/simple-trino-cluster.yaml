@@ -1,0 +1,27 @@
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple
+spec:
+  version: 362
+  namenodes:
+    roleGroups:
+      default:
+        selector:
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/hostname
+              values:
+                - main-1.stackable.demo
+  datanodes:
+    roleGroups:
+      default:
+        selector:
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/hostname
+              values:
+                - worker-1.stackable.demo
+                - worker-2.stackable.demo
+                - worker-3.stackable.demo
+        replicas: 2

@@ -1,0 +1,7 @@
+apiVersion: command.trino.stackable.tech/v1alpha1
+kind: Start
+metadata:
+  name: trino-cluster-command-start
+spec:
+  name: "simple"
+  rolling: true
