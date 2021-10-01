@@ -13,9 +13,7 @@ spec:
             - operator: In
               key: kubernetes.io/hostname
               values:
-                - worker-1.stackable.demo
-                - worker-2.stackable.demo
-                - worker-3.stackable.demo
+                - main-1.stackable.demo
         config:
           coordinator: true
           nodeId: "12345"
@@ -30,6 +28,6 @@ spec:
                 - worker-1.stackable.demo
                 - worker-2.stackable.demo
                 - worker-3.stackable.demo
-        replicas: 0
+        replicas: 1
         config:
           nodeId: "123456"

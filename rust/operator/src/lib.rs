@@ -295,6 +295,23 @@ impl TrinoState {
             }
         }
 
+        let JVM_CONFIG_DATA= format!("-server
+-Xmx16G
+-XX:-UseBiasedLocking
+-XX:+UseG1GC
+-XX:G1HeapRegionSize=32M
+-XX:+ExplicitGCInvokesConcurrent
+-XX:+ExitOnOutOfMemoryError
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:-OmitStackTraceInFastThrow
+-XX:ReservedCodeCacheSize=512M
+-XX:PerMethodRecompilationCutoff=10000
+-XX:PerBytecodeRecompilationCutoff=10000
+-Djdk.attach.allowAttachSelf=true
+-Djdk.nio.maxCachedBufferSize=2000000");
+
+        cm_conf_data.insert(JVM_CONFIG.to_string(), JVM_CONFIG_DATA.to_string());
+
         let mut cm_labels = get_recommended_labels(
             &self.context.resource,
             pod_id.app(),
@@ -393,6 +410,8 @@ impl TrinoState {
                 });
             }
         }
+
+
 
         let pod = PodBuilder::new()
             .metadata(
