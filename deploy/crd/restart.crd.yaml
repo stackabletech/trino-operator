@@ -1,0 +1,61 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: restarts.command.trino.stackable.tech
+spec:
+  group: command.trino.stackable.tech
+  names:
+    categories: []
+    kind: Restart
+    plural: restarts
+    shortNames: []
+    singular: restart
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns: []
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: "Auto-generated derived type for RestartCommandSpec via `CustomResource`"
+          properties:
+            spec:
+              properties:
+                name:
+                  type: string
+                roles:
+                  items:
+                    enum:
+                      - Coordinator
+                      - Worker
+                    type: string
+                  nullable: true
+                  type: array
+                rolling:
+                  type: boolean
+              required:
+                - name
+                - rolling
+              type: object
+            status:
+              nullable: true
+              properties:
+                finishedAt:
+                  description: Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers.
+                  format: date-time
+                  nullable: true
+                  type: string
+                startedAt:
+                  description: Time is a wrapper around time.Time which supports correct marshaling to YAML and JSON.  Wrappers are provided for many of the factory methods that the time package offers.
+                  format: date-time
+                  nullable: true
+                  type: string
+              type: object
+          required:
+            - spec
+          title: Restart
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

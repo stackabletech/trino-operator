@@ -3,8 +3,8 @@ kind: TrinoCluster
 metadata:
   name: simple
 spec:
-  version: 362
-  namenodes:
+  version: "361"
+  coordinators:
     roleGroups:
       default:
         selector:
@@ -13,7 +13,7 @@ spec:
               key: kubernetes.io/hostname
               values:
                 - main-1.stackable.demo
-  datanodes:
+  workers:
     roleGroups:
       default:
         selector:

@@ -306,12 +306,12 @@ impl TrinoState {
         );
 
         match role {
-            TrinoRole::NameNode => {
+            TrinoRole::Coordinator => {
                 cm_conf_data.insert("trino-site.xml".to_string(), NAMENODE_SITE);
                 cm_conf_data.insert("core-site.xml".to_string(), CORE_SITE);
                 cm_conf_data.insert("log4j.properties".to_string(), LOG4J_CONFIG.to_string());
             }
-            TrinoRole::DataNode => {
+            TrinoRole::Worker => {
                 cm_conf_data.insert("trino-site.xml".to_string(), DATANODE_SITE);
                 cm_conf_data.insert("core-site.xml".to_string(), CORE_SITE);
                 cm_conf_data.insert("log4j.properties".to_string(), LOG4J_CONFIG.to_string());
@@ -396,7 +396,8 @@ impl TrinoState {
 
         let mut cb = ContainerBuilder::new(&format!("trino-{}", role.to_string()));
         cb.image("hadoop:3.2.2".to_string());
-        cb.command(role.get_command(&TrinoVersion::v3_2_2));
+
+        cb.command(role.get_command(&version));
         cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");
         for (map_name, map) in config_maps {
             if let Some(name) = map.metadata.name.as_ref() {
@@ -703,14 +704,14 @@ impl ControllerStrategy for TrinoStrategy {
         let mut eligible_nodes = HashMap::new();
 
         eligible_nodes.insert(
-            TrinoRole::DataNode.to_string(),
-            role_utils::find_nodes_that_fit_selectors(&context.client, None, &trino_spec.datanodes)
+            TrinoRole::Worker.to_string(),
+            role_utils::find_nodes_that_fit_selectors(&context.client, None, &trino_spec.workers)
                 .await?,
         );
 
         eligible_nodes.insert(
-            TrinoRole::NameNode.to_string(),
-            role_utils::find_nodes_that_fit_selectors(&context.client, None, &trino_spec.namenodes)
+            TrinoRole::Coordinator.to_string(),
+            role_utils::find_nodes_that_fit_selectors(&context.client, None, &trino_spec.coordinators)
                 .await?,
         );
 
@@ -718,13 +719,13 @@ impl ControllerStrategy for TrinoStrategy {
 
         let mut roles = HashMap::new();
         roles.insert(
-            TrinoRole::DataNode.to_string(),
-            (vec![], context.resource.spec.datanodes.clone().into()),
+            TrinoRole::Worker.to_string(),
+            (vec![], context.resource.spec.workers.clone().into()),
         );
 
         roles.insert(
-            TrinoRole::NameNode.to_string(),
-            (vec![], context.resource.spec.namenodes.clone().into()),
+            TrinoRole::Coordinator.to_string(),
+            (vec![], context.resource.spec.coordinators.clone().into()),
         );
 
         let role_config = transform_all_roles_to_config(&context.resource, roles);

@@ -1,9 +1,22 @@
 version: 0.1.0
 spec:
   units:
+    - unit: &unitDirectory
+        name: "directory"
+        regex: "^/|(/[\\w-]+)+$"
+        examples:
+          - "/tmp/xyz"
     - unit: &unitPort
         name: "port"
         regex: "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"
+    - unit: &unitMemory
+        name: "memory"
+        regex: "(^\\p{N}+)(?:\\s*)((?:b|k|m|g|t|p|kb|mb|gb|tb|pb|B|K|M|G|T|P|KB|MB|GB|TB|PB)\\b$)"
+        examples:
+          - "1024b"
+          - "1024kb"
+          - "500m"
+          - "1g"
     - unit: &unitUri
         name: "uri"
         regex: "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?"
@@ -11,77 +24,208 @@ spec:
           - "ldap://[2001:db8::7]/c=GB?objectClass?one"
         comment: "Specified in https://tools.ietf.org/html/rfc3986#appendix-B"
 
+###################################################################################################
+# node.properties
+###################################################################################################
 properties:
-  - property:
+  - property: &nodeEnvironment
       propertyNames:
-        - name: "dfs.namenode.name.dir"
+        - name: "node.environment"
           kind:
             type: "file"
-            file: "hive-site.xml"
+            file: "node.properties"
       datatype:
         type: "string"
-        unit: *unitUri
+      recommendedValues:
+        - fromVersion: "0.0.0"
+          value: "production"
+      allowedValues:
+        - "production"
       roles:
-        - name: "namenode"
+        - name: "coordinator"
           required: true
-        - name: "datanode"
+        - name: "worker"
           required: true
       asOfVersion: "0.0.0"
-      description: "Determines where on the local filesystem the DFS name node should store the name table(fsimage). If this is a comma-delimited list of directories then the name table is replicated in all of the directories, for redundancy."
 
-  - property:
+  - property: &nodeId
       propertyNames:
-        - name: "dfs.datanode.data.dir"
+        - name: "node.id"
           kind:
             type: "file"
-            file: "hive-site.xml"
+            file: "node.properties"
       datatype:
         type: "string"
-        unit: *unitUri
       roles:
-        - name: "namenode"
+        - name: "coordinator"
           required: true
-        - name: "datanode"
+        - name: "worker"
           required: true
       asOfVersion: "0.0.0"
-      description: "Determines where on the local filesystem an DFS data node should store its blocks. If this is a comma-delimited list of directories, then data will be stored in all named directories, typically on different devices. Directories that do not exist are ignored."
 
-  - property:
+  - property: &nodeDataDir
       propertyNames:
-        - name: "dfs.replication"
+        - name: "node.data-dir"
           kind:
             type: "file"
-            file: "hive-site.xml"
+            file: "node.properties"
+      datatype:
+        type: "string"
+        unit: *unitDirectory
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "/var/trino/data"
+      recommendedValues:
+        - fromVersion: "0.0.0"
+          value: "/var/trino/data"
+      roles:
+        - name: "coordinator"
+          required: true
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+
+###################################################################################################
+# jvm.config
+###################################################################################################
+
+###################################################################################################
+# config.properties
+###################################################################################################
+  - property: &coordinator
+      propertyNames:
+        - name: "coordinator"
+          kind:
+            type: "file"
+            file: "config.properties"
+      datatype:
+        type: "bool"
+      roles:
+        - name: "coordinator"
+          required: true
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+
+  - property: &httpServerHttpPort
+      propertyNames:
+        - name: "http-server.http.port"
+          kind:
+            type: "file"
+            file: "config.properties"
       datatype:
         type: "integer"
-        min: "1"
-        max: "512"
+        min: "1024"
+        max: "65535"
       defaultValues:
         - fromVersion: "0.0.0"
-          value: "3"
+          value: "8080"
       roles:
-        - name: "namenode"
+        - name: "coordinator"
           required: true
-        - name: "datanode"
+        - name: "worker"
           required: true
       asOfVersion: "0.0.0"
-      description: "Default block replication. The actual number of replications can be specified when the file is created. The default is used if replication is not specified in create time."
-  - property:
+
+  - property: &queryMaxMemory
       propertyNames:
-        - name: "fs.defaultFS"
+        - name: "query.max-memory"
           kind:
             type: "file"
-            file: "core-site.xml"
+            file: "config.properties"
+      datatype:
+        type: "string"
+        unit: *unitMemory
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "50GB"
+      roles:
+        - name: "coordinator"
+          required: true
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+
+  - property: &queryMaxMemoryPerNode
+      propertyNames:
+        - name: "query.max-memory-per-node"
+          kind:
+            type: "file"
+            file: "config.properties"
+      datatype:
+        type: "string"
+        unit: *unitMemory
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "1GB"
+      roles:
+        - name: "coordinator"
+          required: true
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+
+  - property: &queryMaxTotalMemoryPerNode
+      propertyNames:
+        - name: "query.max-total-memory-per-node"
+          kind:
+            type: "file"
+            file: "config.properties"
+      datatype:
+        type: "string"
+        unit: *unitMemory
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "2GB"
+      roles:
+        - name: "coordinator"
+          required: true
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+
+  - property: &discoveryUri
+      propertyNames:
+        - name: "discovery.uri"
+          kind:
+            type: "file"
+            file: "config.properties"
       datatype:
         type: "string"
         unit: *unitUri
       defaultValues:
         - fromVersion: "0.0.0"
-          value: "file:///"        
+          value: "2GB"
       roles:
-        - name: "namenode"
+        - name: "coordinator"
           required: true
-        - name: "datanode"
+        - name: "worker"
           required: true
       asOfVersion: "0.0.0"
-      description: "The name of the default file system. A URI whose scheme and authority determine the FileSystem implementation. The uri's scheme determines the config property (fs.SCHEME.impl) naming the FileSystem implementation class. The uri's authority is used to determine the host, port, etc. for a filesystem."
+
+###################################################################################################
+# log.properties
+###################################################################################################
+
+  - property: &ioTrino
+      propertyNames:
+        - name: "io.trino"
+          kind:
+            type: "file"
+            file: "log.properties"
+      datatype:
+        type: "string"
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "INFO"
+      allowedValues:
+        - "INFO"
+        - "DEBUG"
+        - "WARN"
+        - "ERROR"          
+      roles:
+        - name: "coordinator"
+          required: true
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"

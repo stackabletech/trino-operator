@@ -46,18 +46,18 @@ pub const CONFIG_MAP_TYPE_ID: &str = "id";
 #[kube(status = "TrinoClusterStatus")]
 pub struct TrinoClusterSpec {
     pub version: TrinoVersion,
-    pub datanodes: Role<DataNodeConfig>,
-    pub namenodes: Role<NameNodeConfig>,
+    pub coordinators: Role<CoordinatorConfig>,
+    pub workers: Role<WorkerConfig>,
 }
 
 #[derive(
     Clone, Debug, Deserialize, Display, EnumIter, Eq, Hash, JsonSchema, PartialEq, Serialize,
 )]
 pub enum TrinoRole {
-    #[strum(serialize = "namenode")]
-    NameNode,
-    #[strum(serialize = "datanode")]
-    DataNode,
+    #[strum(serialize = "coordinator")]
+    Coordinator,
+    #[strum(serialize = "worker")]
+    Worker,
 }
 
 impl TrinoRole {
@@ -88,8 +88,8 @@ impl Status<TrinoClusterStatus> for TrinoCluster {
 impl HasRoleRestartOrder for TrinoCluster {
     fn get_role_restart_order() -> Vec<String> {
         vec![
-            TrinoRole::DataNode.to_string(),
-            TrinoRole::NameNode.to_string(),
+            TrinoRole::Worker.to_string(),
+            TrinoRole::Coordinator.to_string(),
         ]
     }
 }
@@ -128,16 +128,16 @@ impl HasClusterExecutionStatus for TrinoCluster {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CoordinatorConfig {}
+
 // TODO: These all should be "Property" Enums that can be either simple or complex where complex allows forcing/ignoring errors and/or warnings
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NameNodeConfig {}
+pub struct WorkerConfig {}
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DataNodeConfig {}
-
-impl Configuration for NameNodeConfig {
+impl Configuration for CoordinatorConfig {
     type Configurable = TrinoCluster;
 
     fn compute_env(
@@ -176,7 +176,7 @@ impl Configuration for NameNodeConfig {
     }
 }
 
-impl Configuration for DataNodeConfig {
+impl Configuration for WorkerConfig {
     type Configurable = TrinoCluster;
 
     fn compute_env(
@@ -228,18 +228,18 @@ impl Configuration for DataNodeConfig {
     strum_macros::EnumString,
 )]
 pub enum TrinoVersion {
-    #[serde(rename = "3.2.2")]
-    #[strum(serialize = "3.2.2")]
-    v3_2_2,
+    #[serde(rename = "360")]
+    #[strum(serialize = "360")]
+    v360,
 
-    #[serde(rename = "3.3.1")]
-    #[strum(serialize = "3.3.1")]
-    v3_3_1,
+    #[serde(rename = "361")]
+    #[strum(serialize = "361")]
+    v361,
 }
 
 impl TrinoVersion {
     pub fn package_name(&self) -> String {
-        format!("hadoop-{}", self.to_string())
+        format!("trino-{}", self.to_string())
     }
 }
 
