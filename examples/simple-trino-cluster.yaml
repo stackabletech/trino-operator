@@ -16,7 +16,7 @@ spec:
                 - main-1.stackable.demo
         config:
           coordinator: true
-          nodeId: "12345"
+          nodeId: "ffffffff-ffff-ffff-ffff-ffffffffffff"
   workers:
     roleGroups:
       default:
@@ -30,4 +30,4 @@ spec:
                 - worker-3.stackable.demo
         replicas: 1
         config:
-          nodeId: "123456"
+          nodeId: "ffffffff-ffff-ffff-ffff-fffffffffffe"

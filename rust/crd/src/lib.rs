@@ -87,7 +87,7 @@ impl TrinoRole {
         vec![
             format!("trino-server-{}/bin/launcher", parsed_version.patch),
             // run or start?
-            "start".to_string(),
+            "run".to_string(),
             format!("--etc-dir={{{{configroot}}}}/{}", CONFIG_DIR_NAME),
         ]
     }

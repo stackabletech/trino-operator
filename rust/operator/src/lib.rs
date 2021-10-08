@@ -269,6 +269,7 @@ impl TrinoState {
         validated_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
         id_mapping: &PodToNodeMapping,
     ) -> Result<HashMap<&'static str, ConfigMap>, Error> {
+        info!("Validated config: {:?}", validated_config);
         let mut config_maps = HashMap::new();
         let mut cm_conf_data = BTreeMap::new();
 
