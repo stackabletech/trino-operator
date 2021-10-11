@@ -41,9 +41,6 @@ use stackable_operator::status::HasClusterExecutionStatus;
 use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
 use stackable_trino_crd::commands::{Restart, Start, Stop};
-use stackable_trino_crd::constants::{
-    JVM_CONFIG, LOG_PROPERTIES, NODE_PROPERTIES, SERVER_PROPERTIES,
-};
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
     HTTP_PORT, HTTP_SERVER_PORT, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY,
@@ -306,7 +303,6 @@ impl TrinoState {
 
                     cm_conf_data.insert(file_name.to_string(), config_properties);
                 }
-
                 PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                     // if metrics port is set we need to adapt the
                     if let Some(metrics_port) = config.get(METRICS_PORT_PROPERTY) {
@@ -314,7 +310,6 @@ impl TrinoState {
                                                  version.package_directory(), metrics_port, version.package_directory()));
                     }
                 }
-
                 _ => {}
             }
         }

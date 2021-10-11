@@ -1,5 +1,4 @@
 pub mod commands;
-pub mod constants;
 pub mod error;
 
 use crate::commands::{Restart, Start, Stop};
@@ -29,13 +28,13 @@ use std::collections::BTreeMap;
 use strum_macros::Display;
 use strum_macros::EnumIter;
 
+pub const APP_NAME: &str = "trino";
+pub const MANAGED_BY: &str = "trino-operator";
+
 pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
-
-pub const APP_NAME: &str = "trino";
-pub const MANAGED_BY: &str = "trino-operator";
 
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 pub const NODE_ID: &str = "node.id";
