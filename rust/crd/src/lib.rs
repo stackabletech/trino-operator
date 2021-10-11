@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod constants;
 pub mod error;
 
 use crate::commands::{Restart, Start, Stop};
@@ -46,8 +47,6 @@ pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
 pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";
 pub const IO_TRINO: &str = "io.trino";
-pub const JMX_RMI_REGISTRY_PORT: &str = "jmx.rmiregistry.port";
-pub const JMX_RMI_SERVER_PORT: &str = "jmx.rmiserver.port";
 
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 pub const METRICS_PORT: &str = "metrics";

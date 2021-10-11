@@ -41,6 +41,9 @@ use stackable_operator::status::HasClusterExecutionStatus;
 use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
 use stackable_trino_crd::commands::{Restart, Start, Stop};
+use stackable_trino_crd::constants::{
+    JVM_CONFIG, LOG_PROPERTIES, NODE_PROPERTIES, SERVER_PROPERTIES,
+};
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
     HTTP_PORT, HTTP_SERVER_PORT, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY,
