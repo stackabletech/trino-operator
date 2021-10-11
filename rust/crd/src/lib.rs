@@ -28,6 +28,11 @@ use std::collections::BTreeMap;
 use strum_macros::Display;
 use strum_macros::EnumIter;
 
+pub const CONFIG_PROPERTIES: &str = "config.properties";
+pub const JVM_CONFIG: &str = "jvm.config";
+pub const NODE_PROPERTIES: &str = "node.properties";
+pub const LOG_PROPERTIES: &str = "log.properties";
+
 pub const APP_NAME: &str = "trino";
 pub const MANAGED_BY: &str = "trino-operator";
 
@@ -41,9 +46,12 @@ pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
 pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";
 pub const IO_TRINO: &str = "io.trino";
+pub const JMX_RMI_REGISTRY_PORT: &str = "jmx.rmiregistry.port";
+pub const JMX_RMI_SERVER_PORT: &str = "jmx.rmiserver.port";
 
-pub const CONFIG_MAP_TYPE_DATA: &str = "data";
-pub const CONFIG_MAP_TYPE_ID: &str = "id";
+pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
+pub const METRICS_PORT: &str = "metrics";
+pub const HTTP_PORT: &str = "http";
 
 pub const CONFIG_DIR_NAME: &str = "conf";
 
@@ -158,6 +166,7 @@ pub struct TrinoConfig {
     // TODO: read from coordiantor(s)
     pub discovery_uri: Option<String>,
     pub io_trino: Option<String>,
+    pub metrics_port: Option<u16>,
 }
 
 impl Configuration for TrinoConfig {
@@ -168,13 +177,7 @@ impl Configuration for TrinoConfig {
         _resource: &Self::Configurable,
         _role_name: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        let mut result = BTreeMap::new();
-
-        // TODO: Readd if we want jmx metrics gathered
-        //if let Some(metrics_port) = self.metrics_port {
-        //    result.insert(METRICS_PORT.to_string(), Some(metrics_port.to_string()));
-        // }
-        Ok(result)
+        Ok(BTreeMap::new())
     }
 
     fn compute_cli(
@@ -189,57 +192,77 @@ impl Configuration for TrinoConfig {
         &self,
         resource: &Self::Configurable,
         _role_name: &str,
-        _file: &str,
+        file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
 
-        result.insert(
-            NODE_ENVIRONMENT.to_string(),
-            Some(resource.spec.node_environment.clone()),
-        );
+        match file {
+            NODE_PROPERTIES => {
+                result.insert(
+                    NODE_ENVIRONMENT.to_string(),
+                    Some(resource.spec.node_environment.clone()),
+                );
 
-        if let Some(node_id) = &self.node_id {
-            result.insert(NODE_ID.to_string(), Some(node_id.to_string()));
-        }
+                if let Some(node_id) = &self.node_id {
+                    result.insert(NODE_ID.to_string(), Some(node_id.to_string()));
+                }
 
-        if let Some(node_data_dir) = &self.node_data_dir {
-            result.insert(NODE_DATA_DIR.to_string(), Some(node_data_dir.to_string()));
-        }
+                if let Some(node_data_dir) = &self.node_data_dir {
+                    result.insert(NODE_DATA_DIR.to_string(), Some(node_data_dir.to_string()));
+                }
+            }
+            CONFIG_PROPERTIES => {
+                if let Some(coordinator) = &self.coordinator {
+                    result.insert(COORDINATOR.to_string(), Some(coordinator.to_string()));
+                }
+                if let Some(http_server_http_port) = &self.http_server_http_port {
+                    result.insert(
+                        HTTP_SERVER_PORT.to_string(),
+                        Some(http_server_http_port.to_string()),
+                    );
+                }
 
-        if let Some(coordinator) = &self.coordinator {
-            result.insert(COORDINATOR.to_string(), Some(coordinator.to_string()));
-        }
+                if let Some(query_max_memory) = &self.query_max_memory {
+                    result.insert(
+                        QUERY_MAX_MEMORY.to_string(),
+                        Some(query_max_memory.to_string()),
+                    );
+                }
 
-        if let Some(http_server_http_port) = &self.http_server_http_port {
-            result.insert(
-                HTTP_SERVER_PORT.to_string(),
-                Some(http_server_http_port.to_string()),
-            );
-        }
+                if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
+                    result.insert(
+                        QUERY_MAX_MEMORY_PER_NODE.to_string(),
+                        Some(query_max_memory_per_node.to_string()),
+                    );
+                }
 
-        if let Some(query_max_memory) = &self.query_max_memory {
-            result.insert(
-                QUERY_MAX_MEMORY.to_string(),
-                Some(query_max_memory.to_string()),
-            );
-        }
+                if let Some(query_max_total_memory_per_node) = &self.query_max_total_memory_per_node
+                {
+                    result.insert(
+                        QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
+                        Some(query_max_total_memory_per_node.to_string()),
+                    );
+                }
 
-        if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
-            result.insert(
-                QUERY_MAX_MEMORY_PER_NODE.to_string(),
-                Some(query_max_memory_per_node.to_string()),
-            );
-        }
-
-        if let Some(query_max_total_memory_per_node) = &self.query_max_total_memory_per_node {
-            result.insert(
-                QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
-                Some(query_max_total_memory_per_node.to_string()),
-            );
-        }
-
-        if let Some(io_trino) = &self.io_trino {
-            result.insert(IO_TRINO.to_string(), Some(io_trino.to_string()));
+                // TODO: remove once discovery works
+                if let Some(discovery_uri) = &self.discovery_uri {
+                    result.insert(DISCOVERY_URI.to_string(), Some(discovery_uri.to_string()));
+                }
+            }
+            JVM_CONFIG => {
+                if let Some(metrics_port) = self.metrics_port {
+                    result.insert(
+                        METRICS_PORT_PROPERTY.to_string(),
+                        Some(metrics_port.to_string()),
+                    );
+                }
+            }
+            LOG_PROPERTIES => {
+                if let Some(io_trino) = &self.io_trino {
+                    result.insert(IO_TRINO.to_string(), Some(io_trino.to_string()));
+                }
+            }
+            _ => {}
         }
 
         Ok(result)
@@ -275,6 +298,15 @@ pub enum TrinoVersion {
 impl TrinoVersion {
     pub fn package_name(&self) -> String {
         format!("trino-server:{}", self.to_string())
+    }
+    pub fn package_directory(&self) -> String {
+        if self == &Self::v360 {
+            "trino-server-360".to_string()
+        } else if self == &Self::v361 {
+            "trino-server-361".to_string()
+        } else {
+            "trino-server-362".to_string()
+        }
     }
 }
 
@@ -368,15 +400,15 @@ mod tests {
     #[test]
     fn test_trino_version_versioning() {
         assert_eq!(
-            TrinoVersion::v361.versioning_state(&TrinoVersion::v361),
+            TrinoVersion::v360.versioning_state(&TrinoVersion::v361),
             VersioningState::ValidUpgrade
         );
         assert_eq!(
-            TrinoVersion::v361.versioning_state(&TrinoVersion::v361),
+            TrinoVersion::v361.versioning_state(&TrinoVersion::v360),
             VersioningState::ValidDowngrade
         );
         assert_eq!(
-            TrinoVersion::v361.versioning_state(&TrinoVersion::v361),
+            TrinoVersion::v360.versioning_state(&TrinoVersion::v360),
             VersioningState::NoOp
         );
     }
@@ -385,25 +417,30 @@ mod tests {
     #[test]
     fn test_version_conversion() {
         // TODO: Adapt to correct product version
-        // TrinoVersion::from_str("3.4.14").unwrap();
+        TrinoVersion::from_str("0.0.360").unwrap();
+        TrinoVersion::from_str("0.0.361").unwrap();
+        TrinoVersion::from_str("0.0.362").unwrap();
+        TrinoVersion::from_str("10.0.360").unwrap_err();
     }
 
     #[test]
     fn test_package_name() {
-        // TODO: Adapot to correct package names
         assert_eq!(
             TrinoVersion::v360.package_name(),
-            format!("trino-{}", TrinoVersion::v360.to_string())
+            format!("trino-server:{}", TrinoVersion::v360.to_string())
         );
+    }
+
+    #[test]
+    fn test_package_directory() {
         assert_eq!(
-            TrinoVersion::v360.package_name(),
-            format!("trino-server-{}", TrinoVersion::v360.to_string())
+            TrinoVersion::v360.package_directory(),
+            "trino-server-360".to_string()
         );
     }
 
     #[test]
     fn test_semver() {
-        let test = Version::parse("0.0.360").unwrap();
-        println!("{}", test);
+        Version::parse("0.0.360").unwrap();
     }
 }

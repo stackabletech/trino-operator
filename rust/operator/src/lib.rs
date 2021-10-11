@@ -8,7 +8,9 @@ use kube::Api;
 use kube::CustomResourceExt;
 use product_config::types::PropertyNameKind;
 use product_config::ProductConfigManager;
-use stackable_operator::builder::{ContainerBuilder, ObjectMetaBuilder, PodBuilder};
+use stackable_operator::builder::{
+    ContainerBuilder, ContainerPortBuilder, ObjectMetaBuilder, PodBuilder,
+};
 use stackable_operator::client::Client;
 use stackable_operator::command::materialize_command;
 use stackable_operator::configmap;
@@ -40,8 +42,9 @@ use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
 use stackable_trino_crd::commands::{Restart, Start, Stop};
 use stackable_trino_crd::{
-    TrinoCluster, TrinoClusterSpec, TrinoRole, TrinoVersion, APP_NAME, CONFIG_MAP_TYPE_DATA,
-    CONFIG_MAP_TYPE_ID,
+    TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
+    HTTP_PORT, HTTP_SERVER_PORT, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY,
+    NODE_PROPERTIES,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
@@ -50,18 +53,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use strum::IntoEnumIterator;
 use tracing::error;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace};
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";
 const SHOULD_BE_SCRAPED: &str = "monitoring.stackable.tech/should_be_scraped";
 
 const CONFIG_MAP_TYPE_CONF: &str = "config";
-
-pub const CONFIG_PROPERTIES: &str = "config.properties";
-pub const JVM_CONFIG: &str = "jvm.config";
-pub const NODE_PROPERTIES: &str = "node.properties";
-pub const LOG_PROPERTIES: &str = "log.properties";
 
 type TrinoReconcileResult = ReconcileResult<error::Error>;
 
@@ -214,9 +212,7 @@ impl TrinoState {
                             &self.validated_role_config,
                         )?;
 
-                        let config_maps = self
-                            .create_config_maps(pod_id, &role, validated_config, &state.mapping())
-                            .await?;
+                        let config_maps = self.create_config_maps(pod_id, validated_config).await?;
 
                         self.create_pod(
                             pod_id,
@@ -265,38 +261,15 @@ impl TrinoState {
     async fn create_config_maps(
         &self,
         pod_id: &PodIdentity,
-        role: &TrinoRole,
         validated_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-        id_mapping: &PodToNodeMapping,
     ) -> Result<HashMap<&'static str, ConfigMap>, Error> {
         info!("Validated config: {:?}", validated_config);
         let mut config_maps = HashMap::new();
         let mut cm_conf_data = BTreeMap::new();
 
-        for (property_name_kind, config) in validated_config {
-            match property_name_kind {
-                PropertyNameKind::File(file_name)
-                    if file_name == CONFIG_PROPERTIES
-                        || file_name == NODE_PROPERTIES
-                        || file_name == LOG_PROPERTIES =>
-                {
-                    let mut transformed_config: BTreeMap<String, Option<String>> = config
-                        .iter()
-                        .map(|(k, v)| (k.clone(), Some(v.clone())))
-                        .collect();
+        let version = &self.context.resource.spec.version;
 
-                    let config_properties = product_config::writer::to_java_properties_string(
-                        transformed_config.iter(),
-                    )?;
-
-                    cm_conf_data.insert(file_name.to_string(), config_properties);
-                }
-                PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
-                _ => {}
-            }
-        }
-
-        let JVM_CONFIG_DATA= format!("-server
+        let mut jvm_config = "-server
 -Xmx16G
 -XX:-UseBiasedLocking
 -XX:+UseG1GC
@@ -309,9 +282,41 @@ impl TrinoState {
 -XX:PerMethodRecompilationCutoff=10000
 -XX:PerBytecodeRecompilationCutoff=10000
 -Djdk.attach.allowAttachSelf=true
--Djdk.nio.maxCachedBufferSize=2000000");
+-Djdk.nio.maxCachedBufferSize=2000000"
+            .to_string();
 
-        cm_conf_data.insert(JVM_CONFIG.to_string(), JVM_CONFIG_DATA.to_string());
+        for (property_name_kind, config) in validated_config {
+            match property_name_kind {
+                PropertyNameKind::File(file_name)
+                    if file_name == CONFIG_PROPERTIES
+                        || file_name == NODE_PROPERTIES
+                        || file_name == LOG_PROPERTIES =>
+                {
+                    let transformed_config: BTreeMap<String, Option<String>> = config
+                        .iter()
+                        .map(|(k, v)| (k.clone(), Some(v.clone())))
+                        .collect();
+
+                    let config_properties = product_config::writer::to_java_properties_string(
+                        transformed_config.iter(),
+                    )?;
+
+                    cm_conf_data.insert(file_name.to_string(), config_properties);
+                }
+
+                PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
+                    // if metrics port is set we need to adapt the
+                    if let Some(metrics_port) = config.get(METRICS_PORT_PROPERTY) {
+                        jvm_config.push_str(&format!("\n-javaagent:{{{{packageroot}}}}/{}/stackable/lib/jmx_prometheus_javaagent-0.16.1.jar={}:{{{{packageroot}}}}/{}/stackable/conf/jmx_exporter.yaml",
+                                                 version.package_directory(), metrics_port, version.package_directory()));
+                    }
+                }
+
+                _ => {}
+            }
+        }
+
+        cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
 
         let mut cm_labels = get_recommended_labels(
             &self.context.resource,
@@ -370,6 +375,16 @@ impl TrinoState {
         config_maps: &HashMap<&'static str, ConfigMap>,
         validated_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     ) -> Result<Pod, error::Error> {
+        let metrics_port = validated_config
+            .get(&PropertyNameKind::File(JVM_CONFIG.to_string()))
+            .and_then(|jvm_config| jvm_config.get(METRICS_PORT_PROPERTY));
+
+        let http_port = validated_config
+            .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
+            .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_PORT));
+
+        let version = &self.context.resource.spec.version;
+
         let pod_name = name_utils::build_resource_name(
             pod_id.app(),
             &self.context.name(),
@@ -379,7 +394,6 @@ impl TrinoState {
             None,
         )?;
 
-        let version = &self.context.resource.spec.version;
         let mut recommended_labels = get_recommended_labels(
             &self.context.resource,
             pod_id.app(),
@@ -391,141 +405,12 @@ impl TrinoState {
 
         let mut cb = ContainerBuilder::new(&format!("trino-{}", role.to_string()));
         cb.image(version.package_name());
-
-        //cb.command(vec![
-        //    format!("trino-server-{}/bin/launcher", version.to_string()),
-        //    "run".to_string(),
-        //    "--etc-dir=",
-        //    format!("{{{{configroot}}}}/{}", CONFIG_DIR_NAME),
-        //]);
-        //        cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");
-
-        cb.command(role.get_command(&version));
+        cb.command(role.get_command(version));
         cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");
-        for (map_name, map) in config_maps {
-            if let Some(name) = map.metadata.name.as_ref() {
-                cb.add_configmapvolume(name, "conf".to_string());
-            } else {
-                return Err(error::Error::MissingConfigMapNameError {
-                    cm_type: CONFIG_MAP_TYPE_CONF,
-                });
-            }
-        }
-
-
-
-        let pod = PodBuilder::new()
-            .metadata(
-                ObjectMetaBuilder::new()
-                    .generate_name(pod_name)
-                    .namespace(&self.context.client.default_namespace)
-                    .with_labels(recommended_labels)
-                    .ownerreference_from_resource(&self.context.resource, Some(true), Some(true))?
-                    .build()?,
-            )
-            .add_stackable_agent_tolerations()
-            .add_container(cb.build())
-            .node_name(node_name)
-            .build()?;
-
-        Ok(self.context.client.create(&pod).await?)
-        /*
-        // extract container ports
-        if let Some(config) =
-            validated_config.get(&PropertyNameKind::File(SPARK_ENV_SH.to_string()))
-        {
-            container_ports = role.container_ports(config);
-        }
-
-        // extract env variables
-        if let Some(config) = validated_config.get(&PropertyNameKind::Env) {
-            for (property_name, property_value) in config {
-                if property_name.is_empty() {
-                    warn!("Received empty property_name for ENV... skipping");
-                    continue;
-                }
-
-                env_vars.push(EnvVar {
-                    name: property_name.clone(),
-                    value: Some(property_value.to_string()),
-                    value_from: None,
-                });
-            }
-        }
-
-        // extract cli
-        if let Some(config) = validated_config.get(&PropertyNameKind::Cli) {
-            // we need to convert to <String, String> to <String, Option<String>> to deal with
-            // CLI flags etc. We can not currently represent that via operator-rs / product-config.
-            // This is a preparation for that.
-            let transformed_config: BTreeMap<String, Option<String>> = config
-                .iter()
-                .map(|(k, v)| (k.to_string(), Some(v.to_string())))
-                .collect();
-
-            for (property_name, property_value) in transformed_config {
-                if property_name.is_empty() {
-                    warn!("Received empty property_name for CLI... skipping");
-                    continue;
-                }
-                // single argument / flag
-                if property_value.is_none() {
-                    cli_arguments.push(property_name.clone());
-                } else {
-                    // key value pair (safe unwrap)
-                    cli_arguments.push(format!("--{} {}", property_name, property_value.unwrap()));
-                }
-            }
-        }
-
-        let pod_name = name_utils::build_resource_name(
-            pod_id.app(),
-            &self.context.name(),
-            pod_id.role(),
-            Some(pod_id.group()),
-            Some(node_name),
-            None,
-        )?;
-
-        let version = &self.context.resource.spec.version;
-        let mut recommended_labels = get_recommended_labels(
-            &self.context.resource,
-            pod_id.app(),
-            &version.to_string(),
-            pod_id.role(),
-            pod_id.group(),
-        );
-        recommended_labels.insert(ID_LABEL.to_string(), pod_id.id().to_string());
-
-        let master_pods = filter_pods_for_type(&self.existing_pods, &SparkRole::Master);
-        let master_urls = &config::get_master_urls(&master_pods, &self.validated_role_config)?;
-
-        let mut args = vec![];
-        // add hashed master url label to workers and adapt start command and
-        // adapt worker command with master url(s)
-        if role == &SparkRole::Worker {
-            recommended_labels.insert(
-                MASTER_URLS_HASH_LABEL.to_string(),
-                get_hashed_master_urls(master_urls),
-            );
-
-            if let Some(master_urls) = config::adapt_worker_command(role, master_urls) {
-                args.push(master_urls);
-            }
-        }
-
-        // add cli arguments from product config / user config
-        args.append(&mut cli_arguments);
-
-        let mut cb = ContainerBuilder::new(&format!("trino-{}", role.to_string()));
-        cb.image(format!("spark:{}", version.to_string()));
-        cb.command(vec![role.get_command(version)]);
-        cb.args(args);
-        cb.add_env_vars(env_vars);
 
         if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_CONF) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
-                cb.add_configmapvolume(name, "conf".to_string());
+                cb.add_configmapvolume(name, CONFIG_DIR_NAME.to_string());
             } else {
                 return Err(error::Error::MissingConfigMapNameError {
                     cm_type: CONFIG_MAP_TYPE_CONF,
@@ -539,15 +424,20 @@ impl TrinoState {
         }
 
         let mut annotations = BTreeMap::new();
-
         // only add metrics container port and annotation if required
-        if let (Some(metrics_port), true) =
-            (http_port, self.context.resource.spec.monitoring_enabled())
-        {
+        if let Some(metrics_port) = metrics_port {
             annotations.insert(SHOULD_BE_SCRAPED.to_string(), "true".to_string());
             cb.add_container_port(
                 ContainerPortBuilder::new(metrics_port.parse()?)
-                    .name("metrics")
+                    .name(METRICS_PORT)
+                    .build(),
+            );
+        }
+
+        if let Some(http_port) = http_port {
+            cb.add_container_port(
+                ContainerPortBuilder::new(http_port.parse()?)
+                    .name(HTTP_PORT)
                     .build(),
             );
         }
@@ -569,8 +459,6 @@ impl TrinoState {
 
         trace!("create_pod: {:?}", pod_id);
         Ok(self.context.client.create(&pod).await?)
-
-         */
     }
 
     async fn delete_all_pods(&self) -> OperatorResult<ReconcileFunctionAction> {
@@ -729,19 +617,6 @@ impl ControllerStrategy for TrinoStrategy {
         let mut roles = HashMap::new();
 
         roles.insert(
-            TrinoRole::Worker.to_string(),
-            (
-                vec![
-                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-                    PropertyNameKind::File(JVM_CONFIG.to_string()),
-                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-                ],
-                context.resource.spec.workers.clone().into(),
-            ),
-        );
-
-        roles.insert(
             TrinoRole::Coordinator.to_string(),
             (
                 vec![
@@ -751,6 +626,19 @@ impl ControllerStrategy for TrinoStrategy {
                     PropertyNameKind::File(LOG_PROPERTIES.to_string()),
                 ],
                 context.resource.spec.coordinators.clone().into(),
+            ),
+        );
+
+        roles.insert(
+            TrinoRole::Worker.to_string(),
+            (
+                vec![
+                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+                    PropertyNameKind::File(JVM_CONFIG.to_string()),
+                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+                ],
+                context.resource.spec.workers.clone().into(),
             ),
         );
 
