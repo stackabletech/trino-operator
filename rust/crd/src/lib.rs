@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod discovery;
 pub mod error;
 
 use crate::commands::{Restart, Start, Stop};
@@ -161,8 +162,6 @@ pub struct TrinoConfig {
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
     pub query_max_total_memory_per_node: Option<String>,
-    // TODO: read from coordiantor(s)
-    pub discovery_uri: Option<String>,
     pub io_trino: Option<String>,
     pub metrics_port: Option<u16>,
 }
@@ -240,11 +239,6 @@ impl Configuration for TrinoConfig {
                         QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
                         Some(query_max_total_memory_per_node.to_string()),
                     );
-                }
-
-                // TODO: remove once discovery works
-                if let Some(discovery_uri) = &self.discovery_uri {
-                    result.insert(DISCOVERY_URI.to_string(), Some(discovery_uri.to_string()));
                 }
             }
             JVM_CONFIG => {

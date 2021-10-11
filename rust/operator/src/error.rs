@@ -52,4 +52,10 @@ pub enum Error {
         #[from]
         source: stackable_operator::product_config_utils::ConfigError,
     },
+
+    #[error("Crd crate reported error: {source}")]
+    TrinoCrdError {
+        #[from]
+        source: stackable_trino_crd::error::Error,
+    },
 }

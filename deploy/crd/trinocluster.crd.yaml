@@ -35,9 +35,6 @@ spec:
                         coordinator:
                           nullable: true
                           type: boolean
-                        discoveryUri:
-                          nullable: true
-                          type: string
                         httpServerHttpPort:
                           format: uint16
                           minimum: 0.0
@@ -93,9 +90,6 @@ spec:
                               coordinator:
                                 nullable: true
                                 type: boolean
-                              discoveryUri:
-                                nullable: true
-                                type: string
                               httpServerHttpPort:
                                 format: uint16
                                 minimum: 0.0
@@ -199,9 +193,6 @@ spec:
                         coordinator:
                           nullable: true
                           type: boolean
-                        discoveryUri:
-                          nullable: true
-                          type: string
                         httpServerHttpPort:
                           format: uint16
                           minimum: 0.0
@@ -257,9 +248,6 @@ spec:
                               coordinator:
                                 nullable: true
                                 type: boolean
-                              discoveryUri:
-                                nullable: true
-                                type: string
                               httpServerHttpPort:
                                 format: uint16
                                 minimum: 0.0

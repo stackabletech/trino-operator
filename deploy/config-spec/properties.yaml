@@ -194,21 +194,21 @@ properties:
           required: true
       asOfVersion: "0.0.0"
 
-  - property: &discoveryUri
-      propertyNames:
-        - name: "discovery.uri"
-          kind:
-            type: "file"
-            file: "config.properties"
-      datatype:
-        type: "string"
-        unit: *unitUri
-      roles:
-        - name: "coordinator"
-          required: false
-        - name: "worker"
-          required: false
-      asOfVersion: "0.0.0"
+#  - property: &discoveryUri
+#      propertyNames:
+#        - name: "discovery.uri"
+#          kind:
+#            type: "file"
+#            file: "config.properties"
+#      datatype:
+#        type: "string"
+#        unit: *unitUri
+#      roles:
+#        - name: "coordinator"
+#          required: false
+#        - name: "worker"
+#          required: false
+#      asOfVersion: "0.0.0"
 
 ###################################################################################################
 # jvm.config

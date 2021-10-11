@@ -41,10 +41,13 @@ use stackable_operator::status::HasClusterExecutionStatus;
 use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
 use stackable_trino_crd::commands::{Restart, Start, Stop};
+use stackable_trino_crd::discovery::{
+    get_trino_discovery_from_pods, TrinoDiscovery, TrinoDiscoveryProtocol,
+};
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
-    HTTP_PORT, HTTP_SERVER_PORT, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY,
-    NODE_PROPERTIES,
+    DISCOVERY_URI, HTTP_PORT, HTTP_SERVER_PORT, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT,
+    METRICS_PORT_PROPERTY, NODE_PROPERTIES,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
@@ -68,9 +71,20 @@ struct TrinoState {
     existing_pods: Vec<Pod>,
     eligible_nodes: EligibleNodesForRoleAndGroup,
     validated_role_config: ValidatedRoleConfigByPropertyKind,
+    trino_discovery: Option<TrinoDiscovery>,
 }
 
 impl TrinoState {
+    async fn get_trino_discovery(&mut self) -> TrinoReconcileResult {
+        let discovery = get_trino_discovery_from_pods(&self.existing_pods)?;
+
+        info!("Received Trino discovery information: [{:?}]", discovery);
+
+        self.trino_discovery = discovery;
+
+        Ok(ReconcileFunctionAction::Continue)
+    }
+
     /// Required labels for pods. Pods without any of these will deleted and/or replaced.
     pub fn get_required_labels(&self) -> BTreeMap<String, Option<Vec<String>>> {
         let roles = TrinoRole::iter()
@@ -212,7 +226,9 @@ impl TrinoState {
                             &self.validated_role_config,
                         )?;
 
-                        let config_maps = self.create_config_maps(pod_id, validated_config).await?;
+                        let config_maps = self
+                            .create_config_maps(pod_id, &role, &node_id.name, validated_config)
+                            .await?;
 
                         self.create_pod(
                             pod_id,
@@ -261,6 +277,8 @@ impl TrinoState {
     async fn create_config_maps(
         &self,
         pod_id: &PodIdentity,
+        role: &TrinoRole,
+        node_name: &str,
         validated_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     ) -> Result<HashMap<&'static str, ConfigMap>, Error> {
         info!("Validated config: {:?}", validated_config);
@@ -286,17 +304,50 @@ impl TrinoState {
             .to_string();
 
         for (property_name_kind, config) in validated_config {
-            match property_name_kind {
-                PropertyNameKind::File(file_name)
-                    if file_name == CONFIG_PROPERTIES
-                        || file_name == NODE_PROPERTIES
-                        || file_name == LOG_PROPERTIES =>
-                {
-                    let transformed_config: BTreeMap<String, Option<String>> = config
-                        .iter()
-                        .map(|(k, v)| (k.clone(), Some(v.clone())))
-                        .collect();
+            let mut transformed_config: BTreeMap<String, Option<String>> = config
+                .iter()
+                .map(|(k, v)| (k.clone(), Some(v.clone())))
+                .collect();
 
+            match property_name_kind {
+                PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
+                    // if we a coordinator, we need to build the discovery string; workers can
+                    // use the discovery service once a coordinator was created
+                    if role == &TrinoRole::Coordinator {
+                        if let Some(http_port) = config.get(HTTP_SERVER_PORT) {
+                            let build_discovery = TrinoDiscovery {
+                                node_name: node_name.to_string(),
+                                http_port: http_port.clone(),
+                                // TODO: what with https?
+                                protocol: TrinoDiscoveryProtocol::default(),
+                            };
+                            transformed_config.insert(
+                                DISCOVERY_URI.to_string(),
+                                Some(build_discovery.connection_string()),
+                            );
+                        } else {
+                            // TODO: error?
+                            error!("No http port set for coordinator!")
+                        }
+                    } else if role == &TrinoRole::Worker {
+                        if let Some(discovery) = &self.trino_discovery {
+                            transformed_config.insert(
+                                DISCOVERY_URI.to_string(),
+                                Some(discovery.connection_string()),
+                            );
+                        }
+                    }
+
+                    let config_properties = product_config::writer::to_java_properties_string(
+                        transformed_config.iter(),
+                    )?;
+
+                    cm_conf_data.insert(file_name.to_string(), config_properties);
+                }
+
+                PropertyNameKind::File(file_name)
+                    if file_name == NODE_PROPERTIES || file_name == LOG_PROPERTIES =>
+                {
                     let config_properties = product_config::writer::to_java_properties_string(
                         transformed_config.iter(),
                     )?;
@@ -401,7 +452,7 @@ impl TrinoState {
         );
         recommended_labels.insert(ID_LABEL.to_string(), pod_id.id().to_string());
 
-        let mut cb = ContainerBuilder::new(&format!("trino-{}", role.to_string()));
+        let mut cb = ContainerBuilder::new(APP_NAME);
         cb.image(version.package_name());
         cb.command(role.get_command(version));
         cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");
@@ -547,6 +598,8 @@ impl ReconciliationState for TrinoState {
                     ContinuationStrategy::OneRequeue,
                 ))
                 .await?
+                .then(self.get_trino_discovery())
+                .await?
                 .then(self.create_missing_pods())
                 .await
         })
@@ -654,6 +707,7 @@ impl ControllerStrategy for TrinoStrategy {
             existing_pods,
             eligible_nodes,
             validated_role_config,
+            trino_discovery: None,
         })
     }
 }
