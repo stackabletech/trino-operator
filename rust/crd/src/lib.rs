@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod constants;
 pub mod error;
 
 use crate::commands::{Restart, Start, Stop};
@@ -189,57 +190,70 @@ impl Configuration for TrinoConfig {
         &self,
         resource: &Self::Configurable,
         _role_name: &str,
-        _file: &str,
+        file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
 
-        result.insert(
-            NODE_ENVIRONMENT.to_string(),
-            Some(resource.spec.node_environment.clone()),
-        );
+        match file {
+            constants::LOG_PROPERTIES => {
+                if let Some(io_trino) = &self.io_trino {
+                    result.insert(IO_TRINO.to_string(), Some(io_trino.to_string()));
+                }
+            }
+            constants::NODE_PROPERTIES => {
+                result.insert(
+                    NODE_ENVIRONMENT.to_string(),
+                    Some(resource.spec.node_environment.clone()),
+                );
 
-        if let Some(node_id) = &self.node_id {
-            result.insert(NODE_ID.to_string(), Some(node_id.to_string()));
-        }
+                if let Some(node_id) = &self.node_id {
+                    result.insert(NODE_ID.to_string(), Some(node_id.to_string()));
+                }
 
-        if let Some(node_data_dir) = &self.node_data_dir {
-            result.insert(NODE_DATA_DIR.to_string(), Some(node_data_dir.to_string()));
-        }
+                if let Some(node_data_dir) = &self.node_data_dir {
+                    result.insert(NODE_DATA_DIR.to_string(), Some(node_data_dir.to_string()));
+                }
+            }
+            constants::SERVER_PROPERTIES => {
+                if let Some(coordinator) = &self.coordinator {
+                    result.insert(COORDINATOR.to_string(), Some(coordinator.to_string()));
+                }
 
-        if let Some(coordinator) = &self.coordinator {
-            result.insert(COORDINATOR.to_string(), Some(coordinator.to_string()));
-        }
+                if let Some(http_server_http_port) = &self.http_server_http_port {
+                    result.insert(
+                        HTTP_SERVER_PORT.to_string(),
+                        Some(http_server_http_port.to_string()),
+                    );
+                }
 
-        if let Some(http_server_http_port) = &self.http_server_http_port {
-            result.insert(
-                HTTP_SERVER_PORT.to_string(),
-                Some(http_server_http_port.to_string()),
-            );
-        }
+                if let Some(query_max_memory) = &self.query_max_memory {
+                    result.insert(
+                        QUERY_MAX_MEMORY.to_string(),
+                        Some(query_max_memory.to_string()),
+                    );
+                }
 
-        if let Some(query_max_memory) = &self.query_max_memory {
-            result.insert(
-                QUERY_MAX_MEMORY.to_string(),
-                Some(query_max_memory.to_string()),
-            );
-        }
+                if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
+                    result.insert(
+                        QUERY_MAX_MEMORY_PER_NODE.to_string(),
+                        Some(query_max_memory_per_node.to_string()),
+                    );
+                }
 
-        if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
-            result.insert(
-                QUERY_MAX_MEMORY_PER_NODE.to_string(),
-                Some(query_max_memory_per_node.to_string()),
-            );
-        }
-
-        if let Some(query_max_total_memory_per_node) = &self.query_max_total_memory_per_node {
-            result.insert(
-                QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
-                Some(query_max_total_memory_per_node.to_string()),
-            );
-        }
-
-        if let Some(io_trino) = &self.io_trino {
-            result.insert(IO_TRINO.to_string(), Some(io_trino.to_string()));
+                if let Some(query_max_total_memory_per_node) = &self.query_max_total_memory_per_node
+                {
+                    result.insert(
+                        QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
+                        Some(query_max_total_memory_per_node.to_string()),
+                    );
+                }
+            }
+            constants::JVM_CONFIG => {}
+            f => {
+                return Err(ConfigError::InvalidConfiguration {
+                    reason: format!("Unknown configuration file: {}", f),
+                })
+            }
         }
 
         Ok(result)

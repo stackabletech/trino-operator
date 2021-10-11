@@ -39,6 +39,9 @@ use stackable_operator::status::HasClusterExecutionStatus;
 use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
 use stackable_trino_crd::commands::{Restart, Start, Stop};
+use stackable_trino_crd::constants::{
+    JVM_CONFIG, LOG_PROPERTIES, NODE_PROPERTIES, SERVER_PROPERTIES,
+};
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, TrinoVersion, APP_NAME, CONFIG_MAP_TYPE_DATA,
     CONFIG_MAP_TYPE_ID,
@@ -57,11 +60,6 @@ const ID_LABEL: &str = "trino.stackable.tech/id";
 const SHOULD_BE_SCRAPED: &str = "monitoring.stackable.tech/should_be_scraped";
 
 const CONFIG_MAP_TYPE_CONF: &str = "config";
-
-pub const CONFIG_PROPERTIES: &str = "config.properties";
-pub const JVM_CONFIG: &str = "jvm.config";
-pub const NODE_PROPERTIES: &str = "node.properties";
-pub const LOG_PROPERTIES: &str = "log.properties";
 
 type TrinoReconcileResult = ReconcileResult<error::Error>;
 
@@ -276,7 +274,7 @@ impl TrinoState {
         for (property_name_kind, config) in validated_config {
             match property_name_kind {
                 PropertyNameKind::File(file_name)
-                    if file_name == CONFIG_PROPERTIES
+                    if file_name == SERVER_PROPERTIES
                         || file_name == NODE_PROPERTIES
                         || file_name == LOG_PROPERTIES =>
                 {
@@ -296,7 +294,8 @@ impl TrinoState {
             }
         }
 
-        let JVM_CONFIG_DATA= format!("-server
+        let JVM_CONFIG_DATA = format!(
+            "-server
 -Xmx16G
 -XX:-UseBiasedLocking
 -XX:+UseG1GC
@@ -309,7 +308,8 @@ impl TrinoState {
 -XX:PerMethodRecompilationCutoff=10000
 -XX:PerBytecodeRecompilationCutoff=10000
 -Djdk.attach.allowAttachSelf=true
--Djdk.nio.maxCachedBufferSize=2000000");
+-Djdk.nio.maxCachedBufferSize=2000000"
+        );
 
         cm_conf_data.insert(JVM_CONFIG.to_string(), JVM_CONFIG_DATA.to_string());
 
@@ -411,8 +411,6 @@ impl TrinoState {
                 });
             }
         }
-
-
 
         let pod = PodBuilder::new()
             .metadata(
@@ -732,7 +730,7 @@ impl ControllerStrategy for TrinoStrategy {
             TrinoRole::Worker.to_string(),
             (
                 vec![
-                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+                    PropertyNameKind::File(SERVER_PROPERTIES.to_string()),
                     PropertyNameKind::File(NODE_PROPERTIES.to_string()),
                     PropertyNameKind::File(JVM_CONFIG.to_string()),
                     PropertyNameKind::File(LOG_PROPERTIES.to_string()),
@@ -745,7 +743,7 @@ impl ControllerStrategy for TrinoStrategy {
             TrinoRole::Coordinator.to_string(),
             (
                 vec![
-                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+                    PropertyNameKind::File(SERVER_PROPERTIES.to_string()),
                     PropertyNameKind::File(NODE_PROPERTIES.to_string()),
                     PropertyNameKind::File(JVM_CONFIG.to_string()),
                     PropertyNameKind::File(LOG_PROPERTIES.to_string()),
