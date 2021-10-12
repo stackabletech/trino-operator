@@ -1,8 +1,10 @@
 use clap::{crate_version, App, AppSettings, SubCommand};
-use stackable_trino_crd::commands::{Restart, Start, Stop};
-use stackable_trino_crd::TrinoCluster;
+use kube::CustomResourceExt;
 use stackable_operator::{cli, logging};
 use stackable_operator::{client, error};
+use stackable_trino_crd::commands::{Restart, Start, Stop};
+use stackable_trino_crd::TrinoCluster;
+use tracing::error;
 
 mod built_info {
     // The file has been placed there by the build script.
@@ -11,7 +13,7 @@ mod built_info {
 
 #[tokio::main]
 async fn main() -> Result<(), error::Error> {
-    logging::initialize_logging("HDFS_OPERATOR_LOG");
+    logging::initialize_logging("TRINO_OPERATOR_LOG");
 
     // Handle CLI arguments
     let matches = App::new(built_info::PKG_DESCRIPTION)
@@ -48,6 +50,22 @@ async fn main() -> Result<(), error::Error> {
     );
 
     let client = client::create_client(Some("trino.stackable.tech".to_string())).await?;
+
+    if let Err(error) = stackable_operator::crd::wait_until_crds_present(
+        &client,
+        vec![
+            TrinoCluster::crd_name(),
+            Restart::crd_name(),
+            Start::crd_name(),
+            Stop::crd_name(),
+        ],
+        None,
+    )
+    .await
+    {
+        error!("Required CRDs missing, aborting: {:?}", error);
+        return Err(error);
+    };
 
     tokio::try_join!(
         stackable_trino_operator::create_controller(client.clone(), &product_config_path),

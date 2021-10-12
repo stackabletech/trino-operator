@@ -16,10 +16,10 @@ spec:
                 - main-1.stackable.demo
         config:
           coordinator: true
-          nodeId: "ffffffff-ffff-ffff-ffff-ffffffffffff"
           nodeDataDir: /tmp/trino/data
           metricsPort: 10200
           httpServerHttpPort: 8080
+          javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
   workers:
     roleGroups:
       default:
@@ -33,7 +33,7 @@ spec:
                 - worker-3.stackable.demo
         replicas: 1
         config:
-          nodeId: "ffffffff-ffff-ffff-ffff-fffffffffffe"
           nodeDataDir: /tmp/trino/data2
           metricsPort: 10201
           httpServerHttpPort: 8081
+          javaHome: /usr/lib/jvm/java-11-openjdk-amd64/

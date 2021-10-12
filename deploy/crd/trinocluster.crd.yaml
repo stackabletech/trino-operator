@@ -43,15 +43,15 @@ spec:
                         ioTrino:
                           nullable: true
                           type: string
+                        javaHome:
+                          nullable: true
+                          type: string
                         metricsPort:
                           format: uint16
                           minimum: 0.0
                           nullable: true
                           type: integer
                         nodeDataDir:
-                          nullable: true
-                          type: string
-                        nodeId:
                           nullable: true
                           type: string
                         queryMaxMemory:
@@ -98,15 +98,15 @@ spec:
                               ioTrino:
                                 nullable: true
                                 type: string
+                              javaHome:
+                                nullable: true
+                                type: string
                               metricsPort:
                                 format: uint16
                                 minimum: 0.0
                                 nullable: true
                                 type: integer
                               nodeDataDir:
-                                nullable: true
-                                type: string
-                              nodeId:
                                 nullable: true
                                 type: string
                               queryMaxMemory:
@@ -201,15 +201,15 @@ spec:
                         ioTrino:
                           nullable: true
                           type: string
+                        javaHome:
+                          nullable: true
+                          type: string
                         metricsPort:
                           format: uint16
                           minimum: 0.0
                           nullable: true
                           type: integer
                         nodeDataDir:
-                          nullable: true
-                          type: string
-                        nodeId:
                           nullable: true
                           type: string
                         queryMaxMemory:
@@ -256,15 +256,15 @@ spec:
                               ioTrino:
                                 nullable: true
                                 type: string
+                              javaHome:
+                                nullable: true
+                                type: string
                               metricsPort:
                                 format: uint16
                                 minimum: 0.0
                                 nullable: true
                                 type: integer
                               nodeDataDir:
-                                nullable: true
-                                type: string
-                              nodeId:
                                 nullable: true
                                 type: string
                               queryMaxMemory:

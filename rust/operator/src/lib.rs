@@ -5,7 +5,6 @@ use async_trait::async_trait;
 use k8s_openapi::api::core::v1::{ConfigMap, Pod};
 use kube::api::{ListParams, ResourceExt};
 use kube::Api;
-use kube::CustomResourceExt;
 use product_config::types::PropertyNameKind;
 use product_config::ProductConfigManager;
 use stackable_operator::builder::{
@@ -46,8 +45,8 @@ use stackable_trino_crd::discovery::{
 };
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
-    DISCOVERY_URI, HTTP_PORT, HTTP_SERVER_PORT, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT,
-    METRICS_PORT_PROPERTY, NODE_PROPERTIES,
+    DISCOVERY_URI, HTTP_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG, LOG_PROPERTIES,
+    METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
@@ -78,7 +77,7 @@ impl TrinoState {
     async fn get_trino_discovery(&mut self) -> TrinoReconcileResult {
         let discovery = get_trino_discovery_from_pods(&self.existing_pods)?;
 
-        info!("Received Trino discovery information: [{:?}]", discovery);
+        debug!("Received Trino discovery information: [{:?}]", discovery);
 
         self.trino_discovery = discovery;
 
@@ -255,22 +254,20 @@ impl TrinoState {
         Ok(ReconcileFunctionAction::Continue)
     }
 
-    /// Creates the config maps required for a trino instance (or role, role_group combination):
-    /// * The 'zoo.cfg' properties file
-    /// * The 'myid' file
+    /// Creates the config maps required for a Trino instance (or role, role_group combination):
+    /// * The 'node.properties'
+    /// * The 'config.properties'
+    /// * The 'jvm.config'
+    /// * The 'log.properties'
     ///
-    /// The 'zoo.cfg' properties are read from the product_config and/or merged with the cluster
-    /// custom resource.
-    ///
-    /// Labels are automatically adapted from the `recommended_labels` with a type (data for
-    /// 'zoo.cfg' and id for 'myid'). Names are generated via `name_utils::build_resource_name`.
-    ///
-    /// Returns a map with a 'type' identifier (e.g. data, id) as key and the corresponding
+    /// Returns a map with a 'type' identifier (e.g. config) as key and the corresponding
     /// ConfigMap as value. This is required to set the volume mounts in the pod later on.
     ///
     /// # Arguments
     ///
     /// - `pod_id` - The `PodIdentity` containing app, instance, role, group names and the id.
+    /// - `role` - The `TrinoRole` for the pod to be created.
+    /// - `node_name` - The node_name where the pod will be scheduled.
     /// - `validated_config` - The validated product config.
     /// - `id_mapping` - All id to node mappings required to create config maps
     ///
@@ -281,12 +278,12 @@ impl TrinoState {
         node_name: &str,
         validated_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     ) -> Result<HashMap<&'static str, ConfigMap>, Error> {
-        info!("Validated config: {:?}", validated_config);
         let mut config_maps = HashMap::new();
         let mut cm_conf_data = BTreeMap::new();
 
         let version = &self.context.resource.spec.version;
 
+        // TODO: create via product config?
         let mut jvm_config = "-server
 -Xmx16G
 -XX:-UseBiasedLocking
@@ -326,8 +323,10 @@ impl TrinoState {
                                 Some(build_discovery.connection_string()),
                             );
                         } else {
-                            // TODO: error?
-                            error!("No http port set for coordinator!")
+                            return Err(Error::TrinoCoordinatorMissingPortError {
+                                port: HTTP_SERVER_PORT.to_string(),
+                                discovery_property: DISCOVERY_URI.to_string(),
+                            });
                         }
                     } else if role == &TrinoRole::Worker {
                         if let Some(discovery) = &self.trino_discovery {
@@ -345,14 +344,25 @@ impl TrinoState {
                     cm_conf_data.insert(file_name.to_string(), config_properties);
                 }
 
-                PropertyNameKind::File(file_name)
-                    if file_name == NODE_PROPERTIES || file_name == LOG_PROPERTIES =>
-                {
-                    let config_properties = product_config::writer::to_java_properties_string(
+                PropertyNameKind::File(file_name) if file_name == NODE_PROPERTIES => {
+                    // we have to generate a unique node.id which consists of <role>-<id>.
+                    transformed_config.insert(
+                        NODE_ID.to_string(),
+                        Some(format!("{}-{}", pod_id.role(), pod_id.id())),
+                    );
+
+                    let node_properties = product_config::writer::to_java_properties_string(
                         transformed_config.iter(),
                     )?;
 
-                    cm_conf_data.insert(file_name.to_string(), config_properties);
+                    cm_conf_data.insert(file_name.to_string(), node_properties);
+                }
+                PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
+                    let log_properties = product_config::writer::to_java_properties_string(
+                        transformed_config.iter(),
+                    )?;
+
+                    cm_conf_data.insert(file_name.to_string(), log_properties);
                 }
                 PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                     // if metrics port is set we need to adapt the
@@ -406,11 +416,11 @@ impl TrinoState {
         Ok(config_maps)
     }
 
-    /// Creates the pod required for the HDFS instance.
+    /// Creates the pod required for the Trino instance.
     ///
     /// # Arguments
     ///
-    /// - `role` - spark role.
+    /// - `role` - Trino role.
     /// - `group` - The role group.
     /// - `node_name` - The node name for this pod.
     /// - `config_maps` - The config maps and respective types required for this pod.
@@ -431,6 +441,10 @@ impl TrinoState {
         let http_port = validated_config
             .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
             .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_PORT));
+
+        let java_home = validated_config
+            .get(&PropertyNameKind::Env)
+            .and_then(|env| env.get(JAVA_HOME));
 
         let version = &self.context.resource.spec.version;
 
@@ -455,7 +469,10 @@ impl TrinoState {
         let mut cb = ContainerBuilder::new(APP_NAME);
         cb.image(version.package_name());
         cb.command(role.get_command(version));
-        cb.add_env_var("JAVA_HOME", "/usr/lib/jvm/java-11-openjdk-amd64/");
+
+        if let Some(java_home) = java_home {
+            cb.add_env_var(JAVA_HOME, java_home);
+        }
 
         if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_CONF) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
@@ -716,22 +733,6 @@ impl ControllerStrategy for TrinoStrategy {
 ///
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_controller(client: Client, product_config_path: &str) -> OperatorResult<()> {
-    if let Err(error) = stackable_operator::crd::wait_until_crds_present(
-        &client,
-        vec![
-            TrinoCluster::crd_name(),
-            Restart::crd_name(),
-            Start::crd_name(),
-            Stop::crd_name(),
-        ],
-        None,
-    )
-    .await
-    {
-        error!("Required CRDs missing, aborting: {:?}", error);
-        return Err(error);
-    };
-
     let api: Api<TrinoCluster> = client.get_all_api();
     let pods_api: Api<Pod> = client.get_all_api();
     let config_maps_api: Api<ConfigMap> = client.get_all_api();

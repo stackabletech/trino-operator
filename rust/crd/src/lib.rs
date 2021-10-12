@@ -31,27 +31,32 @@ use strum_macros::EnumIter;
 
 pub const APP_NAME: &str = "trino";
 pub const MANAGED_BY: &str = "trino-operator";
-
+// file names
 pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
-
+// node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 pub const NODE_ID: &str = "node.id";
 pub const NODE_DATA_DIR: &str = "node.data-dir";
+// config.properties
 pub const COORDINATOR: &str = "coordinator";
 pub const HTTP_SERVER_PORT: &str = "http-server.http.port";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
 pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";
+// log.properties
 pub const IO_TRINO: &str = "io.trino";
-
+// jvm.config
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
+// env variables
+pub const JAVA_HOME: &str = "JAVA_HOME";
+// port names
 pub const METRICS_PORT: &str = "metrics";
 pub const HTTP_PORT: &str = "http";
-
+// config dir
 pub const CONFIG_DIR_NAME: &str = "conf";
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -83,11 +88,12 @@ pub enum TrinoRole {
 }
 
 impl TrinoRole {
-    /// Returns the container start command for a HDFS node
-    /// Right now works only for images using hadoop2.7
+    /// Returns the container start command for a Trino node.
+    ///
     /// # Arguments
     ///
     /// * `version` - Current specified cluster version
+    ///
     pub fn get_command(&self, version: &TrinoVersion) -> Vec<String> {
         let parsed_version = Version::parse(version.to_string().as_ref()).unwrap();
 
@@ -155,15 +161,20 @@ impl HasClusterExecutionStatus for TrinoCluster {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoConfig {
-    pub node_id: Option<String>,
-    pub node_data_dir: Option<String>,
+    // config.properties
     pub coordinator: Option<bool>,
     pub http_server_http_port: Option<u16>,
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
     pub query_max_total_memory_per_node: Option<String>,
+    // node.properties
+    pub node_data_dir: Option<String>,
+    // log.properties
     pub io_trino: Option<String>,
+    // jvm.config
     pub metrics_port: Option<u16>,
+    // misc
+    pub java_home: Option<String>,
 }
 
 impl Configuration for TrinoConfig {
@@ -174,7 +185,11 @@ impl Configuration for TrinoConfig {
         _resource: &Self::Configurable,
         _role_name: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        Ok(BTreeMap::new())
+        let mut result = BTreeMap::new();
+        if let Some(java_home) = &self.java_home {
+            result.insert(JAVA_HOME.to_string(), Some(java_home.to_string()));
+        }
+        Ok(result)
     }
 
     fn compute_cli(
@@ -199,10 +214,6 @@ impl Configuration for TrinoConfig {
                     NODE_ENVIRONMENT.to_string(),
                     Some(resource.spec.node_environment.clone()),
                 );
-
-                if let Some(node_id) = &self.node_id {
-                    result.insert(NODE_ID.to_string(), Some(node_id.to_string()));
-                }
 
                 if let Some(node_data_dir) = &self.node_data_dir {
                     result.insert(NODE_DATA_DIR.to_string(), Some(node_data_dir.to_string()));
@@ -408,7 +419,6 @@ mod tests {
     #[test]
     #[test]
     fn test_version_conversion() {
-        // TODO: Adapt to correct product version
         TrinoVersion::from_str("0.0.360").unwrap();
         TrinoVersion::from_str("0.0.361").unwrap();
         TrinoVersion::from_str("0.0.362").unwrap();

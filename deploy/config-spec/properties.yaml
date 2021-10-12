@@ -43,21 +43,6 @@ properties:
           required: true
       asOfVersion: "0.0.0"
 
-  - property: &nodeId
-      propertyNames:
-        - name: "node.id"
-          kind:
-            type: "file"
-            file: "node.properties"
-      datatype:
-        type: "string"
-      roles:
-        - name: "coordinator"
-          required: true
-        - name: "worker"
-          required: true
-      asOfVersion: "0.0.0"
-
   - property: &nodeDataDir
       propertyNames:
         - name: "node.data-dir"
@@ -193,22 +178,6 @@ properties:
         - name: "worker"
           required: true
       asOfVersion: "0.0.0"
-
-#  - property: &discoveryUri
-#      propertyNames:
-#        - name: "discovery.uri"
-#          kind:
-#            type: "file"
-#            file: "config.properties"
-#      datatype:
-#        type: "string"
-#        unit: *unitUri
-#      roles:
-#        - name: "coordinator"
-#          required: false
-#        - name: "worker"
-#          required: false
-#      asOfVersion: "0.0.0"
 
 ###################################################################################################
 # jvm.config

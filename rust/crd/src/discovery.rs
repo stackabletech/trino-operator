@@ -136,3 +136,132 @@ fn extract_container_port(pod: &Pod, container_name: &str, port_name: &str) -> O
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use indoc::indoc;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::single_coordinator_pod(
+    indoc! {"
+        - apiVersion: v1
+          kind: Pod
+          metadata:
+            name: test
+            labels:
+              app.kubernetes.io/name: trino
+              app.kubernetes.io/role-group: default
+              app.kubernetes.io/instance: test
+              app.kubernetes.io/component: coordinator 
+          spec:
+            nodeName: worker-1.stackable.tech
+            containers:
+              - name: trino
+                ports:
+                  - containerPort: 8080
+                    name: http
+        - apiVersion: v1
+          kind: Pod
+          metadata:
+            name: test
+            labels:
+              app.kubernetes.io/name: trino
+              app.kubernetes.io/role-group: default
+              app.kubernetes.io/instance: test
+              app.kubernetes.io/component: worker 
+          spec:
+            nodeName: worker-2.stackable.tech
+            containers:
+              - name: trino
+                ports:
+                  - containerPort: 9090
+                    name: http
+    "},
+    "http://worker-1.stackable.tech:8080"
+    )]
+    fn get_connection_string(#[case] trino_pods: &str, #[case] expected_result: &str) {
+        let pods = parse_pod_list_from_yaml(trino_pods);
+
+        let discovery = get_trino_discovery_from_pods(pods.as_slice())
+            .expect("should not fail")
+            .unwrap();
+        assert_eq!(expected_result, discovery.connection_string());
+    }
+
+    #[rstest]
+    #[case::missing_hostname(
+    indoc! {"
+        - apiVersion: v1
+          kind: Pod
+          metadata:
+            name: test
+            labels:
+              app.kubernetes.io/name: trino
+              app.kubernetes.io/role-group: default
+              app.kubernetes.io/instance: test
+              app.kubernetes.io/component: coordinator 
+          spec:
+            containers:
+              - name: trino
+                ports:
+                  - containerPort: 8080
+                    name: http
+    "},
+    )]
+    fn get_connection_string_should_fail(#[case] trino_pods: &str) {
+        let pods = parse_pod_list_from_yaml(trino_pods);
+        let discovery = get_trino_discovery_from_pods(pods.as_slice());
+        assert!(discovery.is_err())
+    }
+
+    #[rstest]
+    #[case::missing_container(
+    indoc! {"
+        - apiVersion: v1
+          kind: Pod
+          metadata:
+            name: test
+            labels:
+              app.kubernetes.io/name: trino
+              app.kubernetes.io/role-group: default
+              app.kubernetes.io/instance: test
+              app.kubernetes.io/component: coordinator 
+          spec:
+            nodeName: worker-1.stackable.tech
+            containers: []
+    "},
+    )]
+    #[case::missing_correct_container_port(
+    indoc! {"
+        - apiVersion: v1
+          kind: Pod
+          metadata:
+            name: test
+            labels:
+              app.kubernetes.io/name: trino
+              app.kubernetes.io/role-group: default
+              app.kubernetes.io/instance: test
+              app.kubernetes.io/component: coordinator 
+          spec:
+            nodeName: worker-1.stackable.tech
+            containers:
+              - name: trino
+                ports:
+                  - containerPort: 8080
+                    name: abc
+    "},
+    )]
+    fn get_connection_string_should_be_none(#[case] trino_pods: &str) {
+        let pods = parse_pod_list_from_yaml(trino_pods);
+        let discovery = get_trino_discovery_from_pods(pods.as_slice());
+        assert!(discovery.unwrap().is_none())
+    }
+
+    fn parse_pod_list_from_yaml(pod_config: &str) -> Vec<Pod> {
+        let kube_pods: Vec<k8s_openapi::api::core::v1::Pod> =
+            serde_yaml::from_str(pod_config).unwrap();
+        kube_pods.iter().map(|pod| pod.to_owned()).collect()
+    }
+}

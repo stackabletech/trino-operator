@@ -58,4 +58,10 @@ pub enum Error {
         #[from]
         source: stackable_trino_crd::error::Error,
     },
+
+    #[error("No [{port}] port was found for coordinator when creating config maps. This is required for the [{discovery_property}] property. This is a bug, please open a ticket.")]
+    TrinoCoordinatorMissingPortError {
+        port: String,
+        discovery_property: String,
+    },
 }

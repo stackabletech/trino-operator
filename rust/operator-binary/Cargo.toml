@@ -15,6 +15,7 @@ stackable-trino-operator = { path = "../operator" }
 
 clap = "2.33"
 k8s-openapi = { version = "0.13", default-features = false, features = ["v1_22"] }
+kube = { version = "0.60", default-features = false }
 tokio = { version = "1.10", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1"
 
