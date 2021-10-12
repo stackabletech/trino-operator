@@ -5,6 +5,9 @@ metadata:
 spec:
   version: "0.0.362"
   nodeEnvironment: production
+  hiveReference:
+    namespace: default
+    name: simple-derby
   coordinators:
     roleGroups:
       default:
@@ -13,7 +16,8 @@ spec:
             - operator: In
               key: kubernetes.io/hostname
               values:
-                - main-1.stackable.demo
+                #- main-1.stackable.demo
+                - mdesktop
         config:
           coordinator: true
           nodeDataDir: /tmp/trino/data
@@ -28,9 +32,10 @@ spec:
             - operator: In
               key: kubernetes.io/hostname
               values:
-                - worker-1.stackable.demo
-                - worker-2.stackable.demo
-                - worker-3.stackable.demo
+                #- worker-1.stackable.demo
+                #- worker-2.stackable.demo
+                #- worker-3.stackable.demo
+                - mdesktop
         replicas: 1
         config:
           nodeDataDir: /tmp/trino/data2

@@ -7,6 +7,7 @@ use kube::api::{ListParams, ResourceExt};
 use kube::Api;
 use product_config::types::PropertyNameKind;
 use product_config::ProductConfigManager;
+use stackable_hive_crd::discovery::HiveConnectionInformation;
 use stackable_operator::builder::{
     ContainerBuilder, ContainerPortBuilder, ObjectMetaBuilder, PodBuilder,
 };
@@ -55,7 +56,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use strum::IntoEnumIterator;
 use tracing::error;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, warn};
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";
@@ -71,6 +72,7 @@ struct TrinoState {
     eligible_nodes: EligibleNodesForRoleAndGroup,
     validated_role_config: ValidatedRoleConfigByPropertyKind,
     trino_discovery: Option<TrinoDiscovery>,
+    hive_information: Option<HiveConnectionInformation>,
 }
 
 impl TrinoState {
@@ -80,6 +82,25 @@ impl TrinoState {
         debug!("Received Trino discovery information: [{:?}]", discovery);
 
         self.trino_discovery = discovery;
+
+        Ok(ReconcileFunctionAction::Continue)
+    }
+
+    async fn get_hive_connection_information(&mut self) -> TrinoReconcileResult {
+        let hive_ref: &stackable_hive_crd::discovery::HiveReference =
+            &self.context.resource.spec.hive_reference;
+
+        // if let Some(chroot) = zk_ref.chroot.as_deref() {
+        //     stackable_zookeeper_crd::discovery::is_valid_zookeeper_path(chroot)?;
+        // }
+
+        let hive_info =
+            stackable_hive_crd::discovery::get_hive_connection_info(&self.context.client, hive_ref)
+                .await?;
+
+        warn!("Received Hive connection information: [{:?}]", hive_info);
+
+        self.hive_information = hive_info;
 
         Ok(ReconcileFunctionAction::Continue)
     }
@@ -280,6 +301,7 @@ impl TrinoState {
     ) -> Result<HashMap<&'static str, ConfigMap>, Error> {
         let mut config_maps = HashMap::new();
         let mut cm_conf_data = BTreeMap::new();
+        let mut cm_hive_data = BTreeMap::new();
 
         let version = &self.context.resource.spec.version;
 
@@ -377,6 +399,16 @@ impl TrinoState {
 
         cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
 
+        // hive discovery
+        if let Some(hive_info) = &self.hive_information {
+            let hive_properties = format!(
+                "connector.name=hive\nhive.metastore.uri={}",
+                hive_info.full_connection_string()
+            );
+
+            cm_hive_data.insert("hive.properties".to_string(), hive_properties);
+        }
+
         let mut cm_labels = get_recommended_labels(
             &self.context.resource,
             pod_id.app(),
@@ -390,6 +422,19 @@ impl TrinoState {
             CONFIG_MAP_TYPE_CONF.to_string(),
         );
 
+        let mut hive_labels = get_recommended_labels(
+            &self.context.resource,
+            pod_id.app(),
+            &self.context.resource.spec.version.to_string(),
+            pod_id.role(),
+            pod_id.group(),
+        );
+
+        hive_labels.insert(
+            configmap::CONFIGMAP_TYPE_LABEL.to_string(),
+            "hive".to_string(),
+        );
+
         let cm_conf_name = name_utils::build_resource_name(
             pod_id.app(),
             &self.context.name(),
@@ -399,18 +444,46 @@ impl TrinoState {
             Some(CONFIG_MAP_TYPE_CONF),
         )?;
 
+        println!("conf_name: {}", cm_conf_name);
+
         let cm_config = configmap::build_config_map(
             &self.context.resource,
             &cm_conf_name,
             &self.context.namespace(),
-            cm_labels,
+            cm_labels.clone(),
             cm_conf_data,
+        )?;
+
+        let cm_hive_name = name_utils::build_resource_name(
+            pod_id.app(),
+            &self.context.name(),
+            pod_id.role(),
+            Some(pod_id.group()),
+            None,
+            Some("hive"),
+        )?;
+
+        println!("hive_cm_name: {}", cm_hive_name);
+
+        let cm_hive = configmap::build_config_map(
+            &self.context.resource,
+            &cm_hive_name,
+            &self.context.namespace(),
+            hive_labels,
+            cm_hive_data,
         )?;
 
         config_maps.insert(
             CONFIG_MAP_TYPE_CONF,
             configmap::create_config_map(&self.context.client, cm_config).await?,
         );
+
+        config_maps.insert(
+            "hive",
+            configmap::create_config_map(&self.context.client, cm_hive).await?,
+        );
+
+        println!("Create_config_map: {:?}", config_maps);
 
         trace!("config_maps to be returned: {:?}", config_maps);
         Ok(config_maps)
@@ -477,6 +550,7 @@ impl TrinoState {
         if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_CONF) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
                 cb.add_configmapvolume(name, CONFIG_DIR_NAME.to_string());
+                println!("conf name: {:?}", name);
             } else {
                 return Err(error::Error::MissingConfigMapNameError {
                     cm_type: CONFIG_MAP_TYPE_CONF,
@@ -485,6 +559,20 @@ impl TrinoState {
         } else {
             return Err(error::Error::MissingConfigMapError {
                 cm_type: CONFIG_MAP_TYPE_CONF,
+                pod_name,
+            });
+        }
+        // hive
+        if let Some(config_map_data) = config_maps.get("hive") {
+            if let Some(name) = config_map_data.metadata.name.as_ref() {
+                cb.add_configmapvolume(name, "conf/catalog".to_string());
+                println!("Hive name: {:?}", name);
+            } else {
+                return Err(error::Error::MissingConfigMapNameError { cm_type: "hive" });
+            }
+        } else {
+            return Err(error::Error::MissingConfigMapError {
+                cm_type: "hive",
                 pod_name,
             });
         }
@@ -615,6 +703,8 @@ impl ReconciliationState for TrinoState {
                     ContinuationStrategy::OneRequeue,
                 ))
                 .await?
+                .then(self.get_hive_connection_information())
+                .await?
                 .then(self.get_trino_discovery())
                 .await?
                 .then(self.create_missing_pods())
@@ -725,6 +815,7 @@ impl ControllerStrategy for TrinoStrategy {
             eligible_nodes,
             validated_role_config,
             trino_discovery: None,
+            hive_information: None,
         })
     }
 }

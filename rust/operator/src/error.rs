@@ -32,10 +32,16 @@ pub enum Error {
         source: serde_json::Error,
     },
 
-    #[error("Pod contains invalid id: {source}")]
+    #[error("H contains invalid id: {source}")]
     InvalidId {
         #[from]
         source: ParseIntError,
+    },
+
+    #[error("Error from Hive: {source}")]
+    HiveError {
+        #[from]
+        source: stackable_hive_crd::error::Error,
     },
 
     #[error("Error creating properties file")]

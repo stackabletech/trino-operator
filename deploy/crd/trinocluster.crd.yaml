@@ -172,6 +172,20 @@ spec:
                   required:
                     - roleGroups
                   type: object
+                hiveReference:
+                  description: Contains all necessary information to identify a Stackable managed Hive cluster and build a connection string for it. The main purpose for this struct is for other operators that need to reference a Hive ensemble to use in their CRDs. This has the benefit of keeping references to Hive ensembles consistent throughout the entire stack.
+                  properties:
+                    db:
+                      nullable: true
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                    - name
+                    - namespace
+                  type: object
                 nodeEnvironment:
                   type: string
                 version:
@@ -332,6 +346,7 @@ spec:
                   type: object
               required:
                 - coordinators
+                - hiveReference
                 - nodeEnvironment
                 - version
                 - workers

@@ -1590,6 +1590,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
+name = "stackable-hive-crd"
+version = "0.1.0-nightly"
+source = "git+https://github.com/stackabletech/hive-operator.git?branch=hackathon#9a30ac50384c426b7f7fdfceb46d3d05bb04ccfb"
+dependencies = [
+ "duplicate",
+ "k8s-openapi",
+ "kube",
+ "product-config",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_json",
+ "stackable-operator",
+ "strum",
+ "strum_macros 0.21.1",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "stackable-operator"
 version = "0.2.3-nightly"
 source = "git+https://github.com/stackabletech/operator-rs.git?branch=main#b0417309bd4c769b6d57bf11c919d8febdc3d504"
@@ -1638,6 +1658,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "stackable-hive-crd",
  "stackable-operator",
  "strum",
  "strum_macros 0.21.1",
@@ -1657,6 +1678,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "stackable-hive-crd",
  "stackable-operator",
  "stackable-trino-crd",
  "strum",

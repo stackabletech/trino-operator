@@ -13,6 +13,7 @@ use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use stackable_hive_crd::discovery::HiveReference;
 use stackable_operator::command::{CommandRef, HasCommands, HasRoleRestartOrder};
 use stackable_operator::controller::HasOwned;
 use stackable_operator::crd::HasApplication;
@@ -75,6 +76,7 @@ pub struct TrinoClusterSpec {
     pub coordinators: Role<TrinoConfig>,
     pub workers: Role<TrinoConfig>,
     pub node_environment: String,
+    pub hive_reference: HiveReference,
 }
 
 #[derive(
