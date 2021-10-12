@@ -101,7 +101,8 @@ impl TrinoRole {
         let parsed_version = Version::parse(version.to_string().as_ref()).unwrap();
 
         vec![
-            format!("trino-server-{}/bin/launcher", parsed_version.patch),
+            "python3".to_string(),
+            format!("trino-server-{}/bin/launcher.py", parsed_version.patch),
             // run or start?
             "run".to_string(),
             format!("--etc-dir={{{{configroot}}}}/{}", CONFIG_DIR_NAME),
