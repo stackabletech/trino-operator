@@ -37,6 +37,7 @@ pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
+pub const HIVE_PROPERTIES: &str = "hive.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 pub const NODE_ID: &str = "node.id";
