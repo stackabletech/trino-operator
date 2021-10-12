@@ -32,6 +32,15 @@ async fn main() -> Result<(), error::Error> {
         if cli::handle_crd_subcommand::<TrinoCluster>(subcommand)? {
             return Ok(());
         };
+        if cli::handle_crd_subcommand::<Start>(subcommand)? {
+            return Ok(());
+        };
+        if cli::handle_crd_subcommand::<Stop>(subcommand)? {
+            return Ok(());
+        };
+        if cli::handle_crd_subcommand::<Restart>(subcommand)? {
+            return Ok(());
+        };
     }
 
     let paths = vec![
