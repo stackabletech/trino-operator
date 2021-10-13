@@ -1,6 +1,5 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-
     #[error("Pod has no hostname assignment, this is most probably a transitive failure and should be retried: [{pod}]")]
     PodWithoutHostname { pod: String },
 
