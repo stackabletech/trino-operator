@@ -37,6 +37,8 @@ pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
+pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
+pub const PASSWORD_DB: &str = "password.db";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 pub const NODE_ID: &str = "node.id";
@@ -44,10 +46,17 @@ pub const NODE_DATA_DIR: &str = "node.data-dir";
 // config.properties
 pub const COORDINATOR: &str = "coordinator";
 pub const HTTP_SERVER_PORT: &str = "http-server.http.port";
+pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
+pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
 pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";
+// password-authenticator.properties
+pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
+pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";  // the value of the property above
+pub const FILE_PASSWORD_FILE: &str = "file.password-file";
+pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -175,6 +184,8 @@ pub struct TrinoConfig {
     pub io_trino: Option<String>,
     // jvm.config
     pub metrics_port: Option<u16>,
+    // password file auth
+    pub password_file_content: Option<String>,
     // misc
     pub java_home: Option<String>,
 }
@@ -252,6 +263,30 @@ impl Configuration for TrinoConfig {
                         QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
                         Some(query_max_total_memory_per_node.to_string()),
                     );
+                }
+
+                if self.password_file_content.is_some() {
+                    result.insert(
+                        HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                        Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                    );
+                }
+            }
+            PASSWORD_AUTHENTICATOR_PROPERTIES => {
+                if self.password_file_content.is_some() {
+                    result.insert(
+                        PASSWORD_AUTHENTICATOR_NAME.to_string(),
+                        Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()),
+                    );
+                    result.insert(
+                        FILE_PASSWORD_FILE.to_string(),
+                        Some(format!("{{{{configroot}}}}/{}/{}", CONFIG_DIR_NAME, PASSWORD_DB)),
+                    );
+                }
+            }
+            PASSWORD_DB => {
+                if let Some(pw_file_content) = &self.password_file_content {
+                    result.insert(PW_FILE_CONTENT_MAP_KEY.to_string(), Some(pw_file_content.to_string()));
                 }
             }
             JVM_CONFIG => {

@@ -7,7 +7,7 @@ spec:
   nodeEnvironment: production
   hiveReference:
     namespace: default
-    name: simple-derby
+    name: simple-postgres
   coordinators:
     roleGroups:
       default:
@@ -17,13 +17,17 @@ spec:
               key: kubernetes.io/hostname
               values:
                 #- main-1.stackable.demo
-                - mdesktop
+                - stackable-node-x
         config:
           coordinator: true
           nodeDataDir: /tmp/trino/data
           metricsPort: 10200
           httpServerHttpPort: 8080
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
+          passwordFileContent: |
+            alice:$2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
+            bob:$2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+            admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
   workers:
     roleGroups:
       default:
@@ -35,7 +39,7 @@ spec:
                 #- worker-1.stackable.demo
                 #- worker-2.stackable.demo
                 #- worker-3.stackable.demo
-                - mdesktop
+                - stackable-node-x
         replicas: 1
         config:
           nodeDataDir: /tmp/trino/data2

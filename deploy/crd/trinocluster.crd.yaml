@@ -54,6 +54,9 @@ spec:
                         nodeDataDir:
                           nullable: true
                           type: string
+                        passwordFileContent:
+                          nullable: true
+                          type: string
                         queryMaxMemory:
                           nullable: true
                           type: string
@@ -107,6 +110,9 @@ spec:
                                 nullable: true
                                 type: integer
                               nodeDataDir:
+                                nullable: true
+                                type: string
+                              passwordFileContent:
                                 nullable: true
                                 type: string
                               queryMaxMemory:
@@ -226,6 +232,9 @@ spec:
                         nodeDataDir:
                           nullable: true
                           type: string
+                        passwordFileContent:
+                          nullable: true
+                          type: string
                         queryMaxMemory:
                           nullable: true
                           type: string
@@ -279,6 +288,9 @@ spec:
                                 nullable: true
                                 type: integer
                               nodeDataDir:
+                                nullable: true
+                                type: string
+                              passwordFileContent:
                                 nullable: true
                                 type: string
                               queryMaxMemory:

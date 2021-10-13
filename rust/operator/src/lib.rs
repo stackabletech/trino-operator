@@ -48,6 +48,7 @@ use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
     DISCOVERY_URI, HTTP_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG, LOG_PROPERTIES,
     METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY
 };
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
@@ -350,6 +351,7 @@ impl TrinoState {
                                 discovery_property: DISCOVERY_URI.to_string(),
                             });
                         }
+
                     } else if role == &TrinoRole::Worker {
                         if let Some(discovery) = &self.trino_discovery {
                             transformed_config.insert(
@@ -385,6 +387,18 @@ impl TrinoState {
                     )?;
 
                     cm_conf_data.insert(file_name.to_string(), log_properties);
+                }
+                PropertyNameKind::File(file_name) if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES => {
+                    if role == &TrinoRole::Coordinator && !transformed_config.is_empty() {
+                        let pw_properties = product_config::writer::to_java_properties_string(transformed_config.iter())?;
+                        cm_conf_data.insert(file_name.to_string(), pw_properties);
+                    }
+                }
+                PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
+                    if role == &TrinoRole::Coordinator && !config.is_empty() {
+                        let pw_file_content = config.get(PW_FILE_CONTENT_MAP_KEY).unwrap();  // TODO handle unwrap differently!!
+                        cm_conf_data.insert(file_name.to_string(), pw_file_content.to_string());
+                    }
                 }
                 PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                     // if metrics port is set we need to adapt the
@@ -782,6 +796,8 @@ impl ControllerStrategy for TrinoStrategy {
                     PropertyNameKind::File(NODE_PROPERTIES.to_string()),
                     PropertyNameKind::File(JVM_CONFIG.to_string()),
                     PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
+                    PropertyNameKind::File(PASSWORD_DB.to_string()),
                 ],
                 context.resource.spec.coordinators.clone().into(),
             ),
@@ -795,6 +811,8 @@ impl ControllerStrategy for TrinoStrategy {
                     PropertyNameKind::File(NODE_PROPERTIES.to_string()),
                     PropertyNameKind::File(JVM_CONFIG.to_string()),
                     PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
+                    PropertyNameKind::File(PASSWORD_DB.to_string()),
                 ],
                 context.resource.spec.workers.clone().into(),
             ),
