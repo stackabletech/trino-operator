@@ -380,6 +380,22 @@ impl TrinoState {
 
                     cm_conf_data.insert(file_name.to_string(), node_properties);
                 }
+                PropertyNameKind::File(file_name) if file_name == HIVE_PROPERTIES => {
+                    if let Some(hive_info) = &self.hive_information {
+                        transformed_config
+                            .insert("connector.name".to_string(), Some("hive".to_string()));
+                        transformed_config.insert(
+                            "hive.metastore.uri".to_string(),
+                            Some(hive_info.full_connection_string()),
+                        );
+
+                        let config_properties = product_config::writer::to_java_properties_string(
+                            transformed_config.iter(),
+                        )?;
+
+                        cm_hive_data.insert(HIVE_PROPERTIES.to_string(), config_properties);
+                    }
+                }
                 PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
                     let log_properties = product_config::writer::to_java_properties_string(
                         transformed_config.iter(),
@@ -399,16 +415,6 @@ impl TrinoState {
         }
 
         cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
-
-        // hive discovery
-        if let Some(hive_info) = &self.hive_information {
-            let hive_properties = format!(
-                "connector.name=hive\nhive.metastore.uri={}",
-                hive_info.full_connection_string()
-            );
-
-            cm_hive_data.insert(HIVE_PROPERTIES.to_string(), hive_properties);
-        }
 
         // trino config map
         let mut cm_labels = get_recommended_labels(
@@ -772,30 +778,25 @@ impl ControllerStrategy for TrinoStrategy {
 
         let mut roles = HashMap::new();
 
+        let config_files = vec![
+            PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+            PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
+            PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+            PropertyNameKind::File(JVM_CONFIG.to_string()),
+            PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+        ];
+
         roles.insert(
             TrinoRole::Coordinator.to_string(),
             (
-                vec![
-                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-                    PropertyNameKind::File(JVM_CONFIG.to_string()),
-                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-                ],
+                config_files.clone(),
                 context.resource.spec.coordinators.clone().into(),
             ),
         );
 
         roles.insert(
             TrinoRole::Worker.to_string(),
-            (
-                vec![
-                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-                    PropertyNameKind::File(JVM_CONFIG.to_string()),
-                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-                ],
-                context.resource.spec.workers.clone().into(),
-            ),
+            (config_files, context.resource.spec.workers.clone().into()),
         );
 
         let role_config = transform_all_roles_to_config(&context.resource, roles);

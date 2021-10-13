@@ -63,6 +63,27 @@ spec:
                         queryMaxTotalMemoryPerNode:
                           nullable: true
                           type: string
+                        s3Connection:
+                          description: Contains all the required connection information for S3.
+                          nullable: true
+                          properties:
+                            accessKey:
+                              type: string
+                            endPoint:
+                              type: string
+                            pathStyleAccess:
+                              type: boolean
+                            secretKey:
+                              type: string
+                            sslEnabled:
+                              type: boolean
+                          required:
+                            - accessKey
+                            - endPoint
+                            - pathStyleAccess
+                            - secretKey
+                            - sslEnabled
+                          type: object
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -118,6 +139,27 @@ spec:
                               queryMaxTotalMemoryPerNode:
                                 nullable: true
                                 type: string
+                              s3Connection:
+                                description: Contains all the required connection information for S3.
+                                nullable: true
+                                properties:
+                                  accessKey:
+                                    type: string
+                                  endPoint:
+                                    type: string
+                                  pathStyleAccess:
+                                    type: boolean
+                                  secretKey:
+                                    type: string
+                                  sslEnabled:
+                                    type: boolean
+                                required:
+                                  - accessKey
+                                  - endPoint
+                                  - pathStyleAccess
+                                  - secretKey
+                                  - sslEnabled
+                                type: object
                             type: object
                           configOverrides:
                             additionalProperties:
@@ -235,6 +277,27 @@ spec:
                         queryMaxTotalMemoryPerNode:
                           nullable: true
                           type: string
+                        s3Connection:
+                          description: Contains all the required connection information for S3.
+                          nullable: true
+                          properties:
+                            accessKey:
+                              type: string
+                            endPoint:
+                              type: string
+                            pathStyleAccess:
+                              type: boolean
+                            secretKey:
+                              type: string
+                            sslEnabled:
+                              type: boolean
+                          required:
+                            - accessKey
+                            - endPoint
+                            - pathStyleAccess
+                            - secretKey
+                            - sslEnabled
+                          type: object
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -290,6 +353,27 @@ spec:
                               queryMaxTotalMemoryPerNode:
                                 nullable: true
                                 type: string
+                              s3Connection:
+                                description: Contains all the required connection information for S3.
+                                nullable: true
+                                properties:
+                                  accessKey:
+                                    type: string
+                                  endPoint:
+                                    type: string
+                                  pathStyleAccess:
+                                    type: boolean
+                                  secretKey:
+                                    type: string
+                                  sslEnabled:
+                                    type: boolean
+                                required:
+                                  - accessKey
+                                  - endPoint
+                                  - pathStyleAccess
+                                  - secretKey
+                                  - sslEnabled
+                                type: object
                             type: object
                           configOverrides:
                             additionalProperties:
