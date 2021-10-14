@@ -1,0 +1,5 @@
+name: trino
+version: master
+title: Stackable Operator for Trino
+nav:
+  - modules/ROOT/nav.adoc

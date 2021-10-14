@@ -1,0 +1,95 @@
+= Installation
+
+There are three ways to run the Trino Operator:
+
+1. Build from source. This is documented in xref:building.adoc[Building the Operator].
+
+2. Operating System packages (dep & RPM)
+
+3. As a Docker container
+
+== Operating System Packages
+
+=== Debian
+
+We do provide `deb` packages for Debian 10:
+
+|===
+| Version | Repository
+
+| Development
+| `https://repo.stackable.tech/repository/deb-dev/ buster main`
+
+| Stable
+| `https://repo.stackable.tech/repository/deb-release/ buster main`
+|===
+
+To add these repositories run a command like this:
+
+[source,bash]
+----
+echo "deb https://repo.stackable.tech/repository/deb-release/ buster main" | sudo tee -a /etc/apt/sources.list.d/stackable.list
+----
+
+After you added the repository run:
+
+[source,bash]
+----
+sudo apt-get update
+sudo apt-get install stackable-trino-operator
+----
+
+=== RHEL/CentOS
+
+We do provide `RPM` packages for RHEL 7 & 8.
+
+|===
+| Version | Repository
+
+| Development RHEL 7
+| `https://repo.stackable.tech/repository/rpm-dev/el7`
+
+| Stable RHEL 7
+| `https://repo.stackable.tech/repository/rpm-release/el7`
+
+| Development RHEL 8
+| `https://repo.stackable.tech/repository/rpm-dev/el8`
+
+| Stable RHEL 8
+| `https://repo.stackable.tech/repository/rpm-release/el8`
+
+|===
+
+Add this to `/etc/yum.repos.d/stackable.repo` and make sure to pick the corrrect repository:
+
+[source]
+----
+[stackable]
+name=Stackable
+baseurl=https://repo.stackable.tech/repository/rpm-release/el8
+repo_gpgcheck=0
+enabled=1
+gpgcheck=0
+----
+
+Install the Operator:
+
+[source,bash]
+----
+sudo yum install stackable-trino-operator
+----
+
+== Docker
+
+This Operator is published as a Docker image:
+
+[source]
+----
+docker.stackable.tech/stackable/trino-operator
+----
+
+To run it straight from Docker you can use this command:
+[source,bash]
+----
+docker run -e TRINO_OPERATOR_LOG=trace -e KUBECONFIG=/root/.kube/k3s.yaml --mount type=bind,source="$HOME/.kube/k3s.yaml",target="/root/.kube/k3s.yaml" -it docker.stackable.tech/stackable/trino-operator:latest
+----

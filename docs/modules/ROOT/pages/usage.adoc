@@ -1,0 +1,29 @@
+= Usage
+
+== Prerequisites
+
+* Deployed Stackable Apache Hive metastore
+* Accessible S3 Bucket
+    ** Endpoint, access-key and secret-key
+    ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
+- Optional for authorization: Deployed Stackable OPA cluster
+- Optional to test queries with https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI]
+
+== Installation
+
+In the following we explain or link the required installation steps.
+
+=== Hive operator
+
+=== S3 bucket
+
+=== OPA operator
+
+With the prerequisites fulfilled, the CRD for this operator must be created:
+
+    kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
+
+To create a single node Trino (v362) cluster with Prometheus metrics exposed on port 9505 (master) and 9506 (region_server):
+
+    cat <<EOF | kubectl apply -f -
+    EOF
