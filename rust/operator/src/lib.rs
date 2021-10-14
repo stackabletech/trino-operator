@@ -45,9 +45,11 @@ use stackable_trino_crd::discovery::{
     get_trino_discovery_from_pods, TrinoDiscovery, TrinoDiscoveryProtocol,
 };
 use stackable_trino_crd::{
-    TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
-    DISCOVERY_URI, HIVE_PROPERTIES, HTTP_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG,
+    TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CERTIFICATE_PEM,
+    CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DISCOVERY_URI, HIVE_PROPERTIES,
+    HTTPS_PORT, HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG,
     LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
@@ -403,11 +405,33 @@ impl TrinoState {
 
                     cm_conf_data.insert(file_name.to_string(), log_properties);
                 }
+                PropertyNameKind::File(file_name)
+                    if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES =>
+                {
+                    if role == &TrinoRole::Coordinator && !transformed_config.is_empty() {
+                        let pw_properties = product_config::writer::to_java_properties_string(
+                            transformed_config.iter(),
+                        )?;
+                        cm_conf_data.insert(file_name.to_string(), pw_properties);
+                    }
+                }
+                PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
+                    if role == &TrinoRole::Coordinator && !config.is_empty() {
+                        let pw_file_content = config.get(PW_FILE_CONTENT_MAP_KEY).unwrap(); // TODO handle unwrap differently!!
+                        cm_conf_data.insert(file_name.to_string(), pw_file_content.to_string());
+                    }
+                }
                 PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                     // if metrics port is set we need to adapt the
                     if let Some(metrics_port) = config.get(METRICS_PORT_PROPERTY) {
                         jvm_config.push_str(&format!("\n-javaagent:{{{{packageroot}}}}/{}/stackable/lib/jmx_prometheus_javaagent-0.16.1.jar={}:{{{{packageroot}}}}/{}/stackable/conf/jmx_exporter.yaml",
                                                  version.package_directory(), metrics_port, version.package_directory()));
+                    }
+                }
+                PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
+                    if role == &TrinoRole::Coordinator && !config.is_empty() {
+                        let cert_file_content = config.get(CERT_FILE_CONTENT_MAP_KEY).unwrap(); // TODO handle unwrap differently!!
+                        cm_conf_data.insert(file_name.to_string(), cert_file_content.to_string());
                     }
                 }
                 _ => {}
@@ -518,6 +542,10 @@ impl TrinoState {
             .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
             .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_PORT));
 
+        let https_port = validated_config
+            .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
+            .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_HTTPS_PORT));
+
         let java_home = validated_config
             .get(&PropertyNameKind::Env)
             .and_then(|env| env.get(JAVA_HOME));
@@ -596,6 +624,14 @@ impl TrinoState {
             cb.add_container_port(
                 ContainerPortBuilder::new(http_port.parse()?)
                     .name(HTTP_PORT)
+                    .build(),
+            );
+        }
+
+        if let Some(https_port) = https_port {
+            cb.add_container_port(
+                ContainerPortBuilder::new(https_port.parse()?)
+                    .name(HTTPS_PORT)
                     .build(),
             );
         }
@@ -789,7 +825,15 @@ impl ControllerStrategy for TrinoStrategy {
         roles.insert(
             TrinoRole::Coordinator.to_string(),
             (
-                config_files.clone(),
+                [
+                    config_files.clone(),
+                    vec![
+                        PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
+                        PropertyNameKind::File(PASSWORD_DB.to_string()),
+                        PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
+                    ],
+                ]
+                .concat(),
                 context.resource.spec.coordinators.clone().into(),
             ),
         );

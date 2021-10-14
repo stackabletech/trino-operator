@@ -37,6 +37,9 @@ pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
+pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
+pub const PASSWORD_DB: &str = "password.db";
+pub const CERTIFICATE_PEM: &str = "clustercoord.pem";
 pub const HIVE_PROPERTIES: &str = "hive.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
@@ -45,10 +48,22 @@ pub const NODE_DATA_DIR: &str = "node.data-dir";
 // config.properties
 pub const COORDINATOR: &str = "coordinator";
 pub const HTTP_SERVER_PORT: &str = "http-server.http.port";
+pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
+pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
+pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
+pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
+pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
 pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";
+// password-authenticator.properties
+pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
+pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file"; // the value of the property above
+pub const FILE_PASSWORD_FILE: &str = "file.password-file";
+// file content keys
+pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
+pub const CERT_FILE_CONTENT_MAP_KEY: &str = "serverCertificate";
 // hive.properties
 pub const S3_ENDPOINT: &str = "hive.s3.endpoint";
 pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
@@ -64,6 +79,7 @@ pub const JAVA_HOME: &str = "JAVA_HOME";
 // port names
 pub const METRICS_PORT: &str = "metrics";
 pub const HTTP_PORT: &str = "http";
+pub const HTTPS_PORT: &str = "https";
 // config dir
 pub const CONFIG_DIR_NAME: &str = "conf";
 
@@ -175,6 +191,7 @@ pub struct TrinoConfig {
     // config.properties
     pub coordinator: Option<bool>,
     pub http_server_http_port: Option<u16>,
+    pub http_server_https_port: Option<u16>,
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
     pub query_max_total_memory_per_node: Option<String>,
@@ -184,6 +201,10 @@ pub struct TrinoConfig {
     pub io_trino: Option<String>,
     // jvm.config
     pub metrics_port: Option<u16>,
+    // TLS certificate
+    pub server_certificate: Option<String>,
+    // password file auth
+    pub password_file_content: Option<String>,
     // misc
     pub java_home: Option<String>,
 }
@@ -260,6 +281,65 @@ impl Configuration for TrinoConfig {
                     result.insert(
                         QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
                         Some(query_max_total_memory_per_node.to_string()),
+                    );
+                }
+
+                // if a certificate is provided, we enable TLS
+                if self.server_certificate.is_some() {
+                    result.insert(
+                        HTTP_SERVER_HTTPS_ENABLED.to_string(),
+                        Some(true.to_string()),
+                    );
+                    result.insert(
+                        HTTP_SERVER_KEYSTORE_PATH.to_string(),
+                        Some(format!(
+                            "{{{{configroot}}}}/{}/{}",
+                            CONFIG_DIR_NAME, CERTIFICATE_PEM
+                        )),
+                    );
+                    if let Some(https_port) = &self.http_server_https_port {
+                        result.insert(
+                            HTTP_SERVER_HTTPS_PORT.to_string(),
+                            Some(https_port.to_string()),
+                        );
+                    }
+                }
+
+                if self.password_file_content.is_some() {
+                    result.insert(
+                        HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                        Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                    );
+                }
+            }
+            PASSWORD_AUTHENTICATOR_PROPERTIES => {
+                if self.password_file_content.is_some() {
+                    result.insert(
+                        PASSWORD_AUTHENTICATOR_NAME.to_string(),
+                        Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()),
+                    );
+                    result.insert(
+                        FILE_PASSWORD_FILE.to_string(),
+                        Some(format!(
+                            "{{{{configroot}}}}/{}/{}",
+                            CONFIG_DIR_NAME, PASSWORD_DB
+                        )),
+                    );
+                }
+            }
+            PASSWORD_DB => {
+                if let Some(pw_file_content) = &self.password_file_content {
+                    result.insert(
+                        PW_FILE_CONTENT_MAP_KEY.to_string(),
+                        Some(pw_file_content.to_string()),
+                    );
+                }
+            }
+            CERTIFICATE_PEM => {
+                if let Some(cert) = &self.server_certificate {
+                    result.insert(
+                        CERT_FILE_CONTENT_MAP_KEY.to_string(),
+                        Some(cert.to_string()),
                     );
                 }
             }

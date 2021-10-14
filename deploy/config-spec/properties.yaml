@@ -122,6 +122,24 @@ properties:
           required: true
       asOfVersion: "0.0.0"
 
+  - property: &httpServerHttpsPort
+      propertyNames:
+        - name: "http-server.https.port"
+          kind:
+            type: "file"
+            file: "config.properties"
+      datatype:
+        type: "integer"
+        min: "1024"
+        max: "65535"
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "8443"
+      roles:
+        - name: "coordinator"
+          required: true
+      asOfVersion: "0.0.0"
+
   - property: &queryMaxMemory
       propertyNames:
         - name: "query.max-memory"
@@ -178,6 +196,52 @@ properties:
         - name: "worker"
           required: true
       asOfVersion: "0.0.0"
+
+  - property: &httpServerAuthenticationType
+      propertyNames:
+        - name: "http-server.authentication.type"
+          kind:
+            type: "file"
+            file: "config.properties"
+      datatype:
+        type: "string"
+      roles:
+        - name: "coordinator"
+          required: false
+      asOfVersion: "0.0.0"
+
+###################################################################################################
+# password-authenticator.properties
+###################################################################################################
+
+  - property: &passwordAuthenticatorName
+      propertyNames:
+        - name: "password-authenticator.name"
+          kind:
+            type: "file"
+            file: "password-authenticator.properties"
+      datatype:
+        type: "string"
+      allowedValues:
+        - "file"
+      roles:
+        - name: "coordinator"
+          required: false
+      asOfVersion: "0.0.0"
+
+  - property: &passwordAuthenticatorName
+      propertyNames:
+        - name: "file.password-file"
+          kind:
+            type: "file"
+            file: "password-authenticator.properties"
+      datatype:
+        type: "string"
+      roles:
+        - name: "coordinator"
+          required: false
+      asOfVersion: "0.0.0"
+
 
 ###################################################################################################
 # jvm.config
