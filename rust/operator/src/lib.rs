@@ -825,11 +825,15 @@ impl ControllerStrategy for TrinoStrategy {
         roles.insert(
             TrinoRole::Coordinator.to_string(),
             (
-                config_files.clone().extend(vec![
-                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
-                    PropertyNameKind::File(PASSWORD_DB.to_string()),
-                    PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
-                ]),
+                [
+                    config_files.clone(),
+                    vec![
+                        PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
+                        PropertyNameKind::File(PASSWORD_DB.to_string()),
+                        PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
+                    ],
+                ]
+                .concat(),
                 context.resource.spec.coordinators.clone().into(),
             ),
         );
