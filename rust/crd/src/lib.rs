@@ -47,6 +47,9 @@ pub const NODE_DATA_DIR: &str = "node.data-dir";
 // config.properties
 pub const COORDINATOR: &str = "coordinator";
 pub const HTTP_SERVER_PORT: &str = "http-server.http.port";
+pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
+pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
+pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
@@ -55,9 +58,11 @@ pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-no
 pub const DISCOVERY_URI: &str = "discovery.uri";
 // password-authenticator.properties
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
-pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";  // the value of the property above
+pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file"; // the value of the property above
 pub const FILE_PASSWORD_FILE: &str = "file.password-file";
+// file content keys
 pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
+pub const CERT_FILE_CONTENT_MAP_KEY: &str = "serverCertificate";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -185,6 +190,8 @@ pub struct TrinoConfig {
     pub io_trino: Option<String>,
     // jvm.config
     pub metrics_port: Option<u16>,
+    // TLS certificate
+    pub server_certificate: Option<String>,
     // password file auth
     pub password_file_content: Option<String>,
     // misc
@@ -266,22 +273,26 @@ impl Configuration for TrinoConfig {
                     );
                 }
 
+                // if a certificate is provided, we enable TLS
+                if self.server_certificate.is_some() {
+                    result.insert(
+                        HTTP_SERVER_HTTPS_ENABLED.to_string(),
+                        Some(true.to_string()),
+                    );
+                    result.insert(HTTP_SERVER_HTTPS_PORT.to_string(), Some("8443".to_string()));
+                    result.insert(
+                        HTTP_SERVER_KEYSTORE_PATH.to_string(),
+                        Some(format!(
+                            "{{{{configroot}}}}/{}/{}",
+                            CONFIG_DIR_NAME, CERTIFICATE_PEM
+                        )),
+                    );
+                }
+
                 if self.password_file_content.is_some() {
                     result.insert(
                         HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
                         Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                    );
-                    result.insert(
-                        "http-server.https.enabled".to_string(),
-                        Some("true".to_string()),
-                    );
-                    result.insert(
-                        "http-server.https.port".to_string(),
-                        Some("8443".to_string()),
-                    );
-                    result.insert(
-                        "http-server.https.keystore.path".to_string(),
-                        Some(format!("{{{{configroot}}}}/{}/{}", CONFIG_DIR_NAME, CERTIFICATE_PEM)),
                     );
                 }
             }
@@ -293,13 +304,27 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         FILE_PASSWORD_FILE.to_string(),
-                        Some(format!("{{{{configroot}}}}/{}/{}", CONFIG_DIR_NAME, PASSWORD_DB)),
+                        Some(format!(
+                            "{{{{configroot}}}}/{}/{}",
+                            CONFIG_DIR_NAME, PASSWORD_DB
+                        )),
                     );
                 }
             }
             PASSWORD_DB => {
                 if let Some(pw_file_content) = &self.password_file_content {
-                    result.insert(PW_FILE_CONTENT_MAP_KEY.to_string(), Some(pw_file_content.to_string()));
+                    result.insert(
+                        PW_FILE_CONTENT_MAP_KEY.to_string(),
+                        Some(pw_file_content.to_string()),
+                    );
+                }
+            }
+            CERTIFICATE_PEM => {
+                if let Some(cert) = &self.server_certificate {
+                    result.insert(
+                        CERT_FILE_CONTENT_MAP_KEY.to_string(),
+                        Some(cert.to_string()),
+                    );
                 }
             }
             JVM_CONFIG => {
