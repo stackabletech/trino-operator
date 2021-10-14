@@ -72,6 +72,7 @@ pub const JAVA_HOME: &str = "JAVA_HOME";
 // port names
 pub const METRICS_PORT: &str = "metrics";
 pub const HTTP_PORT: &str = "http";
+pub const HTTPS_PORT: &str = "https";
 // config dir
 pub const CONFIG_DIR_NAME: &str = "conf";
 

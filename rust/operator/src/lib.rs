@@ -45,10 +45,11 @@ use stackable_trino_crd::discovery::{
     get_trino_discovery_from_pods, TrinoDiscovery, TrinoDiscoveryProtocol,
 };
 use stackable_trino_crd::{
-    TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
-    DISCOVERY_URI, HTTP_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG, LOG_PROPERTIES,
+    TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CERTIFICATE_PEM,
+    CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DISCOVERY_URI, HTTPS_PORT,
+    HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG, LOG_PROPERTIES,
     METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY, CERTIFICATE_PEM, CERT_FILE_CONTENT_MAP_KEY
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
@@ -351,7 +352,6 @@ impl TrinoState {
                                 discovery_property: DISCOVERY_URI.to_string(),
                             });
                         }
-
                     } else if role == &TrinoRole::Worker {
                         if let Some(discovery) = &self.trino_discovery {
                             transformed_config.insert(
@@ -388,15 +388,19 @@ impl TrinoState {
 
                     cm_conf_data.insert(file_name.to_string(), log_properties);
                 }
-                PropertyNameKind::File(file_name) if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES => {
+                PropertyNameKind::File(file_name)
+                    if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES =>
+                {
                     if role == &TrinoRole::Coordinator && !transformed_config.is_empty() {
-                        let pw_properties = product_config::writer::to_java_properties_string(transformed_config.iter())?;
+                        let pw_properties = product_config::writer::to_java_properties_string(
+                            transformed_config.iter(),
+                        )?;
                         cm_conf_data.insert(file_name.to_string(), pw_properties);
                     }
                 }
                 PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
                     if role == &TrinoRole::Coordinator && !config.is_empty() {
-                        let pw_file_content = config.get(PW_FILE_CONTENT_MAP_KEY).unwrap();  // TODO handle unwrap differently!!
+                        let pw_file_content = config.get(PW_FILE_CONTENT_MAP_KEY).unwrap(); // TODO handle unwrap differently!!
                         cm_conf_data.insert(file_name.to_string(), pw_file_content.to_string());
                     }
                 }
@@ -409,7 +413,7 @@ impl TrinoState {
                 }
                 PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
                     if role == &TrinoRole::Coordinator && !config.is_empty() {
-                        let cert_file_content = config.get(CERT_FILE_CONTENT_MAP_KEY).unwrap();  // TODO handle unwrap differently!!
+                        let cert_file_content = config.get(CERT_FILE_CONTENT_MAP_KEY).unwrap(); // TODO handle unwrap differently!!
                         cm_conf_data.insert(file_name.to_string(), cert_file_content.to_string());
                     }
                 }
@@ -535,6 +539,10 @@ impl TrinoState {
             .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
             .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_PORT));
 
+        let https_port = validated_config
+            .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
+            .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_HTTPS_PORT));
+
         let java_home = validated_config
             .get(&PropertyNameKind::Env)
             .and_then(|env| env.get(JAVA_HOME));
@@ -612,6 +620,14 @@ impl TrinoState {
             cb.add_container_port(
                 ContainerPortBuilder::new(http_port.parse()?)
                     .name(HTTP_PORT)
+                    .build(),
+            );
+        }
+
+        if let Some(https_port) = https_port {
+            cb.add_container_port(
+                ContainerPortBuilder::new(https_port.parse()?)
+                    .name(HTTPS_PORT)
                     .build(),
             );
         }
