@@ -451,7 +451,7 @@ impl TrinoState {
 
             let connection_info = util::get_opa_connection_info(
                 &self.context.client,
-                &opa_reference,
+                opa_reference,
                 &opa_api,
                 &OpaApiProtocol::Http,
                 Some(node_name.to_string()),
