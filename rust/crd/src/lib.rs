@@ -13,7 +13,7 @@ use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use stackable_hive_crd::discovery::HiveReference;
+use stackable_hive_crd::discovery::{HiveReference, S3Connection};
 use stackable_operator::command::{CommandRef, HasCommands, HasRoleRestartOrder};
 use stackable_operator::controller::HasOwned;
 use stackable_operator::crd::HasApplication;
@@ -40,6 +40,7 @@ pub const LOG_PROPERTIES: &str = "log.properties";
 pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
 pub const PASSWORD_DB: &str = "password.db";
 pub const CERTIFICATE_PEM: &str = "clustercoord.pem";
+pub const HIVE_PROPERTIES: &str = "hive.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 pub const NODE_ID: &str = "node.id";
@@ -63,6 +64,12 @@ pub const FILE_PASSWORD_FILE: &str = "file.password-file";
 // file content keys
 pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
 pub const CERT_FILE_CONTENT_MAP_KEY: &str = "serverCertificate";
+// hive.properties
+pub const S3_ENDPOINT: &str = "hive.s3.endpoint";
+pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
+pub const S3_SECRET_KEY: &str = "hive.s3.aws-secret-key";
+pub const S3_SSL_ENABLED: &str = "hive.s3.ssl.enabled";
+pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -93,6 +100,8 @@ pub struct TrinoClusterSpec {
     pub workers: Role<TrinoConfig>,
     pub node_environment: String,
     pub hive_reference: HiveReference,
+    // s3
+    pub s3_connection: Option<S3Connection>,
 }
 
 #[derive(
@@ -331,6 +340,34 @@ impl Configuration for TrinoConfig {
                     result.insert(
                         CERT_FILE_CONTENT_MAP_KEY.to_string(),
                         Some(cert.to_string()),
+                    );
+                }
+            }
+            HIVE_PROPERTIES => {
+                if let Some(s3_connection) = &resource.spec.s3_connection {
+                    result.insert(
+                        S3_ENDPOINT.to_string(),
+                        Some(s3_connection.end_point.clone()),
+                    );
+
+                    result.insert(
+                        S3_ACCESS_KEY.to_string(),
+                        Some(s3_connection.access_key.clone()),
+                    );
+
+                    result.insert(
+                        S3_SECRET_KEY.to_string(),
+                        Some(s3_connection.secret_key.clone()),
+                    );
+
+                    result.insert(
+                        S3_SSL_ENABLED.to_string(),
+                        Some(s3_connection.ssl_enabled.to_string()),
+                    );
+
+                    result.insert(
+                        S3_PATH_STYLE_ACCESS.to_string(),
+                        Some(s3_connection.path_style_access.to_string()),
                     );
                 }
             }

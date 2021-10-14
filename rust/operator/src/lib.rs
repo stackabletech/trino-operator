@@ -46,9 +46,9 @@ use stackable_trino_crd::discovery::{
 };
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CERTIFICATE_PEM,
-    CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DISCOVERY_URI, HTTPS_PORT,
-    HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG, LOG_PROPERTIES,
-    METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
+    CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DISCOVERY_URI, HIVE_PROPERTIES,
+    HTTPS_PORT, HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
 use std::collections::{BTreeMap, HashMap};
@@ -65,6 +65,7 @@ const ID_LABEL: &str = "trino.stackable.tech/id";
 const SHOULD_BE_SCRAPED: &str = "monitoring.stackable.tech/should_be_scraped";
 
 const CONFIG_MAP_TYPE_CONF: &str = "config";
+const CONFIG_MAP_TYPE_HIVE: &str = "hive";
 
 type TrinoReconcileResult = ReconcileResult<error::Error>;
 
@@ -381,6 +382,22 @@ impl TrinoState {
 
                     cm_conf_data.insert(file_name.to_string(), node_properties);
                 }
+                PropertyNameKind::File(file_name) if file_name == HIVE_PROPERTIES => {
+                    if let Some(hive_info) = &self.hive_information {
+                        transformed_config
+                            .insert("connector.name".to_string(), Some("hive".to_string()));
+                        transformed_config.insert(
+                            "hive.metastore.uri".to_string(),
+                            Some(hive_info.full_connection_string()),
+                        );
+
+                        let config_properties = product_config::writer::to_java_properties_string(
+                            transformed_config.iter(),
+                        )?;
+
+                        cm_hive_data.insert(HIVE_PROPERTIES.to_string(), config_properties);
+                    }
+                }
                 PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
                     let log_properties = product_config::writer::to_java_properties_string(
                         transformed_config.iter(),
@@ -423,16 +440,7 @@ impl TrinoState {
 
         cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
 
-        // hive discovery
-        if let Some(hive_info) = &self.hive_information {
-            let hive_properties = format!(
-                "connector.name=hive\nhive.metastore.uri={}",
-                hive_info.full_connection_string()
-            );
-
-            cm_hive_data.insert("hive.properties".to_string(), hive_properties);
-        }
-
+        // trino config map
         let mut cm_labels = get_recommended_labels(
             &self.context.resource,
             pod_id.app(),
@@ -446,6 +454,24 @@ impl TrinoState {
             CONFIG_MAP_TYPE_CONF.to_string(),
         );
 
+        let cm_conf_name = name_utils::build_resource_name(
+            pod_id.app(),
+            &self.context.name(),
+            pod_id.role(),
+            Some(pod_id.group()),
+            None,
+            Some(CONFIG_MAP_TYPE_CONF),
+        )?;
+
+        let cm_config = configmap::build_config_map(
+            &self.context.resource,
+            &cm_conf_name,
+            &self.context.namespace(),
+            cm_labels.clone(),
+            cm_conf_data,
+        )?;
+
+        // hive configmap
         let mut hive_labels = get_recommended_labels(
             &self.context.resource,
             pod_id.app(),
@@ -456,27 +482,8 @@ impl TrinoState {
 
         hive_labels.insert(
             configmap::CONFIGMAP_TYPE_LABEL.to_string(),
-            "hive".to_string(),
+            CONFIG_MAP_TYPE_HIVE.to_string(),
         );
-
-        let cm_conf_name = name_utils::build_resource_name(
-            pod_id.app(),
-            &self.context.name(),
-            pod_id.role(),
-            Some(pod_id.group()),
-            None,
-            Some(CONFIG_MAP_TYPE_CONF),
-        )?;
-
-        println!("conf_name: {}", cm_conf_name);
-
-        let cm_config = configmap::build_config_map(
-            &self.context.resource,
-            &cm_conf_name,
-            &self.context.namespace(),
-            cm_labels.clone(),
-            cm_conf_data,
-        )?;
 
         let cm_hive_name = name_utils::build_resource_name(
             pod_id.app(),
@@ -484,10 +491,8 @@ impl TrinoState {
             pod_id.role(),
             Some(pod_id.group()),
             None,
-            Some("hive"),
+            Some(CONFIG_MAP_TYPE_HIVE),
         )?;
-
-        println!("hive_cm_name: {}", cm_hive_name);
 
         let cm_hive = configmap::build_config_map(
             &self.context.resource,
@@ -503,11 +508,9 @@ impl TrinoState {
         );
 
         config_maps.insert(
-            "hive",
+            CONFIG_MAP_TYPE_HIVE,
             configmap::create_config_map(&self.context.client, cm_hive).await?,
         );
-
-        println!("Create_config_map: {:?}", config_maps);
 
         trace!("config_maps to be returned: {:?}", config_maps);
         Ok(config_maps)
@@ -578,7 +581,6 @@ impl TrinoState {
         if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_CONF) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
                 cb.add_configmapvolume(name, CONFIG_DIR_NAME.to_string());
-                println!("conf name: {:?}", name);
             } else {
                 return Err(error::Error::MissingConfigMapNameError {
                     cm_type: CONFIG_MAP_TYPE_CONF,
@@ -590,17 +592,19 @@ impl TrinoState {
                 pod_name,
             });
         }
-        // hive
-        if let Some(config_map_data) = config_maps.get("hive") {
+
+        // add second volume for hive catalog
+        if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_HIVE) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
-                cb.add_configmapvolume(name, "conf/catalog".to_string());
-                println!("Hive name: {:?}", name);
+                cb.add_configmapvolume(name, format!("{}/catalog", CONFIG_DIR_NAME));
             } else {
-                return Err(error::Error::MissingConfigMapNameError { cm_type: "hive" });
+                return Err(error::Error::MissingConfigMapNameError {
+                    cm_type: CONFIG_MAP_TYPE_HIVE,
+                });
             }
         } else {
             return Err(error::Error::MissingConfigMapError {
-                cm_type: "hive",
+                cm_type: CONFIG_MAP_TYPE_HIVE,
                 pod_name,
             });
         }
@@ -810,35 +814,29 @@ impl ControllerStrategy for TrinoStrategy {
 
         let mut roles = HashMap::new();
 
+        let config_files = vec![
+            PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+            PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
+            PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+            PropertyNameKind::File(JVM_CONFIG.to_string()),
+            PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+        ];
+
         roles.insert(
             TrinoRole::Coordinator.to_string(),
             (
-                vec![
-                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-                    PropertyNameKind::File(JVM_CONFIG.to_string()),
-                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+                config_files.clone().extend(vec![
                     PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
                     PropertyNameKind::File(PASSWORD_DB.to_string()),
                     PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
-                ],
+                ]),
                 context.resource.spec.coordinators.clone().into(),
             ),
         );
 
         roles.insert(
             TrinoRole::Worker.to_string(),
-            (
-                vec![
-                    PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-                    PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-                    PropertyNameKind::File(JVM_CONFIG.to_string()),
-                    PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
-                    PropertyNameKind::File(PASSWORD_DB.to_string()),
-                ],
-                context.resource.spec.workers.clone().into(),
-            ),
+            (config_files, context.resource.spec.workers.clone().into()),
         );
 
         let role_config = transform_all_roles_to_config(&context.resource, roles);
