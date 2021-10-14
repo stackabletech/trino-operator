@@ -24,9 +24,9 @@ spec:
           httpServerHttpPort: 8080
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
           s3Connection:
-            endPoint: s3-de-central.profitbricks.com
-            accessKey: 00c6d2f2d6c0a460aab7
-            secretKey: d2WzGCD4zSYNOwAK9leXMtWP0/KcZpCbLjTg8zwf
+            endPoint: changeme
+            accessKey: changeme
+            secretKey: changeme
             sslEnabled: false
             pathStyleAccess: true
   workers:
@@ -47,8 +47,8 @@ spec:
           httpServerHttpPort: 8081
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
           s3Connection:
-            endPoint: s3-de-central.profitbricks.com
-            accessKey: 00c6d2f2d6c0a460aab7
-            secretKey: d2WzGCD4zSYNOwAK9leXMtWP0/KcZpCbLjTg8zwf
+            endPoint: changeme
+            accessKey: changeme
+            secretKey: changeme
             sslEnabled: false
             pathStyleAccess: true
