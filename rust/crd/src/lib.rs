@@ -271,6 +271,18 @@ impl Configuration for TrinoConfig {
                         HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
                         Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
                     );
+                    result.insert(
+                        "http-server.https.enabled".to_string(),
+                        Some("true".to_string()),
+                    );
+                    result.insert(
+                        "http-server.https.port".to_string(),
+                        Some("8443".to_string()),
+                    );
+                    result.insert(
+                        "http-server.https.keystore.path".to_string(),
+                        Some(format!("{{{{configroot}}}}/{}/{}", CONFIG_DIR_NAME, CERTIFICATE_PEM)),
+                    );
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {
