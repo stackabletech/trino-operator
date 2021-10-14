@@ -63,27 +63,6 @@ spec:
                         queryMaxTotalMemoryPerNode:
                           nullable: true
                           type: string
-                        s3Connection:
-                          description: Contains all the required connection information for S3.
-                          nullable: true
-                          properties:
-                            accessKey:
-                              type: string
-                            endPoint:
-                              type: string
-                            pathStyleAccess:
-                              type: boolean
-                            secretKey:
-                              type: string
-                            sslEnabled:
-                              type: boolean
-                          required:
-                            - accessKey
-                            - endPoint
-                            - pathStyleAccess
-                            - secretKey
-                            - sslEnabled
-                          type: object
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -139,27 +118,6 @@ spec:
                               queryMaxTotalMemoryPerNode:
                                 nullable: true
                                 type: string
-                              s3Connection:
-                                description: Contains all the required connection information for S3.
-                                nullable: true
-                                properties:
-                                  accessKey:
-                                    type: string
-                                  endPoint:
-                                    type: string
-                                  pathStyleAccess:
-                                    type: boolean
-                                  secretKey:
-                                    type: string
-                                  sslEnabled:
-                                    type: boolean
-                                required:
-                                  - accessKey
-                                  - endPoint
-                                  - pathStyleAccess
-                                  - secretKey
-                                  - sslEnabled
-                                type: object
                             type: object
                           configOverrides:
                             additionalProperties:
@@ -230,6 +188,27 @@ spec:
                   type: object
                 nodeEnvironment:
                   type: string
+                s3Connection:
+                  description: Contains all the required connection information for S3.
+                  nullable: true
+                  properties:
+                    accessKey:
+                      type: string
+                    endPoint:
+                      type: string
+                    pathStyleAccess:
+                      type: boolean
+                    secretKey:
+                      type: string
+                    sslEnabled:
+                      type: boolean
+                  required:
+                    - accessKey
+                    - endPoint
+                    - pathStyleAccess
+                    - secretKey
+                    - sslEnabled
+                  type: object
                 version:
                   enum:
                     - 0.0.360
@@ -277,27 +256,6 @@ spec:
                         queryMaxTotalMemoryPerNode:
                           nullable: true
                           type: string
-                        s3Connection:
-                          description: Contains all the required connection information for S3.
-                          nullable: true
-                          properties:
-                            accessKey:
-                              type: string
-                            endPoint:
-                              type: string
-                            pathStyleAccess:
-                              type: boolean
-                            secretKey:
-                              type: string
-                            sslEnabled:
-                              type: boolean
-                          required:
-                            - accessKey
-                            - endPoint
-                            - pathStyleAccess
-                            - secretKey
-                            - sslEnabled
-                          type: object
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -353,27 +311,6 @@ spec:
                               queryMaxTotalMemoryPerNode:
                                 nullable: true
                                 type: string
-                              s3Connection:
-                                description: Contains all the required connection information for S3.
-                                nullable: true
-                                properties:
-                                  accessKey:
-                                    type: string
-                                  endPoint:
-                                    type: string
-                                  pathStyleAccess:
-                                    type: boolean
-                                  secretKey:
-                                    type: string
-                                  sslEnabled:
-                                    type: boolean
-                                required:
-                                  - accessKey
-                                  - endPoint
-                                  - pathStyleAccess
-                                  - secretKey
-                                  - sslEnabled
-                                type: object
                             type: object
                           configOverrides:
                             additionalProperties:

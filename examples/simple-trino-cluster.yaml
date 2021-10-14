@@ -8,6 +8,12 @@ spec:
   hiveReference:
     namespace: default
     name: simple-derby
+  s3Connection:
+    endPoint: changeme
+    accessKey: changeme
+    secretKey: changeme
+    sslEnabled: false
+    pathStyleAccess: true
   coordinators:
     roleGroups:
       default:
@@ -23,12 +29,6 @@ spec:
           metricsPort: 10200
           httpServerHttpPort: 8080
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
-          s3Connection:
-            endPoint: changeme
-            accessKey: changeme
-            secretKey: changeme
-            sslEnabled: false
-            pathStyleAccess: true
   workers:
     roleGroups:
       default:
@@ -46,9 +46,3 @@ spec:
           metricsPort: 10201
           httpServerHttpPort: 8081
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
-          s3Connection:
-            endPoint: changeme
-            accessKey: changeme
-            secretKey: changeme
-            sslEnabled: false
-            pathStyleAccess: true

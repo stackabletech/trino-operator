@@ -84,6 +84,8 @@ pub struct TrinoClusterSpec {
     pub workers: Role<TrinoConfig>,
     pub node_environment: String,
     pub hive_reference: HiveReference,
+    // s3
+    pub s3_connection: Option<S3Connection>,
 }
 
 #[derive(
@@ -182,8 +184,6 @@ pub struct TrinoConfig {
     pub io_trino: Option<String>,
     // jvm.config
     pub metrics_port: Option<u16>,
-    // s3
-    pub s3_connection: Option<S3Connection>,
     // misc
     pub java_home: Option<String>,
 }
@@ -264,7 +264,7 @@ impl Configuration for TrinoConfig {
                 }
             }
             HIVE_PROPERTIES => {
-                if let Some(s3_connection) = &self.s3_connection {
+                if let Some(s3_connection) = &resource.spec.s3_connection {
                     result.insert(
                         S3_ENDPOINT.to_string(),
                         Some(s3_connection.end_point.clone()),
