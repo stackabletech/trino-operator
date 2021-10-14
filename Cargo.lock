@@ -161,18 +161,18 @@ dependencies = [
 
 [[package]]
 name = "const_format"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4556f63e28a78fa5e6f310cfea5647a25636def49a338ab69e33b34a3382057b"
+checksum = "22bc6cd49b0ec407b680c3e380182b6ac63b73991cb7602de350352fc309b614"
 dependencies = [
  "const_format_proc_macros",
 ]
 
 [[package]]
 name = "const_format_proc_macros"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552782506c398da94466b364973b563887e0ca078bf33a76d4163736165e3594"
+checksum = "ef196d5d972878a48da7decb7686eded338b4858fbabeed513d63a7c98b2b82d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1134,9 +1134,9 @@ checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.10"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
+checksum = "c3ca011bd0129ff4ae15cd04c4eef202cadf6c51c21e47aba319b4e0501db741"
 
 [[package]]
 name = "proc-macro-error"
@@ -1592,7 +1592,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "stackable-hive-crd"
 version = "0.1.0-nightly"
-source = "git+https://github.com/stackabletech/hive-operator.git?branch=hackathon#71016c1d728a333c089b915e7f817e19e71c1aed"
+source = "git+https://github.com/stackabletech/hive-operator.git?branch=hackathon#3b4bd6810b8a85f3aa9046acda8495af60cef434"
 dependencies = [
  "duplicate",
  "k8s-openapi",
@@ -1607,6 +1607,26 @@ dependencies = [
  "strum_macros 0.21.1",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "stackable-opa-crd"
+version = "0.4.1-nightly"
+source = "git+https://github.com/stackabletech/opa-operator.git?branch=main#f5fa7daf6f439c5c64f4da828fa5c761ba3af4ff"
+dependencies = [
+ "k8s-openapi",
+ "kube",
+ "rand",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_json",
+ "stackable-operator",
+ "strum",
+ "strum_macros 0.21.1",
+ "thiserror",
+ "tracing",
+ "url",
 ]
 
 [[package]]
@@ -1659,6 +1679,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "stackable-hive-crd",
+ "stackable-opa-crd",
  "stackable-operator",
  "strum",
  "strum_macros 0.21.1",
@@ -1679,6 +1700,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stackable-hive-crd",
+ "stackable-opa-crd",
  "stackable-operator",
  "stackable-trino-crd",
  "strum",
@@ -1918,13 +1940,14 @@ dependencies = [
 
 [[package]]
 name = "tower"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f60422bc7fefa2f3ec70359b8ff1caff59d785877eb70595904605bcc412470f"
+checksum = "d15a6b60cdff0cb039d81d3b37f8bc3d7e53dca09069aae3ef2502ca4834fe30"
 dependencies = [
  "futures-core",
  "futures-util",
  "pin-project 1.0.8",
+ "pin-project-lite",
  "tokio",
  "tokio-util",
  "tower-layer",

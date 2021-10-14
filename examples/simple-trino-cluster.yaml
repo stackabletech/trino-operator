@@ -8,6 +8,9 @@ spec:
   hiveReference:
     namespace: default
     name: simple-derby
+  opa:
+    namespace: default
+    name: simple
   s3Connection:
     endPoint: changeme
     accessKey: changeme

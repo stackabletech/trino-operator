@@ -210,6 +210,18 @@ spec:
                   type: object
                 nodeEnvironment:
                   type: string
+                opa:
+                  description: Contains all necessary information to identify a Stackable managed Open Policy Agent (OPA) and build a connection string for it. The main purpose for this struct is for other operators that need to reference an OPA to use in their CRDs. This has the benefit of keeping references to OPA consistent throughout the entire stack.
+                  nullable: true
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                    - name
+                    - namespace
+                  type: object
                 s3Connection:
                   description: Contains all the required connection information for S3.
                   nullable: true

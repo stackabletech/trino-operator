@@ -14,6 +14,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use stackable_hive_crd::discovery::{HiveReference, S3Connection};
+use stackable_opa_crd::util::OpaReference;
 use stackable_operator::command::{CommandRef, HasCommands, HasRoleRestartOrder};
 use stackable_operator::controller::HasOwned;
 use stackable_operator::crd::HasApplication;
@@ -99,6 +100,7 @@ pub struct TrinoClusterSpec {
     pub coordinators: Role<TrinoConfig>,
     pub workers: Role<TrinoConfig>,
     pub node_environment: String,
+    pub opa: Option<OpaReference>,
     pub hive_reference: HiveReference,
     // s3
     pub s3_connection: Option<S3Connection>,

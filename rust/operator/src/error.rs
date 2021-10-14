@@ -53,6 +53,12 @@ pub enum Error {
         source: product_config::error::Error,
     },
 
+    #[error("Error from OPA: {source}")]
+    OpaError {
+        #[from]
+        source: stackable_opa_crd::error::Error,
+    },
+
     #[error("Operator Framework reported config error: {source}")]
     OperatorConfigError {
         #[from]

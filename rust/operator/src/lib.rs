@@ -8,6 +8,8 @@ use kube::Api;
 use product_config::types::PropertyNameKind;
 use product_config::ProductConfigManager;
 use stackable_hive_crd::discovery::HiveConnectionInformation;
+use stackable_opa_crd::util;
+use stackable_opa_crd::util::{OpaApi, OpaApiProtocol};
 use stackable_operator::builder::{
     ContainerBuilder, ContainerPortBuilder, ObjectMetaBuilder, PodBuilder,
 };
@@ -439,6 +441,44 @@ impl TrinoState {
         }
 
         cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
+
+        // check for opa
+        if let Some(opa_reference) = &self.context.resource.spec.opa {
+            let opa_api = OpaApi::Data {
+                package_path: "trino".to_string(),
+                rule: "".to_string(),
+            };
+
+            let connection_info = util::get_opa_connection_info(
+                &self.context.client,
+                &opa_reference,
+                &opa_api,
+                &OpaApiProtocol::Http,
+                Some(node_name.to_string()),
+            )
+            .await?;
+
+            warn!(
+                "Found valid OPA server [{}]",
+                connection_info.connection_string
+            );
+
+            let mut opa_config = BTreeMap::new();
+
+            opa_config.insert(
+                "access-control.name".to_string(),
+                Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
+            );
+            opa_config.insert(
+                "opa.policy.uri".to_string(),
+                Some(connection_info.connection_string),
+            );
+
+            let config_properties =
+                product_config::writer::to_java_properties_string(opa_config.iter())?;
+
+            cm_conf_data.insert("access-control.properties".to_string(), config_properties);
+        }
 
         // trino config map
         let mut cm_labels = get_recommended_labels(
