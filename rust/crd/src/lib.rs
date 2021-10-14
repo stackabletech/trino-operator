@@ -39,6 +39,7 @@ pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
 pub const PASSWORD_DB: &str = "password.db";
+pub const CERTIFICATE_PEM: &str = "clustercoord.pem";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 pub const NODE_ID: &str = "node.id";
