@@ -40,6 +40,11 @@ spec:
                           minimum: 0.0
                           nullable: true
                           type: integer
+                        httpServerHttpsPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
                         ioTrino:
                           nullable: true
                           type: string
@@ -97,6 +102,11 @@ spec:
                                 nullable: true
                                 type: boolean
                               httpServerHttpPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              httpServerHttpsPort:
                                 format: uint16
                                 minimum: 0.0
                                 nullable: true
@@ -224,6 +234,11 @@ spec:
                           minimum: 0.0
                           nullable: true
                           type: integer
+                        httpServerHttpsPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
                         ioTrino:
                           nullable: true
                           type: string
@@ -281,6 +296,11 @@ spec:
                                 nullable: true
                                 type: boolean
                               httpServerHttpPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              httpServerHttpsPort:
                                 format: uint16
                                 minimum: 0.0
                                 nullable: true

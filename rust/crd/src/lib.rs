@@ -181,6 +181,7 @@ pub struct TrinoConfig {
     // config.properties
     pub coordinator: Option<bool>,
     pub http_server_http_port: Option<u16>,
+    pub http_server_https_port: Option<u16>,
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
     pub query_max_total_memory_per_node: Option<String>,
@@ -279,7 +280,6 @@ impl Configuration for TrinoConfig {
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
                         Some(true.to_string()),
                     );
-                    result.insert(HTTP_SERVER_HTTPS_PORT.to_string(), Some("8443".to_string()));
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
                         Some(format!(
@@ -287,6 +287,12 @@ impl Configuration for TrinoConfig {
                             CONFIG_DIR_NAME, CERTIFICATE_PEM
                         )),
                     );
+                    if let Some(https_port) = &self.http_server_https_port {
+                        result.insert(
+                            HTTP_SERVER_HTTPS_PORT.to_string(),
+                            Some(https_port.to_string()),
+                        );
+                    }
                 }
 
                 if self.password_file_content.is_some() {

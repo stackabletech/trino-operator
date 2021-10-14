@@ -23,6 +23,7 @@ spec:
           nodeDataDir: /tmp/trino/data
           metricsPort: 10200
           httpServerHttpPort: 8080
+          httpServerHttpsPort: 8443
           javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
           passwordFileContent: |
             alice:$2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W

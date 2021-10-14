@@ -122,6 +122,24 @@ properties:
           required: true
       asOfVersion: "0.0.0"
 
+  - property: &httpServerHttpsPort
+      propertyNames:
+        - name: "http-server.https.port"
+          kind:
+            type: "file"
+            file: "config.properties"
+      datatype:
+        type: "integer"
+        min: "1024"
+        max: "65535"
+      defaultValues:
+        - fromVersion: "0.0.0"
+          value: "8443"
+      roles:
+        - name: "coordinator"
+          required: true
+      asOfVersion: "0.0.0"
+
   - property: &queryMaxMemory
       propertyNames:
         - name: "query.max-memory"
