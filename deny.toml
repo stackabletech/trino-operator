@@ -35,6 +35,7 @@ allow = [
 
 exceptions = [
     { name = "stackable-hive-crd", allow = ["OSL-3.0"] },
+    { name = "stackable-opa-crd", allow = ["OSL-3.0"] },
     { name = "stackable-trino-crd", allow = ["OSL-3.0"] },
     { name = "stackable-trino-operator", allow = ["OSL-3.0"] },
     { name = "stackable-trino-operator-binary", allow = ["OSL-3.0"] },
