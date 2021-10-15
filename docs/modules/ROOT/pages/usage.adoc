@@ -6,8 +6,8 @@
 * Accessible S3 Bucket
     ** Endpoint, access-key and secret-key
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
-- Optional for authorization: Deployed Stackable OPA cluster
-- Optional to test queries with https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI]
+* Optional for authorization: Deployed Stackable OPA cluster
+* Optional to test queries with https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI]
 
 == Installation
 

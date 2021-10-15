@@ -24,7 +24,10 @@ async fn main() -> Result<(), error::Error> {
         .subcommand(
             SubCommand::with_name("crd")
                 .setting(AppSettings::ArgRequiredElseHelp)
-                .subcommand(cli::generate_crd_subcommand::<TrinoCluster>()),
+                .subcommand(cli::generate_crd_subcommand::<TrinoCluster>())
+                .subcommand(cli::generate_crd_subcommand::<Restart>())
+                .subcommand(cli::generate_crd_subcommand::<Start>())
+                .subcommand(cli::generate_crd_subcommand::<Stop>()),
         )
         .get_matches();
 
