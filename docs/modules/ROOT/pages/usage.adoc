@@ -1,29 +1,181 @@
 = Usage
 
+Trino works together with the Apache Hive metastore and S3 bucket.
+
 == Prerequisites
 
 * Deployed Stackable Apache Hive metastore
 * Accessible S3 Bucket
     ** Endpoint, access-key and secret-key
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
-* Optional for authorization: Deployed Stackable OPA cluster
+* Optional for authorization: Deployed Stackable OPA cluster + RegoRule server
 * Optional to test queries with https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI]
 
 == Installation
 
 In the following we explain or link the required installation steps.
 
-=== Hive operator
-
 === S3 bucket
 
+Please refer to the S3 provider.
+
+=== Hive operator
+
+Please refer to the https://github.com/stackabletech/hive-operator[Hive] operator and https://docs.stackable.tech/home/index.html[docs].
+
+Both Hive and Trino need the same S3 authentication.
+
 === OPA operator
+
+Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator and https://docs.stackable.tech/home/index.html[docs].
+
+=== Regorule Server
+
+The OPA cluster requires downloading rules from a RegoRule server. You can use your own solution or fall back on the Stackable Regorule Server
+
+Please refer to the https://github.com/stackabletech/regorule-operator[RegoRule] operator and https://docs.stackable.tech/home/index.html[docs].
+
+This is an example custom resource for the Stackable RegoRule server:
+```
+kind: RegoRule
+metadata:
+name: simple
+spec:
+rego: |
+    package trino
+    can_execute_query = true
+
+    can_access_catalog = true
+
+    can_access_schema = true
+
+    can_access_table = true
+
+    can_access_column = true
+
+    can_show_schemas = true
+
+    can_show_tables = true
+
+    default can_select_from_columns = true
+
+    can_select_from_columns {
+      input.request.table.catalog == "system"
+      input.request.table.schema == "information_schema"
+      input.request.table.table == {"tables", "schemata"}[_]
+    }
+
+    can_view_query_owned_by = true
+```
+
+=== Trino
 
 With the prerequisites fulfilled, the CRD for this operator must be created:
 
     kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
 
-To create a single node Trino (v362) cluster with Prometheus metrics exposed on port 9505 (master) and 9506 (region_server):
+To create a single node Trino (v362) cluster with Prometheus metrics exposed on port 10200 (coordinator) and 10201 (worker). Metrics will be `disabled` if you remove the metricsPort porperty. Please adapt the `s3Connection` with your credentials and the `serverCertificate` with your key and certificate:
 
     cat <<EOF | kubectl apply -f -
+    apiVersion: trino.stackable.tech/v1alpha1
+    kind: TrinoCluster
+    metadata:
+      name: simple
+    spec:
+      version: "0.0.362"
+      nodeEnvironment: production
+      hiveReference:
+        namespace: default
+        name: simple-derby
+      opa:
+        namespace: default
+        name: simple
+      s3Connection:
+        endPoint: changeme
+        accessKey: changeme
+        secretKey: changeme
+        sslEnabled: false
+        pathStyleAccess: true
+      coordinators:
+        roleGroups:
+          default:
+            selector:
+              matchExpressions:
+                - operator: In
+                  key: kubernetes.io/hostname
+                  values:
+                    - main-1.stackable.demo
+            config:
+              coordinator: true
+              nodeDataDir: /tmp/trino/data
+              metricsPort: 10200
+              httpServerHttpPort: 8080
+              httpServerHttpsPort: 8443
+              javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
+              passwordFileContent: |
+                alice:$2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
+                bob:$2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+                admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
+              serverCertificate: |
+                -----BEGIN PRIVATE KEY-----
+                some_key
+                -----END PRIVATE KEY-----
+                -----BEGIN CERTIFICATE-----
+                some_certificate
+                -----END CERTIFICATE-----
+      workers:
+        roleGroups:
+          default:
+            selector:
+              matchExpressions:
+                - operator: In
+                  key: kubernetes.io/hostname
+                  values:
+                    - worker-1.stackable.demo
+                    - worker-2.stackable.demo
+                    - worker-3.stackable.demo
+            replicas: 1
+            config:
+              nodeDataDir: /tmp/trino/data2
+              metricsPort: 10201
+              httpServerHttpPort: 8081
+              javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
     EOF
+
+Once all specified pods are created and the S3 bucket contains e.g. the iris data, we can start querying via the Trino CLI.
+After downloading, make it executable via:
+
+    chmod +x trino-cli-363-executable.jar
+
+Check the coordinators node name and connect via Trino CLI:
+
+    ./trino --server <node_name>:<http-port>
+
+Create a schema:
+
+    CREATE SCHEMA IF NOT EXISTS hive.iris
+    WITH (location = 's3a://iris/');
+
+Create the table:
+
+    CREATE TABLE IF NOT EXISTS hive.iris.iris_csv (
+        sepal_length VARCHAR,
+        sepal_width  VARCHAR,
+        petal_length VARCHAR,
+        petal_width  VARCHAR,
+        class        VARCHAR
+    )
+    WITH (
+        external_location = 's3a://iris/csv',
+        format = 'CSV'
+    );
+
+Query data:
+
+    SELECT
+        sepal_length,
+        class
+    FROM hive.iris.iris_csv
+    LIMIT 10;
+
+If you work with opa, try changing some RegoRule entries to false and see if you are not allowed to e.g. list tables or schemas.

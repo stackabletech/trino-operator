@@ -48,7 +48,7 @@ pub const NODE_ID: &str = "node.id";
 pub const NODE_DATA_DIR: &str = "node.data-dir";
 // config.properties
 pub const COORDINATOR: &str = "coordinator";
-pub const HTTP_SERVER_PORT: &str = "http-server.http.port";
+pub const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
 pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
 pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
 pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
@@ -259,7 +259,7 @@ impl Configuration for TrinoConfig {
                 }
                 if let Some(http_server_http_port) = &self.http_server_http_port {
                     result.insert(
-                        HTTP_SERVER_PORT.to_string(),
+                        HTTP_SERVER_HTTP_PORT.to_string(),
                         Some(http_server_http_port.to_string()),
                     );
                 }

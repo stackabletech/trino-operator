@@ -49,7 +49,7 @@ use stackable_trino_crd::discovery::{
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CERTIFICATE_PEM,
     CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DISCOVERY_URI, HIVE_PROPERTIES,
-    HTTPS_PORT, HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_PORT, JAVA_HOME, JVM_CONFIG,
+    HTTPS_PORT, HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_HTTP_PORT, JAVA_HOME, JVM_CONFIG,
     LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
@@ -338,7 +338,7 @@ impl TrinoState {
                     // if we a coordinator, we need to build the discovery string; workers can
                     // use the discovery service once a coordinator was created
                     if role == &TrinoRole::Coordinator {
-                        if let Some(http_port) = config.get(HTTP_SERVER_PORT) {
+                        if let Some(http_port) = config.get(HTTP_SERVER_HTTP_PORT) {
                             let build_discovery = TrinoDiscovery {
                                 node_name: node_name.to_string(),
                                 http_port: http_port.clone(),
@@ -351,7 +351,7 @@ impl TrinoState {
                             );
                         } else {
                             return Err(Error::TrinoCoordinatorMissingPortError {
-                                port: HTTP_SERVER_PORT.to_string(),
+                                port: HTTP_SERVER_HTTP_PORT.to_string(),
                                 discovery_property: DISCOVERY_URI.to_string(),
                             });
                         }
@@ -419,8 +419,9 @@ impl TrinoState {
                 }
                 PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
                     if role == &TrinoRole::Coordinator && !config.is_empty() {
-                        let pw_file_content = config.get(PW_FILE_CONTENT_MAP_KEY).unwrap(); // TODO handle unwrap differently!!
-                        cm_conf_data.insert(file_name.to_string(), pw_file_content.to_string());
+                        if let Some(pw_file_content) = config.get(PW_FILE_CONTENT_MAP_KEY) {
+                            cm_conf_data.insert(file_name.to_string(), pw_file_content.to_string());
+                        }
                     }
                 }
                 PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
@@ -432,8 +433,10 @@ impl TrinoState {
                 }
                 PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
                     if role == &TrinoRole::Coordinator && !config.is_empty() {
-                        let cert_file_content = config.get(CERT_FILE_CONTENT_MAP_KEY).unwrap(); // TODO handle unwrap differently!!
-                        cm_conf_data.insert(file_name.to_string(), cert_file_content.to_string());
+                        if let Some(cert_file_content) = config.get(CERT_FILE_CONTENT_MAP_KEY) {
+                            cm_conf_data
+                                .insert(file_name.to_string(), cert_file_content.to_string());
+                        }
                     }
                 }
                 _ => {}
@@ -580,7 +583,7 @@ impl TrinoState {
 
         let http_port = validated_config
             .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
-            .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_PORT));
+            .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_HTTP_PORT));
 
         let https_port = validated_config
             .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
