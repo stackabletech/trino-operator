@@ -36,37 +36,54 @@ The OPA cluster requires downloading rules from a RegoRule server. You can use y
 Please refer to the https://github.com/stackabletech/regorule-operator[RegoRule] operator and https://docs.stackable.tech/home/index.html[docs].
 
 This is an example custom resource for the Stackable RegoRule server:
-```
-kind: RegoRule
-metadata:
-name: simple
-spec:
-rego: |
-    package trino
-    can_execute_query = true
 
-    can_access_catalog = true
+    apiVersion: opa.stackable.tech/v1alpha1
+    kind: RegoRule
+    metadata:
+      name: simple
+    spec:
+      rego: |
+        package trino
 
-    can_access_schema = true
+        can_execute_query = true
 
-    can_access_table = true
+        can_access_catalog = true
 
-    can_access_column = true
+        can_create_schema = true
 
-    can_show_schemas = true
+        can_drop_schema = true
 
-    can_show_tables = true
+        can_access_schema = true
 
-    default can_select_from_columns = true
+        can_create_table = true
 
-    can_select_from_columns {
-      input.request.table.catalog == "system"
-      input.request.table.schema == "information_schema"
-      input.request.table.table == {"tables", "schemata"}[_]
-    }
+        can_drop_table = true
 
-    can_view_query_owned_by = true
-```
+        can_access_table = true
+
+        can_access_column = true
+
+        can_show_schemas = true
+
+        can_show_tables = true
+
+        default can_select_from_columns = false
+
+        can_select_from_columns {
+          input.request.table.catalog == "system"
+          input.request.table.schema == "information_schema"
+          input.request.table.table == {"tables", "schemata"}[_]
+        }
+
+        can_select_from_columns {
+          input.request.table.catalog == "hive"
+          input.request.table.schema == "iris"
+          input.request.table.table == {"iris_parquet"}[_]
+        }
+
+        can_view_query_owned_by = true
+
+
 
 === Trino
 
@@ -142,40 +159,35 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
               javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
     EOF
 
-Once all specified pods are created and the S3 bucket contains e.g. the iris data, we can start querying via the Trino CLI.
-After downloading, make it executable via:
+Assuming you've downloaded and installed the Trino client, connect to the Trino coordinator:
 
-    chmod +x trino-cli-363-executable.jar
+    ./trino --server <node_name>:<https-port> --user alice --password
 
-Check the coordinators node name and connect via Trino CLI:
+If you use self signed certificates, you also need to add `--insecure` to the command above.
 
-    ./trino --server <node_name>:<http-port>
-
-Create a schema:
+Create a schema and a  table for the Iris data located in S3:
 
     CREATE SCHEMA IF NOT EXISTS hive.iris
     WITH (location = 's3a://iris/');
 
-Create the table:
-
-    CREATE TABLE IF NOT EXISTS hive.iris.iris_csv (
-        sepal_length VARCHAR,
-        sepal_width  VARCHAR,
-        petal_length VARCHAR,
-        petal_width  VARCHAR,
-        class        VARCHAR
+    CREATE TABLE IF NOT EXISTS hive.iris.iris_parquet (
+      sepal_length DOUBLE,
+      sepal_width  DOUBLE,
+      petal_length DOUBLE,
+      petal_width  DOUBLE,
+      class        VARCHAR
     )
     WITH (
-        external_location = 's3a://iris/csv',
-        format = 'CSV'
+      external_location = 's3a://iris/parq',
+      format = 'PARQUET'
     );
 
-Query data:
+Query the data:
 
     SELECT
         sepal_length,
         class
-    FROM hive.iris.iris_csv
+    FROM hive.iris.iris_parquet
     LIMIT 10;
 
 If you work with opa, try changing some RegoRule entries to false and see if you are not allowed to e.g. list tables or schemas.
