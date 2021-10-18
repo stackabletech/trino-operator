@@ -60,7 +60,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use strum::IntoEnumIterator;
 use tracing::error;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace};
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";
@@ -95,15 +95,11 @@ impl TrinoState {
         let hive_ref: &stackable_hive_crd::discovery::HiveReference =
             &self.context.resource.spec.hive_reference;
 
-        // if let Some(chroot) = zk_ref.chroot.as_deref() {
-        //     stackable_zookeeper_crd::discovery::is_valid_zookeeper_path(chroot)?;
-        // }
-
         let hive_info =
             stackable_hive_crd::discovery::get_hive_connection_info(&self.context.client, hive_ref)
                 .await?;
 
-        warn!("Received Hive connection information: [{:?}]", hive_info);
+        debug!("Received Hive connection information: [{:?}]", hive_info);
 
         self.hive_information = hive_info;
 
@@ -461,7 +457,7 @@ impl TrinoState {
             )
             .await?;
 
-            warn!(
+            debug!(
                 "Found valid OPA server [{}]",
                 connection_info.connection_string
             );
