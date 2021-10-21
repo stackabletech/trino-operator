@@ -47,7 +47,7 @@ use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
 use strum::IntoEnumIterator;
 use tracing::error;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, warn};
 
 use stackable_trino_crd::commands::{Restart, Start, Stop};
 use stackable_trino_crd::discovery::{
@@ -111,14 +111,16 @@ impl TrinoState {
 
     async fn create_rego_rules(&self) -> TrinoReconcileResult {
         let spec: &TrinoClusterSpec = &self.context.resource.spec;
-        let rego = stackable_trino_crd::authorization::build_rego_file(&spec.authorization);
+        if let Some(authorization) = &spec.authorization {
+            let rego_rules = stackable_trino_crd::authorization::build_rego_rules(authorization);
 
-        stackable_trino_crd::authorization::create_or_update_regorule_resource(
-            &self.context.client,
-            rego,
-        )
-        .await?;
-
+            stackable_trino_crd::authorization::create_or_update_rego_rule_resource(
+                &self.context.client,
+                &authorization.package,
+                rego_rules,
+            )
+            .await?;
+        }
         Ok(ReconcileFunctionAction::Continue)
     }
 
@@ -459,8 +461,16 @@ impl TrinoState {
 
         // check for opa
         if let Some(opa_reference) = &self.context.resource.spec.opa {
+            let package = match self.context.resource.spec.authorization.as_ref() {
+                Some(auth) => auth.package.clone(),
+                None => {
+                    warn!("No package specified in 'authorization'. Defaulting to 'trino'.");
+                    "trino".to_string()
+                }
+            };
+
             let opa_api = OpaApi::Data {
-                package_path: "trino".to_string(),
+                package_path: package.to_string(),
                 rule: "".to_string(),
             };
 
@@ -925,8 +935,6 @@ impl ControllerStrategy for TrinoStrategy {
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_controller(client: Client, product_config_path: &str) -> OperatorResult<()> {
     let api: Api<TrinoCluster> = client.get_all_api();
-    //let rego_api: Api<stackable_regorule_crd::RegoRule> = client.get_all_api();
-    let rego_api: Api<stackable_regorule_crd::RegoRule> = client.get_namespaced_api("default");
     let pods_api: Api<Pod> = client.get_all_api();
     let config_maps_api: Api<ConfigMap> = client.get_all_api();
     let cmd_restart_api: Api<Restart> = client.get_all_api();
@@ -934,7 +942,6 @@ pub async fn create_controller(client: Client, product_config_path: &str) -> Ope
     let cmd_stop_api: Api<Stop> = client.get_all_api();
 
     let controller = Controller::new(api)
-        .owns(rego_api, ListParams::default())
         .owns(pods_api, ListParams::default())
         .owns(config_maps_api, ListParams::default())
         .owns(cmd_restart_api, ListParams::default())

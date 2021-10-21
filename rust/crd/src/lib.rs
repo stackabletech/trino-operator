@@ -100,15 +100,13 @@ pub const CONFIG_DIR_NAME: &str = "conf";
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
     pub version: TrinoVersion,
+    pub node_environment: String,
+    pub hive_reference: HiveReference,
+    pub opa: Option<OpaReference>,
+    pub authorization: Option<Authorization>,
+    pub s3_connection: Option<S3Connection>,
     pub coordinators: Role<TrinoConfig>,
     pub workers: Role<TrinoConfig>,
-    pub node_environment: String,
-    pub opa: Option<OpaReference>,
-    pub hive_reference: HiveReference,
-    // s3
-    pub s3_connection: Option<S3Connection>,
-    // authorization
-    pub authorization: Authorization,
 }
 
 #[derive(

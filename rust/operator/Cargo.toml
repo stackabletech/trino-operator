@@ -12,7 +12,6 @@ product-config = { git = "https://github.com/stackabletech/product-config.git", 
 stackable-hive-crd = { git = "https://github.com/stackabletech/hive-operator.git", branch = "hackathon" }
 stackable-opa-crd = { git = "https://github.com/stackabletech/opa-operator.git", branch = "main" }
 stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", branch = "main" }
-stackable-regorule-crd = { git = "https://github.com/stackabletech/regorule-operator.git", branch = "main" }
 stackable-trino-crd = { path = "../crd" }
 
 async-trait = "0.1"

@@ -11,12 +11,6 @@ spec:
   opa:
     namespace: default
     name: simple
-  s3Connection:
-    endPoint: changeme
-    accessKey: changeme
-    secretKey: changeme
-    sslEnabled: false
-    pathStyleAccess: true
   authorization:
     packageName: trino
     userPermissions:
@@ -30,6 +24,7 @@ spec:
             write: true
           iris_csv:
             read: true
+            write: true
       bob:
         schemas:
           read: false
@@ -37,6 +32,12 @@ spec:
         tables:
           iris_parquet:
             read: true
+  s3Connection:
+    endPoint: changeme
+    accessKey: changeme
+    secretKey: changeme
+    sslEnabled: false
+    pathStyleAccess: true
   coordinators:
     roleGroups:
       default:
