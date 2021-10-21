@@ -22,6 +22,41 @@ spec:
           properties:
             spec:
               properties:
+                authorization:
+                  properties:
+                    packageName:
+                      type: string
+                    userPermissions:
+                      additionalProperties:
+                        properties:
+                          schemas:
+                            nullable: true
+                            properties:
+                              read:
+                                nullable: true
+                                type: boolean
+                              write:
+                                nullable: true
+                                type: boolean
+                            type: object
+                          tables:
+                            additionalProperties:
+                              properties:
+                                read:
+                                  nullable: true
+                                  type: boolean
+                                write:
+                                  nullable: true
+                                  type: boolean
+                              type: object
+                            nullable: true
+                            type: object
+                        type: object
+                      type: object
+                  required:
+                    - packageName
+                    - userPermissions
+                  type: object
                 coordinators:
                   properties:
                     cliOverrides:
@@ -422,6 +457,7 @@ spec:
                     - roleGroups
                   type: object
               required:
+                - authorization
                 - coordinators
                 - hiveReference
                 - nodeEnvironment

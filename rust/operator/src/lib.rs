@@ -1,5 +1,8 @@
-use crate::error::Error;
-mod error;
+use std::collections::{BTreeMap, HashMap};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use k8s_openapi::api::core::v1::{ConfigMap, Pod};
@@ -42,6 +45,10 @@ use stackable_operator::scheduler::{
 use stackable_operator::status::HasClusterExecutionStatus;
 use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
+use strum::IntoEnumIterator;
+use tracing::error;
+use tracing::{debug, info, trace};
+
 use stackable_trino_crd::commands::{Restart, Start, Stop};
 use stackable_trino_crd::discovery::{
     get_trino_discovery_from_pods, TrinoDiscovery, TrinoDiscoveryProtocol,
@@ -53,14 +60,10 @@ use stackable_trino_crd::{
     LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
-use std::collections::{BTreeMap, HashMap};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::time::Duration;
-use strum::IntoEnumIterator;
-use tracing::error;
-use tracing::{debug, info, trace};
+
+use crate::error::Error;
+
+mod error;
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";
@@ -102,6 +105,19 @@ impl TrinoState {
         debug!("Received Hive connection information: [{:?}]", hive_info);
 
         self.hive_information = hive_info;
+
+        Ok(ReconcileFunctionAction::Continue)
+    }
+
+    async fn create_rego_rules(&self) -> TrinoReconcileResult {
+        let spec: &TrinoClusterSpec = &self.context.resource.spec;
+        let rego = stackable_trino_crd::authorization::build_rego_file(&spec.authorization);
+
+        stackable_trino_crd::authorization::create_or_update_regorule_resource(
+            &self.context.client,
+            rego,
+        )
+        .await?;
 
         Ok(ReconcileFunctionAction::Continue)
     }
@@ -774,6 +790,8 @@ impl ReconciliationState for TrinoState {
                         .wait_for_running_and_ready_pods(&self.existing_pods),
                 )
                 .await?
+                .then(self.create_rego_rules())
+                .await?
                 .then(self.process_command())
                 .await?
                 .then(self.context.delete_excess_pods(
@@ -907,6 +925,8 @@ impl ControllerStrategy for TrinoStrategy {
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_controller(client: Client, product_config_path: &str) -> OperatorResult<()> {
     let api: Api<TrinoCluster> = client.get_all_api();
+    //let rego_api: Api<stackable_regorule_crd::RegoRule> = client.get_all_api();
+    let rego_api: Api<stackable_regorule_crd::RegoRule> = client.get_namespaced_api("default");
     let pods_api: Api<Pod> = client.get_all_api();
     let config_maps_api: Api<ConfigMap> = client.get_all_api();
     let cmd_restart_api: Api<Restart> = client.get_all_api();
@@ -914,6 +934,7 @@ pub async fn create_controller(client: Client, product_config_path: &str) -> Ope
     let cmd_stop_api: Api<Stop> = client.get_all_api();
 
     let controller = Controller::new(api)
+        .owns(rego_api, ListParams::default())
         .owns(pods_api, ListParams::default())
         .owns(config_maps_api, ListParams::default())
         .owns(cmd_restart_api, ListParams::default())

@@ -1,9 +1,7 @@
-pub mod commands;
-pub mod discovery;
-pub mod error;
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 
-use crate::commands::{Restart, Start, Stop};
-
+use crate::authorization::Authorization;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::schemars::_serde_json::Value;
 use kube::api::ApiResource;
@@ -26,10 +24,15 @@ use stackable_operator::status::{
     Versioned,
 };
 use stackable_operator::versioning::{ProductVersion, Versioning, VersioningState};
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use strum_macros::Display;
 use strum_macros::EnumIter;
+
+use crate::commands::{Restart, Start, Stop};
+
+pub mod authorization;
+pub mod commands;
+pub mod discovery;
+pub mod error;
 
 pub const APP_NAME: &str = "trino";
 pub const MANAGED_BY: &str = "trino-operator";
@@ -104,6 +107,8 @@ pub struct TrinoClusterSpec {
     pub hive_reference: HiveReference,
     // s3
     pub s3_connection: Option<S3Connection>,
+    // authorization
+    pub authorization: Authorization,
 }
 
 #[derive(
@@ -516,10 +521,12 @@ impl HasCurrentCommand for TrinoClusterStatus {
 
 #[cfg(test)]
 mod tests {
-    use crate::TrinoVersion;
+    use std::str::FromStr;
+
     use semver::Version;
     use stackable_operator::versioning::{Versioning, VersioningState};
-    use std::str::FromStr;
+
+    use crate::TrinoVersion;
 
     #[test]
     fn test_trino_version_versioning() {

@@ -17,6 +17,26 @@ spec:
     secretKey: changeme
     sslEnabled: false
     pathStyleAccess: true
+  authorization:
+    packageName: trino
+    userPermissions:
+      admin:
+        schemas:
+          read: true
+          write: true
+        tables:
+          iris_parquet:
+            read: true
+            write: true
+          iris_csv:
+            read: true
+      bob:
+        schemas:
+          read: false
+          write: false
+        tables:
+          iris_parquet:
+            read: true
   coordinators:
     roleGroups:
       default:
