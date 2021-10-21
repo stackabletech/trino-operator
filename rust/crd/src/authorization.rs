@@ -8,7 +8,7 @@ use stackable_operator::client::Client;
 use stackable_operator::error::OperatorResult;
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
-use tracing::debug;
+use tracing::{debug, warn};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,21 +61,15 @@ pub async fn create_or_update_rego_rule_resource(
                         .as_deref()
                         .unwrap_or("<no-name-set>")
                 );
-                // TODO: we spawn another client here with the correct field selector
-                //    when implementing we could not make it work with the standard client.
-                let rego_client =
-                    client::create_client(Some("opa.stackable.tech".to_string())).await?;
-                let api: Api<RegoRule> = rego_client.get_namespaced_api("default");
+
+                let api = get_api("opa.stackable.tech", "default").await?;
                 api.replace(package_name, &PostParams::default(), &old_rego_rule)
                     .await?;
             }
         }
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
-            // TODO: we spawn another client here with the correct field selector
-            //    when implementing we could not make it work with the standard client.
-            let rego_client = client::create_client(Some("opa.stackable.tech".to_string())).await?;
-            let api: Api<RegoRule> = rego_client.get_namespaced_api("default");
+            let api = get_api("opa.stackable.tech", "default").await?;
             api.create(&PostParams::default(), &rego_rule_resource)
                 .await?;
         }
@@ -101,7 +95,13 @@ fn build_user_permission_json(user_permissions: &BTreeMap<String, UserPermission
     let mut user_json = String::new();
 
     user_json.push_str("    users = ");
-    user_json.push_str(&serde_json::to_string(&user_permissions).unwrap());
+    match &serde_json::to_string(&user_permissions) {
+        Ok(json) => user_json.push_str(json),
+        Err(err) => warn!(
+            "Could not convert user permissions to json. Please check the input: {}",
+            err.to_string()
+        ),
+    }
     user_json.push('\n');
 
     user_json
@@ -199,6 +199,14 @@ fn build_helper_rego_rules() -> String {
     sub_rules.to_string()
 }
 
+async fn get_api(field_manager: &str, namespace: &str) -> OperatorResult<Api<RegoRule>> {
+    // TODO: We spawn another client here with the correct field selector.
+    //    During implementation we could not make it work with the standard client.
+    //    We needed a different field selector (opa.stackable.tech) instead of the trino one.
+    let rego_client = client::create_client(Some(field_manager.to_string())).await?;
+    Ok(rego_client.get_namespaced_api(namespace))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,8 +237,13 @@ mod tests {
                 read: true
     "},
     )]
-    fn auth_test(#[case] auth: &str) {
-        let _parsed_auth = parse_authorization_from_yaml(auth);
+    fn test_build_rego_rules(#[case] auth: &str) {
+        let authorization = parse_authorization_from_yaml(auth);
+        let rego_rules = build_rego_rules(&authorization);
+
+        assert!(rego_rules.contains("package trino"));
+        assert!(rego_rules.contains("user_can_read_table"));
+        assert!(rego_rules.contains("can_drop_schema"));
     }
 
     fn parse_authorization_from_yaml(authorization: &str) -> Authorization {
