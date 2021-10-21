@@ -53,15 +53,22 @@ pub async fn create_or_update_rego_rule_resource(
 
             if old_rego_rule.spec.rego != new_rego_rule_spec.rego {
                 old_rego_rule.spec.rego = new_rego_rule_spec.rego;
-                debug!("Replacing content...");
+                debug!(
+                    "Existing Rego Rule [{}] differs from spec. Replacing content...",
+                    old_rego_rule
+                        .metadata
+                        .name
+                        .as_deref()
+                        .unwrap_or("<no-name-set>")
+                );
+                // TODO: we spawn another client here with the correct field selector
+                //    when implementing we could not make it work with the standard client.
+                let rego_client =
+                    client::create_client(Some("opa.stackable.tech".to_string())).await?;
+                let api: Api<RegoRule> = rego_client.get_namespaced_api("default");
+                api.replace(package_name, &PostParams::default(), &old_rego_rule)
+                    .await?;
             }
-
-            // TODO: we spawn another client here with the correct field selector
-            //    when implementing we could not make it work with the standard client.
-            let rego_client = client::create_client(Some("opa.stackable.tech".to_string())).await?;
-            let api: Api<RegoRule> = rego_client.get_namespaced_api("default");
-            api.replace(package_name, &PostParams::default(), &old_rego_rule)
-                .await?;
         }
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
