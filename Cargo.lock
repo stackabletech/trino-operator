@@ -1607,7 +1607,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "stackable-hive-crd"
 version = "0.1.0-nightly"
-source = "git+https://github.com/stackabletech/hive-operator.git?branch=hackathon#32e67600edc7bad2b502044d0c815c88f6d208a6"
+source = "git+https://github.com/stackabletech/hive-operator.git?branch=main#af45d2cd9a5ae505f8a8a9d75741ec4686d7650f"
 dependencies = [
  "duplicate",
  "k8s-openapi",
