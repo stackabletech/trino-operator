@@ -12,8 +12,8 @@ spec:
     namespace: default
     name: simple
   authorization:
-    packageName: trino
-    userPermissions:
+    package: trino
+    permissions:
       admin:
         schemas:
           read: true
@@ -24,7 +24,6 @@ spec:
             write: true
           iris_csv:
             read: true
-            write: true
       bob:
         schemas:
           read: false

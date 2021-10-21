@@ -201,27 +201,29 @@ mod tests {
     #[rstest]
     #[case::test(
     indoc! {"
-        packageName: trino
-        userPermissions:
-          - userName: admin
-            schemas: 
+        package: trino
+        permissions:
+          admin:
+            schemas:
               read: true
               write: true
-            tables: 
-              test_table: 
+            tables:
+              test_table_1:
                 read: true
                 write: true
-              test_table_2: 
+              test_table_2:
                 read: true
-              test_table_3: 
-                write: true
+          bob:
+            schemas:
+              read: false
+              write: false
+            tables:
+              test_table_1:
+                read: true
     "},
     )]
     fn auth_test(#[case] auth: &str) {
-        let parsed_auth = parse_authorization_from_yaml(auth);
-        println!("{:?}", parsed_auth);
-
-        println!("{:?}", build_rego_rules(&parsed_auth));
+        let _parsed_auth = parse_authorization_from_yaml(auth);
     }
 
     fn parse_authorization_from_yaml(authorization: &str) -> Authorization {
