@@ -1,3 +1,6 @@
+use crate::error::Error;
+mod error;
+
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::pin::Pin;
@@ -64,6 +67,14 @@ use stackable_trino_crd::{
 use crate::error::Error;
 
 mod error;
+use std::collections::{BTreeMap, HashMap};
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
+use strum::IntoEnumIterator;
+use tracing::error;
+use tracing::{debug, info, trace};
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";

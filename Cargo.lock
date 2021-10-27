@@ -1185,21 +1185,6 @@ dependencies = [
 
 [[package]]
 name = "product-config"
-version = "0.1.0"
-source = "git+https://github.com/stackabletech/product-config.git?tag=0.1.0#2c8f66264cceca02d0a7ecb413435041cd7d0ca6"
-dependencies = [
- "java-properties",
- "regex",
- "schemars",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "thiserror",
-]
-
-[[package]]
-name = "product-config"
 version = "0.2.0-nightly"
 source = "git+https://github.com/stackabletech/product-config.git?branch=main#53c4bac3aa52bf61f5cef4fc47447be67749c3ce"
 dependencies = [
@@ -1612,12 +1597,12 @@ dependencies = [
  "duplicate",
  "k8s-openapi",
  "kube",
- "product-config 0.2.0-nightly",
+ "product-config",
  "schemars",
  "semver",
  "serde",
  "serde_json",
- "stackable-operator 0.2.3-nightly",
+ "stackable-operator",
  "strum",
  "strum_macros 0.21.1",
  "thiserror",
@@ -1636,46 +1621,12 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "stackable-operator 0.2.3-nightly",
+ "stackable-operator",
  "strum",
  "strum_macros 0.21.1",
  "thiserror",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "stackable-operator"
-version = "0.2.2"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.2.2#a4d00c8cfb72c70ce6a2bf77334375a00aea3300"
-dependencies = [
- "async-trait",
- "backoff",
- "chrono",
- "clap",
- "const_format",
- "either",
- "futures",
- "json-patch",
- "k8s-openapi",
- "kube",
- "kube-runtime",
- "lazy_static",
- "product-config 0.1.0",
- "rand",
- "regex",
- "schemars",
- "serde",
- "serde_json",
- "serde_yaml",
- "strum",
- "strum_macros 0.21.1",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -1695,7 +1646,7 @@ dependencies = [
  "kube",
  "kube-runtime",
  "lazy_static",
- "product-config 0.2.0-nightly",
+ "product-config",
  "rand",
  "regex",
  "schemars",
@@ -1713,19 +1664,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stackable-regorule-crd"
-version = "0.2.0-nightly"
-source = "git+https://github.com/stackabletech/regorule-operator.git?branch=main#f500306045b6fea010e664602dc226f143eb1b7f"
-dependencies = [
- "k8s-openapi",
- "kube",
- "schemars",
- "serde",
- "serde_json",
- "stackable-operator 0.2.2",
-]
-
-[[package]]
 name = "stackable-trino-crd"
 version = "0.1.0-nightly"
 dependencies = [
@@ -1733,7 +1671,7 @@ dependencies = [
  "indoc",
  "k8s-openapi",
  "kube",
- "product-config 0.2.0-nightly",
+ "product-config",
  "rstest",
  "schemars",
  "semver",
@@ -1742,8 +1680,7 @@ dependencies = [
  "serde_yaml",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator 0.2.3-nightly",
- "stackable-regorule-crd",
+ "stackable-operator",
  "strum",
  "strum_macros 0.21.1",
  "thiserror",
@@ -1758,13 +1695,13 @@ dependencies = [
  "futures",
  "k8s-openapi",
  "kube",
- "product-config 0.2.0-nightly",
+ "product-config",
  "rstest",
  "serde",
  "serde_json",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator 0.2.3-nightly",
+ "stackable-operator",
  "stackable-trino-crd",
  "strum",
  "strum_macros 0.21.1",
@@ -1780,7 +1717,7 @@ dependencies = [
  "clap",
  "k8s-openapi",
  "kube",
- "stackable-operator 0.2.3-nightly",
+ "stackable-operator",
  "stackable-trino-crd",
  "stackable-trino-operator",
  "tokio",

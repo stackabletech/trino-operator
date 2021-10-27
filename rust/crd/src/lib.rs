@@ -2,6 +2,12 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use crate::authorization::Authorization;
+pub mod commands;
+pub mod discovery;
+pub mod error;
+
+use crate::commands::{Restart, Start, Stop};
+
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::schemars::_serde_json::Value;
 use kube::api::ApiResource;
