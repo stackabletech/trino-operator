@@ -1,11 +1,6 @@
-use crate::error::Error;
 mod error;
 
-use std::collections::{BTreeMap, HashMap};
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::time::Duration;
+use crate::error::Error;
 
 use async_trait::async_trait;
 use k8s_openapi::api::core::v1::{ConfigMap, Pod};
@@ -48,10 +43,6 @@ use stackable_operator::scheduler::{
 use stackable_operator::status::HasClusterExecutionStatus;
 use stackable_operator::status::{init_status, ClusterExecutionStatus};
 use stackable_operator::versioning::{finalize_versioning, init_versioning};
-use strum::IntoEnumIterator;
-use tracing::error;
-use tracing::{debug, info, trace, warn};
-
 use stackable_trino_crd::commands::{Restart, Start, Stop};
 use stackable_trino_crd::discovery::{
     get_trino_discovery_from_pods, TrinoDiscovery, TrinoDiscoveryProtocol,
@@ -63,18 +54,13 @@ use stackable_trino_crd::{
     LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
-
-use crate::error::Error;
-
-mod error;
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use strum::IntoEnumIterator;
-use tracing::error;
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";

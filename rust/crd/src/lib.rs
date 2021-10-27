@@ -1,12 +1,12 @@
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
-
-use crate::authorization::Authorization;
+pub mod authorization;
 pub mod commands;
 pub mod discovery;
 pub mod error;
 
+use crate::authorization::Authorization;
 use crate::commands::{Restart, Start, Stop};
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::schemars::_serde_json::Value;
@@ -32,13 +32,6 @@ use stackable_operator::status::{
 use stackable_operator::versioning::{ProductVersion, Versioning, VersioningState};
 use strum_macros::Display;
 use strum_macros::EnumIter;
-
-use crate::commands::{Restart, Start, Stop};
-
-pub mod authorization;
-pub mod commands;
-pub mod discovery;
-pub mod error;
 
 pub const APP_NAME: &str = "trino";
 pub const MANAGED_BY: &str = "trino-operator";
