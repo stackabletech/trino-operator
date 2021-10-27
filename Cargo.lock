@@ -1604,8 +1604,8 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "stackable-hive-crd"
-version = "0.1.0-nightly"
-source = "git+https://github.com/stackabletech/hive-operator.git?branch=main#27888998c3de8d0332b3ebfa4e6ca04f21993ecc"
+version = "0.1.0"
+source = "git+https://github.com/stackabletech/hive-operator.git?tag=0.1.0#936095231053357df7c48ff8a1b8fbb680f3349a"
 dependencies = [
  "duplicate",
  "semver",
@@ -1620,8 +1620,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-opa-crd"
-version = "0.5.0-nightly"
-source = "git+https://github.com/stackabletech/opa-operator.git?branch=main#7875c32965a155e527269827aea5683c865d538b"
+version = "0.4.1"
+source = "git+https://github.com/stackabletech/opa-operator.git?tag=0.4.1#ebe2c0b59abb5e959508fd1af0f0360426e49cdb"
 dependencies = [
  "rand",
  "semver",
