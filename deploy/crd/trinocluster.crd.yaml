@@ -1,0 +1,532 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: trinoclusters.trino.stackable.tech
+spec:
+  group: trino.stackable.tech
+  names:
+    categories: []
+    kind: TrinoCluster
+    plural: trinoclusters
+    shortNames:
+      - trino
+    singular: trinocluster
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns: []
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: "Auto-generated derived type for TrinoClusterSpec via `CustomResource`"
+          properties:
+            spec:
+              properties:
+                coordinators:
+                  properties:
+                    cliOverrides:
+                      additionalProperties:
+                        type: string
+                      nullable: true
+                      type: object
+                    config:
+                      nullable: true
+                      properties:
+                        coordinator:
+                          nullable: true
+                          type: boolean
+                        httpServerHttpPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        httpServerHttpsPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        ioTrino:
+                          nullable: true
+                          type: string
+                        javaHome:
+                          nullable: true
+                          type: string
+                        metricsPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        nodeDataDir:
+                          nullable: true
+                          type: string
+                        passwordFileContent:
+                          nullable: true
+                          type: string
+                        queryMaxMemory:
+                          nullable: true
+                          type: string
+                        queryMaxMemoryPerNode:
+                          nullable: true
+                          type: string
+                        queryMaxTotalMemoryPerNode:
+                          nullable: true
+                          type: string
+                        serverCertificate:
+                          nullable: true
+                          type: string
+                      type: object
+                    configOverrides:
+                      additionalProperties:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      nullable: true
+                      type: object
+                    envOverrides:
+                      additionalProperties:
+                        type: string
+                      nullable: true
+                      type: object
+                    roleGroups:
+                      additionalProperties:
+                        properties:
+                          cliOverrides:
+                            additionalProperties:
+                              type: string
+                            nullable: true
+                            type: object
+                          config:
+                            nullable: true
+                            properties:
+                              coordinator:
+                                nullable: true
+                                type: boolean
+                              httpServerHttpPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              httpServerHttpsPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              ioTrino:
+                                nullable: true
+                                type: string
+                              javaHome:
+                                nullable: true
+                                type: string
+                              metricsPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              nodeDataDir:
+                                nullable: true
+                                type: string
+                              passwordFileContent:
+                                nullable: true
+                                type: string
+                              queryMaxMemory:
+                                nullable: true
+                                type: string
+                              queryMaxMemoryPerNode:
+                                nullable: true
+                                type: string
+                              queryMaxTotalMemoryPerNode:
+                                nullable: true
+                                type: string
+                              serverCertificate:
+                                nullable: true
+                                type: string
+                            type: object
+                          configOverrides:
+                            additionalProperties:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            nullable: true
+                            type: object
+                          envOverrides:
+                            additionalProperties:
+                              type: string
+                            nullable: true
+                            type: object
+                          replicas:
+                            format: uint16
+                            minimum: 0.0
+                            nullable: true
+                            type: integer
+                          selector:
+                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                            nullable: true
+                            properties:
+                              matchExpressions:
+                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                items:
+                                  description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
+                                  properties:
+                                    key:
+                                      description: key is the label key that the selector applies to.
+                                      type: string
+                                    operator:
+                                      description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
+                                      type: string
+                                    values:
+                                      description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                    - key
+                                    - operator
+                                  type: object
+                                type: array
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
+                                type: object
+                            type: object
+                        type: object
+                      type: object
+                  required:
+                    - roleGroups
+                  type: object
+                hiveReference:
+                  description: Contains all necessary information to identify a Stackable managed Hive cluster and build a connection string for it. The main purpose for this struct is for other operators that need to reference a Hive ensemble to use in their CRDs. This has the benefit of keeping references to Hive ensembles consistent throughout the entire stack.
+                  properties:
+                    db:
+                      nullable: true
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                    - name
+                    - namespace
+                  type: object
+                nodeEnvironment:
+                  type: string
+                opa:
+                  description: Contains all necessary information to identify a Stackable managed Open Policy Agent (OPA) and build a connection string for it. The main purpose for this struct is for other operators that need to reference an OPA to use in their CRDs. This has the benefit of keeping references to OPA consistent throughout the entire stack.
+                  nullable: true
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                    - name
+                    - namespace
+                  type: object
+                s3Connection:
+                  description: Contains all the required connection information for S3.
+                  nullable: true
+                  properties:
+                    accessKey:
+                      type: string
+                    endPoint:
+                      type: string
+                    pathStyleAccess:
+                      type: boolean
+                    secretKey:
+                      type: string
+                    sslEnabled:
+                      type: boolean
+                  required:
+                    - accessKey
+                    - endPoint
+                    - pathStyleAccess
+                    - secretKey
+                    - sslEnabled
+                  type: object
+                version:
+                  enum:
+                    - 0.0.360
+                    - 0.0.361
+                    - 0.0.362
+                  type: string
+                workers:
+                  properties:
+                    cliOverrides:
+                      additionalProperties:
+                        type: string
+                      nullable: true
+                      type: object
+                    config:
+                      nullable: true
+                      properties:
+                        coordinator:
+                          nullable: true
+                          type: boolean
+                        httpServerHttpPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        httpServerHttpsPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        ioTrino:
+                          nullable: true
+                          type: string
+                        javaHome:
+                          nullable: true
+                          type: string
+                        metricsPort:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        nodeDataDir:
+                          nullable: true
+                          type: string
+                        passwordFileContent:
+                          nullable: true
+                          type: string
+                        queryMaxMemory:
+                          nullable: true
+                          type: string
+                        queryMaxMemoryPerNode:
+                          nullable: true
+                          type: string
+                        queryMaxTotalMemoryPerNode:
+                          nullable: true
+                          type: string
+                        serverCertificate:
+                          nullable: true
+                          type: string
+                      type: object
+                    configOverrides:
+                      additionalProperties:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      nullable: true
+                      type: object
+                    envOverrides:
+                      additionalProperties:
+                        type: string
+                      nullable: true
+                      type: object
+                    roleGroups:
+                      additionalProperties:
+                        properties:
+                          cliOverrides:
+                            additionalProperties:
+                              type: string
+                            nullable: true
+                            type: object
+                          config:
+                            nullable: true
+                            properties:
+                              coordinator:
+                                nullable: true
+                                type: boolean
+                              httpServerHttpPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              httpServerHttpsPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              ioTrino:
+                                nullable: true
+                                type: string
+                              javaHome:
+                                nullable: true
+                                type: string
+                              metricsPort:
+                                format: uint16
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              nodeDataDir:
+                                nullable: true
+                                type: string
+                              passwordFileContent:
+                                nullable: true
+                                type: string
+                              queryMaxMemory:
+                                nullable: true
+                                type: string
+                              queryMaxMemoryPerNode:
+                                nullable: true
+                                type: string
+                              queryMaxTotalMemoryPerNode:
+                                nullable: true
+                                type: string
+                              serverCertificate:
+                                nullable: true
+                                type: string
+                            type: object
+                          configOverrides:
+                            additionalProperties:
+                              additionalProperties:
+                                type: string
+                              type: object
+                            nullable: true
+                            type: object
+                          envOverrides:
+                            additionalProperties:
+                              type: string
+                            nullable: true
+                            type: object
+                          replicas:
+                            format: uint16
+                            minimum: 0.0
+                            nullable: true
+                            type: integer
+                          selector:
+                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                            nullable: true
+                            properties:
+                              matchExpressions:
+                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                items:
+                                  description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
+                                  properties:
+                                    key:
+                                      description: key is the label key that the selector applies to.
+                                      type: string
+                                    operator:
+                                      description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
+                                      type: string
+                                    values:
+                                      description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                    - key
+                                    - operator
+                                  type: object
+                                type: array
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
+                                type: object
+                            type: object
+                        type: object
+                      type: object
+                  required:
+                    - roleGroups
+                  type: object
+              required:
+                - coordinators
+                - hiveReference
+                - nodeEnvironment
+                - version
+                - workers
+              type: object
+            status:
+              nullable: true
+              properties:
+                clusterExecutionStatus:
+                  description: Signals the current status of the cluster
+                  enum:
+                    - Stopped
+                    - Running
+                  nullable: true
+                  type: string
+                conditions:
+                  items:
+                    description: Condition contains details for one aspect of the current state of this API Resource.
+                    properties:
+                      lastTransitionTime:
+                        description: "lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable."
+                        format: date-time
+                        type: string
+                      message:
+                        description: message is a human readable message indicating details about the transition. This may be an empty string.
+                        type: string
+                      observedGeneration:
+                        description: "observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance."
+                        format: int64
+                        type: integer
+                      reason:
+                        description: "reason contains a programmatic identifier indicating the reason for the condition's last transition. Producers of specific condition types may define expected values and meanings for this field, and whether the values are considered a guaranteed API. The value should be a CamelCase string. This field may not be empty."
+                        type: string
+                      status:
+                        description: "status of the condition, one of True, False, Unknown."
+                        type: string
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                currentCommand:
+                  nullable: true
+                  properties:
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                    uid:
+                      type: string
+                  required:
+                    - kind
+                    - name
+                    - namespace
+                    - uid
+                  type: object
+                history:
+                  nullable: true
+                  properties:
+                    mapping:
+                      additionalProperties:
+                        properties:
+                          name:
+                            type: string
+                        required:
+                          - name
+                        type: object
+                      type: object
+                  required:
+                    - mapping
+                  type: object
+                version:
+                  description: The version of the product provided by the operator. Split into current and target version in order track upgrading and downgrading progress.
+                  nullable: true
+                  properties:
+                    current:
+                      enum:
+                        - 0.0.360
+                        - 0.0.361
+                        - 0.0.362
+                      nullable: true
+                      type: string
+                    target:
+                      enum:
+                        - 0.0.360
+                        - 0.0.361
+                        - 0.0.362
+                      nullable: true
+                      type: string
+                  type: object
+              type: object
+          required:
+            - spec
+          title: TrinoCluster
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
