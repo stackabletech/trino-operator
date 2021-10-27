@@ -210,8 +210,18 @@ version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f2c43f534ea4b0b049015d00269734195e6d3f0f6635cb692251aca6f9f8b3c"
 dependencies = [
- "darling_core",
- "darling_macro",
+ "darling_core 0.12.4",
+ "darling_macro 0.12.4",
+]
+
+[[package]]
+name = "darling"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "757c0ded2af11d8e739c4daea1ac623dd1624b06c844cf3f5a39f1bdbd99bb12"
+dependencies = [
+ "darling_core 0.13.0",
+ "darling_macro 0.13.0",
 ]
 
 [[package]]
@@ -229,12 +239,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling_core"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c34d8efb62d0c2d7f60ece80f75e5c63c1588ba68032740494b0b9a996466e3"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim 0.10.0",
+ "syn",
+]
+
+[[package]]
 name = "darling_macro"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29b5acf0dea37a7f66f7b25d2c5e93fd46f8f6968b1a5d7a3e02e97768afc95a"
 dependencies = [
- "darling_core",
+ "darling_core 0.12.4",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ade7bff147130fe5e6d39f089c6bd49ec0250f35d70b2eebf72afdfc919f15cc"
+dependencies = [
+ "darling_core 0.13.0",
  "quote",
  "syn",
 ]
@@ -774,6 +809,41 @@ version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0ae4dcb1a65182551922303a2d292b463513a6727db5ad980afbd32df7f3c16"
 dependencies = [
+ "http",
+ "hyper-rustls",
+ "hyper-tls",
+ "k8s-openapi",
+ "kube-core 0.60.0",
+ "kube-derive 0.60.0",
+ "openssl",
+ "rustls",
+ "rustls-pemfile",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio-native-tls",
+ "webpki",
+]
+
+[[package]]
+name = "kube"
+version = "0.63.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c19c08adecde7d68052bfccf9f8ae663f680380e297f20249cef7943df66f54"
+dependencies = [
+ "k8s-openapi",
+ "kube-client",
+ "kube-core 0.63.1",
+ "kube-derive 0.63.1",
+ "kube-runtime",
+]
+
+[[package]]
+name = "kube-client"
+version = "0.63.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da7ca26f7b912055aec302c376de4f3e1c749d121fbed91088203848e3dbd978"
+dependencies = [
  "base64",
  "bytes",
  "chrono",
@@ -783,18 +853,14 @@ dependencies = [
  "http",
  "http-body",
  "hyper",
- "hyper-rustls",
  "hyper-timeout",
  "hyper-tls",
  "jsonpath_lib",
  "k8s-openapi",
- "kube-core",
- "kube-derive",
+ "kube-core 0.63.1",
  "openssl",
  "pem",
  "pin-project 1.0.8",
- "rustls",
- "rustls-pemfile",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -805,7 +871,6 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
- "webpki",
 ]
 
 [[package]]
@@ -825,12 +890,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "kube-core"
+version = "0.63.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56229a53d7ce86e3e31c4aaf18a957b6f68305126ebfb12523312b2c8a43f19c"
+dependencies = [
+ "chrono",
+ "form_urlencoded",
+ "http",
+ "json-patch",
+ "k8s-openapi",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "kube-derive"
 version = "0.60.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4191660b8e26f6e6cb06f21b5372bdbc2c76b54f7c3d65e7a8c8708f9c36ed5"
 dependencies = [
- "darling",
+ "darling 0.12.4",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
+name = "kube-derive"
+version = "0.63.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45a9c6f93a170382c384eddf05ba165a96b38ecc63db8814d750db2ee349bd89"
+dependencies = [
+ "darling 0.13.0",
  "proc-macro2",
  "quote",
  "serde_json",
@@ -839,16 +934,16 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "0.60.0"
+version = "0.63.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eec378b03890f9f2bfa9448a51aa0f6a4299f6bb2ed0d180330e628c7a395918"
+checksum = "a168bfeebab8913a0fca198c1f30d8d8c5f04d3eee1645aa5619a27a0a656c14"
 dependencies = [
  "dashmap",
  "derivative",
  "futures",
  "json-patch",
  "k8s-openapi",
- "kube",
+ "kube-client",
  "pin-project 1.0.8",
  "serde",
  "serde_json",
@@ -1186,7 +1281,7 @@ dependencies = [
 [[package]]
 name = "product-config"
 version = "0.2.0-nightly"
-source = "git+https://github.com/stackabletech/product-config.git?branch=main#53c4bac3aa52bf61f5cef4fc47447be67749c3ce"
+source = "git+https://github.com/stackabletech/product-config.git?branch=main#97734dfa78c5e96922b2fc99bbd0cf2a1b7ac89d"
 dependencies = [
  "java-properties",
  "regex",
@@ -1592,19 +1687,19 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "stackable-hive-crd"
 version = "0.1.0-nightly"
-source = "git+https://github.com/stackabletech/hive-operator.git?branch=main#af45d2cd9a5ae505f8a8a9d75741ec4686d7650f"
+source = "git+https://github.com/stackabletech/hive-operator.git?branch=main#8e9548b324a1513a0718fe116d66752198906d4f"
 dependencies = [
  "duplicate",
  "k8s-openapi",
- "kube",
+ "kube 0.60.0",
  "product-config",
  "schemars",
  "semver",
  "serde",
  "serde_json",
  "stackable-operator",
- "strum",
- "strum_macros 0.21.1",
+ "strum 0.22.0",
+ "strum_macros 0.22.0",
  "thiserror",
  "tracing",
 ]
@@ -1615,14 +1710,14 @@ version = "0.4.1-nightly"
 source = "git+https://github.com/stackabletech/opa-operator.git?branch=main#f5fa7daf6f439c5c64f4da828fa5c761ba3af4ff"
 dependencies = [
  "k8s-openapi",
- "kube",
+ "kube 0.60.0",
  "rand",
  "schemars",
  "semver",
  "serde",
  "serde_json",
  "stackable-operator",
- "strum",
+ "strum 0.21.0",
  "strum_macros 0.21.1",
  "thiserror",
  "tracing",
@@ -1632,7 +1727,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator"
 version = "0.2.3-nightly"
-source = "git+https://github.com/stackabletech/operator-rs.git?branch=main#e3de43f5bd24df9c68d26cd9f0989afd3ff93e84"
+source = "git+https://github.com/stackabletech/operator-rs.git?branch=main#a0c9a4390ff6a288fb887ecef02d2af8eb79e615"
 dependencies = [
  "async-trait",
  "backoff",
@@ -1643,8 +1738,7 @@ dependencies = [
  "futures",
  "json-patch",
  "k8s-openapi",
- "kube",
- "kube-runtime",
+ "kube 0.63.1",
  "lazy_static",
  "product-config",
  "rand",
@@ -1653,7 +1747,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "strum",
+ "strum 0.22.0",
  "strum_macros 0.22.0",
  "thiserror",
  "tokio",
@@ -1670,7 +1764,7 @@ dependencies = [
  "duplicate",
  "indoc",
  "k8s-openapi",
- "kube",
+ "kube 0.60.0",
  "product-config",
  "rstest",
  "schemars",
@@ -1681,7 +1775,7 @@ dependencies = [
  "stackable-hive-crd",
  "stackable-opa-crd",
  "stackable-operator",
- "strum",
+ "strum 0.21.0",
  "strum_macros 0.21.1",
  "thiserror",
  "tracing",
@@ -1694,7 +1788,7 @@ dependencies = [
  "async-trait",
  "futures",
  "k8s-openapi",
- "kube",
+ "kube 0.60.0",
  "product-config",
  "rstest",
  "serde",
@@ -1703,7 +1797,7 @@ dependencies = [
  "stackable-opa-crd",
  "stackable-operator",
  "stackable-trino-crd",
- "strum",
+ "strum 0.21.0",
  "strum_macros 0.21.1",
  "thiserror",
  "tracing",
@@ -1716,7 +1810,7 @@ dependencies = [
  "built",
  "clap",
  "k8s-openapi",
- "kube",
+ "kube 0.60.0",
  "stackable-operator",
  "stackable-trino-crd",
  "stackable-trino-operator",
@@ -1741,6 +1835,12 @@ name = "strum"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+
+[[package]]
+name = "strum"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7ac893c7d471c8a21f31cfe213ec4f6d9afeed25537c772e08ef3f005f8729e"
 
 [[package]]
 name = "strum_macros"
