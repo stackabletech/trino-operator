@@ -1,5 +1,5 @@
 use clap::{crate_version, App, AppSettings, SubCommand};
-use kube::CustomResourceExt;
+use stackable_operator::kube::CustomResourceExt;
 use stackable_operator::{cli, logging};
 use stackable_operator::{client, error};
 use stackable_trino_crd::commands::{Restart, Start, Stop};

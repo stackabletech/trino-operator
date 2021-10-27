@@ -2,7 +2,7 @@ use crate::discovery::TicketReferences::ErrTrinoPodWithoutName;
 use crate::error::Error::{ObjectWithoutName, PodWithoutHostname};
 use crate::error::TrinoOperatorResult;
 use crate::{TrinoRole, APP_NAME, HTTP_PORT};
-use k8s_openapi::api::core::v1::Pod;
+use stackable_operator::k8s_openapi::api::core::v1::Pod;
 use stackable_operator::labels::APP_COMPONENT_LABEL;
 use strum_macros::Display;
 use tracing::{debug, warn};

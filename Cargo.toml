@@ -1,5 +1,7 @@
 [workspace]
-
 members = [
     "rust/crd", "rust/operator", "rust/operator-binary"
 ]
+
+[patch."git+https://github.com/stackabletech/hive-operator.git"]
+stackable-hive-crd = { git = "https://github.com/stackabletech//hive-operator.git", branch = "framework-upgrade" }
