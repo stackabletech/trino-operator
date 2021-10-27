@@ -1186,7 +1186,7 @@ dependencies = [
 [[package]]
 name = "product-config"
 version = "0.2.0-nightly"
-source = "git+https://github.com/stackabletech/product-config.git?branch=main#53c4bac3aa52bf61f5cef4fc47447be67749c3ce"
+source = "git+https://github.com/stackabletech/product-config.git?branch=main#97734dfa78c5e96922b2fc99bbd0cf2a1b7ac89d"
 dependencies = [
  "java-properties",
  "regex",
