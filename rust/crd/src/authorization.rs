@@ -1,11 +1,11 @@
-use kube::api::PostParams;
-use kube::core::ObjectMeta;
-use kube::Api;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stackable_operator::client;
 use stackable_operator::client::Client;
 use stackable_operator::error::OperatorResult;
+use stackable_operator::kube::api::PostParams;
+use stackable_operator::kube::core::ObjectMeta;
+use stackable_operator::kube::Api;
+use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
 use tracing::{debug, warn};

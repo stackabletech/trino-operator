@@ -8,16 +8,13 @@ repository = "https://github.com/stackabletech/trino-operator"
 version = "0.1.0-nightly"
 
 [dependencies]
-product-config = { git = "https://github.com/stackabletech/product-config.git", branch = "main" }
-stackable-hive-crd = { git = "https://github.com/stackabletech/hive-operator.git", branch = "main" }
-stackable-opa-crd = { git = "https://github.com/stackabletech/opa-operator.git", branch = "main" }
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", branch = "main" }
+stackable-hive-crd = { git = "https://github.com/stackabletech/hive-operator.git", tag = "0.1.0" }
+stackable-opa-crd = { git = "https://github.com/stackabletech/opa-operator.git", tag = "0.4.1" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.3.0" }
 stackable-trino-crd = { path = "../crd" }
 
 async-trait = "0.1"
 futures = "0.3"
-k8s-openapi = { version = "0.13", default-features = false }
-kube = { version = "0.60", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 strum = "0.21"
