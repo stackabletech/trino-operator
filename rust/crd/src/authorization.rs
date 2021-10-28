@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
-use stackable_operator::client;
 use stackable_operator::client::Client;
 use stackable_operator::error::OperatorResult;
 use stackable_operator::kube::api::PostParams;
 use stackable_operator::kube::core::ObjectMeta;
-use stackable_operator::kube::Api;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
@@ -62,14 +60,14 @@ pub async fn create_or_update_rego_rule_resource(
                         .unwrap_or("<no-name-set>")
                 );
 
-                let api = get_api("opa.stackable.tech", "default").await?;
+                let api = client.get_namespaced_api("default");
                 api.replace(package_name, &PostParams::default(), &old_rego_rule)
                     .await?;
             }
         }
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
-            let api = get_api("opa.stackable.tech", "default").await?;
+            let api = client.get_namespaced_api("default");
             api.create(&PostParams::default(), &rego_rule_resource)
                 .await?;
         }
@@ -200,14 +198,6 @@ fn build_helper_rego_rules() -> String {
 ";
 
     sub_rules.to_string()
-}
-
-async fn get_api(field_manager: &str, namespace: &str) -> OperatorResult<Api<RegoRule>> {
-    // TODO: We spawn another client here with the correct field selector.
-    //    During implementation we could not make it work with the standard client.
-    //    We needed a different field selector (opa.stackable.tech) instead of the trino one.
-    let rego_client = client::create_client(Some(field_manager.to_string())).await?;
-    Ok(rego_client.get_namespaced_api(namespace))
 }
 
 #[cfg(test)]
