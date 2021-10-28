@@ -97,10 +97,13 @@ fn build_user_permission_json(user_permissions: &BTreeMap<String, UserPermission
     user_json.push_str("    users = ");
     match &serde_json::to_string(&user_permissions) {
         Ok(json) => user_json.push_str(json),
-        Err(err) => warn!(
-            "Could not convert user permissions to json. Please check the input: {}",
-            err.to_string()
-        ),
+        Err(err) => {
+            warn!(
+                "Could not convert user permissions to json. Please check the input: {}",
+                err.to_string()
+            );
+            user_json.push_str("{}");
+        }
     }
     user_json.push('\n');
 
