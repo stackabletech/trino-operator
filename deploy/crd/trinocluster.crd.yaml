@@ -22,6 +22,42 @@ spec:
           properties:
             spec:
               properties:
+                authorization:
+                  nullable: true
+                  properties:
+                    package:
+                      type: string
+                    permissions:
+                      additionalProperties:
+                        properties:
+                          schemas:
+                            nullable: true
+                            properties:
+                              read:
+                                nullable: true
+                                type: boolean
+                              write:
+                                nullable: true
+                                type: boolean
+                            type: object
+                          tables:
+                            additionalProperties:
+                              properties:
+                                read:
+                                  nullable: true
+                                  type: boolean
+                                write:
+                                  nullable: true
+                                  type: boolean
+                              type: object
+                            nullable: true
+                            type: object
+                        type: object
+                      type: object
+                  required:
+                    - package
+                    - permissions
+                  type: object
                 coordinators:
                   properties:
                     cliOverrides:

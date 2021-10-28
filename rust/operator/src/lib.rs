@@ -1,5 +1,6 @@
-use crate::error::Error;
 mod error;
+
+use crate::error::Error;
 
 use async_trait::async_trait;
 use stackable_hive_crd::discovery::HiveConnectionInformation;
@@ -59,8 +60,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use strum::IntoEnumIterator;
-use tracing::error;
-use tracing::{debug, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";
@@ -103,6 +103,21 @@ impl TrinoState {
 
         self.hive_information = hive_info;
 
+        Ok(ReconcileFunctionAction::Continue)
+    }
+
+    async fn create_rego_rules(&self) -> TrinoReconcileResult {
+        let spec: &TrinoClusterSpec = &self.context.resource.spec;
+        if let Some(authorization) = &spec.authorization {
+            let rego_rules = stackable_trino_crd::authorization::build_rego_rules(authorization);
+
+            stackable_trino_crd::authorization::create_or_update_rego_rule_resource(
+                &self.context.client,
+                &authorization.package,
+                rego_rules,
+            )
+            .await?;
+        }
         Ok(ReconcileFunctionAction::Continue)
     }
 
@@ -443,8 +458,16 @@ impl TrinoState {
 
         // check for opa
         if let Some(opa_reference) = &self.context.resource.spec.opa {
+            let package = match self.context.resource.spec.authorization.as_ref() {
+                Some(auth) => auth.package.clone(),
+                None => {
+                    warn!("No package specified in 'authorization'. Defaulting to 'trino'.");
+                    "trino".to_string()
+                }
+            };
+
             let opa_api = OpaApi::Data {
-                package_path: "trino".to_string(),
+                package_path: package.to_string(),
                 rule: "".to_string(),
             };
 
@@ -773,6 +796,8 @@ impl ReconciliationState for TrinoState {
                     self.context
                         .wait_for_running_and_ready_pods(&self.existing_pods),
                 )
+                .await?
+                .then(self.create_rego_rules())
                 .await?
                 .then(self.process_command())
                 .await?

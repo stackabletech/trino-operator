@@ -11,6 +11,26 @@ spec:
   opa:
     namespace: default
     name: simple
+  authorization:
+    package: trino
+    permissions:
+      admin:
+        schemas:
+          read: true
+          write: true
+        tables:
+          iris_parquet:
+            read: true
+            write: true
+          iris_csv:
+            read: true
+      bob:
+        schemas:
+          read: false
+          write: false
+        tables:
+          iris_parquet:
+            read: true
   s3Connection:
     endPoint: changeme
     accessKey: changeme
@@ -21,8 +41,11 @@ spec:
     roleGroups:
       default:
         selector:
-          matchLabels:
-            kubernetes.io/os: stackable-linux
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/hostname
+              values:
+                - main-1.stackable.demo
         config:
           coordinator: true
           nodeDataDir: /tmp/trino/data
@@ -88,8 +111,13 @@ spec:
     roleGroups:
       default:
         selector:
-          matchLabels:
-            kubernetes.io/os: stackable-linux
+          matchExpressions:
+            - operator: In
+              key: kubernetes.io/hostname
+              values:
+                - worker-1.stackable.demo
+                - worker-2.stackable.demo
+                - worker-3.stackable.demo
         replicas: 1
         config:
           nodeDataDir: /tmp/trino/data2

@@ -85,6 +85,8 @@ spec:
     can_view_query_owned_by = true
 ```
 
+You can let the Trino operator specify Rego rules by configuring the `authorization` field in the custom resource. This is a rudimentary implementation for user access.
+
 === Trino
 
 With the prerequisites fulfilled, the CRD for this operator must be created:
@@ -107,6 +109,27 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
       opa:
         namespace: default
         name: simple
+      authorization:
+        packageName: trino
+        userPermissions:
+          admin:
+            schemas:
+              read: true
+              write: true
+            tables:
+              iris_parquet:
+                read: true
+                write: true
+              iris_csv:
+                read: true
+                write: true
+          bob:
+            schemas:
+              read: false
+              write: false
+            tables:
+              iris_parquet:
+                read: true
       s3Connection:
         endPoint: changeme
         accessKey: changeme
@@ -161,7 +184,7 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
 
 Assuming you've downloaded and installed the Trino client, connect to the Trino coordinator:
 
-    ./trino --server <node_name>:<https-port> --user alice --password
+    ./trino --server <node_name>:<https-port> --user admin --password
 
 If you use self signed certificates, you also need to add `--insecure` to the command above.
 
@@ -191,3 +214,5 @@ Query the data:
     LIMIT 10;
 
 If you work with opa, try changing some RegoRule entries to false and see if you are not allowed to e.g. list tables or schemas.
+
+When changing the automatically generated rego rule package name, a restart of the coordinator pod is required.
