@@ -11,7 +11,7 @@ version = "0.1.0-nightly"
 stackable-hive-crd = { git = "https://github.com/stackabletech/hive-operator.git", tag = "0.1.0" }
 stackable-opa-crd = { git = "https://github.com/stackabletech/opa-operator.git", tag = "0.4.1" }
 stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.3.0" }
-stackable-regorule-crd = { git = "https://github.com/stackabletech/regorule-operator.git", branch = "main" }
+stackable-regorule-crd = { git = "https://github.com/stackabletech/regorule-operator.git", tag = "0.2.0" }
 
 duplicate = "0.3.0"
 indoc = "1.0"

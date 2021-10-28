@@ -1670,8 +1670,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-regorule-crd"
-version = "0.2.0-nightly"
-source = "git+https://github.com/stackabletech/regorule-operator.git?branch=main#3822adde205c033c44b6920b6eddbee1803561eb"
+version = "0.2.0"
+source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.2.0#eac1779cd358ac63bbbd6fb7d640ab16a680e86c"
 dependencies = [
  "serde",
  "serde_json",
