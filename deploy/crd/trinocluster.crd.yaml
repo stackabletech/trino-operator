@@ -84,9 +84,6 @@ spec:
                         ioTrino:
                           nullable: true
                           type: string
-                        javaHome:
-                          nullable: true
-                          type: string
                         metricsPort:
                           format: uint16
                           minimum: 0.0
@@ -148,9 +145,6 @@ spec:
                                 nullable: true
                                 type: integer
                               ioTrino:
-                                nullable: true
-                                type: string
-                              javaHome:
                                 nullable: true
                                 type: string
                               metricsPort:
@@ -311,9 +305,6 @@ spec:
                         ioTrino:
                           nullable: true
                           type: string
-                        javaHome:
-                          nullable: true
-                          type: string
                         metricsPort:
                           format: uint16
                           minimum: 0.0
@@ -375,9 +366,6 @@ spec:
                                 nullable: true
                                 type: integer
                               ioTrino:
-                                nullable: true
-                                type: string
-                              javaHome:
                                 nullable: true
                                 type: string
                               metricsPort:

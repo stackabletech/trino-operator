@@ -77,14 +77,12 @@ pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
-// env variables
-pub const JAVA_HOME: &str = "JAVA_HOME";
 // port names
 pub const METRICS_PORT: &str = "metrics";
 pub const HTTP_PORT: &str = "http";
 pub const HTTPS_PORT: &str = "https";
 // config dir
-pub const CONFIG_DIR_NAME: &str = "conf";
+pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
@@ -123,19 +121,11 @@ pub enum TrinoRole {
 
 impl TrinoRole {
     /// Returns the container start command for a Trino node.
-    ///
-    /// # Arguments
-    ///
-    /// * `version` - Current specified cluster version
-    ///
-    pub fn get_command(&self, version: &TrinoVersion) -> Vec<String> {
-        let parsed_version = Version::parse(version.to_string().as_ref()).unwrap();
-
+    pub fn get_command(&self) -> Vec<String> {
         vec![
-            format!("trino-server-{}/bin/launcher", parsed_version.patch),
-            // run or start?
+            "bin/launcher".to_string(),
             "run".to_string(),
-            format!("--etc-dir={{{{configroot}}}}/{}", CONFIG_DIR_NAME),
+            format!("--etc-dir={}", CONFIG_DIR_NAME),
         ]
     }
 }
@@ -212,8 +202,6 @@ pub struct TrinoConfig {
     pub server_certificate: Option<String>,
     // password file auth
     pub password_file_content: Option<String>,
-    // misc
-    pub java_home: Option<String>,
 }
 
 impl Configuration for TrinoConfig {
@@ -224,11 +212,7 @@ impl Configuration for TrinoConfig {
         _resource: &Self::Configurable,
         _role_name: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        let mut result = BTreeMap::new();
-        if let Some(java_home) = &self.java_home {
-            result.insert(JAVA_HOME.to_string(), Some(java_home.to_string()));
-        }
-        Ok(result)
+        Ok(BTreeMap::new())
     }
 
     fn compute_cli(
@@ -299,10 +283,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!(
-                            "{{{{configroot}}}}/{}/{}",
-                            CONFIG_DIR_NAME, CERTIFICATE_PEM
-                        )),
+                        Some(format!("{}/{}", CONFIG_DIR_NAME, CERTIFICATE_PEM)),
                     );
                     if let Some(https_port) = &self.http_server_https_port {
                         result.insert(
@@ -327,10 +308,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         FILE_PASSWORD_FILE.to_string(),
-                        Some(format!(
-                            "{{{{configroot}}}}/{}/{}",
-                            CONFIG_DIR_NAME, PASSWORD_DB
-                        )),
+                        Some(format!("{}/{}", CONFIG_DIR_NAME, PASSWORD_DB)),
                     );
                 }
             }
@@ -422,21 +400,6 @@ pub enum TrinoVersion {
     #[serde(rename = "0.0.362")]
     #[strum(serialize = "0.0.362")]
     v362,
-}
-
-impl TrinoVersion {
-    pub fn package_name(&self) -> String {
-        format!("trino-server:{}", self.to_string())
-    }
-    pub fn package_directory(&self) -> String {
-        if self == &Self::v360 {
-            "trino-server-360".to_string()
-        } else if self == &Self::v361 {
-            "trino-server-361".to_string()
-        } else {
-            "trino-server-362".to_string()
-        }
-    }
 }
 
 impl Versioning for TrinoVersion {
@@ -551,22 +514,6 @@ mod tests {
         TrinoVersion::from_str("0.0.361").unwrap();
         TrinoVersion::from_str("0.0.362").unwrap();
         TrinoVersion::from_str("10.0.360").unwrap_err();
-    }
-
-    #[test]
-    fn test_package_name() {
-        assert_eq!(
-            TrinoVersion::v360.package_name(),
-            format!("trino-server:{}", TrinoVersion::v360.to_string())
-        );
-    }
-
-    #[test]
-    fn test_package_directory() {
-        assert_eq!(
-            TrinoVersion::v360.package_directory(),
-            "trino-server-360".to_string()
-        );
     }
 
     #[test]
