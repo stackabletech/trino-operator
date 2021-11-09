@@ -57,7 +57,7 @@ properties:
           value: "/var/trino/data"
       recommendedValues:
         - fromVersion: "0.0.0"
-          value: "/var/trino/data"
+          value: "/stackable/trino/data"
       roles:
         - name: "coordinator"
           required: true

@@ -402,6 +402,16 @@ pub enum TrinoVersion {
     v362,
 }
 
+impl TrinoVersion {
+    pub fn to_trino(&self) -> &str {
+        match self {
+            TrinoVersion::v360 => "360",
+            TrinoVersion::v361 => "361",
+            TrinoVersion::v362 => "362",
+        }
+    }
+}
+
 impl Versioning for TrinoVersion {
     fn versioning_state(&self, other: &Self) -> VersioningState {
         let from_version = match Version::parse(&self.to_string()) {

@@ -626,7 +626,7 @@ impl TrinoState {
         let mut cb = ContainerBuilder::new(APP_NAME);
         cb.image(format!(
             "docker.stackable.tech/stackable/trino:{}-0.1",
-            version.to_string()
+            version.to_trino()
         ));
         cb.command(role.get_command());
 
@@ -651,8 +651,8 @@ impl TrinoState {
         // add second volume for hive catalog
         if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_HIVE) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
-                cb.add_volume_mount("config", format!("{}/catalog", CONFIG_DIR_NAME));
-                pod_builder.add_volume(VolumeBuilder::new("config").with_config_map(name).build());
+                cb.add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME));
+                pod_builder.add_volume(VolumeBuilder::new("catalog").with_config_map(name).build());
             } else {
                 return Err(error::Error::MissingConfigMapNameError {
                     cm_type: CONFIG_MAP_TYPE_HIVE,
