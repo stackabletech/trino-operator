@@ -8,8 +8,8 @@ repository = "https://github.com/stackabletech/trino-operator"
 version = "0.1.0-nightly"
 
 [dependencies]
-stackable-hive-crd = { git = "https://github.com/stackabletech/hive-operator.git", branch = "adapt_to_use_docker_image" }
-stackable-opa-crd = { git = "https://github.com/stackabletech/opa-operator.git", branch = "use_docker_image" }
+stackable-hive-crd = { git = "https://github.com/stackabletech/hive-operator.git", tag = "0.2.0" }
+stackable-opa-crd = { git = "https://github.com/stackabletech/opa-operator.git", tag = "0.5.0" }
 stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.4.0" }
 stackable-trino-crd = { path = "../crd" }
 

@@ -117,9 +117,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
 dependencies = [
  "jobserver",
 ]
@@ -1213,6 +1213,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "product-config"
+version = "0.3.0-nightly"
+source = "git+https://github.com/stackabletech/product-config.git?branch=main#1d8467ff950e2b074a37057ab5582a854db0fc70"
+dependencies = [
+ "java-properties",
+ "regex",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "xml-rs",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1604,14 +1620,14 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "stackable-hive-crd"
-version = "0.2.0-nightly"
-source = "git+https://github.com/stackabletech/hive-operator.git?branch=adapt_to_use_docker_image#b2269e06d98aabaf9cf31ebae69e1d8f1d0d0d6e"
+version = "0.2.0"
+source = "git+https://github.com/stackabletech/hive-operator.git?tag=0.2.0#119093b034365f21b41780d18f94b0f6c9ca8789"
 dependencies = [
  "duplicate",
  "semver",
  "serde",
  "serde_json",
- "stackable-operator",
+ "stackable-operator 0.4.0",
  "strum 0.22.0",
  "strum_macros 0.22.0",
  "thiserror",
@@ -1620,19 +1636,52 @@ dependencies = [
 
 [[package]]
 name = "stackable-opa-crd"
-version = "0.5.0-nightly"
-source = "git+https://github.com/stackabletech/opa-operator.git?branch=use_docker_image#10b8936c1c6b095fee734bec5aa224f61fef614e"
+version = "0.5.0"
+source = "git+https://github.com/stackabletech/opa-operator.git?tag=0.5.0#f8a019b6fd78cd78e1507cc7ba9e4ae4501afdc3"
 dependencies = [
  "rand",
  "semver",
  "serde",
  "serde_json",
- "stackable-operator",
+ "stackable-operator 0.4.0",
  "strum 0.22.0",
  "strum_macros 0.22.0",
  "thiserror",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "stackable-operator"
+version = "0.3.0"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.3.0#a0a1d10260f7921d436a0cd7ba6ce957368e42fb"
+dependencies = [
+ "async-trait",
+ "backoff",
+ "chrono",
+ "clap",
+ "const_format",
+ "either",
+ "futures",
+ "json-patch",
+ "k8s-openapi",
+ "kube",
+ "lazy_static",
+ "product-config 0.3.0-nightly",
+ "rand",
+ "regex",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "strum 0.22.0",
+ "strum_macros 0.22.0",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
@@ -1651,7 +1700,7 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "lazy_static",
- "product-config",
+ "product-config 0.2.0",
  "rand",
  "regex",
  "schemars",
@@ -1670,12 +1719,12 @@ dependencies = [
 
 [[package]]
 name = "stackable-regorule-crd"
-version = "0.3.0-nightly"
-source = "git+https://github.com/stackabletech/regorule-operator.git?branch=move_bundle_to_tmp#6930aab0d6ebb5ec8cd4b64830defdf680d085dc"
+version = "0.2.0"
+source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.2.0#eac1779cd358ac63bbbd6fb7d640ab16a680e86c"
 dependencies = [
  "serde",
  "serde_json",
- "stackable-operator",
+ "stackable-operator 0.3.0",
 ]
 
 [[package]]
@@ -1692,7 +1741,7 @@ dependencies = [
  "serde_yaml",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator",
+ "stackable-operator 0.4.0",
  "stackable-regorule-crd",
  "strum 0.21.0",
  "strum_macros 0.21.1",
@@ -1711,7 +1760,7 @@ dependencies = [
  "serde_json",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator",
+ "stackable-operator 0.4.0",
  "stackable-trino-crd",
  "strum 0.21.0",
  "strum_macros 0.21.1",
@@ -1725,7 +1774,7 @@ version = "0.1.0-nightly"
 dependencies = [
  "built",
  "clap",
- "stackable-operator",
+ "stackable-operator 0.4.0",
  "stackable-trino-crd",
  "stackable-trino-operator",
  "tokio",
@@ -1856,9 +1905,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83b2a3d4d9091d0abd7eba4dc2710b1718583bd4d8992e2190720ea38f391f7"
+checksum = "2c1c1d5a42b6245520c249549ec267180beaffcc0615401ac8e31853d4b6d8d2"
 dependencies = [
  "tinyvec_macros",
 ]

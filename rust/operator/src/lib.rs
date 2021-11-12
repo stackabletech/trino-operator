@@ -60,6 +60,10 @@ use std::time::Duration;
 use strum::IntoEnumIterator;
 use tracing::{debug, error, info, trace, warn};
 
+/// The docker image we default to. This needs to be adapted if the operator does not work
+/// with images 0.0.1, 0.1.0 etc. anymore and requires e.g. a new major version like 1(.0.0).
+const DEFAULT_IMAGE_VERSION: &str = "0";
+
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";
 const SHOULD_BE_SCRAPED: &str = "monitoring.stackable.tech/should_be_scraped";
@@ -434,7 +438,7 @@ impl TrinoState {
                 PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                     // if metrics port is set we need to adapt the
                     if let Some(metrics_port) = config.get(METRICS_PORT_PROPERTY) {
-                        jvm_config.push_str(&format!("\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/jmx_exporter.yaml", metrics_port));
+                        jvm_config.push_str(&format!("\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", metrics_port));
                     }
                 }
                 PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
@@ -625,8 +629,9 @@ impl TrinoState {
 
         let mut cb = ContainerBuilder::new(APP_NAME);
         cb.image(format!(
-            "docker.stackable.tech/stackable/trino:{}-0.1",
-            version.to_trino()
+            "docker.stackable.tech/stackable/trino:{}-stackable{}",
+            version.to_trino(),
+            DEFAULT_IMAGE_VERSION
         ));
         cb.command(role.get_command());
 
