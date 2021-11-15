@@ -2,4 +2,9 @@
 
 This is an operator for Kubernetes that can manage https://https://trino.io/[Trino] clusters.
 
-WARNING: This operator does _not_ work with containers/container images. It relies on the https://github.com/stackabletech/agent/[Stackable Agent] to run on "bare metal" via systemd.
+WARNING: This operator only works with images from the https://repo.stackable.tech/#browse/browse:docker:v2%2Fstackable%2Ftrino[Stackable] repository
+
+[source]
+----
+docker pull docker.stackable.tech/stackable/trino:<version>
+----

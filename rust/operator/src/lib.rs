@@ -6,9 +6,7 @@ use async_trait::async_trait;
 use stackable_hive_crd::discovery::HiveConnectionInformation;
 use stackable_opa_crd::util;
 use stackable_opa_crd::util::{OpaApi, OpaApiProtocol};
-use stackable_operator::builder::{
-    ContainerBuilder, ContainerPortBuilder, ObjectMetaBuilder, PodBuilder,
-};
+use stackable_operator::builder::{ContainerBuilder, ObjectMetaBuilder, PodBuilder, VolumeBuilder};
 use stackable_operator::client::Client;
 use stackable_operator::command::materialize_command;
 use stackable_operator::controller::Controller;
@@ -50,7 +48,7 @@ use stackable_trino_crd::discovery::{
 use stackable_trino_crd::{
     TrinoCluster, TrinoClusterSpec, TrinoRole, APP_NAME, CERTIFICATE_PEM,
     CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DISCOVERY_URI, HIVE_PROPERTIES,
-    HTTPS_PORT, HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_HTTP_PORT, JAVA_HOME, JVM_CONFIG,
+    HTTPS_PORT, HTTP_PORT, HTTP_SERVER_HTTPS_PORT, HTTP_SERVER_HTTP_PORT, JVM_CONFIG,
     LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_PROPERTY, NODE_ID, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
@@ -61,6 +59,10 @@ use std::sync::Arc;
 use std::time::Duration;
 use strum::IntoEnumIterator;
 use tracing::{debug, error, info, trace, warn};
+
+/// The docker image we default to. This needs to be adapted if the operator does not work
+/// with images 0.0.1, 0.1.0 etc. anymore and requires e.g. a new major version like 1(.0.0).
+const DEFAULT_IMAGE_VERSION: &str = "0";
 
 const FINALIZER_NAME: &str = "trino.stackable.tech/cleanup";
 const ID_LABEL: &str = "trino.stackable.tech/id";
@@ -175,7 +177,7 @@ impl TrinoState {
         // The iteration happens in two stages here, to accommodate the way our operators think
         // about roles and role groups.
         // The hierarchy is:
-        // - Roles (Master, Worker, History-Server)
+        // - Roles (Coordinator, Worker)
         //   - Role groups (user defined)
         for role in TrinoRole::iter() {
             let role_str = &role.to_string();
@@ -319,8 +321,6 @@ impl TrinoState {
         let mut cm_conf_data = BTreeMap::new();
         let mut cm_hive_data = BTreeMap::new();
 
-        let version = &self.context.resource.spec.version;
-
         // TODO: create via product config?
         let mut jvm_config = "-server
 -Xmx16G
@@ -438,8 +438,7 @@ impl TrinoState {
                 PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                     // if metrics port is set we need to adapt the
                     if let Some(metrics_port) = config.get(METRICS_PORT_PROPERTY) {
-                        jvm_config.push_str(&format!("\n-javaagent:{{{{packageroot}}}}/{}/stackable/lib/jmx_prometheus_javaagent-0.16.1.jar={}:{{{{packageroot}}}}/{}/stackable/conf/jmx_exporter.yaml",
-                                                 version.package_directory(), metrics_port, version.package_directory()));
+                        jvm_config.push_str(&format!("\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", metrics_port));
                     }
                 }
                 PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
@@ -608,10 +607,6 @@ impl TrinoState {
             .get(&PropertyNameKind::File(CONFIG_PROPERTIES.to_string()))
             .and_then(|jvm_config| jvm_config.get(HTTP_SERVER_HTTPS_PORT));
 
-        let java_home = validated_config
-            .get(&PropertyNameKind::Env)
-            .and_then(|env| env.get(JAVA_HOME));
-
         let version = &self.context.resource.spec.version;
 
         let pod_name = name_utils::build_resource_name(
@@ -633,16 +628,19 @@ impl TrinoState {
         recommended_labels.insert(ID_LABEL.to_string(), pod_id.id().to_string());
 
         let mut cb = ContainerBuilder::new(APP_NAME);
-        cb.image(version.package_name());
-        cb.command(role.get_command(version));
+        cb.image(format!(
+            "docker.stackable.tech/stackable/trino:{}-stackable{}",
+            version.to_trino(),
+            DEFAULT_IMAGE_VERSION
+        ));
+        cb.command(role.get_command());
 
-        if let Some(java_home) = java_home {
-            cb.add_env_var(JAVA_HOME, java_home);
-        }
+        let mut pod_builder = PodBuilder::new();
 
         if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_CONF) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
-                cb.add_configmapvolume(name, CONFIG_DIR_NAME.to_string());
+                cb.add_volume_mount("config", CONFIG_DIR_NAME);
+                pod_builder.add_volume(VolumeBuilder::new("config").with_config_map(name).build());
             } else {
                 return Err(error::Error::MissingConfigMapNameError {
                     cm_type: CONFIG_MAP_TYPE_CONF,
@@ -658,7 +656,8 @@ impl TrinoState {
         // add second volume for hive catalog
         if let Some(config_map_data) = config_maps.get(CONFIG_MAP_TYPE_HIVE) {
             if let Some(name) = config_map_data.metadata.name.as_ref() {
-                cb.add_configmapvolume(name, format!("{}/catalog", CONFIG_DIR_NAME));
+                cb.add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME));
+                pod_builder.add_volume(VolumeBuilder::new("catalog").with_config_map(name).build());
             } else {
                 return Err(error::Error::MissingConfigMapNameError {
                     cm_type: CONFIG_MAP_TYPE_HIVE,
@@ -675,30 +674,18 @@ impl TrinoState {
         // only add metrics container port and annotation if required
         if let Some(metrics_port) = metrics_port {
             annotations.insert(SHOULD_BE_SCRAPED.to_string(), "true".to_string());
-            cb.add_container_port(
-                ContainerPortBuilder::new(metrics_port.parse()?)
-                    .name(METRICS_PORT)
-                    .build(),
-            );
+            cb.add_container_port(METRICS_PORT, metrics_port.parse()?);
         }
 
         if let Some(http_port) = http_port {
-            cb.add_container_port(
-                ContainerPortBuilder::new(http_port.parse()?)
-                    .name(HTTP_PORT)
-                    .build(),
-            );
+            cb.add_container_port(HTTP_PORT, http_port.parse()?);
         }
 
         if let Some(https_port) = https_port {
-            cb.add_container_port(
-                ContainerPortBuilder::new(https_port.parse()?)
-                    .name(HTTPS_PORT)
-                    .build(),
-            );
+            cb.add_container_port(HTTPS_PORT, https_port.parse()?);
         }
 
-        let pod = PodBuilder::new()
+        let pod = pod_builder
             .metadata(
                 ObjectMetaBuilder::new()
                     .generate_name(pod_name)
@@ -708,9 +695,9 @@ impl TrinoState {
                     .ownerreference_from_resource(&self.context.resource, Some(true), Some(true))?
                     .build()?,
             )
-            .add_stackable_agent_tolerations()
             .add_container(cb.build())
             .node_name(node_name)
+            .host_network(true)
             .build()?;
 
         trace!("create_pod: {:?}", pod_id);

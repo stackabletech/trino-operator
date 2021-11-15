@@ -1,6 +1,6 @@
 = Building the Operator
 
 This operator is written in Rust.
-It is developed against the latest stable Rust release (1.54 at the time of writing).
+It is developed against the latest stable Rust release (1.56 at the time of writing).
 
     cargo build

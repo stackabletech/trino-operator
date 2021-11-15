@@ -140,18 +140,14 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
         roleGroups:
           default:
             selector:
-              matchExpressions:
-                - operator: In
-                  key: kubernetes.io/hostname
-                  values:
-                    - main-1.stackable.demo
+              matchLabels:
+                kubernetes.io/os: linux
             config:
               coordinator: true
-              nodeDataDir: /tmp/trino/data
+              nodeDataDir: /stackable/trino/data
               metricsPort: 10200
               httpServerHttpPort: 8080
               httpServerHttpsPort: 8443
-              javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
               passwordFileContent: |
                 alice:$2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
                 bob:$2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
@@ -167,19 +163,13 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
         roleGroups:
           default:
             selector:
-              matchExpressions:
-                - operator: In
-                  key: kubernetes.io/hostname
-                  values:
-                    - worker-1.stackable.demo
-                    - worker-2.stackable.demo
-                    - worker-3.stackable.demo
+              matchLabels:
+                kubernetes.io/os: linux
             replicas: 1
             config:
-              nodeDataDir: /tmp/trino/data2
+              nodeDataDir: /stackable/trino/data
               metricsPort: 10201
               httpServerHttpPort: 8081
-              javaHome: /usr/lib/jvm/java-11-openjdk-amd64/
     EOF
 
 Assuming you've downloaded and installed the Trino client, connect to the Trino coordinator:
