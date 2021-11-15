@@ -1198,8 +1198,24 @@ dependencies = [
 
 [[package]]
 name = "product-config"
-version = "0.2.0-nightly"
-source = "git+https://github.com/stackabletech/product-config.git?branch=main#97734dfa78c5e96922b2fc99bbd0cf2a1b7ac89d"
+version = "0.2.0"
+source = "git+https://github.com/stackabletech/product-config.git?tag=0.2.0#e32e33d9094e09b1af29045e05a4ab17c511cedb"
+dependencies = [
+ "java-properties",
+ "regex",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror",
+ "xml-rs",
+]
+
+[[package]]
+name = "product-config"
+version = "0.3.0-nightly"
+source = "git+https://github.com/stackabletech/product-config.git?branch=main#1d8467ff950e2b074a37057ab5582a854db0fc70"
 dependencies = [
  "java-properties",
  "regex",
@@ -1611,7 +1627,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "stackable-operator",
+ "stackable-operator 0.3.0",
  "strum",
  "strum_macros",
  "thiserror",
@@ -1620,14 +1636,14 @@ dependencies = [
 
 [[package]]
 name = "stackable-opa-crd"
-version = "0.4.1"
-source = "git+https://github.com/stackabletech/opa-operator.git?tag=0.4.1#ebe2c0b59abb5e959508fd1af0f0360426e49cdb"
+version = "0.5.0"
+source = "git+https://github.com/stackabletech/opa-operator.git?tag=0.5.0#f8a019b6fd78cd78e1507cc7ba9e4ae4501afdc3"
 dependencies = [
  "rand",
  "semver",
  "serde",
  "serde_json",
- "stackable-operator",
+ "stackable-operator 0.4.0",
  "strum",
  "strum_macros",
  "thiserror",
@@ -1651,7 +1667,40 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "lazy_static",
- "product-config",
+ "product-config 0.3.0-nightly",
+ "rand",
+ "regex",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "stackable-operator"
+version = "0.4.0"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.4.0#50c3ee9564b1d3eb9d6e43c5e87c2102afbacc27"
+dependencies = [
+ "async-trait",
+ "backoff",
+ "chrono",
+ "clap",
+ "const_format",
+ "either",
+ "futures",
+ "json-patch",
+ "k8s-openapi",
+ "kube",
+ "lazy_static",
+ "product-config 0.2.0",
  "rand",
  "regex",
  "schemars",
@@ -1675,7 +1724,7 @@ source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.2.0#e
 dependencies = [
  "serde",
  "serde_json",
- "stackable-operator",
+ "stackable-operator 0.3.0",
 ]
 
 [[package]]
@@ -1692,7 +1741,7 @@ dependencies = [
  "serde_yaml",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator",
+ "stackable-operator 0.3.0",
  "stackable-regorule-crd",
  "strum",
  "strum_macros",
@@ -1711,7 +1760,7 @@ dependencies = [
  "serde_json",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator",
+ "stackable-operator 0.3.0",
  "stackable-trino-crd",
  "strum",
  "strum_macros",
@@ -1725,7 +1774,7 @@ version = "0.2.0-nightly"
 dependencies = [
  "built",
  "clap",
- "stackable-operator",
+ "stackable-operator 0.3.0",
  "stackable-trino-crd",
  "stackable-trino-operator",
  "tokio",
