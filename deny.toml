@@ -34,13 +34,13 @@ allow = [
 ]
 
 exceptions = [
-    { name = "stackable-hive-crd", allow = ["OSL-3.0"] },
-    { name = "stackable-opa-crd", allow = ["OSL-3.0"] },
-    { name = "stackable-regorule-crd", allow = ["OSL-3.0"] },
     { name = "stackable-trino-crd", allow = ["OSL-3.0"] },
     { name = "stackable-trino-operator", allow = ["OSL-3.0"] },
     { name = "stackable-trino-operator-binary", allow = ["OSL-3.0"] },
-]
+    { name = "stackable-hive-crd", allow = ["OSL-3.0"] },
+    { name = "stackable-opa-crd", allow = ["OSL-3.0"] },
+    { name = "stackable-regorule-crd", allow = ["OSL-3.0"] },
+    ]
 
 [[licenses.clarify]]
 name = "ring"
