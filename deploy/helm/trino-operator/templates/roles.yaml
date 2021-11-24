@@ -1,0 +1,90 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "operator.name" . }}-operator
+rules:
+  # For OPA dependents. Note that OPA it's self is listed here because it's own resource name
+  # doesn't follow the *clusters convention
+  - apiGroups:
+      - opa.stackable.tech
+    resources:
+      - openpolicyagents
+      - openpolicyagents/status
+      - regorules
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - patch
+  - apiGroups:
+      - hive.stackable.tech
+    resources:
+      - hiveclusters
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - list
+      - update
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
+  - apiGroups:
+      - command.{{ include "operator.name" . }}.stackable.tech
+    resources:
+      - inits
+      - restarts
+      - starts
+      - stops
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - command.{{ include "operator.name" . }}.stackable.tech
+    resources:
+      - inits/status
+    verbs:
+      - patch
+  - apiGroups:
+      - {{ include "operator.name" . }}.stackable.tech
+    resources:
+      - {{ include "operator.name" . }}clusters
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - {{ include "operator.name" . }}.stackable.tech
+    resources:
+      - {{ include "operator.name" . }}clusters/status
+    verbs:
+      - patch
