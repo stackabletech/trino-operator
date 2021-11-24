@@ -15,64 +15,31 @@ env:
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
   RUSTFLAGS: "-D warnings -W rust-2021-compatibility"
-  REPO_APT_RELEASE_URL: https://repo.stackable.tech/repository/deb-release
-  REPO_RPM_RELEASE_URL: https://repo.stackable.tech/repository/rpm-release
+  REPO_HELM_STABLE_URL: https://repo.stackable.tech/repository/helm-stable
+  CT_CONFIG: deploy/helm/ct.yaml
 
 jobs:
-  debian10:
-    runs-on: debian10
+  helm:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.4.0
-      - name: Change version if is PR
-        if: ${{ github.event_name == 'pull_request' }}
-        # We use "mr" instead of "pr" to denote pull request builds, as this prefix comes before "nightly" when lexically
-        # sorting packages by version. This means that when installing the package without specifying a version the
-        # nighly version is considered more current than mr versions and installed by default
-        run: sed -i -e 's/^version = "\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/version = "\1-mr${{ github.event.number }}"/' rust/operator-binary/Cargo.toml
-      - name: Build
-        run: ~/.cargo/bin/cargo +nightly build --verbose --release
-      - name: Build apt package
-        run: ~/.cargo/bin/cargo deb --manifest-path rust/operator-binary/Cargo.toml --no-build
-      - name: Publish apt package
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.6.2
+      - name: Compile chart
+        run: make compile-chart
+      - name: Package Chart
+        run: mkdir -p target/helm && helm package --destination target/helm deploy/helm/${{ env.PRODUCT_NAME }}-operator
+      - name: Publish Chart
         env:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-        if: env.NEXUS_PASSWORD != null
         run: >-
           /usr/bin/curl
           --fail
           -u 'github:${{ secrets.NEXUS_PASSWORD }}'
-          -H "Content-Type: multipart/form-data"
-          --data-binary "@./$(find target/debian/ -name *.deb)"
-          "${{ env.REPO_APT_RELEASE_URL }}/"
-      - name: Clean
-        run: ~/.cargo/bin/cargo clean
-
-  centos:
-    runs-on: centos${{ matrix.node }}
-    strategy:
-      matrix:
-        node: [ 7, 8 ]
-    steps:
-      - uses: actions/checkout@v2.4.0
-      - name: Change version if is PR
-        if: ${{ github.event_name == 'pull_request' }}
-        # We use "mr" instead of "pr" to denote pull request builds, as this prefix comes before "nightly" when lexically
-        # sorting packages by version. This means that when installing the package without specifying a version the
-        # nighly version is considered more current than mr versions and installed by default
-        run: sed -i -e 's/^version = "\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/version = "\1-mr${{ github.event.number }}"/' rust/operator-binary/Cargo.toml
-      - name: Build
-        run: ~/.cargo/bin/cargo +nightly build --verbose --release
-      - name: Build RPM package
-        run: packaging/buildrpm.sh stackable-${{ env.PRODUCT_NAME }}-operator-binary stackable-${{ env.PRODUCT_NAME }}-operator
-      - name: Publish RPM package
-        env:
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-        if: env.NEXUS_PASSWORD != null
-        run: >-
-          /usr/bin/curl
-          --fail
-          -u 'github:${{ secrets.NEXUS_PASSWORD }}'
-          --upload-file "./$(find  target/rpm/RPMS/x86_64/ -name *.rpm)"
-          "${{ env.REPO_RPM_RELEASE_URL }}/el${{ matrix.node }}/"
-      - name: Clean
-        run: ~/.cargo/bin/cargo clean
+          --upload-file "./$(find  target/helm/ -name *.tgz)"
+          "${{ env.REPO_HELM_STABLE_URL }}/"

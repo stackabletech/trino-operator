@@ -14,6 +14,7 @@ RUN microdnf update --disablerepo=* --enablerepo=ubi-8-baseos --enablerepo=ubi-8
   && rm -rf /var/cache/yum
 
 COPY --from=builder /app/stackable-trino-operator /
+COPY deploy/config-spec/properties.yaml /etc/stackable/trino-operator/config-spec/properties.yaml
 
 RUN groupadd -g 1000 stackable && adduser -u 1000 -g stackable -c 'Stackable Operator' stackable
 
