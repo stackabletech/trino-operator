@@ -5,7 +5,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "operator.fullname" . }}
+  name: {{ .Release.Name }}-deployment
   labels:
     {{- include "operator.labels" . | nindent 4 }}
 spec:
@@ -29,7 +29,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "operator.serviceAccountName" . }}
+      serviceAccountName: {{ .Release.Name }}-serviceaccount
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -46,7 +46,7 @@ spec:
       volumes:
         - name: config-spec
           configMap:
-            name: {{ include "operator.fullname" . }}-configspec
+            name: {{ .Release.Name }}-configmap
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
