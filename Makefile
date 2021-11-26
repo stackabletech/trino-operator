@@ -10,7 +10,7 @@ TAG    := $(shell git rev-parse --short HEAD)
 VERSION := $(shell cargo metadata --format-version 1 | jq '.packages[] | select(.name=="stackable-trino-operator") | .version')
 
 docker:
-	docker build --force-rm -t "docker.stackable.tech/stackable/trino-operator:${VERSION}" -t "docker.stackable.tech/stackable/trino-operator:latest" -f docker/Dockerfile .
+	docker build --force-rm -t "docker.stackable.tech/stackable/trino-operator:${VERSION}" -f docker/Dockerfile .
 	echo "${NEXUS_PASSWORD}" | docker login --username github --password-stdin docker.stackable.tech
 	docker push --all-tags docker.stackable.tech/stackable/trino-operator
 
