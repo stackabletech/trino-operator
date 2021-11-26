@@ -31,6 +31,11 @@ jobs:
         with:
           version: v3.6.2
       - name: Compile chart
+      - name: Build Docker image
+        - shell: bash
+          env:
+            NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          run: make docker
         run: make compile-chart
       - name: Package Chart
         run: mkdir -p target/helm && helm package --destination target/helm deploy/helm/${{ env.PRODUCT_NAME }}-operator
