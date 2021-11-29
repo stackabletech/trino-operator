@@ -14,7 +14,7 @@ stackable-trino-crd = { path = "../crd" }
 stackable-trino-operator = { path = "../operator" }
 
 clap = "2.33"
-tokio = { version = "1.10", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.14", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1"
 
 [build-dependencies]
