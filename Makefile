@@ -38,3 +38,11 @@ deploy/helm/trino-operator/crds/crds.yaml:
 
 chart-lint: compile-chart
 	docker run -it -v $(shell pwd):/build/helm-charts -w /build/helm-charts quay.io/helmpack/chart-testing:v3.4.0  ct lint --config deploy/helm/chart_testing.yaml
+
+## Manifest related targets
+clean-manifests:
+	mkdir -p deploy/manifests
+	rm -rf $$(find deploy/manifests -maxdepth 1 -mindepth 1 -not -name Kustomization)
+
+generate-manifests: clean-manifests compile-chart
+	./scripts/generate-manifests.sh
