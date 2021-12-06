@@ -5,7 +5,7 @@ edition = "2018"
 license = "OSL-3.0"
 name = "stackable-trino-crd"
 repository = "https://github.com/stackabletech/trino-operator"
-version = "0.1.0-nightly"
+version = "0.1.0"
 
 [dependencies]
 stackable-hive-crd = { git = "https://github.com/stackabletech/hive-operator.git", tag = "0.2.0" }
