@@ -39,6 +39,7 @@ jobs:
       - name: Build Docker image
         env:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        if: env.NEXUS_PASSWORD != null
         run: make docker
 
       - name: Compile chart
