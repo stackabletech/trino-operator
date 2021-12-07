@@ -20,8 +20,14 @@ jobs:
         with:
           version: v3.6.2
       - name: update manifests
+        env:
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        if: env.NEXUS_PASSWORD != null
         run: make generate-manifests
       - name: Add & Commit
+        env:
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        if: env.NEXUS_PASSWORD != null
         uses: EndBug/add-and-commit@v7
         with:
           default_author: user_info
