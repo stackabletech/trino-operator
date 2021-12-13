@@ -1213,22 +1213,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "product-config"
-version = "0.3.0-nightly"
-source = "git+https://github.com/stackabletech/product-config.git?branch=main#1d8467ff950e2b074a37057ab5582a854db0fc70"
-dependencies = [
- "java-properties",
- "regex",
- "schemars",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "thiserror",
- "xml-rs",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1627,7 +1611,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "stackable-operator 0.4.0",
+ "stackable-operator",
  "strum 0.22.0",
  "strum_macros 0.22.0",
  "thiserror",
@@ -1643,45 +1627,12 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "stackable-operator 0.4.0",
+ "stackable-operator",
  "strum 0.22.0",
  "strum_macros 0.22.0",
  "thiserror",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "stackable-operator"
-version = "0.3.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.3.0#a0a1d10260f7921d436a0cd7ba6ce957368e42fb"
-dependencies = [
- "async-trait",
- "backoff",
- "chrono",
- "clap",
- "const_format",
- "either",
- "futures",
- "json-patch",
- "k8s-openapi",
- "kube",
- "lazy_static",
- "product-config 0.3.0-nightly",
- "rand",
- "regex",
- "schemars",
- "serde",
- "serde_json",
- "serde_yaml",
- "strum 0.22.0",
- "strum_macros 0.22.0",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -1700,7 +1651,7 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "lazy_static",
- "product-config 0.2.0",
+ "product-config",
  "rand",
  "regex",
  "schemars",
@@ -1719,12 +1670,12 @@ dependencies = [
 
 [[package]]
 name = "stackable-regorule-crd"
-version = "0.2.0"
-source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.2.0#eac1779cd358ac63bbbd6fb7d640ab16a680e86c"
+version = "0.4.0"
+source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.4.0#9b49f4e4ba158e5469db2ad1f958ce597f1901bc"
 dependencies = [
  "serde",
  "serde_json",
- "stackable-operator 0.3.0",
+ "stackable-operator",
 ]
 
 [[package]]
@@ -1741,7 +1692,7 @@ dependencies = [
  "serde_yaml",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator 0.4.0",
+ "stackable-operator",
  "stackable-regorule-crd",
  "strum 0.21.0",
  "strum_macros 0.21.1",
@@ -1760,7 +1711,7 @@ dependencies = [
  "serde_json",
  "stackable-hive-crd",
  "stackable-opa-crd",
- "stackable-operator 0.4.0",
+ "stackable-operator",
  "stackable-trino-crd",
  "strum 0.21.0",
  "strum_macros 0.21.1",
@@ -1774,7 +1725,7 @@ version = "0.3.0-nightly"
 dependencies = [
  "built",
  "clap",
- "stackable-operator 0.4.0",
+ "stackable-operator",
  "stackable-trino-crd",
  "stackable-trino-operator",
  "tokio",
