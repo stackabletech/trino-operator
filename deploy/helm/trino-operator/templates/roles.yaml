@@ -37,12 +37,26 @@ rules:
     resources:
       - pods
       - configmaps
+      - services
+      - endpoints
     verbs:
       - create
       - delete
       - list
-      - watch
+      - patch
       - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - create
+      - delete
+      - list
+      - patch
+      - update
+      - watch
   - apiGroups:
       - batch
     resources:
@@ -51,6 +65,8 @@ rules:
       - create
       - get
       - list
+      - patch
+      - update
       - watch
   - apiGroups:
       - apiextensions.k8s.io
