@@ -21,3 +21,4 @@ RUN groupadd -g 1000 stackable && adduser -u 1000 -g stackable -c 'Stackable Ope
 USER 1000:1000
 
 ENTRYPOINT ["/stackable-trino-operator"]
+CMD ["run"]
