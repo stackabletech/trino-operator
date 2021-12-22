@@ -36,7 +36,7 @@ jobs:
         env:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         if: env.NEXUS_PASSWORD != null
-        run: make docker
+        run: make docker-release
 
       - name: Compile chart
         run: make compile-chart
