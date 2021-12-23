@@ -1,4 +1,11 @@
-*.iml
-.idea
-target
+debug/
+target/
+**/*.rs.bk
 
+.idea/
+*.iws
+*.iml
+
+*.tgz
+deploy/helm/trino-operator/configs
+deploy/helm/trino-operator/templates/crds.yaml
