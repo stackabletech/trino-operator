@@ -7,6 +7,7 @@ use crate::authorization::Authorization;
 use crate::commands::{Restart, Start, Stop};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,7 @@ use stackable_operator::identity::PodToNodeMapping;
 use stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use stackable_operator::k8s_openapi::schemars::_serde_json::Value;
 use stackable_operator::kube::api::ApiResource;
+use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::kube::CustomResource;
 use stackable_operator::kube::CustomResourceExt;
 use stackable_operator::product_config_utils::{ConfigError, Configuration};
@@ -127,58 +129,6 @@ impl TrinoRole {
             "run".to_string(),
             format!("--etc-dir={}", CONFIG_DIR_NAME),
         ]
-    }
-}
-
-impl Status<TrinoClusterStatus> for TrinoCluster {
-    fn status(&self) -> &Option<TrinoClusterStatus> {
-        &self.status
-    }
-    fn status_mut(&mut self) -> &mut Option<TrinoClusterStatus> {
-        &mut self.status
-    }
-}
-
-impl HasRoleRestartOrder for TrinoCluster {
-    fn get_role_restart_order() -> Vec<String> {
-        vec![
-            TrinoRole::Worker.to_string(),
-            TrinoRole::Coordinator.to_string(),
-        ]
-    }
-}
-
-impl HasCommands for TrinoCluster {
-    fn get_command_types() -> Vec<ApiResource> {
-        vec![
-            Start::api_resource(),
-            Stop::api_resource(),
-            Restart::api_resource(),
-        ]
-    }
-}
-
-impl HasOwned for TrinoCluster {
-    fn owned_objects() -> Vec<&'static str> {
-        vec![Restart::crd_name(), Start::crd_name(), Stop::crd_name()]
-    }
-}
-
-impl HasApplication for TrinoCluster {
-    fn get_application_name() -> &'static str {
-        APP_NAME
-    }
-}
-
-impl HasClusterExecutionStatus for TrinoCluster {
-    fn cluster_execution_status(&self) -> Option<ClusterExecutionStatus> {
-        self.status
-            .as_ref()
-            .and_then(|status| status.cluster_execution_status.clone())
-    }
-
-    fn cluster_execution_status_patch(&self, execution_status: &ClusterExecutionStatus) -> Value {
-        json!({ "clusterExecutionStatus": execution_status })
     }
 }
 
@@ -444,6 +394,81 @@ impl Versioning for TrinoVersion {
     }
 }
 
+impl TrinoCluster {
+    /// The name of the role-level load-balanced Kubernetes `Service` for the worker nodes
+    pub fn worker_role_service_name(&self) -> Option<String> {
+        self.metadata
+            .name
+            .clone()
+            .map(|name| format!("{}-worker", name))
+    }
+
+    /// The name of the role-level load-balanced Kubernetes `Service` for the coordinator nodes
+    pub fn coordinator_role_service_name(&self) -> Option<String> {
+        self.metadata
+            .name
+            .clone()
+            .map(|name| format!("{}-coordinator", name))
+    }
+
+    /// The fully-qualified domain name of the role-level load-balanced Kubernetes `Service`
+    pub fn coordinator_role_service_fqdn(&self) -> Option<String> {
+        Some(format!(
+            "{}.{}.svc.cluster.local",
+            self.coordinator_role_service_name()?,
+            self.metadata.namespace.as_ref()?
+        ))
+    }
+
+    /// The fully-qualified domain name of the role-level load-balanced Kubernetes `Service`
+    pub fn worker_role_service_fqdn(&self) -> Option<String> {
+        Some(format!(
+            "{}.{}.svc.cluster.local",
+            self.worker_role_service_name()?,
+            self.metadata.namespace.as_ref()?
+        ))
+    }
+    /// Metadata about a coordinator rolegroup
+    pub fn coordinator_rolegroup_ref(&self, group_name: impl Into<String>) -> RoleGroupRef {
+        RoleGroupRef {
+            cluster: ObjectRef::from_obj(self),
+            role: TrinoRole::Coordinator.to_string(),
+            role_group: group_name.into(),
+        }
+    }
+
+    /// Metadata about a worker rolegroup
+    pub fn worker_rolegroup_ref(&self, group_name: impl Into<String>) -> RoleGroupRef {
+        RoleGroupRef {
+            cluster: ObjectRef::from_obj(self),
+            role: TrinoRole::Worker.to_string(),
+            role_group: group_name.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RoleGroupRef {
+    pub cluster: ObjectRef<TrinoCluster>,
+    pub role: String,
+    pub role_group: String,
+}
+
+impl RoleGroupRef {
+    pub fn object_name(&self) -> String {
+        format!("{}-{}-{}", self.cluster.name, self.role, self.role_group)
+    }
+}
+
+impl Display for RoleGroupRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "rolegroup {}.{} of {}",
+            self.role, self.role_group, self.cluster
+        ))
+    }
+}
+
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterStatus {
@@ -457,39 +482,6 @@ pub struct TrinoClusterStatus {
     pub current_command: Option<CommandRef>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cluster_execution_status: Option<ClusterExecutionStatus>,
-}
-
-impl Versioned<TrinoVersion> for TrinoClusterStatus {
-    fn version(&self) -> &Option<ProductVersion<TrinoVersion>> {
-        &self.version
-    }
-    fn version_mut(&mut self) -> &mut Option<ProductVersion<TrinoVersion>> {
-        &mut self.version
-    }
-}
-
-impl Conditions for TrinoClusterStatus {
-    fn conditions(&self) -> &[Condition] {
-        self.conditions.as_slice()
-    }
-    fn conditions_mut(&mut self) -> &mut Vec<Condition> {
-        &mut self.conditions
-    }
-}
-
-impl HasCurrentCommand for TrinoClusterStatus {
-    fn current_command(&self) -> Option<CommandRef> {
-        self.current_command.clone()
-    }
-    fn set_current_command(&mut self, command: CommandRef) {
-        self.current_command = Some(command);
-    }
-    fn clear_current_command(&mut self) {
-        self.current_command = None
-    }
-    fn tracking_location() -> &'static str {
-        "/status/currentCommand"
-    }
 }
 
 #[cfg(test)]

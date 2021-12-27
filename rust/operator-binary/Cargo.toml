@@ -9,17 +9,26 @@ version = "0.2.0-nightly"
 build = "build.rs"
 
 [dependencies]
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.4.0" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git" }
 stackable-trino-crd = { path = "../crd" }
 stackable-trino-operator = { path = "../operator" }
 
 clap = "2.33"
 tokio = { version = "1.10", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1"
+snafu = "0.6.10"
+futures = { version = "0.3.17", features = ["compat"] }
+semver = "1.0.4"
+serde = "1.0.130"
+serde_json = "1.0.68"
+serde_yaml = "0.8.21"
+structopt = "0.3.23"
+anyhow = "1.0.48"
+fnv = "1.0.7"
 
 [build-dependencies]
 built = { version =  "0.5", features = ["chrono", "git2"] }
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.4.0" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git" }
 stackable-trino-crd = { path = "../crd" }
 
 [package.metadata.deb]

@@ -1,4 +1,4 @@
-mod error;
+/*mod error;
 
 use crate::error::Error;
 
@@ -93,6 +93,7 @@ impl TrinoState {
         Ok(ReconcileFunctionAction::Continue)
     }
 
+    /*
     async fn get_hive_connection_information(&mut self) -> TrinoReconcileResult {
         let hive_ref: &stackable_hive_crd::discovery::HiveReference =
             &self.context.resource.spec.hive_reference;
@@ -107,6 +108,7 @@ impl TrinoState {
 
         Ok(ReconcileFunctionAction::Continue)
     }
+    */
 
     async fn create_rego_rules(&self) -> TrinoReconcileResult {
         let spec: &TrinoClusterSpec = &self.context.resource.spec;
@@ -942,3 +944,6 @@ pub async fn create_controller(client: Client, product_config_path: &str) -> Ope
 
     Ok(())
 }
+
+
+ */
