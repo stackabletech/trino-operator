@@ -1,30 +1,16 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
-
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, HashMap},
-    hash::Hasher,
-    time::Duration,
-};
-
-use stackable_trino_crd::TrinoCluster;
-
-use crate::{
-    discovery::{self, build_discovery_configmaps},
-    utils::{apply_owned, apply_status},
-    APP_NAME, APP_PORT,
-};
-use fnv::FnvHasher;
+use snafu::futures::TryFutureExt;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, EnvVar, EnvVarSource, ExecAction,
-                ObjectFieldSelector, PersistentVolumeClaim, PersistentVolumeClaimSpec, Probe,
-                ResourceRequirements, Service, ServicePort, ServiceSpec, Volume,
+                ConfigMap, ConfigMapVolumeSource, EnvVar, EnvVarSource, ObjectFieldSelector,
+                PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements, Service,
+                ServicePort, ServiceSpec, Volume,
             },
         },
         apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
@@ -38,95 +24,80 @@ use stackable_operator::{
         },
     },
     labels::{role_group_selector_labels, role_selector_labels},
-    product_config::{
-        types::PropertyNameKind, writer::to_java_properties_string, ProductConfigManager,
-    },
+    product_config::{types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{transform_all_roles_to_config, validate_all_roles_and_groups_config},
 };
-use stackable_trino_crd::{RoleGroupRef, TrinoRole};
+use stackable_trino_crd::{
+    TrinoCluster, CERTIFICATE_PEM, CONFIG_PROPERTIES, HIVE_PROPERTIES, JVM_CONFIG, LOG_PROPERTIES,
+    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
+};
+use stackable_trino_crd::{TrinoRole, APP_NAME, APP_PORT};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+    hash::Hasher,
+    time::Duration,
+};
 
-const FIELD_MANAGER: &str = "trino.stackable.tech/trinocluster";
+const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 
 pub struct Ctx {
-    pub kube: kube::Client,
+    pub client: stackable_operator::client::Client,
     pub product_config: ProductConfigManager,
 }
 
 #[derive(Snafu, Debug)]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
-    #[snafu(display("object {} has no namespace", obj_ref))]
-    ObjectHasNoNamespace {
-        obj_ref: ObjectRef<TrinoCluster>,
-    },
-    #[snafu(display("object {} defines no version", obj_ref))]
-    ObjectHasNoVersion {
-        obj_ref: ObjectRef<TrinoCluster>,
-    },
-    #[snafu(display("{} has no server role", obj_ref))]
-    NoServerRole {
-        obj_ref: ObjectRef<TrinoCluster>,
-    },
-    #[snafu(display("failed to calculate global service name for {}", obj_ref))]
-    GlobalServiceNameNotFound {
-        obj_ref: ObjectRef<TrinoCluster>,
-    },
+    #[snafu(display("object defines no version"))]
+    ObjectHasNoVersion,
+    #[snafu(display("object defines no {} role", role))]
+    MissingTrinoRole { role: String },
+    #[snafu(display("failed to calculate global service name"))]
+    GlobalServiceNameNotFound,
     #[snafu(display("failed to calculate service name for role {}", rolegroup))]
-    RoleGroupServiceNameNotFound { rolegroup: RoleGroupRef },
-    #[snafu(display("failed to apply global Service for {}", trino))]
+    RoleGroupServiceNameNotFound {
+        rolegroup: RoleGroupRef<TrinoCluster>,
+    },
+    #[snafu(display("failed to apply global Service"))]
     ApplyRoleService {
-        source: kube::Error,
-        trino: ObjectRef<TrinoCluster>,
+        source: stackable_operator::error::Error,
     },
     #[snafu(display("failed to apply Service for {}", rolegroup))]
     ApplyRoleGroupService {
-        source: kube::Error,
-        rolegroup: RoleGroupRef,
+        source: stackable_operator::error::Error,
+        rolegroup: RoleGroupRef<TrinoCluster>,
     },
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfig {
         source: stackable_operator::error::Error,
-        rolegroup: RoleGroupRef,
+        rolegroup: RoleGroupRef<TrinoCluster>,
     },
     #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
     ApplyRoleGroupConfig {
-        source: kube::Error,
-        rolegroup: RoleGroupRef,
+        source: stackable_operator::error::Error,
+        rolegroup: RoleGroupRef<TrinoCluster>,
     },
     #[snafu(display("failed to apply StatefulSet for {}", rolegroup))]
     ApplyRoleGroupStatefulSet {
-        source: kube::Error,
-        rolegroup: RoleGroupRef,
+        source: stackable_operator::error::Error,
+        rolegroup: RoleGroupRef<TrinoCluster>,
     },
-    #[snafu(display("invalid product config for {}", trino))]
+    #[snafu(display("invalid product config"))]
     InvalidProductConfig {
         source: stackable_operator::error::Error,
-        trino: ObjectRef<TrinoCluster>,
     },
-    #[snafu(display("failed to serialize zoo.cfg for {}", rolegroup))]
-    SerializeZooCfg {
-        source: stackable_operator::product_config::writer::PropertiesWriterError,
-        rolegroup: RoleGroupRef,
-    },
-    #[snafu(display("object {} is missing metadata to build owner reference", trino))]
+    #[snafu(display("object is missing metadata to build owner reference"))]
     ObjectMissingMetadataForOwnerRef {
         source: stackable_operator::error::Error,
-        trino: ObjectRef<TrinoCluster>,
     },
-    #[snafu(display("failed to build discovery ConfigMap for {}", trino))]
-    BuildDiscoveryConfig {
-        source: discovery::Error,
-        trino: ObjectRef<TrinoCluster>,
-    },
-    #[snafu(display("failed to apply discovery ConfigMap for {}", trino))]
-    ApplyDiscoveryConfig {
-        source: kube::Error,
-        trino: ObjectRef<TrinoCluster>,
-    },
-    #[snafu(display("failed to update status of {}", trino))]
+    #[snafu(display("failed to update status"))]
     ApplyStatus {
-        source: kube::Error,
-        trino: ObjectRef<TrinoCluster>,
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("Failed to transform configs"))]
+    ProductConfigTransform {
+        source: stackable_operator::product_config_utils::ConfigError,
     },
 }
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -135,136 +106,133 @@ const PROPERTIES_FILE: &str = "trino.cfg";
 
 pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<ReconcilerAction> {
     tracing::info!("Starting reconcile");
-    let trino_ref = ObjectRef::from_obj(&trino);
-    let kube = ctx.get_ref().kube.clone();
 
-    let trino_version = trino
-        .spec
-        .version
-        .as_deref()
-        .with_context(|| ObjectHasNoVersion {
-            obj_ref: trino_ref.clone(),
-        })?;
+    let trino_ref = ObjectRef::from_obj(&trino);
+    let client = &ctx.get_ref().client;
+    let trino_version = trino_version(&trino)?;
+
+    let mut roles = HashMap::new();
+
+    let config_files = vec![
+        PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+        PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
+        PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+        PropertyNameKind::File(JVM_CONFIG.to_string()),
+        PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+    ];
+
+    roles.insert(
+        TrinoRole::Coordinator.to_string(),
+        (
+            [
+                config_files.clone(),
+                vec![
+                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
+                    PropertyNameKind::File(PASSWORD_DB.to_string()),
+                    PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
+                ],
+            ]
+            .concat(),
+            trino
+                .spec
+                .coordinators
+                .clone()
+                .with_context(|| MissingTrinoRole {
+                    role: TrinoRole::Coordinator.to_string(),
+                })?,
+        ),
+    );
+
+    roles.insert(
+        TrinoRole::Worker.to_string(),
+        (
+            config_files,
+            trino
+                .spec
+                .workers
+                .clone()
+                .with_context(|| MissingTrinoRole {
+                    role: TrinoRole::Worker.to_string(),
+                })?,
+        ),
+    );
+
+    let role_config =
+        transform_all_roles_to_config(&trino, roles).with_context(|| ProductConfigTransform)?;
     let validated_config = validate_all_roles_and_groups_config(
         trino_version,
-        &transform_all_roles_to_config(
-            &trino,
-            [(
-                TrinoRole::Coordinator.to_string(),
-                TrinoRole::Worker.to_string(),
-                (
-                    vec![
-                        PropertyNameKind::Env,
-                        PropertyNameKind::File(PROPERTIES_FILE.to_string()),
-                    ],
-                    trino.spec.servers.clone().with_context(|| NoServerRole {
-                        obj_ref: trino_ref.clone(),
-                    })?,
-                ),
-            )]
-            .into(),
-        ),
+        &role_config,
         &ctx.get_ref().product_config,
         false,
         false,
     )
-    .with_context(|| InvalidProductConfig { source: Error::ConfigMapMissingGenerateName, trino: trino_ref.clone() })?;
+    .context(InvalidProductConfig)?;
+
     let role_coordinator_config = validated_config
         .get(&TrinoRole::Coordinator.to_string())
         .map(Cow::Borrowed)
         .unwrap_or_default();
 
-    let coordinator_role_service = apply_owned(&kube, FIELD_MANAGER, &build_coordinator_role_service(&trino)?)
+    let coordinator_role_service = build_coordinator_role_service(&trino)?;
+
+    let coordinator_role_service = client
+        .apply_patch(
+            FIELD_MANAGER_SCOPE,
+            &coordinator_role_service,
+            &coordinator_role_service,
+        )
         .await
-        .with_context(|| ApplyRoleService { trino: trino_ref.clone() })?;
+        .context(ApplyRoleService)?;
 
     for (rolegroup_name, rolegroup_config) in role_coordinator_config.iter() {
         let rolegroup = trino.coordinator_rolegroup_ref(rolegroup_name);
 
-        apply_owned(
-            &kube,
-            FIELD_MANAGER,
-            &build_coserver_rolegroup_service(&rolegroup, &trino)?,
-        )
-        .await
-        .with_context(|| ApplyRoleGroupService {
-            rolegroup: rolegroup.clone(),
-        })?;
-        apply_owned(
-            &kube,
-            FIELD_MANAGER,
-            &build_server_rolegroup_config_map(&rolegroup, &trino, rolegroup_config)?,
-        )
-        .await
-        .with_context(|| ApplyRoleGroupConfig {
-            rolegroup: rolegroup.clone(),
-        })?;
-        apply_owned(
-            &kube,
-            FIELD_MANAGER,
-            &build_server_rolegroup_statefulset(&rolegroup, &trino, rolegroup_config)?,
-        )
-        .await
-        .with_context(|| ApplyRoleGroupStatefulSet {
-            rolegroup: rolegroup.clone(),
-        })?;
-    }
+        let rg_service = build_coordinator_rolegroup_service(&trino, &rolegroup)?;
+        let rg_configmap =
+            build_coordinator_rolegroup_config_map(&trino, &rolegroup, rolegroup_config)?;
+        let rg_stateful_set =
+            build_coordinator_rolegroup_statefulset(&trino, &rolegroup, rolegroup_config)?;
 
-    // std's SipHasher is deprecated, and DefaultHasher is unstable across Rust releases.
-    // We don't /need/ stability, but it's still nice to avoid spurious changes where possible.
-    let mut discovery_hash = FnvHasher::with_key(0);
-    for discovery_cm in build_discovery_configmaps(&kube, &trino, &trino, &coordinator_role_service, None)
-        .await
-        .with_context(|| BuildDiscoveryConfig { trino: trino_ref.clone() })?
-    {
-        let discovery_cm = apply_owned(&kube, FIELD_MANAGER, &discovery_cm)
+        client
+            .apply_patch(FIELD_MANAGER_SCOPE, &rg_service, &rg_service)
             .await
-            .with_context(|| ApplyDiscoveryConfig { trino: trino_ref.clone() })?;
-        if let Some(generation) = discovery_cm.metadata.resource_version {
-            discovery_hash.write(generation.as_bytes())
-        }
-    }
+            .with_context(|| ApplyRoleGroupService {
+                rolegroup: rolegroup.clone(),
+            })?;
 
-    let status = TrinoClusterStatus {
-        // Serialize as a string to discourage users from trying to parse the value,
-        // and to keep things flexible if we end up changing the hasher at some point.
-        discovery_hash: Some(discovery_hash.finish().to_string()),
-    };
-    apply_status(&kube, FIELD_MANAGER, &{
-        let mut trino_with_status =
-            TrinoCluster::new(&trino_ref.name, TrinoClusterSpec::default());
-        trino_with_status.metadata.namespace = trino.metadata.namespace.clone();
-        trino_with_status.status = Some(status);
-        trino_with_status
-    })
-    .await
-    .context(ApplyStatus { trino: trino_ref.clone() })?;
+        client
+            .apply_patch(FIELD_MANAGER_SCOPE, &rg_configmap, &rg_configmap)
+            .await
+            .with_context(|| ApplyRoleGroupConfig {
+                rolegroup: rolegroup.clone(),
+            })?;
+
+        client
+            .apply_patch(FIELD_MANAGER_SCOPE, &rg_stateful_set, &rg_stateful_set)
+            .await
+            .with_context(|| ApplyRoleGroupStatefulSet {
+                rolegroup: rolegroup.clone(),
+            })?;
+    }
 
     Ok(ReconcilerAction {
         requeue_after: None,
     })
 }
 
-/// The server-role service is the primary endpoint that should be used by clients that do not perform internal load balancing,
-/// including targets outside of the cluster.
-///
-/// Note that you should generally *not* hard-code clients to use these services; instead, create a [`ZookeeperZnode`](`stackable_zookeeper_crd::ZookeeperZnode`)
-/// and use the connection string that it gives you.
+/// The server-role service is the primary endpoint that should be used by clients that do not
+/// perform internal load balancing, including targets outside of the cluster.
 pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
     let role_name = TrinoRole::Coordinator.to_string();
-    let role_svc_name =
-        trino.coordinator_role_service_name()
-            .with_context(|| GlobalServiceNameNotFound {
-                obj_ref: ObjectRef::from_obj(trino),
-            })?;
+    let role_svc_name = trino
+        .coordinator_role_service_name()
+        .context(GlobalServiceNameNotFound)?;
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
             .name(&role_svc_name)
             .ownerreference_from_resource(trino, None, Some(true))
-            .with_context(|| ObjectMissingMetadataForOwnerRef {
-                trino: ObjectRef::from_obj(trino),
-            })?
+            .context(ObjectMissingMetadataForOwnerRef)?
             .with_recommended_labels(trino, APP_NAME, trino_version(trino)?, &role_name, "global")
             .build(),
         spec: Some(ServiceSpec {
@@ -283,33 +251,18 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
 }
 
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
-fn build_coordinator_rolegroup_config_map(    rolegroup: &RoleGroupRef,    trino: &TrinoCluster,    coordinator_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,) -> Result<ConfigMap> {
-    /*let mut zoo_cfg = coordinator_config
-        .get(&PropertyNameKind::File(PROPERTIES_FILE.to_string()))
-        .cloned()
-        .unwrap_or_default();
-    zoo_cfg.extend(zk.pods().into_iter().flatten().map(|pod| {
-        (
-            format!("server.{}", pod.zookeeper_myid),
-            format!("{}:2888:3888;{}", pod.fqdn(), APP_PORT),
-        )
-    }));
-    let zoo_cfg = zoo_cfg
-        .into_iter()
-        .map(|(k, v)| (k, Some(v)))
-        .collect::<Vec<_>>();
-
-     */
-
+fn build_coordinator_rolegroup_config_map(
+    trino: &TrinoCluster,
+    rolegroup: &RoleGroupRef<TrinoCluster>,
+    coordinator_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+) -> Result<ConfigMap> {
     ConfigMapBuilder::new()
         .metadata(
             ObjectMetaBuilder::new()
                 .name_and_namespace(trino)
                 .name(rolegroup.object_name())
                 .ownerreference_from_resource(trino, None, Some(true))
-                .with_context(|| ObjectMissingMetadataForOwnerRef {
-                    trino: ObjectRef::from_obj(trino),
-                })?
+                .context(ObjectMissingMetadataForOwnerRef)?
                 .with_recommended_labels(
                     trino,
                     APP_NAME,
@@ -320,12 +273,12 @@ fn build_coordinator_rolegroup_config_map(    rolegroup: &RoleGroupRef,    trino
                 .build(),
         )
         .add_data(
-            "zoo.cfg", format!("test")
-            /*to_java_properties_string(zoo_cfg.iter().map(|(k, v)| (k, v))).with_context(|| {
-                SerializeZooCfg {
-                    rolegroup: rolegroup.clone(),
-                }
-            })?,*/
+            "zoo.cfg",
+            format!("test"), /*to_java_properties_string(zoo_cfg.iter().map(|(k, v)| (k, v))).with_context(|| {
+                                 SerializeZooCfg {
+                                     rolegroup: rolegroup.clone(),
+                                 }
+                             })?,*/
         )
         .build()
         .with_context(|| BuildRoleGroupConfig {
@@ -337,16 +290,16 @@ fn build_coordinator_rolegroup_config_map(    rolegroup: &RoleGroupRef,    trino
 ///
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the corresponding [`Service`] (from [`build_rolegroup_service`]).
 fn build_coordinator_rolegroup_statefulset(
-    rolegroup_ref: &RoleGroupRef,
     trino: &TrinoCluster,
+    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     server_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
 ) -> Result<StatefulSet> {
     let rolegroup = trino
         .spec
-        .servers
+        .coordinators
         .as_ref()
-        .with_context(|| NoServerRole {
-            obj_ref: ObjectRef::from_obj(trino),
+        .with_context(|| MissingTrinoRole {
+            role: TrinoRole::Coordinator.to_string(),
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
@@ -405,9 +358,7 @@ fn build_coordinator_rolegroup_statefulset(
             .name_and_namespace(trino)
             .name(&rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
-            .with_context(|| ObjectMissingMetadataForOwnerRef {
-                zk: ObjectRef::from_obj(trino),
-            })?
+            .context(ObjectMissingMetadataForOwnerRef)?
             .with_recommended_labels(
                 trino,
                 APP_NAME,
@@ -478,6 +429,49 @@ fn build_coordinator_rolegroup_statefulset(
         status: None,
     })
 }
+
+/// The rolegroup [`Service`] is a headless service that allows direct access to the instances of a certain rolegroup
+///
+/// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
+fn build_coordinator_rolegroup_service(
+    trino: &TrinoCluster,
+    rolegroup: &RoleGroupRef<TrinoCluster>,
+) -> Result<Service> {
+    Ok(Service {
+        metadata: ObjectMetaBuilder::new()
+            .name_and_namespace(trino)
+            .name(&rolegroup.object_name())
+            .ownerreference_from_resource(trino, None, Some(true))
+            .context(ObjectMissingMetadataForOwnerRef)?
+            .with_recommended_labels(
+                trino,
+                APP_NAME,
+                trino_version(trino)?,
+                &rolegroup.role,
+                &rolegroup.role_group,
+            )
+            .build(),
+        spec: Some(ServiceSpec {
+            cluster_ip: Some("None".to_string()),
+            ports: Some(vec![ServicePort {
+                name: Some("trino".to_string()),
+                port: APP_PORT.into(),
+                protocol: Some("TCP".to_string()),
+                ..ServicePort::default()
+            }]),
+            selector: Some(role_group_selector_labels(
+                trino,
+                APP_NAME,
+                &rolegroup.role,
+                &rolegroup.role_group,
+            )),
+            publish_not_ready_addresses: Some(true),
+            ..ServiceSpec::default()
+        }),
+        status: None,
+    })
+}
+
 /*
 pub fn build_worker_role_service(trino: &TrinoCluster) -> Result<Service> {
     let role_name = TrinoRole::Worker.to_string();
@@ -568,12 +562,7 @@ TODO: add worker statefulset fn
 */
 
 pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
-    trino.spec
-        .version
-        .as_deref()
-        .with_context(|| ObjectHasNoVersion {
-            obj_ref: ObjectRef::from_obj(trino),
-        })
+    trino.spec.version.as_deref().context(ObjectHasNoVersion)
 }
 
 pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> ReconcilerAction {

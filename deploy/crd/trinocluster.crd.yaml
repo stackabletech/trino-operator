@@ -59,14 +59,15 @@ spec:
                     - permissions
                   type: object
                 coordinators:
+                  nullable: true
                   properties:
                     cliOverrides:
                       additionalProperties:
                         type: string
-                      nullable: true
+                      default: {}
                       type: object
                     config:
-                      nullable: true
+                      default: {}
                       properties:
                         coordinator:
                           nullable: true
@@ -113,12 +114,12 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
-                      nullable: true
+                      default: {}
                       type: object
                     envOverrides:
                       additionalProperties:
                         type: string
-                      nullable: true
+                      default: {}
                       type: object
                     roleGroups:
                       additionalProperties:
@@ -126,10 +127,10 @@ spec:
                           cliOverrides:
                             additionalProperties:
                               type: string
-                            nullable: true
+                            default: {}
                             type: object
                           config:
-                            nullable: true
+                            default: {}
                             properties:
                               coordinator:
                                 nullable: true
@@ -176,12 +177,12 @@ spec:
                               additionalProperties:
                                 type: string
                               type: object
-                            nullable: true
+                            default: {}
                             type: object
                           envOverrides:
                             additionalProperties:
                               type: string
-                            nullable: true
+                            default: {}
                             type: object
                           replicas:
                             format: uint16
@@ -225,9 +226,8 @@ spec:
                     - roleGroups
                   type: object
                 hiveReference:
-                  description: Contains all necessary information to identify a Stackable managed Hive cluster and build a connection string for it. The main purpose for this struct is for other operators that need to reference a Hive ensemble to use in their CRDs. This has the benefit of keeping references to Hive ensembles consistent throughout the entire stack.
                   properties:
-                    db:
+                    chroot:
                       nullable: true
                       type: string
                     name:
@@ -241,9 +241,11 @@ spec:
                 nodeEnvironment:
                   type: string
                 opa:
-                  description: Contains all necessary information to identify a Stackable managed Open Policy Agent (OPA) and build a connection string for it. The main purpose for this struct is for other operators that need to reference an OPA to use in their CRDs. This has the benefit of keeping references to OPA consistent throughout the entire stack.
                   nullable: true
                   properties:
+                    chroot:
+                      nullable: true
+                      type: string
                     name:
                       type: string
                     namespace:
@@ -273,21 +275,23 @@ spec:
                     - secretKey
                     - sslEnabled
                   type: object
+                stopped:
+                  description: "Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)"
+                  nullable: true
+                  type: boolean
                 version:
-                  enum:
-                    - 0.0.360
-                    - 0.0.361
-                    - 0.0.362
+                  nullable: true
                   type: string
                 workers:
+                  nullable: true
                   properties:
                     cliOverrides:
                       additionalProperties:
                         type: string
-                      nullable: true
+                      default: {}
                       type: object
                     config:
-                      nullable: true
+                      default: {}
                       properties:
                         coordinator:
                           nullable: true
@@ -334,12 +338,12 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
-                      nullable: true
+                      default: {}
                       type: object
                     envOverrides:
                       additionalProperties:
                         type: string
-                      nullable: true
+                      default: {}
                       type: object
                     roleGroups:
                       additionalProperties:
@@ -347,10 +351,10 @@ spec:
                           cliOverrides:
                             additionalProperties:
                               type: string
-                            nullable: true
+                            default: {}
                             type: object
                           config:
-                            nullable: true
+                            default: {}
                             properties:
                               coordinator:
                                 nullable: true
@@ -397,12 +401,12 @@ spec:
                               additionalProperties:
                                 type: string
                               type: object
-                            nullable: true
+                            default: {}
                             type: object
                           envOverrides:
                             additionalProperties:
                               type: string
-                            nullable: true
+                            default: {}
                             type: object
                           replicas:
                             format: uint16
@@ -446,105 +450,11 @@ spec:
                     - roleGroups
                   type: object
               required:
-                - coordinators
                 - hiveReference
                 - nodeEnvironment
-                - version
-                - workers
               type: object
             status:
               nullable: true
-              properties:
-                clusterExecutionStatus:
-                  description: Signals the current status of the cluster
-                  enum:
-                    - Stopped
-                    - Running
-                  nullable: true
-                  type: string
-                conditions:
-                  items:
-                    description: Condition contains details for one aspect of the current state of this API Resource.
-                    properties:
-                      lastTransitionTime:
-                        description: "lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable."
-                        format: date-time
-                        type: string
-                      message:
-                        description: message is a human readable message indicating details about the transition. This may be an empty string.
-                        type: string
-                      observedGeneration:
-                        description: "observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance."
-                        format: int64
-                        type: integer
-                      reason:
-                        description: "reason contains a programmatic identifier indicating the reason for the condition's last transition. Producers of specific condition types may define expected values and meanings for this field, and whether the values are considered a guaranteed API. The value should be a CamelCase string. This field may not be empty."
-                        type: string
-                      status:
-                        description: "status of the condition, one of True, False, Unknown."
-                        type: string
-                      type:
-                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
-                        type: string
-                    required:
-                      - lastTransitionTime
-                      - message
-                      - reason
-                      - status
-                      - type
-                    type: object
-                  type: array
-                currentCommand:
-                  nullable: true
-                  properties:
-                    kind:
-                      type: string
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                    uid:
-                      type: string
-                  required:
-                    - kind
-                    - name
-                    - namespace
-                    - uid
-                  type: object
-                history:
-                  nullable: true
-                  properties:
-                    mapping:
-                      additionalProperties:
-                        properties:
-                          name:
-                            type: string
-                        required:
-                          - name
-                        type: object
-                      type: object
-                  required:
-                    - mapping
-                  type: object
-                version:
-                  description: The version of the product provided by the operator. Split into current and target version in order track upgrading and downgrading progress.
-                  nullable: true
-                  properties:
-                    current:
-                      enum:
-                        - 0.0.360
-                        - 0.0.361
-                        - 0.0.362
-                      nullable: true
-                      type: string
-                    target:
-                      enum:
-                        - 0.0.360
-                        - 0.0.361
-                        - 0.0.362
-                      nullable: true
-                      type: string
-                  type: object
               type: object
           required:
             - spec

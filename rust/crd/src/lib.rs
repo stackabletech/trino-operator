@@ -1,42 +1,23 @@
 pub mod authorization;
-pub mod commands;
 pub mod discovery;
 pub mod error;
 
 use crate::authorization::Authorization;
-use crate::commands::{Restart, Start, Stop};
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::fmt::Display;
 
-use semver::Version;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use stackable_hive_crd::discovery::{HiveReference, S3Connection};
-use stackable_opa_crd::util::OpaReference;
-use stackable_operator::command::{CommandRef, HasCommands, HasRoleRestartOrder};
-use stackable_operator::controller::HasOwned;
-use stackable_operator::crd::HasApplication;
-use stackable_operator::identity::PodToNodeMapping;
-use stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
-use stackable_operator::k8s_openapi::schemars::_serde_json::Value;
-use stackable_operator::kube::api::ApiResource;
 use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::kube::CustomResource;
-use stackable_operator::kube::CustomResourceExt;
 use stackable_operator::product_config_utils::{ConfigError, Configuration};
 use stackable_operator::role_utils::Role;
+use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::schemars::{self, JsonSchema};
-use stackable_operator::status::{
-    ClusterExecutionStatus, Conditions, HasClusterExecutionStatus, HasCurrentCommand, Status,
-    Versioned,
-};
-use stackable_operator::versioning::{ProductVersion, Versioning, VersioningState};
+use std::collections::BTreeMap;
 use strum_macros::Display;
 use strum_macros::EnumIter;
 
 pub const APP_NAME: &str = "trino";
-pub const MANAGED_BY: &str = "trino-operator";
+pub const APP_PORT: u16 = 8080;
+
 // file names
 pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
@@ -94,21 +75,32 @@ pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
     plural = "trinoclusters",
     shortname = "trino",
     namespaced,
-    kube_core = "stackable_operator::kube::core",
-    k8s_openapi = "stackable_operator::k8s_openapi",
-    schemars = "stackable_operator::schemars"
+    crates(
+        kube_core = "stackable_operator::kube::core",
+        k8s_openapi = "stackable_operator::k8s_openapi",
+        schemars = "stackable_operator::schemars"
+    )
 )]
 #[kube(status = "TrinoClusterStatus")]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
-    pub version: TrinoVersion,
+    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stopped: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     pub node_environment: String,
-    pub hive_reference: HiveReference,
-    pub opa: Option<OpaReference>,
+    pub hive_reference: ClusterRef,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opa: Option<ClusterRef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authorization: Option<Authorization>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub s3_connection: Option<S3Connection>,
-    pub coordinators: Role<TrinoConfig>,
-    pub workers: Role<TrinoConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coordinators: Option<Role<TrinoConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workers: Option<Role<TrinoConfig>>,
 }
 
 #[derive(
@@ -132,7 +124,28 @@ impl TrinoRole {
     }
 }
 
+// TODO: move to operator-rs? Used for hive, opa, zookeeper ...
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterRef {
+    pub name: String,
+    pub namespace: String,
+    pub chroot: Option<String>,
+}
+
+// TODO: move to operator-rs? Copied from hive operator.
+/// Contains all the required connection information for S3.
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct S3Connection {
+    pub end_point: String,
+    pub access_key: String,
+    pub secret_key: String,
+    pub ssl_enabled: bool,
+    pub path_style_access: bool,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoConfig {
     // config.properties
@@ -326,80 +339,12 @@ impl Configuration for TrinoConfig {
     }
 }
 
-#[allow(non_camel_case_types)]
-#[derive(
-    Clone,
-    Debug,
-    Deserialize,
-    Eq,
-    JsonSchema,
-    PartialEq,
-    Serialize,
-    strum_macros::Display,
-    strum_macros::EnumString,
-)]
-pub enum TrinoVersion {
-    #[serde(rename = "0.0.360")]
-    #[strum(serialize = "0.0.360")]
-    v360,
-
-    #[serde(rename = "0.0.361")]
-    #[strum(serialize = "0.0.361")]
-    v361,
-
-    #[serde(rename = "0.0.362")]
-    #[strum(serialize = "0.0.362")]
-    v362,
-}
-
-impl TrinoVersion {
-    pub fn to_trino(&self) -> &str {
-        match self {
-            TrinoVersion::v360 => "360",
-            TrinoVersion::v361 => "361",
-            TrinoVersion::v362 => "362",
-        }
-    }
-}
-
-impl Versioning for TrinoVersion {
-    fn versioning_state(&self, other: &Self) -> VersioningState {
-        let from_version = match Version::parse(&self.to_string()) {
-            Ok(v) => v,
-            Err(e) => {
-                return VersioningState::Invalid(format!(
-                    "Could not parse [{}] to SemVer: {}",
-                    self.to_string(),
-                    e.to_string()
-                ))
-            }
-        };
-
-        let to_version = match Version::parse(&other.to_string()) {
-            Ok(v) => v,
-            Err(e) => {
-                return VersioningState::Invalid(format!(
-                    "Could not parse [{}] to SemVer: {}",
-                    other.to_string(),
-                    e.to_string()
-                ))
-            }
-        };
-
-        match to_version.cmp(&from_version) {
-            Ordering::Greater => VersioningState::ValidUpgrade,
-            Ordering::Less => VersioningState::ValidDowngrade,
-            Ordering::Equal => VersioningState::NoOp,
-        }
-    }
-}
-
 impl TrinoCluster {
     /// The name of the role-level load-balanced Kubernetes `Service` for the worker nodes
     pub fn worker_role_service_name(&self) -> Option<String> {
         self.metadata
             .name
-            .clone()
+            .as_ref()
             .map(|name| format!("{}-worker", name))
     }
 
@@ -407,7 +352,7 @@ impl TrinoCluster {
     pub fn coordinator_role_service_name(&self) -> Option<String> {
         self.metadata
             .name
-            .clone()
+            .as_ref()
             .map(|name| format!("{}-coordinator", name))
     }
 
@@ -429,7 +374,10 @@ impl TrinoCluster {
         ))
     }
     /// Metadata about a coordinator rolegroup
-    pub fn coordinator_rolegroup_ref(&self, group_name: impl Into<String>) -> RoleGroupRef {
+    pub fn coordinator_rolegroup_ref(
+        &self,
+        group_name: impl Into<String>,
+    ) -> RoleGroupRef<TrinoCluster> {
         RoleGroupRef {
             cluster: ObjectRef::from_obj(self),
             role: TrinoRole::Coordinator.to_string(),
@@ -438,7 +386,10 @@ impl TrinoCluster {
     }
 
     /// Metadata about a worker rolegroup
-    pub fn worker_rolegroup_ref(&self, group_name: impl Into<String>) -> RoleGroupRef {
+    pub fn worker_rolegroup_ref(
+        &self,
+        group_name: impl Into<String>,
+    ) -> RoleGroupRef<TrinoCluster> {
         RoleGroupRef {
             cluster: ObjectRef::from_obj(self),
             role: TrinoRole::Worker.to_string(),
@@ -447,79 +398,6 @@ impl TrinoCluster {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct RoleGroupRef {
-    pub cluster: ObjectRef<TrinoCluster>,
-    pub role: String,
-    pub role_group: String,
-}
-
-impl RoleGroupRef {
-    pub fn object_name(&self) -> String {
-        format!("{}-{}-{}", self.cluster.name, self.role, self.role_group)
-    }
-}
-
-impl Display for RoleGroupRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "rolegroup {}.{} of {}",
-            self.role, self.role_group, self.cluster
-        ))
-    }
-}
-
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TrinoClusterStatus {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub conditions: Vec<Condition>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<ProductVersion<TrinoVersion>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub history: Option<PodToNodeMapping>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub current_command: Option<CommandRef>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cluster_execution_status: Option<ClusterExecutionStatus>,
-}
-
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use semver::Version;
-    use stackable_operator::versioning::{Versioning, VersioningState};
-
-    use crate::TrinoVersion;
-
-    #[test]
-    fn test_trino_version_versioning() {
-        assert_eq!(
-            TrinoVersion::v360.versioning_state(&TrinoVersion::v361),
-            VersioningState::ValidUpgrade
-        );
-        assert_eq!(
-            TrinoVersion::v361.versioning_state(&TrinoVersion::v360),
-            VersioningState::ValidDowngrade
-        );
-        assert_eq!(
-            TrinoVersion::v360.versioning_state(&TrinoVersion::v360),
-            VersioningState::NoOp
-        );
-    }
-
-    #[test]
-    #[test]
-    fn test_version_conversion() {
-        TrinoVersion::from_str("0.0.360").unwrap();
-        TrinoVersion::from_str("0.0.361").unwrap();
-        TrinoVersion::from_str("0.0.362").unwrap();
-        TrinoVersion::from_str("10.0.360").unwrap_err();
-    }
-
-    #[test]
-    fn test_semver() {
-        Version::parse("0.0.360").unwrap();
-    }
-}
+pub struct TrinoClusterStatus {}

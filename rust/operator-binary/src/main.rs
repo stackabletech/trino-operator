@@ -1,10 +1,8 @@
-mod discovery;
+mod controller;
 mod utils;
-mod trino_controller;
 
-
-use std::str::FromStr;
-
+use futures::stream::StreamExt;
+use stackable_operator::cli::Command;
 use stackable_operator::{
     k8s_openapi::api::{
         apps::v1::StatefulSet,
@@ -20,35 +18,19 @@ use stackable_operator::{
         },
         CustomResourceExt, Resource,
     },
-    product_config::ProductConfigManager,
 };
-use tokio::sync::futures;
+use stackable_trino_crd::TrinoCluster;
 use structopt::StructOpt;
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-pub const APP_NAME: &str = "trino";
-pub const APP_PORT: u16 = 2181;
-
 #[derive(StructOpt)]
 #[structopt(about = built_info::PKG_DESCRIPTION, author = "Stackable GmbH - info@stackable.de")]
 struct Opts {
     #[structopt(subcommand)]
-    cmd: Cmd,
-}
-
-#[derive(StructOpt)]
-enum Cmd {
-    /// Print CRD objects
-    Crd,
-    /// Run operator
-    Run {
-        /// Provides the path to a product-config file
-        #[structopt(long, short = "p", value_name = "FILE")]
-        product_config: Option<String>,
-    },
+    cmd: Command,
 }
 
 /// Erases the concrete types of the controller result, so that we can merge the streams of multiple controllers for different resources.
@@ -68,12 +50,8 @@ async fn main() -> anyhow::Result<()> {
 
     let opts = Opts::from_args();
     match opts.cmd {
-        Cmd::Crd => println!(
-            "{}{}",
-            serde_yaml::to_string(&TrinoCluster::crd())?,
-            serde_yaml::to_string(&TrinoCluster::crd())?
-        ),
-        Cmd::Run { product_config } => {
+        Command::Crd => println!("{}", serde_yaml::to_string(&TrinoCluster::crd())?,),
+        Command::Run { product_config } => {
             stackable_operator::utils::print_startup_string(
                 built_info::PKG_DESCRIPTION,
                 built_info::PKG_VERSION,
@@ -82,24 +60,25 @@ async fn main() -> anyhow::Result<()> {
                 built_info::BUILT_TIME_UTC,
                 built_info::RUSTC_VERSION,
             );
-            let product_config = if let Some(product_config_path) = product_config {
-                ProductConfigManager::from_yaml_file(&product_config_path)?
-            } else {
-                ProductConfigManager::from_str(include_str!(
-                    "../../../deploy/config-spec/properties.yaml"
-                ))?
-            };
-            let kube = kube::Client::try_default().await?;
-            let trinos = kube::Api::<TrinoCluster>::all(kube.clone());
-            let trino_controller_builder = Controller::new(trinos.clone(), ListParams::default());
+            let product_config = product_config.load(&[
+                "deploy/config-spec/properties.yaml",
+                "/etc/stackable/hive-operator/config-spec/properties.yaml",
+            ])?;
+
+            let client =
+                stackable_operator::client::create_client(Some("hive.stackable.tech".to_string()))
+                    .await?;
+
+            let trino_controller_builder =
+                Controller::new(client.get_all_api::<TrinoCluster>(), ListParams::default());
             let trino_store = trino_controller_builder.store();
+
             let trino_controller = trino_controller_builder
-                .owns(
-                    kube::Api::<Service>::all(kube.clone()),
-                    ListParams::default(),
-                )
+                .owns(client.get_all_api::<Service>(), ListParams::default())
+                .owns(client.get_all_api::<StatefulSet>(), ListParams::default())
+                .owns(client.get_all_api::<ConfigMap>(), ListParams::default())
                 .watches(
-                    kube::Api::<Endpoints>::all(kube.clone()),
+                    client.get_all_api::<Endpoints>(),
                     ListParams::default(),
                     move |endpoints| {
                         trino_store
@@ -107,42 +86,34 @@ async fn main() -> anyhow::Result<()> {
                             .into_iter()
                             .filter(move |trino| {
                                 trino.metadata.namespace == endpoints.metadata.namespace
-                                    && trino.server_role_service_name() == endpoints.metadata.name
+                                    && trino.coordinator_role_service_name()
+                                        == endpoints.metadata.name
                             })
                             .map(|trino| ObjectRef::from_obj(&trino))
                     },
                 )
-                .owns(
-                    kube::Api::<StatefulSet>::all(kube.clone()),
-                    ListParams::default(),
-                )
-                .owns(
-                    kube::Api::<ConfigMap>::all(kube.clone()),
-                    ListParams::default(),
-                )
                 .run(
-                    trino_controller::reconcile_zk,
-                    trino_controller::error_policy,
-                    Context::new(trino_controller::Ctx {
-                        kube: kube.clone(),
+                    controller::reconcile_trino,
+                    controller::error_policy,
+                    Context::new(controller::Ctx {
+                        client: client.clone(),
                         product_config,
                     }),
                 );
-             futures::stream::select(
-                trino_controller.map(erase_controller_result_type),
-            )
-            .for_each(|res| async {
-                match res {
-                    Ok((obj, _)) => tracing::info!(object = %obj, "Reconciled object"),
-                    Err(err) => {
-                        tracing::error!(
-                            error = &*err as &dyn std::error::Error,
-                            "Failed to reconcile object",
-                        )
+            trino_controller
+                .map(erase_controller_result_type)
+                .for_each(|res| async {
+                    match res {
+                        Ok((obj, _)) => tracing::info!(object = %obj, "Reconciled object"),
+                        Err(err) => {
+                            tracing::error!(
+                                error = &*err as &dyn std::error::Error,
+                                "Failed to reconcile object",
+                            )
+                        }
                     }
-                }
-            })
-            .await;
+                })
+                .await;
         }
     }
 

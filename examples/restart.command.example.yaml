@@ -1,7 +1,0 @@
-apiVersion: command.trino.stackable.tech/v1alpha1
-kind: Restart
-metadata:
-  name: trino-cluster-command-restart
-spec:
-  name: "simple"
-  rolling: true
