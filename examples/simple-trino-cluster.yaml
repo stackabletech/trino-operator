@@ -1,7 +1,7 @@
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
-  name: simple
+  name: simple-trino
 spec:
   version: "0.0.362"
   nodeEnvironment: production
@@ -10,7 +10,7 @@ spec:
     name: simple-derby
   opa:
     namespace: default
-    name: simple
+    name: simple-opa
   authorization:
     package: trino
     permissions:
@@ -43,6 +43,7 @@ spec:
         selector:
           matchLabels:
             kubernetes.io/os: linux
+        replicas: 1
         config:
           coordinator: true
           nodeDataDir: /stackable/trino/data

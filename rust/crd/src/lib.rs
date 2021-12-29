@@ -68,8 +68,9 @@ pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
-// config dir
+// directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
+pub const DATA_DIR_NAME: &str = "/stackable/data";
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(

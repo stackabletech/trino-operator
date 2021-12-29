@@ -26,8 +26,8 @@ use stackable_operator::{
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
     TrinoCluster, TrinoConfig, CERTIFICATE_PEM, CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DISCOVERY_URI, HIVE_PROPERTIES, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT,
-    NODE_ID, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
+    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, JVM_CONFIG, LOG_PROPERTIES,
+    METRICS_PORT, NODE_ID, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
     PW_FILE_CONTENT_MAP_KEY,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
@@ -162,7 +162,10 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
                 .with_context(|| ApplyRoleGroupStatefulSet {
                     rolegroup: rolegroup.clone(),
                 })?;
+
+            break;
         }
+        break;
     }
 
     Ok(ReconcilerAction {
@@ -207,7 +210,6 @@ fn build_rolegroup_config_map(
     rolegroup: &RoleGroupRef<TrinoCluster>,
     coordinator_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
 ) -> Result<ConfigMap> {
-    //let mut config_maps = HashMap::new();
     let mut cm_conf_data = BTreeMap::new();
     //let mut cm_hive_data = BTreeMap::new();
 
@@ -261,7 +263,8 @@ fn build_rolegroup_config_map(
                 transformed_config.insert(
                     NODE_ID.to_string(),
                     //Some(format!("{}-{}", pod_id.role(), pod_id.id())),
-                    Some("".to_string()),
+                    //Some("".to_string()),
+                    Some("12345".to_string()),
                 );
 
                 let node_properties =
@@ -341,14 +344,7 @@ fn build_rolegroup_config_map(
                 )
                 .build(),
         )
-        .add_data(
-            "zoo.cfg",
-            format!("test"), /*to_java_properties_string(zoo_cfg.iter().map(|(k, v)| (k, v))).with_context(|| {
-                                 SerializeZooCfg {
-                                     rolegroup: rolegroup.clone(),
-                                 }
-                             })?,*/
-        )
+        .data(cm_conf_data)
         .build()
         .with_context(|| BuildRoleGroupConfig {
             rolegroup: rolegroup.clone(),
@@ -373,7 +369,8 @@ fn build_rolegroup_statefulset(
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
-    let trino_version = trino_version(trino)?;
+    // TODO: do not hardcode
+    let trino_version = "362"; //trino_version(trino)?;
     let image = format!(
         "docker.stackable.tech/stackable/trino:{}-stackable0",
         trino_version
@@ -388,15 +385,20 @@ fn build_rolegroup_statefulset(
             ..EnvVar::default()
         })
         .collect::<Vec<_>>();
+    let node_address = format!(
+        "$POD_NAME.{}-node-{}.default.svc.cluster.local",
+        rolegroup_ref.cluster.name, rolegroup_ref.role_group
+    );
     let container_trino = ContainerBuilder::new(APP_NAME)
         .image(image)
-        .args(vec![
-            "bin/zkServer.sh".to_string(),
-            "start-foreground".to_string(),
-            "/stackable/config/zoo.cfg".to_string(),
-        ])
+        .command(vec!["/bin/bash".to_string(), "-c".to_string()])
+        .args(vec![format!(
+            "sed -i \"s/{}=/{}={}/g\" {}/config.properties;
+             bin/launcher run --etc-dir={}",
+            DISCOVERY_URI, DISCOVERY_URI, node_address, CONFIG_DIR_NAME, CONFIG_DIR_NAME
+        )])
         .add_env_vars(env)
-        .add_volume_mount("data", "/stackable/data")
+        .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("conf", CONFIG_DIR_NAME)
         .add_env_vars(vec![EnvVar {
             name: "POD_NAME".to_string(),
@@ -451,10 +453,9 @@ fn build_rolegroup_statefulset(
                         &rolegroup_ref.role_group,
                     )
                 })
-                //.add_init_container(container_decide_myid)
                 .add_container(container_trino)
                 .add_volume(Volume {
-                    name: "config".to_string(),
+                    name: "conf".to_string(),
                     config_map: Some(ConfigMapVolumeSource {
                         name: Some(rolegroup_ref.object_name()),
                         ..ConfigMapVolumeSource::default()
