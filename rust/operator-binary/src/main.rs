@@ -1,5 +1,4 @@
 mod controller;
-mod utils;
 
 use futures::stream::StreamExt;
 use stackable_operator::cli::Command;
@@ -9,7 +8,6 @@ use stackable_operator::{
         core::v1::{ConfigMap, Endpoints, Service},
     },
     kube::{
-        self,
         api::{DynamicObject, ListParams},
         runtime::{
             controller::{Context, ReconcilerAction},

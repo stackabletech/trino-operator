@@ -1909,6 +1909,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "snafu",
  "stackable-operator 0.7.0",
  "stackable-regorule-crd",
  "strum 0.23.0",

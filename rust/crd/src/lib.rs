@@ -4,7 +4,9 @@ pub mod error;
 
 use crate::authorization::Authorization;
 
+use crate::discovery::TrinoPodRef;
 use serde::{Deserialize, Serialize};
+use snafu::{OptionExt, Snafu};
 use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::kube::CustomResource;
 use stackable_operator::product_config_utils::{ConfigError, Configuration};
@@ -16,8 +18,14 @@ use strum_macros::Display;
 use strum_macros::EnumIter;
 
 pub const APP_NAME: &str = "trino";
-pub const APP_PORT: u16 = 8080;
-
+// ports
+pub const HTTP_PORT: u16 = 8080;
+pub const HTTPS_PORT: u16 = 8443;
+pub const METRICS_PORT: u16 = 8081;
+// port names
+pub const HTTP_PORT_NAME: &str = "http";
+pub const HTTPS_PORT_NAME: &str = "https";
+pub const METRICS_PORT_NAME: &str = "metrics";
 // file names
 pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
@@ -60,10 +68,6 @@ pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
-// port names
-pub const METRICS_PORT: &str = "metrics";
-pub const HTTP_PORT: &str = "http";
-pub const HTTPS_PORT: &str = "https";
 // config dir
 pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
 
@@ -124,6 +128,20 @@ impl TrinoRole {
     }
 }
 
+impl From<String> for TrinoRole {
+    fn from(item: String) -> Self {
+        if item == Self::Coordinator.to_string() {
+            Self::Coordinator
+        } else {
+            Self::Worker
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrinoClusterStatus {}
+
 // TODO: move to operator-rs? Used for hive, opa, zookeeper ...
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -149,9 +167,6 @@ pub struct S3Connection {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoConfig {
     // config.properties
-    pub coordinator: Option<bool>,
-    pub http_server_http_port: Option<u16>,
-    pub http_server_https_port: Option<u16>,
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
     pub query_max_total_memory_per_node: Option<String>,
@@ -159,8 +174,6 @@ pub struct TrinoConfig {
     pub node_data_dir: Option<String>,
     // log.properties
     pub io_trino: Option<String>,
-    // jvm.config
-    pub metrics_port: Option<u16>,
     // TLS certificate
     pub server_certificate: Option<String>,
     // password file auth
@@ -189,7 +202,7 @@ impl Configuration for TrinoConfig {
     fn compute_files(
         &self,
         resource: &Self::Configurable,
-        _role_name: &str,
+        role_name: &str,
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
@@ -206,14 +219,10 @@ impl Configuration for TrinoConfig {
                 }
             }
             CONFIG_PROPERTIES => {
-                if let Some(coordinator) = &self.coordinator {
-                    result.insert(COORDINATOR.to_string(), Some(coordinator.to_string()));
-                }
-                if let Some(http_server_http_port) = &self.http_server_http_port {
-                    result.insert(
-                        HTTP_SERVER_HTTP_PORT.to_string(),
-                        Some(http_server_http_port.to_string()),
-                    );
+                if role_name == &TrinoRole::Coordinator.to_string() {
+                    result.insert(COORDINATOR.to_string(), Some("true".to_string()));
+                } else {
+                    result.insert(COORDINATOR.to_string(), Some("false".to_string()));
                 }
 
                 if let Some(query_max_memory) = &self.query_max_memory {
@@ -248,12 +257,6 @@ impl Configuration for TrinoConfig {
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
                         Some(format!("{}/{}", CONFIG_DIR_NAME, CERTIFICATE_PEM)),
                     );
-                    if let Some(https_port) = &self.http_server_https_port {
-                        result.insert(
-                            HTTP_SERVER_HTTPS_PORT.to_string(),
-                            Some(https_port.to_string()),
-                        );
-                    }
                 }
 
                 if self.password_file_content.is_some() {
@@ -319,14 +322,6 @@ impl Configuration for TrinoConfig {
                     );
                 }
             }
-            JVM_CONFIG => {
-                if let Some(metrics_port) = self.metrics_port {
-                    result.insert(
-                        METRICS_PORT_PROPERTY.to_string(),
-                        Some(metrics_port.to_string()),
-                    );
-                }
-            }
             LOG_PROPERTIES => {
                 if let Some(io_trino) = &self.io_trino {
                     result.insert(IO_TRINO.to_string(), Some(io_trino.to_string()));
@@ -338,6 +333,10 @@ impl Configuration for TrinoConfig {
         Ok(result)
     }
 }
+
+#[derive(Debug, Snafu)]
+#[snafu(display("object has no namespace associated"))]
+pub struct NoNamespaceError;
 
 impl TrinoCluster {
     /// The name of the role-level load-balanced Kubernetes `Service` for the worker nodes
@@ -396,8 +395,35 @@ impl TrinoCluster {
             role_group: group_name.into(),
         }
     }
-}
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TrinoClusterStatus {}
+    /// List all coordinator pods expected to form the cluster
+    ///
+    /// We try to predict the pods here rather than looking at the current cluster state in order to
+    /// avoid instance churn.
+    pub fn coordinator_pods(
+        &self,
+    ) -> Result<impl Iterator<Item = TrinoPodRef> + '_, NoNamespaceError> {
+        let ns = self
+            .metadata
+            .namespace
+            .clone()
+            .context(NoNamespaceContext)?;
+        Ok(self
+            .spec
+            .coordinators
+            .iter()
+            .flat_map(|role| &role.role_groups)
+            // Order rolegroups consistently, to avoid spurious downstream rewrites
+            .collect::<BTreeMap<_, _>>()
+            .into_iter()
+            .flat_map(move |(rolegroup_name, rolegroup)| {
+                let rolegroup_ref = self.coordinator_rolegroup_ref(rolegroup_name);
+                let ns = ns.clone();
+                (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
+                    namespace: ns.clone(),
+                    role_group_service_name: rolegroup_ref.object_name(),
+                    pod_name: format!("{}-{}", rolegroup_ref.object_name(), i),
+                })
+            }))
+    }
+}

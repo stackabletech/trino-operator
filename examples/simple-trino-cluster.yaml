@@ -46,9 +46,6 @@ spec:
         config:
           coordinator: true
           nodeDataDir: /stackable/trino/data
-          metricsPort: 10200
-          httpServerHttpPort: 8080
-          httpServerHttpsPort: 8443
           passwordFileContent: |
             alice:$2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
             bob:$2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
@@ -112,5 +109,3 @@ spec:
         replicas: 1
         config:
           nodeDataDir: /stackable/trino/data
-          metricsPort: 10201
-          httpServerHttpPort: 8081

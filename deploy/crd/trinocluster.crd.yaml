@@ -69,27 +69,9 @@ spec:
                     config:
                       default: {}
                       properties:
-                        coordinator:
-                          nullable: true
-                          type: boolean
-                        httpServerHttpPort:
-                          format: uint16
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
-                        httpServerHttpsPort:
-                          format: uint16
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
                         ioTrino:
                           nullable: true
                           type: string
-                        metricsPort:
-                          format: uint16
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
                         nodeDataDir:
                           nullable: true
                           type: string
@@ -132,27 +114,9 @@ spec:
                           config:
                             default: {}
                             properties:
-                              coordinator:
-                                nullable: true
-                                type: boolean
-                              httpServerHttpPort:
-                                format: uint16
-                                minimum: 0.0
-                                nullable: true
-                                type: integer
-                              httpServerHttpsPort:
-                                format: uint16
-                                minimum: 0.0
-                                nullable: true
-                                type: integer
                               ioTrino:
                                 nullable: true
                                 type: string
-                              metricsPort:
-                                format: uint16
-                                minimum: 0.0
-                                nullable: true
-                                type: integer
                               nodeDataDir:
                                 nullable: true
                                 type: string
@@ -293,27 +257,9 @@ spec:
                     config:
                       default: {}
                       properties:
-                        coordinator:
-                          nullable: true
-                          type: boolean
-                        httpServerHttpPort:
-                          format: uint16
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
-                        httpServerHttpsPort:
-                          format: uint16
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
                         ioTrino:
                           nullable: true
                           type: string
-                        metricsPort:
-                          format: uint16
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
                         nodeDataDir:
                           nullable: true
                           type: string
@@ -356,27 +302,9 @@ spec:
                           config:
                             default: {}
                             properties:
-                              coordinator:
-                                nullable: true
-                                type: boolean
-                              httpServerHttpPort:
-                                format: uint16
-                                minimum: 0.0
-                                nullable: true
-                                type: integer
-                              httpServerHttpsPort:
-                                format: uint16
-                                minimum: 0.0
-                                nullable: true
-                                type: integer
                               ioTrino:
                                 nullable: true
                                 type: string
-                              metricsPort:
-                                format: uint16
-                                minimum: 0.0
-                                nullable: true
-                                type: integer
                               nodeDataDir:
                                 nullable: true
                                 type: string
