@@ -127,6 +127,26 @@ impl TrinoRole {
             format!("--etc-dir={}", CONFIG_DIR_NAME),
         ]
     }
+
+    pub fn get_spec<'a>(&self, trino: &'a TrinoCluster) -> Option<&'a Role<TrinoConfig>> {
+        match self {
+            TrinoRole::Coordinator => trino.spec.coordinators.as_ref(),
+            TrinoRole::Worker => trino.spec.workers.as_ref(),
+        }
+    }
+
+    /// Metadata about a rolegroup
+    pub fn rolegroup_ref(
+        &self,
+        trino: &TrinoCluster,
+        group_name: impl Into<String>,
+    ) -> RoleGroupRef<TrinoCluster> {
+        RoleGroupRef {
+            cluster: ObjectRef::from_obj(trino),
+            role: self.to_string(),
+            role_group: group_name.into(),
+        }
+    }
 }
 
 impl From<String> for TrinoRole {
@@ -373,29 +393,6 @@ impl TrinoCluster {
             self.metadata.namespace.as_ref()?
         ))
     }
-    /// Metadata about a coordinator rolegroup
-    pub fn coordinator_rolegroup_ref(
-        &self,
-        group_name: impl Into<String>,
-    ) -> RoleGroupRef<TrinoCluster> {
-        RoleGroupRef {
-            cluster: ObjectRef::from_obj(self),
-            role: TrinoRole::Coordinator.to_string(),
-            role_group: group_name.into(),
-        }
-    }
-
-    /// Metadata about a worker rolegroup
-    pub fn worker_rolegroup_ref(
-        &self,
-        group_name: impl Into<String>,
-    ) -> RoleGroupRef<TrinoCluster> {
-        RoleGroupRef {
-            cluster: ObjectRef::from_obj(self),
-            role: TrinoRole::Worker.to_string(),
-            role_group: group_name.into(),
-        }
-    }
 
     /// List all coordinator pods expected to form the cluster
     ///
@@ -418,7 +415,7 @@ impl TrinoCluster {
             .collect::<BTreeMap<_, _>>()
             .into_iter()
             .flat_map(move |(rolegroup_name, rolegroup)| {
-                let rolegroup_ref = self.coordinator_rolegroup_ref(rolegroup_name);
+                let rolegroup_ref = TrinoRole::Coordinator.rolegroup_ref(&self, rolegroup_name);
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),

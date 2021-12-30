@@ -7,9 +7,9 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, EnvVar, EnvVarSource, ObjectFieldSelector,
-                PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements, Service,
-                ServicePort, ServiceSpec, Volume,
+                ConfigMap, ConfigMapVolumeSource, EnvVar, PersistentVolumeClaim,
+                PersistentVolumeClaimSpec, ResourceRequirements, Service, ServicePort, ServiceSpec,
+                Volume,
             },
         },
         apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
@@ -26,9 +26,9 @@ use stackable_operator::{
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
     TrinoCluster, TrinoConfig, CERTIFICATE_PEM, CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, JVM_CONFIG, LOG_PROPERTIES,
-    METRICS_PORT, NODE_ID, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
-    PW_FILE_CONTENT_MAP_KEY,
+    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME,
+    HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_ID,
+    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
 use std::{
@@ -101,6 +101,7 @@ pub enum Error {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
     },
 }
+
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<ReconcilerAction> {
@@ -135,12 +136,13 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from(role);
         for (role_group, config) in role_config {
-            let rolegroup = trino.coordinator_rolegroup_ref(role_group);
+            let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
             let rg_configmap =
                 build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config)?;
-            let rg_stateful_set = build_rolegroup_statefulset(&trino, &rolegroup, &config)?;
+            let rg_stateful_set =
+                build_rolegroup_statefulset(&trino, &trino_role, &rolegroup, &config)?;
 
             client
                 .apply_patch(FIELD_MANAGER_SCOPE, &rg_service, &rg_service)
@@ -173,7 +175,7 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
     })
 }
 
-/// The server-role service is the primary endpoint that should be used by clients that do not
+/// The coordinator-role service is the primary endpoint that should be used by clients that do not
 /// perform internal load balancing, including targets outside of the cluster.
 pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
     let role_name = TrinoRole::Coordinator.to_string();
@@ -189,12 +191,27 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
             .with_recommended_labels(trino, APP_NAME, trino_version(trino)?, &role_name, "global")
             .build(),
         spec: Some(ServiceSpec {
-            ports: Some(vec![ServicePort {
-                name: Some("trino".to_string()),
-                port: HTTP_PORT.into(),
-                protocol: Some("TCP".to_string()),
-                ..ServicePort::default()
-            }]),
+            ports: Some(vec![
+                ServicePort {
+                    name: Some(HTTP_PORT_NAME.to_string()),
+                    port: HTTP_PORT.into(),
+                    protocol: Some("TCP".to_string()),
+                    ..ServicePort::default()
+                },
+                ServicePort {
+                    name: Some(HTTPS_PORT_NAME.to_string()),
+                    port: HTTPS_PORT.into(),
+                    protocol: Some("TCP".to_string()),
+                    ..ServicePort::default()
+                },
+                ServicePort {
+                    name: Some(METRICS_PORT_NAME.to_string()),
+                    port: METRICS_PORT.into(),
+                    protocol: Some("TCP".to_string()),
+                    ..ServicePort::default()
+                },
+            ]),
+
             selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
             type_: Some("NodePort".to_string()),
             ..ServiceSpec::default()
@@ -207,8 +224,8 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
 fn build_rolegroup_config_map(
     trino: &TrinoCluster,
     role: &TrinoRole,
-    rolegroup: &RoleGroupRef<TrinoCluster>,
-    coordinator_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
     //let mut cm_hive_data = BTreeMap::new();
@@ -234,7 +251,7 @@ fn build_rolegroup_config_map(
     // TODO: remove unwrap
     let coordinator_ref: TrinoPodRef = trino.coordinator_pods().unwrap().next().unwrap();
 
-    for (property_name_kind, config) in coordinator_config {
+    for (property_name_kind, config) in config {
         let mut transformed_config: BTreeMap<String, Option<String>> = config
             .iter()
             .map(|(k, v)| (k.clone(), Some(v.clone())))
@@ -243,8 +260,7 @@ fn build_rolegroup_config_map(
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
                 // TODO: make http / https configurable
-                let discovery =
-                    TrinoDiscovery::new(&coordinator_ref, TrinoDiscoveryProtocol::Https);
+                let discovery = TrinoDiscovery::new(&coordinator_ref, TrinoDiscoveryProtocol::Http);
                 transformed_config.insert(
                     DISCOVERY_URI.to_string(),
                     Some(discovery.connection_string()),
@@ -259,12 +275,11 @@ fn build_rolegroup_config_map(
 
             PropertyNameKind::File(file_name) if file_name == NODE_PROPERTIES => {
                 // we have to generate a unique node.id which consists of <role>-<id>.
-                // TODO: This must be replaced via sed before running trino
                 transformed_config.insert(
                     NODE_ID.to_string(),
                     //Some(format!("{}-{}", pod_id.role(), pod_id.id())),
                     //Some("".to_string()),
-                    Some("12345".to_string()),
+                    Some(format!("{}-{}", role.to_string(), rolegroup_ref.role_group)),
                 );
 
                 let node_properties =
@@ -332,22 +347,22 @@ fn build_rolegroup_config_map(
         .metadata(
             ObjectMetaBuilder::new()
                 .name_and_namespace(trino)
-                .name(rolegroup.object_name())
+                .name(rolegroup_ref.object_name())
                 .ownerreference_from_resource(trino, None, Some(true))
                 .context(ObjectMissingMetadataForOwnerRef)?
                 .with_recommended_labels(
                     trino,
                     APP_NAME,
                     trino_version(trino)?,
-                    &rolegroup.role,
-                    &rolegroup.role_group,
+                    &rolegroup_ref.role,
+                    &rolegroup_ref.role_group,
                 )
                 .build(),
         )
         .data(cm_conf_data)
         .build()
         .with_context(|| BuildRoleGroupConfig {
-            rolegroup: rolegroup.clone(),
+            rolegroup: rolegroup_ref.clone(),
         })
 }
 
@@ -357,15 +372,14 @@ fn build_rolegroup_config_map(
 /// corresponding [`Service`] (from [`build_rolegroup_service`]).
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
+    role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    server_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
 ) -> Result<StatefulSet> {
-    let rolegroup = trino
-        .spec
-        .coordinators
-        .as_ref()
+    let rolegroup = role
+        .get_spec(&trino)
         .with_context(|| MissingTrinoRole {
-            role: TrinoRole::Coordinator.to_string(),
+            role: role.to_string(),
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
@@ -375,7 +389,7 @@ fn build_rolegroup_statefulset(
         "docker.stackable.tech/stackable/trino:{}-stackable0",
         trino_version
     );
-    let env = server_config
+    let env = config
         .get(&PropertyNameKind::Env)
         .iter()
         .flat_map(|env_vars| env_vars.iter())
@@ -385,32 +399,43 @@ fn build_rolegroup_statefulset(
             ..EnvVar::default()
         })
         .collect::<Vec<_>>();
-    let node_address = format!(
-        "$POD_NAME.{}-node-{}.default.svc.cluster.local",
-        rolegroup_ref.cluster.name, rolegroup_ref.role_group
-    );
     let container_trino = ContainerBuilder::new(APP_NAME)
         .image(image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(vec![format!(
-            "sed -i \"s/{}=/{}={}/g\" {}/config.properties;
+            "cat {}/config.properties;
+             cat {}/node.properties;
+             echo $POD_NAME;
+             echo $POD_IP;
+             whoami;
              bin/launcher run --etc-dir={}",
-            DISCOVERY_URI, DISCOVERY_URI, node_address, CONFIG_DIR_NAME, CONFIG_DIR_NAME
+            CONFIG_DIR_NAME, CONFIG_DIR_NAME, CONFIG_DIR_NAME
         )])
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("conf", CONFIG_DIR_NAME)
-        .add_env_vars(vec![EnvVar {
-            name: "POD_NAME".to_string(),
-            value_from: Some(EnvVarSource {
-                field_ref: Some(ObjectFieldSelector {
-                    api_version: Some("v1".to_string()),
-                    field_path: "metadata.name".to_string(),
-                }),
-                ..EnvVarSource::default()
-            }),
-            ..EnvVar::default()
-        }])
+        // .add_env_vars(vec![EnvVar {
+        //     name: "POD_NAME".to_string(),
+        //     value_from: Some(EnvVarSource {
+        //         field_ref: Some(ObjectFieldSelector {
+        //             api_version: Some("v1".to_string()),
+        //             field_path: "metadata.name".to_string(),
+        //         }),
+        //         ..EnvVarSource::default()
+        //     }),
+        //     ..EnvVar::default()
+        // }])
+        // .add_env_vars(vec![EnvVar {
+        //     name: "POD_IP".to_string(),
+        //     value_from: Some(EnvVarSource {
+        //         field_ref: Some(ObjectFieldSelector {
+        //             api_version: Some("v1".to_string()),
+        //             field_path: "status.podIP".to_string(),
+        //         }),
+        //         ..EnvVarSource::default()
+        //     }),
+        //     ..EnvVar::default()
+        // }])
         .build();
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
@@ -529,95 +554,6 @@ fn build_rolegroup_service(
         status: None,
     })
 }
-
-/*
-pub fn build_worker_role_service(trino: &TrinoCluster) -> Result<Service> {
-    let role_name = TrinoRole::Worker.to_string();
-    let role_svc_name =
-        zk.server_role_service_name()
-            .with_context(|| GlobalServiceNameNotFound {
-                obj_ref: ObjectRef::from_obj(zk),
-            })?;
-    Ok(Service {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(zk)
-            .name(&role_svc_name)
-            .ownerreference_from_resource(zk, None, Some(true))
-            .with_context(|| ObjectMissingMetadataForOwnerRef {
-                zk: ObjectRef::from_obj(zk),
-            })?
-            .with_recommended_labels(zk, APP_NAME, trino_version(zk)?, &role_name, "global")
-            .build(),
-        spec: Some(ServiceSpec {
-            ports: Some(vec![ServicePort {
-                name: Some("zk".to_string()),
-                port: APP_PORT.into(),
-                protocol: Some("TCP".to_string()),
-                ..ServicePort::default()
-            }]),
-            selector: Some(role_selector_labels(zk, APP_NAME, &role_name)),
-            type_: Some("NodePort".to_string()),
-            ..ServiceSpec::default()
-        }),
-        status: None,
-    })
-}
-
-
-/// The rolegroup [`Service`] is a headless service that allows direct access to the instances of a certain rolegroup
-///
-/// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
-fn build_worker_rolegroup_service(
-    rolegroup: &RoleGroupRef,
-    zk: &TrinoCluster,
-) -> Result<Service> {
-    Ok(Service {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(zk)
-            .name(&rolegroup.object_name())
-            .ownerreference_from_resource(zk, None, Some(true))
-            .with_context(|| ObjectMissingMetadataForOwnerRef {
-                zk: ObjectRef::from_obj(zk),
-            })?
-            .with_recommended_labels(
-                zk,
-                APP_NAME,
-                trino_version(zk)?,
-                &rolegroup.role,
-                &rolegroup.role_group,
-            )
-            .build(),
-        spec: Some(ServiceSpec {
-            cluster_ip: Some("None".to_string()),
-            ports: Some(vec![
-                ServicePort {
-                    name: Some("zk".to_string()),
-                    port: APP_PORT.into(),
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-                ServicePort {
-                    name: Some("metrics".to_string()),
-                    port: 9505,
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-            ]),
-            selector: Some(role_group_selector_labels(
-                zk,
-                APP_NAME,
-                &rolegroup.role,
-                &rolegroup.role_group,
-            )),
-            publish_not_ready_addresses: Some(true),
-            ..ServiceSpec::default()
-        }),
-        status: None,
-    })
-}
-
-TODO: add worker statefulset fn
-*/
 
 pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
     trino.spec.version.as_deref().context(ObjectHasNoVersion)
