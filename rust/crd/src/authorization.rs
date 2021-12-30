@@ -1,11 +1,13 @@
+use crate::{TrinoCluster, TrinoClusterSpec};
 use serde::{Deserialize, Serialize};
 use stackable_operator::client::Client;
 use stackable_operator::error::OperatorResult;
+use stackable_operator::kube::api::PostParams;
 use stackable_operator::kube::core::ObjectMeta;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
-use tracing::warn;
+use tracing::{debug, warn};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +29,17 @@ pub struct AccessPermission {
     pub write: Option<bool>,
 }
 
+pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> OperatorResult<()> {
+    let spec: &TrinoClusterSpec = &trino.spec;
+
+    if let Some(authorization) = &spec.authorization {
+        let rego_rules = build_rego_rules(authorization);
+        create_or_update_rego_rule_resource(client, &authorization.package, rego_rules).await?;
+    }
+
+    Ok(())
+}
+
 pub async fn create_or_update_rego_rule_resource(
     client: &Client,
     package_name: &str,
@@ -35,8 +48,6 @@ pub async fn create_or_update_rego_rule_resource(
     let new_rego_rule_spec = RegoRuleSpec { rego: rego_rules };
 
     let rego_rule_resource = RegoRule {
-        api_version: "opa.stackable.tech/v1alpha1".to_string(),
-        kind: "RegoRule".to_string(),
         metadata: ObjectMeta {
             name: Some(package_name.to_string()),
             ..Default::default()
@@ -44,33 +55,33 @@ pub async fn create_or_update_rego_rule_resource(
         spec: new_rego_rule_spec.clone(),
     };
 
-    // match client.get::<RegoRule>(package_name, Some("default")).await {
-    //     Ok(mut old_rego_rule) => {
-    //         debug!("Found existing rego rule: {:?}", old_rego_rule);
-    //
-    //         if old_rego_rule.spec.rego != new_rego_rule_spec.rego {
-    //             old_rego_rule.spec.rego = new_rego_rule_spec.rego;
-    //             debug!(
-    //                 "Existing Rego Rule [{}] differs from spec. Replacing content...",
-    //                 old_rego_rule
-    //                     .metadata
-    //                     .name
-    //                     .as_deref()
-    //                     .unwrap_or("<no-name-set>")
-    //             );
-    //
-    //             let api = client.get_namespaced_api("default");
-    //             api.replace(package_name, &PostParams::default(), &old_rego_rule)
-    //                 .await?;
-    //         }
-    //     }
-    //     Err(_) => {
-    //         debug!("No rego rule resource found. Attempting to create it...");
-    //         let api = client.get_namespaced_api("default");
-    //         api.create(&PostParams::default(), &rego_rule_resource)
-    //             .await?;
-    //     }
-    // }
+    match client.get::<RegoRule>(package_name, Some("default")).await {
+        Ok(mut old_rego_rule) => {
+            debug!("Found existing rego rule: {:?}", old_rego_rule);
+
+            if old_rego_rule.spec.rego != new_rego_rule_spec.rego {
+                old_rego_rule.spec.rego = new_rego_rule_spec.rego;
+                debug!(
+                    "Existing Rego Rule [{}] differs from spec. Replacing content...",
+                    old_rego_rule
+                        .metadata
+                        .name
+                        .as_deref()
+                        .unwrap_or("<no-name-set>")
+                );
+
+                let api = client.get_namespaced_api("default");
+                api.replace(package_name, &PostParams::default(), &old_rego_rule)
+                    .await?;
+            }
+        }
+        Err(_) => {
+            debug!("No rego rule resource found. Attempting to create it...");
+            let api = client.get_namespaced_api("default");
+            api.create(&PostParams::default(), &rego_rule_resource)
+                .await?;
+        }
+    }
 
     Ok(rego_rule_resource)
 }

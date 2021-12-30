@@ -1,6 +1,7 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::role_utils::{Role, RoleGroupRef};
+use stackable_operator::k8s_openapi::api::core::v1::{ExecAction, Probe};
+use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     k8s_openapi::{
@@ -23,12 +24,13 @@ use stackable_operator::{
     product_config::{types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{transform_all_roles_to_config, validate_all_roles_and_groups_config},
 };
+use stackable_trino_crd::authorization::create_rego_rules;
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
-    TrinoCluster, TrinoConfig, CERTIFICATE_PEM, CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME,
+    TrinoCluster, TrinoClusterSpec, CERTIFICATE_PEM, CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME,
     CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME,
-    HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_ID,
-    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
+    HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
 use std::{
@@ -92,13 +94,17 @@ pub enum Error {
     ApplyStatus {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("Failed to transform configs"))]
+    #[snafu(display("failed to transform configs"))]
     ProductConfigTransform {
         source: stackable_operator::product_config_utils::ConfigError,
     },
-    #[snafu(display("Failed to format runtime properties"))]
+    #[snafu(display("failed to format runtime properties"))]
     PropertiesWriteError {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
+    },
+    #[snafu(display("operator-rs reported error"))]
+    OperatorFrameworkError {
+        source: stackable_operator::error::Error,
     },
 }
 
@@ -109,7 +115,56 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
 
     let client = &ctx.get_ref().client;
     let version = trino_version(&trino)?;
-    let roles = create_roles(&trino)?;
+    let mut roles = HashMap::new();
+
+    let config_files = vec![
+        PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+        PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
+        PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+        PropertyNameKind::File(JVM_CONFIG.to_string()),
+        PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+    ];
+
+    roles.insert(
+        TrinoRole::Coordinator.to_string(),
+        (
+            [
+                config_files.clone(),
+                vec![
+                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
+                    PropertyNameKind::File(PASSWORD_DB.to_string()),
+                    PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
+                ],
+            ]
+            .concat(),
+            trino
+                .spec
+                .coordinators
+                .clone()
+                .with_context(|| MissingTrinoRole {
+                    role: TrinoRole::Coordinator.to_string(),
+                })?,
+        ),
+    );
+
+    roles.insert(
+        TrinoRole::Worker.to_string(),
+        (
+            config_files,
+            trino
+                .spec
+                .workers
+                .clone()
+                .with_context(|| MissingTrinoRole {
+                    role: TrinoRole::Worker.to_string(),
+                })?,
+        ),
+    );
+
+    // rego rules
+    create_rego_rules(client, &trino)
+        .await
+        .context(OperatorFrameworkError)?;
 
     let role_config =
         transform_all_roles_to_config(&trino, roles).context(ProductConfigTransform)?;
@@ -164,10 +219,7 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
                 .with_context(|| ApplyRoleGroupStatefulSet {
                     rolegroup: rolegroup.clone(),
                 })?;
-
-            break;
         }
-        break;
     }
 
     Ok(ReconcilerAction {
@@ -274,14 +326,6 @@ fn build_rolegroup_config_map(
             }
 
             PropertyNameKind::File(file_name) if file_name == NODE_PROPERTIES => {
-                // we have to generate a unique node.id which consists of <role>-<id>.
-                transformed_config.insert(
-                    NODE_ID.to_string(),
-                    //Some(format!("{}-{}", pod_id.role(), pod_id.id())),
-                    //Some("".to_string()),
-                    Some(format!("{}-{}", role.to_string(), rolegroup_ref.role_group)),
-                );
-
                 let node_properties =
                     product_config::writer::to_java_properties_string(transformed_config.iter())
                         .context(PropertiesWriteError)?;
@@ -377,14 +421,13 @@ fn build_rolegroup_statefulset(
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
 ) -> Result<StatefulSet> {
     let rolegroup = role
-        .get_spec(&trino)
+        .get_spec(trino)
         .with_context(|| MissingTrinoRole {
             role: role.to_string(),
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
-    // TODO: do not hardcode
-    let trino_version = "362"; //trino_version(trino)?;
+    let trino_version = trino_version_trim(trino)?;
     let image = format!(
         "docker.stackable.tech/stackable/trino:{}-stackable0",
         trino_version
@@ -403,39 +446,26 @@ fn build_rolegroup_statefulset(
         .image(image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(vec![format!(
-            "cat {}/config.properties;
-             cat {}/node.properties;
-             echo $POD_NAME;
-             echo $POD_IP;
-             whoami;
-             bin/launcher run --etc-dir={}",
-            CONFIG_DIR_NAME, CONFIG_DIR_NAME, CONFIG_DIR_NAME
+            "bin/launcher run --etc-dir={}",
+            CONFIG_DIR_NAME,
         )])
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("conf", CONFIG_DIR_NAME)
-        // .add_env_vars(vec![EnvVar {
-        //     name: "POD_NAME".to_string(),
-        //     value_from: Some(EnvVarSource {
-        //         field_ref: Some(ObjectFieldSelector {
-        //             api_version: Some("v1".to_string()),
-        //             field_path: "metadata.name".to_string(),
-        //         }),
-        //         ..EnvVarSource::default()
-        //     }),
-        //     ..EnvVar::default()
-        // }])
-        // .add_env_vars(vec![EnvVar {
-        //     name: "POD_IP".to_string(),
-        //     value_from: Some(EnvVarSource {
-        //         field_ref: Some(ObjectFieldSelector {
-        //             api_version: Some("v1".to_string()),
-        //             field_path: "status.podIP".to_string(),
-        //         }),
-        //         ..EnvVarSource::default()
-        //     }),
-        //     ..EnvVar::default()
-        // }])
+        // Only allow the global load balancing service to send traffic to pods that are members of the quorum
+        // This also acts as a hint to the StatefulSet controller to wait for each pod to enter quorum before taking down the next
+        .readiness_probe(Probe {
+            exec: Some(ExecAction {
+                command: Some(vec![
+                    "/bin/bash".to_string(),
+                    "-c".to_string(),
+                    // TODO: check https as well? Or check logs for "======== SERVER STARTED ========"?
+                    format!("curl http://localhost:{}", HTTP_PORT),
+                ]),
+            }),
+            period_seconds: Some(1),
+            ..Probe::default()
+        })
         .build();
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
@@ -555,64 +585,22 @@ fn build_rolegroup_service(
     })
 }
 
+/// Returns our semver representation for product config e.g. 0.0.362
 pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
     trino.spec.version.as_deref().context(ObjectHasNoVersion)
+}
+
+/// Returns the "real" Trino version for docker images e.g. 362
+pub fn trino_version_trim(trino: &TrinoCluster) -> Result<&str> {
+    let spec: &TrinoClusterSpec = &trino.spec;
+    spec.version
+        .as_deref()
+        .and_then(|v| v.split('.').collect::<Vec<_>>().last().cloned())
+        .context(ObjectHasNoVersion)
 }
 
 pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> ReconcilerAction {
     ReconcilerAction {
         requeue_after: Some(Duration::from_secs(5)),
     }
-}
-
-fn create_roles(
-    trino: &TrinoCluster,
-) -> Result<HashMap<String, (Vec<PropertyNameKind>, Role<TrinoConfig>)>> {
-    let mut roles = HashMap::new();
-
-    let config_files = vec![
-        PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-        PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
-        PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-        PropertyNameKind::File(JVM_CONFIG.to_string()),
-        PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-    ];
-
-    roles.insert(
-        TrinoRole::Coordinator.to_string(),
-        (
-            [
-                config_files.clone(),
-                vec![
-                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
-                    PropertyNameKind::File(PASSWORD_DB.to_string()),
-                    PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
-                ],
-            ]
-            .concat(),
-            trino
-                .spec
-                .coordinators
-                .clone()
-                .with_context(|| MissingTrinoRole {
-                    role: TrinoRole::Coordinator.to_string(),
-                })?,
-        ),
-    );
-
-    roles.insert(
-        TrinoRole::Worker.to_string(),
-        (
-            config_files,
-            trino
-                .spec
-                .workers
-                .clone()
-                .with_context(|| MissingTrinoRole {
-                    role: TrinoRole::Worker.to_string(),
-                })?,
-        ),
-    );
-
-    Ok(roles)
 }

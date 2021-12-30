@@ -3,8 +3,8 @@ pub mod discovery;
 pub mod error;
 
 use crate::authorization::Authorization;
-
 use crate::discovery::TrinoPodRef;
+
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::kube::runtime::reflector::ObjectRef;
@@ -240,7 +240,7 @@ impl Configuration for TrinoConfig {
                 }
             }
             CONFIG_PROPERTIES => {
-                if role_name == &TrinoRole::Coordinator.to_string() {
+                if role_name == TrinoRole::Coordinator.to_string() {
                     result.insert(COORDINATOR.to_string(), Some("true".to_string()));
                 } else {
                     result.insert(COORDINATOR.to_string(), Some("false".to_string()));
@@ -415,7 +415,7 @@ impl TrinoCluster {
             .collect::<BTreeMap<_, _>>()
             .into_iter()
             .flat_map(move |(rolegroup_name, rolegroup)| {
-                let rolegroup_ref = TrinoRole::Coordinator.rolegroup_ref(&self, rolegroup_name);
+                let rolegroup_ref = TrinoRole::Coordinator.rolegroup_ref(self, rolegroup_name);
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
