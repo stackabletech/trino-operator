@@ -95,7 +95,8 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     pub node_environment: String,
-    pub hive_reference: ClusterRef,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hive_reference: Option<ClusterRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<ClusterRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

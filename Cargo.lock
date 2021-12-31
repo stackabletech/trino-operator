@@ -1647,7 +1647,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "stackable-trino-operator-binary"
+name = "stackable-trino-operator"
 version = "0.2.0-nightly"
 dependencies = [
  "anyhow",

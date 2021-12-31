@@ -1,5 +1,6 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::client::Client;
 use stackable_operator::k8s_openapi::api::core::v1::{ExecAction, Probe};
 use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
@@ -106,6 +107,27 @@ pub enum Error {
     OperatorFrameworkError {
         source: stackable_operator::error::Error,
     },
+    #[snafu(display(
+        "failed to get config map [{}/{}] for cluster ref / discovery",
+        namespace,
+        name,
+    ))]
+    MissingConfigMapForClusterRef {
+        source: stackable_operator::error::Error,
+        name: String,
+        namespace: String,
+    },
+    #[snafu(display(
+        "failed to get [{}] connection string from config map [{}/{}]",
+        product,
+        namespace,
+        name
+    ))]
+    MissingConnectString {
+        product: String,
+        name: String,
+        namespace: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -194,8 +216,18 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
-            let rg_configmap =
-                build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config)?;
+
+            let opa_connect = opa_connect(&trino, &ctx.get_ref().client).await?;
+            let hive_connect = hive_connect(&trino, &ctx.get_ref().client).await?;
+
+            let rg_configmap = build_rolegroup_config_map(
+                &trino,
+                &trino_role,
+                &rolegroup,
+                &config,
+                opa_connect,
+                hive_connect,
+            )?;
             let rg_stateful_set =
                 build_rolegroup_statefulset(&trino, &trino_role, &rolegroup, &config)?;
 
@@ -278,9 +310,11 @@ fn build_rolegroup_config_map(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    opa_connect: Option<String>,
+    hive_connect: Option<String>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
-    //let mut cm_hive_data = BTreeMap::new();
+    let mut cm_hive_data = BTreeMap::new();
 
     // TODO: create via product config?
     let mut jvm_config = "-server
@@ -333,20 +367,19 @@ fn build_rolegroup_config_map(
                 cm_conf_data.insert(file_name.to_string(), node_properties);
             }
             PropertyNameKind::File(file_name) if file_name == HIVE_PROPERTIES => {
-                // if let Some(hive_info) = &trino.spec.hive_information {
-                //     transformed_config
-                //         .insert("connector.name".to_string(), Some("hive".to_string()));
-                //     transformed_config.insert(
-                //         "hive.metastore.uri".to_string(),
-                //         Some(hive_info.full_connection_string()),
-                //     );
-                //
-                //     let config_properties = product_config::writer::to_java_properties_string(
-                //         transformed_config.iter(),
-                //     )?;
-                //
-                //     cm_hive_data.insert(HIVE_PROPERTIES.to_string(), config_properties);
-                // }
+                if let Some(hive_connect) = &hive_connect {
+                    transformed_config
+                        .insert("connector.name".to_string(), Some("hive".to_string()));
+                    transformed_config
+                        .insert("hive.metastore.uri".to_string(), Some(hive_connect.clone()));
+
+                    let config_properties = product_config::writer::to_java_properties_string(
+                        transformed_config.iter(),
+                    )
+                    .context(PropertiesWriteError)?;
+
+                    cm_hive_data.insert(HIVE_PROPERTIES.to_string(), config_properties);
+                }
             }
             PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
                 let log_properties =
@@ -383,6 +416,35 @@ fn build_rolegroup_config_map(
             }
             _ => {}
         }
+    }
+
+    if let Some(opa) = opa_connect {
+        println!("Found OPA service: {}", opa);
+
+        let package = match trino.spec.authorization.as_ref() {
+            Some(auth) => auth.package.clone(),
+            None => {
+                println!("No package specified in 'authorization'. Defaulting to 'trino'.");
+                "trino".to_string()
+            }
+        };
+
+        let mut opa_config = BTreeMap::new();
+
+        opa_config.insert(
+            "access-control.name".to_string(),
+            Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
+        );
+        opa_config.insert(
+            "opa.policy.uri".to_string(),
+            Some(format!("{}v1/data/{}", opa, package)),
+        );
+
+        let config_properties =
+            product_config::writer::to_java_properties_string(opa_config.iter())
+                .context(PropertiesWriteError)?;
+
+        cm_conf_data.insert("access-control.properties".to_string(), config_properties);
     }
 
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
@@ -603,4 +665,64 @@ pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> ReconcilerAction {
     ReconcilerAction {
         requeue_after: Some(Duration::from_secs(5)),
     }
+}
+
+async fn opa_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<String>> {
+    let spec: &TrinoClusterSpec = &trino.spec;
+    let mut opa_connect_string = None;
+
+    if let Some(opa_reference) = &spec.opa {
+        let product = "OPA";
+        let name = &opa_reference.name;
+        let namespace = &opa_reference.namespace;
+
+        opa_connect_string = Some(
+            client
+                .get::<ConfigMap>(name, Some(namespace))
+                .await
+                .with_context(|| MissingConfigMapForClusterRef {
+                    name: name.clone(),
+                    namespace: namespace.clone(),
+                })?
+                .data
+                .and_then(|mut data| data.remove(product))
+                .with_context(|| MissingConnectString {
+                    product: product.to_string(),
+                    name: name.clone(),
+                    namespace: namespace.clone(),
+                })?,
+        );
+    }
+
+    Ok(opa_connect_string)
+}
+
+async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<String>> {
+    let spec: &TrinoClusterSpec = &trino.spec;
+    let mut hive_connect_string = None;
+
+    if let Some(hive_reference) = &spec.hive_reference {
+        let product = "hive";
+        let name = &hive_reference.name;
+        let namespace = &hive_reference.namespace;
+
+        hive_connect_string = Some(
+            client
+                .get::<ConfigMap>(name, Some(namespace))
+                .await
+                .with_context(|| MissingConfigMapForClusterRef {
+                    name: name.clone(),
+                    namespace: namespace.clone(),
+                })?
+                .data
+                .and_then(|mut data| data.remove(product))
+                .with_context(|| MissingConnectString {
+                    product: product.to_string(),
+                    name: name.clone(),
+                    namespace: namespace.clone(),
+                })?,
+        );
+    }
+
+    Ok(hive_connect_string)
 }

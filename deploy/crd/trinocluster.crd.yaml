@@ -190,6 +190,7 @@ spec:
                     - roleGroups
                   type: object
                 hiveReference:
+                  nullable: true
                   properties:
                     chroot:
                       nullable: true
@@ -378,7 +379,6 @@ spec:
                     - roleGroups
                   type: object
               required:
-                - hiveReference
                 - nodeEnvironment
               type: object
             status:
