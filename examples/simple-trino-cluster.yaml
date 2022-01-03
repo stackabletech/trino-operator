@@ -5,9 +5,9 @@ metadata:
 spec:
   version: "0.0.362"
   nodeEnvironment: production
-  hiveReference:
-    namespace: default
-    name: simple-derby
+#  hiveReference:
+#    namespace: default
+#    name: simple-derby
   opa:
     namespace: default
     name: simple-opa

@@ -434,7 +434,7 @@ fn build_rolegroup_config_map(
         );
         opa_config.insert(
             "opa.policy.uri".to_string(),
-            Some(format!("{}v1/data/{}", opa, package)),
+            Some(format!("{}v1/data/{}/", opa, package)),
         );
 
         let config_properties =
