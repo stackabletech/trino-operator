@@ -210,23 +210,21 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
         .await
         .context(ApplyRoleService)?;
 
+    let opa_connect = opa_connect(&trino, &ctx.get_ref().client).await?;
+    let hive_connect = hive_connect(&trino, &ctx.get_ref().client).await?;
+
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from(role);
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
-
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
-
-            let opa_connect = opa_connect(&trino, &ctx.get_ref().client).await?;
-            let hive_connect = hive_connect(&trino, &ctx.get_ref().client).await?;
-
             let rg_configmap = build_rolegroup_config_map(
                 &trino,
                 &trino_role,
                 &rolegroup,
                 &config,
-                opa_connect,
-                hive_connect,
+                &opa_connect,
+                &hive_connect,
             )?;
             let rg_stateful_set =
                 build_rolegroup_statefulset(&trino, &trino_role, &rolegroup, &config)?;
@@ -295,7 +293,6 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
                     ..ServicePort::default()
                 },
             ]),
-
             selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
             type_: Some("NodePort".to_string()),
             ..ServiceSpec::default()
@@ -310,8 +307,8 @@ fn build_rolegroup_config_map(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    opa_connect: Option<String>,
-    hive_connect: Option<String>,
+    opa_connect: &Option<String>,
+    hive_connect: &Option<String>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
     let mut cm_hive_data = BTreeMap::new();
@@ -628,12 +625,26 @@ fn build_rolegroup_service(
             .build(),
         spec: Some(ServiceSpec {
             cluster_ip: Some("None".to_string()),
-            ports: Some(vec![ServicePort {
-                name: Some("trino".to_string()),
-                port: HTTP_PORT.into(),
-                protocol: Some("TCP".to_string()),
-                ..ServicePort::default()
-            }]),
+            ports: Some(vec![
+                ServicePort {
+                    name: Some(HTTP_PORT_NAME.to_string()),
+                    port: HTTP_PORT.into(),
+                    protocol: Some("TCP".to_string()),
+                    ..ServicePort::default()
+                },
+                ServicePort {
+                    name: Some(HTTPS_PORT_NAME.to_string()),
+                    port: HTTPS_PORT.into(),
+                    protocol: Some("TCP".to_string()),
+                    ..ServicePort::default()
+                },
+                ServicePort {
+                    name: Some(METRICS_PORT_NAME.to_string()),
+                    port: METRICS_PORT.into(),
+                    protocol: Some("TCP".to_string()),
+                    ..ServicePort::default()
+                },
+            ]),
             selector: Some(role_group_selector_labels(
                 trino,
                 APP_NAME,
