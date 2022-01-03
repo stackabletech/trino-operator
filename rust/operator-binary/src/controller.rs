@@ -218,14 +218,10 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
-            let rg_configmap = build_rolegroup_config_map(
-                &trino,
-                &trino_role,
-                &rolegroup,
-                &config,
-                &opa_connect,
-                &hive_connect,
-            )?;
+            let rg_configmap =
+                build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config, &opa_connect)?;
+            let rg_catalog_configmap =
+                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config, &hive_connect)?;
             let rg_stateful_set =
                 build_rolegroup_statefulset(&trino, &trino_role, &rolegroup, &config)?;
 
@@ -238,6 +234,17 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
 
             client
                 .apply_patch(FIELD_MANAGER_SCOPE, &rg_configmap, &rg_configmap)
+                .await
+                .with_context(|| ApplyRoleGroupConfig {
+                    rolegroup: rolegroup.clone(),
+                })?;
+
+            client
+                .apply_patch(
+                    FIELD_MANAGER_SCOPE,
+                    &rg_catalog_configmap,
+                    &rg_catalog_configmap,
+                )
                 .await
                 .with_context(|| ApplyRoleGroupConfig {
                     rolegroup: rolegroup.clone(),
@@ -308,10 +315,8 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     opa_connect: &Option<String>,
-    hive_connect: &Option<String>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
-    let mut cm_hive_data = BTreeMap::new();
 
     // TODO: create via product config?
     let mut jvm_config = "-server
@@ -362,21 +367,6 @@ fn build_rolegroup_config_map(
                         .context(PropertiesWriteError)?;
 
                 cm_conf_data.insert(file_name.to_string(), node_properties);
-            }
-            PropertyNameKind::File(file_name) if file_name == HIVE_PROPERTIES => {
-                if let Some(hive_connect) = &hive_connect {
-                    transformed_config
-                        .insert("connector.name".to_string(), Some("hive".to_string()));
-                    transformed_config
-                        .insert("hive.metastore.uri".to_string(), Some(hive_connect.clone()));
-
-                    let config_properties = product_config::writer::to_java_properties_string(
-                        transformed_config.iter(),
-                    )
-                    .context(PropertiesWriteError)?;
-
-                    cm_hive_data.insert(HIVE_PROPERTIES.to_string(), config_properties);
-                }
             }
             PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
                 let log_properties =
@@ -469,6 +459,65 @@ fn build_rolegroup_config_map(
         })
 }
 
+/// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
+/// given by the administrator
+fn build_rolegroup_catalog_config_map(
+    trino: &TrinoCluster,
+    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    hive_connect: &Option<String>,
+) -> Result<ConfigMap> {
+    let mut cm_hive_data = BTreeMap::new();
+
+    for (property_name_kind, config) in config {
+        let mut transformed_config: BTreeMap<String, Option<String>> = config
+            .iter()
+            .map(|(k, v)| (k.clone(), Some(v.clone())))
+            .collect();
+
+        match property_name_kind {
+            PropertyNameKind::File(file_name) if file_name == HIVE_PROPERTIES => {
+                if let Some(hive_connect) = &hive_connect {
+                    transformed_config
+                        .insert("connector.name".to_string(), Some("hive".to_string()));
+                    transformed_config
+                        .insert("hive.metastore.uri".to_string(), Some(hive_connect.clone()));
+
+                    let config_properties = product_config::writer::to_java_properties_string(
+                        transformed_config.iter(),
+                    )
+                    .context(PropertiesWriteError)?;
+
+                    cm_hive_data.insert(HIVE_PROPERTIES.to_string(), config_properties);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    ConfigMapBuilder::new()
+        .metadata(
+            ObjectMetaBuilder::new()
+                .name_and_namespace(trino)
+                .name(format!("{}-catalog", rolegroup_ref.object_name()))
+                .ownerreference_from_resource(trino, None, Some(true))
+                .context(ObjectMissingMetadataForOwnerRef)?
+                .with_recommended_labels(
+                    trino,
+                    APP_NAME,
+                    trino_version(trino)?,
+                    &rolegroup_ref.role,
+                    &rolegroup_ref.role_group,
+                )
+                .build(),
+        )
+        .data(cm_hive_data)
+        .build()
+        .with_context(|| BuildRoleGroupConfig {
+            rolegroup: rolegroup_ref.clone(),
+        })
+}
+
 /// The rolegroup [`StatefulSet`] runs the rolegroup, as configured by the administrator.
 ///
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the
@@ -511,8 +560,7 @@ fn build_rolegroup_statefulset(
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("conf", CONFIG_DIR_NAME)
-        // Only allow the global load balancing service to send traffic to pods that are members of the quorum
-        // This also acts as a hint to the StatefulSet controller to wait for each pod to enter quorum before taking down the next
+        .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
         .readiness_probe(Probe {
             exec: Some(ExecAction {
                 command: Some(vec![
@@ -572,6 +620,14 @@ fn build_rolegroup_statefulset(
                     name: "conf".to_string(),
                     config_map: Some(ConfigMapVolumeSource {
                         name: Some(rolegroup_ref.object_name()),
+                        ..ConfigMapVolumeSource::default()
+                    }),
+                    ..Volume::default()
+                })
+                .add_volume(Volume {
+                    name: "catalog".to_string(),
+                    config_map: Some(ConfigMapVolumeSource {
+                        name: Some(format!("{}-catalog", rolegroup_ref.object_name())),
                         ..ConfigMapVolumeSource::default()
                     }),
                     ..Volume::default()
@@ -717,22 +773,27 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
         let name = &hive_reference.name;
         let namespace = &hive_reference.namespace;
 
-        hive_connect_string = Some(
-            client
-                .get::<ConfigMap>(name, Some(namespace))
-                .await
-                .with_context(|| MissingConfigMapForClusterRef {
-                    name: name.clone(),
-                    namespace: namespace.clone(),
-                })?
-                .data
-                .and_then(|mut data| data.remove(product))
-                .with_context(|| MissingConnectString {
-                    product: product.to_string(),
-                    name: name.clone(),
-                    namespace: namespace.clone(),
-                })?,
-        );
+        hive_connect_string = client
+            .get::<ConfigMap>(name, Some(namespace))
+            .await
+            .with_context(|| MissingConfigMapForClusterRef {
+                name: name.clone(),
+                namespace: namespace.clone(),
+            })?
+            .data
+            .and_then(|mut data| data.remove(product))
+            .with_context(|| MissingConnectString {
+                product: product.to_string(),
+                name: name.clone(),
+                namespace: namespace.clone(),
+            })?
+            // TODO: hive now offers all pods fqdn(s) instead of the service
+            //    this should be removed
+            .split("\n")
+            .collect::<Vec<_>>()
+            .into_iter()
+            .next()
+            .map(|s| s.to_string());
     }
 
     Ok(hive_connect_string)
