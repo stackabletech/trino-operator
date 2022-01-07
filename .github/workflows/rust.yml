@@ -31,6 +31,8 @@ jobs:
           toolchain: stable
           override: true
       - uses: Swatinem/rust-cache@v1.3.0
+        with:
+          key: test
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: test
@@ -63,6 +65,8 @@ jobs:
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v1.3.0
+        with:
+          key: doc
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: doc
@@ -80,6 +84,8 @@ jobs:
             components: clippy
             override: true
       - uses: Swatinem/rust-cache@v1.3.0
+        with:
+          key: clippy
       # We need this due to: https://github.com/actions-rs/clippy-check/issues/2
       - name: Check workflow permissions
         id: check_permissions
