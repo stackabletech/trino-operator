@@ -71,6 +71,7 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
+pub const TLS_DIR_NAME: &str = "/stackable/tls";
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
@@ -96,17 +97,31 @@ pub struct TrinoClusterSpec {
     pub version: Option<String>,
     pub node_environment: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hive_reference: Option<ClusterRef>,
+    pub hive: Option<ClusterRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<ClusterRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authorization: Option<Authorization>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub s3_connection: Option<S3Connection>,
+    pub s3: Option<S3Connection>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfig>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls: Option<TlsRef>,
+}
+
+// TODO: move to operator-rs
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TlsRef {
+    /// The name of the configmap
+    pub name: String,
+    /// Optional namespace.
+    pub namespace: Option<String>,
+    /// Optional store type. Defaults to "JKS"
+    pub store_type: Option<String>,
 }
 
 #[derive(
@@ -196,8 +211,6 @@ pub struct TrinoConfig {
     pub node_data_dir: Option<String>,
     // log.properties
     pub io_trino: Option<String>,
-    // TLS certificate
-    pub server_certificate: Option<String>,
     // password file auth
     pub password_file_content: Option<String>,
 }
@@ -270,14 +283,20 @@ impl Configuration for TrinoConfig {
                 }
 
                 // if a certificate is provided, we enable TLS
-                if self.server_certificate.is_some() {
+                if resource.spec.tls.is_some() {
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
                         Some(true.to_string()),
                     );
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", CONFIG_DIR_NAME, CERTIFICATE_PEM)),
+                        Some(format!("{}/{}", TLS_DIR_NAME, "keystore.jks")),
+                    );
+
+                    // TODO: get password from secret
+                    result.insert(
+                        "http-server.https.keystore.key".to_string(),
+                        Some("secret".to_string()),
                     );
                 }
 
@@ -308,16 +327,8 @@ impl Configuration for TrinoConfig {
                     );
                 }
             }
-            CERTIFICATE_PEM => {
-                if let Some(cert) = &self.server_certificate {
-                    result.insert(
-                        CERT_FILE_CONTENT_MAP_KEY.to_string(),
-                        Some(cert.to_string()),
-                    );
-                }
-            }
             HIVE_PROPERTIES => {
-                if let Some(s3_connection) = &resource.spec.s3_connection {
+                if let Some(s3_connection) = &resource.spec.s3 {
                     result.insert(
                         S3_ENDPOINT.to_string(),
                         Some(s3_connection.end_point.clone()),

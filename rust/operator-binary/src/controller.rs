@@ -28,10 +28,10 @@ use stackable_operator::{
 use stackable_trino_crd::authorization::create_rego_rules;
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
-    TrinoCluster, TrinoClusterSpec, CERTIFICATE_PEM, CERT_FILE_CONTENT_MAP_KEY, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME,
-    HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY,
+    TrinoCluster, TrinoClusterSpec, CERTIFICATE_PEM, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
+    DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME,
+    JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY, TLS_DIR_NAME,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
 use std::{
@@ -107,12 +107,8 @@ pub enum Error {
     OperatorFrameworkError {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display(
-        "failed to get config map [{}/{}] for cluster ref / discovery",
-        namespace,
-        name,
-    ))]
-    MissingConfigMapForClusterRef {
+    #[snafu(display("failed to get config map [{}/{}]", namespace, name,))]
+    MissingConfigMap {
         source: stackable_operator::error::Error,
         name: String,
         namespace: String,
@@ -155,7 +151,6 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
                 vec![
                     PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
                     PropertyNameKind::File(PASSWORD_DB.to_string()),
-                    PropertyNameKind::File(CERTIFICATE_PEM.to_string()),
                 ],
             ]
             .concat(),
@@ -212,6 +207,8 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
 
     let opa_connect = opa_connect(&trino, &ctx.get_ref().client).await?;
     let hive_connect = hive_connect(&trino, &ctx.get_ref().client).await?;
+    // tls configuration config map name
+    let tls_config_map_name = Some("trino-key-config".to_string()); //tls_config_map_exists(&trino, client).await?;
 
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from(role);
@@ -222,8 +219,13 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
                 build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config, &opa_connect)?;
             let rg_catalog_configmap =
                 build_rolegroup_catalog_config_map(&trino, &rolegroup, &config, &hive_connect)?;
-            let rg_stateful_set =
-                build_rolegroup_statefulset(&trino, &trino_role, &rolegroup, &config)?;
+            let rg_stateful_set = build_rolegroup_statefulset(
+                &trino,
+                &trino_role,
+                &rolegroup,
+                &config,
+                &tls_config_map_name,
+            )?;
 
             client
                 .apply_patch(FIELD_MANAGER_SCOPE, &rg_service, &rg_service)
@@ -394,20 +396,18 @@ fn build_rolegroup_config_map(
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                 jvm_config.push_str(&format!("\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", METRICS_PORT));
             }
-            PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
-                if role == &TrinoRole::Coordinator && !config.is_empty() {
-                    if let Some(cert_file_content) = config.get(CERT_FILE_CONTENT_MAP_KEY) {
-                        cm_conf_data.insert(file_name.to_string(), cert_file_content.to_string());
-                    }
-                }
-            }
+            // PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
+            //     if role == &TrinoRole::Coordinator && !config.is_empty() {
+            //         if let Some(cert_file_content) = config.get(CERT_FILE_CONTENT_MAP_KEY) {
+            //             cm_conf_data.insert(file_name.to_string(), cert_file_content.to_string());
+            //         }
+            //     }
+            // }
             _ => {}
         }
     }
 
     if let Some(opa) = opa_connect {
-        println!("Found OPA service: {}", opa);
-
         let package = match trino.spec.authorization.as_ref() {
             Some(auth) => auth.package.clone(),
             None => {
@@ -488,7 +488,7 @@ fn build_rolegroup_catalog_config_map(
                     )
                     .context(PropertiesWriteError)?;
 
-                    cm_hive_data.insert(HIVE_PROPERTIES.to_string(), config_properties);
+                    cm_hive_data.insert(file_name.to_string(), config_properties);
                 }
             }
             _ => {}
@@ -527,6 +527,7 @@ fn build_rolegroup_statefulset(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    tls_config_map_name: &Option<String>,
 ) -> Result<StatefulSet> {
     let rolegroup = role
         .get_spec(trino)
@@ -560,6 +561,7 @@ fn build_rolegroup_statefulset(
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("conf", CONFIG_DIR_NAME)
+        .add_volume_mount("tls", TLS_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
         .readiness_probe(Probe {
             exec: Some(ExecAction {
@@ -628,6 +630,15 @@ fn build_rolegroup_statefulset(
                     name: "catalog".to_string(),
                     config_map: Some(ConfigMapVolumeSource {
                         name: Some(format!("{}-catalog", rolegroup_ref.object_name())),
+                        ..ConfigMapVolumeSource::default()
+                    }),
+                    ..Volume::default()
+                })
+                .add_volume(Volume {
+                    name: "tls".to_string(),
+                    config_map: Some(ConfigMapVolumeSource {
+                        // TODO: remove unwrap
+                        name: Some(tls_config_map_name.clone().unwrap()),
                         ..ConfigMapVolumeSource::default()
                     }),
                     ..Volume::default()
@@ -747,7 +758,7 @@ async fn opa_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<Str
             client
                 .get::<ConfigMap>(name, Some(namespace))
                 .await
-                .with_context(|| MissingConfigMapForClusterRef {
+                .with_context(|| MissingConfigMap {
                     name: name.clone(),
                     namespace: namespace.clone(),
                 })?
@@ -768,7 +779,7 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
     let spec: &TrinoClusterSpec = &trino.spec;
     let mut hive_connect_string = None;
 
-    if let Some(hive_reference) = &spec.hive_reference {
+    if let Some(hive_reference) = &spec.hive {
         let product = "hive";
         let name = &hive_reference.name;
         let namespace = &hive_reference.namespace;
@@ -776,7 +787,7 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
         hive_connect_string = client
             .get::<ConfigMap>(name, Some(namespace))
             .await
-            .with_context(|| MissingConfigMapForClusterRef {
+            .with_context(|| MissingConfigMap {
                 name: name.clone(),
                 namespace: namespace.clone(),
             })?
@@ -797,4 +808,20 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
     }
 
     Ok(hive_connect_string)
+}
+
+async fn tls_config_map_exists(trino: &TrinoCluster, client: &Client) -> Result<Option<String>> {
+    if let Some(tls) = &trino.spec.tls {
+        let name = tls.name.clone();
+        let namespace = tls.namespace.as_deref();
+        client
+            .get::<ConfigMap>(&name, namespace)
+            .await
+            .with_context(|| MissingConfigMap {
+                name: name.clone(),
+                namespace: namespace.unwrap_or("<no-namespace>").to_string(),
+            })?;
+        return Ok(Some(name));
+    }
+    return Ok(None);
 }

@@ -87,9 +87,6 @@ spec:
                         queryMaxTotalMemoryPerNode:
                           nullable: true
                           type: string
-                        serverCertificate:
-                          nullable: true
-                          type: string
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -130,9 +127,6 @@ spec:
                                 nullable: true
                                 type: string
                               queryMaxTotalMemoryPerNode:
-                                nullable: true
-                                type: string
-                              serverCertificate:
                                 nullable: true
                                 type: string
                             type: object
@@ -189,7 +183,7 @@ spec:
                   required:
                     - roleGroups
                   type: object
-                hiveReference:
+                hive:
                   nullable: true
                   properties:
                     chroot:
@@ -219,7 +213,7 @@ spec:
                     - name
                     - namespace
                   type: object
-                s3Connection:
+                s3:
                   description: Contains all the required connection information for S3.
                   nullable: true
                   properties:
@@ -244,6 +238,23 @@ spec:
                   description: "Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)"
                   nullable: true
                   type: boolean
+                tls:
+                  nullable: true
+                  properties:
+                    name:
+                      description: The name of the configmap
+                      type: string
+                    namespace:
+                      description: Optional namespace.
+                      nullable: true
+                      type: string
+                    storeType:
+                      description: "Optional store type. Defaults to \"JKS\""
+                      nullable: true
+                      type: string
+                  required:
+                    - name
+                  type: object
                 version:
                   nullable: true
                   type: string
@@ -274,9 +285,6 @@ spec:
                           nullable: true
                           type: string
                         queryMaxTotalMemoryPerNode:
-                          nullable: true
-                          type: string
-                        serverCertificate:
                           nullable: true
                           type: string
                       type: object
@@ -319,9 +327,6 @@ spec:
                                 nullable: true
                                 type: string
                               queryMaxTotalMemoryPerNode:
-                                nullable: true
-                                type: string
-                              serverCertificate:
                                 nullable: true
                                 type: string
                             type: object
