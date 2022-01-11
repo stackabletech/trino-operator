@@ -1,7 +1,7 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
-use stackable_operator::k8s_openapi::api::core::v1::{ExecAction, Probe};
+use stackable_operator::k8s_openapi::api::core::v1::{ExecAction, Probe, Secret};
 use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
@@ -25,13 +25,14 @@ use stackable_operator::{
     product_config::{types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{transform_all_roles_to_config, validate_all_roles_and_groups_config},
 };
+use stackable_trino_crd::authentication::{BasicAuthentication, SecretRef};
 use stackable_trino_crd::authorization::create_rego_rules;
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
-    TrinoCluster, TrinoClusterSpec, CERTIFICATE_PEM, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
-    DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME,
-    JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, PW_FILE_CONTENT_MAP_KEY, TLS_DIR_NAME,
+    TrinoCluster, TrinoClusterSpec, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME,
+    DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME, JVM_CONFIG,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, TLS_DIR_NAME,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
 use std::{
@@ -124,6 +125,27 @@ pub enum Error {
         name: String,
         namespace: String,
     },
+    #[snafu(display("failed to retrieve secret [{}/{}]", namespace, name))]
+    MissingSecret {
+        source: stackable_operator::error::Error,
+        name: String,
+        namespace: String,
+    },
+    #[snafu(display("no secrets were provided in the custom resource"))]
+    MissingSecretInCrd,
+    #[snafu(display("failed to retrieve string data from secret [{}/{}]", namespace, name))]
+    MissingStringDataInSecret { name: String, namespace: String },
+    #[snafu(display(
+        "failed to retrieve property [{}] from secret [{}/{}]",
+        property,
+        namespace,
+        name
+    ))]
+    MissingPropertyInSecretData {
+        property: String,
+        name: String,
+        namespace: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -208,15 +230,28 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
     let opa_connect = opa_connect(&trino, &ctx.get_ref().client).await?;
     let hive_connect = hive_connect(&trino, &ctx.get_ref().client).await?;
     // tls configuration config map name
-    let tls_config_map_name = Some("trino-key-config".to_string()); //tls_config_map_exists(&trino, client).await?;
+    let tls_config_map_name = tls_config_map_exists(&trino, client).await?; //Some("trino-key-config".to_string());
+    let basic_auth = match &trino.spec.authentication {
+        Some(auth) => extract_basic_auth_from_secret(client, &auth.basic).await?,
+        None => {
+            println!("No basic auth provided!");
+            Vec::new()
+        }
+    };
 
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from(role);
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
-            let rg_configmap =
-                build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config, &opa_connect)?;
+            let rg_configmap = build_rolegroup_config_map(
+                &trino,
+                &trino_role,
+                &rolegroup,
+                &config,
+                &opa_connect,
+                &basic_auth,
+            )?;
             let rg_catalog_configmap =
                 build_rolegroup_catalog_config_map(&trino, &rolegroup, &config, &hive_connect)?;
             let rg_stateful_set = build_rolegroup_statefulset(
@@ -313,10 +348,11 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
 fn build_rolegroup_config_map(
     trino: &TrinoCluster,
-    role: &TrinoRole,
+    _role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     opa_connect: &Option<String>,
+    basic_auth: &Vec<BasicAuthentication>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -378,34 +414,25 @@ fn build_rolegroup_config_map(
                 cm_conf_data.insert(file_name.to_string(), log_properties);
             }
             PropertyNameKind::File(file_name) if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                if role == &TrinoRole::Coordinator && !transformed_config.is_empty() {
-                    let pw_properties = product_config::writer::to_java_properties_string(
-                        transformed_config.iter(),
-                    )
-                    .context(PropertiesWriteError)?;
-                    cm_conf_data.insert(file_name.to_string(), pw_properties);
-                }
+                let pw_properties =
+                    product_config::writer::to_java_properties_string(transformed_config.iter())
+                        .context(PropertiesWriteError)?;
+                cm_conf_data.insert(file_name.to_string(), pw_properties);
             }
-            PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
-                if role == &TrinoRole::Coordinator && !config.is_empty() {
-                    if let Some(pw_file_content) = config.get(PW_FILE_CONTENT_MAP_KEY) {
-                        cm_conf_data.insert(file_name.to_string(), pw_file_content.to_string());
-                    }
-                }
-            }
+            PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {}
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                 jvm_config.push_str(&format!("\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", METRICS_PORT));
             }
-            // PropertyNameKind::File(file_name) if file_name == CERTIFICATE_PEM => {
-            //     if role == &TrinoRole::Coordinator && !config.is_empty() {
-            //         if let Some(cert_file_content) = config.get(CERT_FILE_CONTENT_MAP_KEY) {
-            //             cm_conf_data.insert(file_name.to_string(), cert_file_content.to_string());
-            //         }
-            //     }
-            // }
             _ => {}
         }
     }
+
+    let pw_file_content = basic_auth
+        .iter()
+        .map(|auth| auth.combined())
+        .collect::<Vec<_>>()
+        .join("\n");
+    cm_conf_data.insert(PASSWORD_DB.to_string(), pw_file_content.to_string());
 
     if let Some(opa) = opa_connect {
         let package = match trino.spec.authorization.as_ref() {
@@ -808,6 +835,60 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
     }
 
     Ok(hive_connect_string)
+}
+
+async fn extract_basic_auth_from_secret(
+    client: &Client,
+    basic_auth_secrets: &Option<Vec<SecretRef>>,
+) -> Result<Vec<BasicAuthentication>> {
+    let secrets = basic_auth_secrets.as_ref().context(MissingSecretInCrd)?;
+    let mut collected_basic_auth = Vec::new();
+
+    for secret in secrets {
+        let name = &secret.name;
+        let namespace = &secret
+            .namespace
+            .as_deref()
+            .unwrap_or("<no-namespace>")
+            .to_string();
+
+        let secret = client
+            .get::<Secret>(&name, secret.namespace.as_deref())
+            .await
+            .with_context(|| MissingSecret { name, namespace })?;
+
+        let data = secret
+            .data
+            .with_context(|| MissingStringDataInSecret { name, namespace })?;
+
+        let user_property = "username";
+        let user_name = data
+            .get(user_property)
+            .with_context(|| MissingPropertyInSecretData {
+                property: user_property.to_string(),
+                name,
+                namespace,
+            })?;
+
+        let password_property = "password";
+        let password =
+            data.get(password_property)
+                .with_context(|| MissingPropertyInSecretData {
+                    property: password_property.to_string(),
+                    name,
+                    namespace,
+                })?;
+
+        use std::str;
+
+        // TODO: do not use unwrap!
+        collected_basic_auth.push(BasicAuthentication {
+            user: str::from_utf8(user_name.0.as_slice()).unwrap().to_string(),
+            password: str::from_utf8(password.0.as_slice()).unwrap().to_string(),
+        })
+    }
+
+    Ok(collected_basic_auth)
 }
 
 async fn tls_config_map_exists(trino: &TrinoCluster, client: &Client) -> Result<Option<String>> {

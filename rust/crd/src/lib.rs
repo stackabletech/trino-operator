@@ -1,3 +1,4 @@
+pub mod authentication;
 pub mod authorization;
 pub mod discovery;
 pub mod error;
@@ -5,6 +6,7 @@ pub mod error;
 use crate::authorization::Authorization;
 use crate::discovery::TrinoPodRef;
 
+use crate::authentication::{Authentication, TlsRef};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::kube::runtime::reflector::ObjectRef;
@@ -101,6 +103,8 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<ClusterRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authentication: Option<Authentication>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authorization: Option<Authorization>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3Connection>,
@@ -110,18 +114,6 @@ pub struct TrinoClusterSpec {
     pub workers: Option<Role<TrinoConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<TlsRef>,
-}
-
-// TODO: move to operator-rs
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TlsRef {
-    /// The name of the configmap
-    pub name: String,
-    /// Optional namespace.
-    pub namespace: Option<String>,
-    /// Optional store type. Defaults to "JKS"
-    pub store_type: Option<String>,
 }
 
 #[derive(
@@ -211,8 +203,6 @@ pub struct TrinoConfig {
     pub node_data_dir: Option<String>,
     // log.properties
     pub io_trino: Option<String>,
-    // password file auth
-    pub password_file_content: Option<String>,
 }
 
 impl Configuration for TrinoConfig {
@@ -300,7 +290,9 @@ impl Configuration for TrinoConfig {
                     );
                 }
 
-                if self.password_file_content.is_some() {
+                if resource.spec.authentication.is_some()
+                    && role_name == TrinoRole::Coordinator.to_string()
+                {
                     result.insert(
                         HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
                         Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
@@ -308,7 +300,7 @@ impl Configuration for TrinoConfig {
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                if self.password_file_content.is_some() {
+                if resource.spec.authentication.is_some() {
                     result.insert(
                         PASSWORD_AUTHENTICATOR_NAME.to_string(),
                         Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()),
@@ -320,12 +312,12 @@ impl Configuration for TrinoConfig {
                 }
             }
             PASSWORD_DB => {
-                if let Some(pw_file_content) = &self.password_file_content {
-                    result.insert(
-                        PW_FILE_CONTENT_MAP_KEY.to_string(),
-                        Some(pw_file_content.to_string()),
-                    );
-                }
+                // if let Some(pw_file_content) = &self.password_file_content {
+                //     result.insert(
+                //         PW_FILE_CONTENT_MAP_KEY.to_string(),
+                //         Some(pw_file_content.to_string()),
+                //     );
+                // }
             }
             HIVE_PROPERTIES => {
                 if let Some(s3_connection) = &resource.spec.s3 {

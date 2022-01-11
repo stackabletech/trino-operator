@@ -15,6 +15,14 @@ spec:
     namespace: default
     name: trino-key-config
     storeType: JKS
+  authentication:
+    basic:
+      - name: simple-trino-user-admin-secret
+        namespace: default
+      - name: simple-trino-user-alice-secret
+        namespace: default
+      - name: simple-trino-user-bob-secret
+        namespace: default
   authorization:
     package: trino
     permissions:
@@ -28,6 +36,7 @@ spec:
             write: true
           iris_csv:
             read: true
+            write: true
       bob:
         schemas:
           read: false
@@ -51,10 +60,6 @@ spec:
         config:
           coordinator: true
           nodeDataDir: /stackable/trino/data
-          passwordFileContent: |
-            alice:$2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-            bob:$2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
-            admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
   workers:
     roleGroups:
       default:
