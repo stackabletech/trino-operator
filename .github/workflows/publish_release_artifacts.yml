@@ -35,7 +35,8 @@ jobs:
       - name: Build Docker image
         env:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-        run: make docker
+        if: env.NEXUS_PASSWORD != null
+        run: make docker-release
 
       - name: Compile chart
         run: make compile-chart
@@ -46,6 +47,7 @@ jobs:
       - name: Publish Chart
         env:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        if: env.NEXUS_PASSWORD != null
         run: >-
           /usr/bin/curl
           --fail

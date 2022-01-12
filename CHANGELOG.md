@@ -13,6 +13,9 @@ All notable changes to this project will be documented in this file.
 
 [#81]: https://github.com/stackabletech/trino-operator/pull/81
 
+## [0.2.0] - 2021-12-06
+
+
 ## [0.1.0] - 2021-12-06
 
 

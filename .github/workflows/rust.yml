@@ -8,13 +8,15 @@ on:
   push:
     branches:
       - main
+      - staging
+      - trying
   pull_request:
 
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
-  RUSTFLAGS: "-D warnings -W rust-2021-compatibility"
+  RUSTFLAGS: "-D warnings"
 
 jobs:
 
@@ -32,9 +34,6 @@ jobs:
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: test
-      - uses: actions-rs/cargo@v1.0.3
-        with:
-          command: clean
 
   rustfmt:
     name: Run rustfmt
@@ -80,6 +79,7 @@ jobs:
             toolchain: stable
             components: clippy
             override: true
+      - uses: Swatinem/rust-cache@v1.3.0
       # We need this due to: https://github.com/actions-rs/clippy-check/issues/2
       - name: Check workflow permissions
         id: check_permissions
