@@ -75,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
                 .owns(client.get_all_api::<Service>(), ListParams::default())
                 .owns(client.get_all_api::<StatefulSet>(), ListParams::default())
                 .owns(client.get_all_api::<ConfigMap>(), ListParams::default())
+                .shutdown_on_signal()
                 .watches(
                     client.get_all_api::<Endpoints>(),
                     ListParams::default(),

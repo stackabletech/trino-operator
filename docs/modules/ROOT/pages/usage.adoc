@@ -29,7 +29,37 @@ Both Hive and Trino need the same S3 authentication.
 
 Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator and https://docs.stackable.tech/home/index.html[docs].
 
-=== Regorule Server
+=== Authentication
+
+We provide single user authentication via secrets that can be referred in the custom resource:
+
+    authentication:
+      basic:
+        - name: simple-trino-user-admin-secret
+          namespace: default
+        - name: simple-trino-user-alice-secret
+          namespace: default
+        - name: simple-trino-user-bob-secret
+          namespace: default
+
+These secrets need to be created manually before startup (check `examples/simple-trino-user-secret.yaml`):
+
+    kubectl apply -f examples/simple-trino-user-secret.yaml
+
+=== TLS
+
+We need a valid TLS keystore/certificates configmap which is referred to in the custom resource:
+
+  tls:
+    namespace: default
+    name: trino-key-config
+    storeType: JKS
+
+An example keystore can be found in the `tls` directory
+
+    kubectl create configmap trino-key-config --from-file=keystore.jks --append-hash=false
+
+=== Regorule Server (Authorization)
 
 The OPA cluster requires downloading rules from a RegoRule server. You can use your own solution or fall back on the Stackable Regorule Server
 
@@ -93,25 +123,37 @@ With the prerequisites fulfilled, the CRD for this operator must be created:
 
     kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
 
-To create a single node Trino (v362) cluster with Prometheus metrics exposed on port 10200 (coordinator) and 10201 (worker). Metrics will be `disabled` if you remove the metricsPort porperty. Please adapt the `s3Connection` with your credentials and the `serverCertificate` with your key and certificate:
+To create a single node Trino (v362) cluster with Prometheus metrics exposed on port 8081. Please adapt the `s3` with your credentials.
 
     cat <<EOF | kubectl apply -f -
     apiVersion: trino.stackable.tech/v1alpha1
     kind: TrinoCluster
     metadata:
-      name: simple
+      name: simple-trino
     spec:
       version: "0.0.362"
       nodeEnvironment: production
-      hiveReference:
+      hive:
         namespace: default
         name: simple-derby
       opa:
         namespace: default
-        name: simple
+        name: simple-opa
+      tls:
+        namespace: default
+        name: trino-key-config
+        storeType: JKS
+      authentication:
+        basic:
+          - name: simple-trino-user-admin-secret
+            namespace: default
+          - name: simple-trino-user-alice-secret
+            namespace: default
+          - name: simple-trino-user-bob-secret
+            namespace: default
       authorization:
-        packageName: trino
-        userPermissions:
+        package: trino
+        permissions:
           admin:
             schemas:
               read: true
@@ -130,7 +172,7 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
             tables:
               iris_parquet:
                 read: true
-      s3Connection:
+      s3:
         endPoint: changeme
         accessKey: changeme
         secretKey: changeme
@@ -142,23 +184,10 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
             selector:
               matchLabels:
                 kubernetes.io/os: linux
+            replicas: 1
             config:
               coordinator: true
               nodeDataDir: /stackable/trino/data
-              metricsPort: 10200
-              httpServerHttpPort: 8080
-              httpServerHttpsPort: 8443
-              passwordFileContent: |
-                alice:$2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-                bob:$2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
-                admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
-              serverCertificate: |
-                -----BEGIN PRIVATE KEY-----
-                some_key
-                -----END PRIVATE KEY-----
-                -----BEGIN CERTIFICATE-----
-                some_certificate
-                -----END CERTIFICATE-----
       workers:
         roleGroups:
           default:
@@ -168,13 +197,11 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
             replicas: 1
             config:
               nodeDataDir: /stackable/trino/data
-              metricsPort: 10201
-              httpServerHttpPort: 8081
     EOF
 
 Assuming you've downloaded and installed the Trino client, connect to the Trino coordinator:
 
-    ./trino --server <node_name>:<https-port> --user admin --password
+    ./trino.jar --debug --server https://<node_name>:<https-port> --user=admin --password
 
 If you use self signed certificates, you also need to add `--insecure` to the command above.
 

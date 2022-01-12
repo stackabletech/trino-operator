@@ -57,8 +57,7 @@ docker run \
 
 == Building the operator from source
 
-This operator is written in Rust and is developed against the latest stable Rust release (1.57 at
-the time of writing).
+This operator is written in Rust and is developed against the latest stable Rust release (1.56 at the time of writing).
 
 [source]
 ----
