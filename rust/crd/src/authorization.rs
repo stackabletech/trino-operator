@@ -40,7 +40,7 @@ pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Operato
     Ok(())
 }
 
-pub async fn create_or_update_rego_rule_resource(
+async fn create_or_update_rego_rule_resource(
     client: &Client,
     package_name: &str,
     rego_rules: String,
@@ -86,7 +86,7 @@ pub async fn create_or_update_rego_rule_resource(
     Ok(rego_rule_resource)
 }
 
-pub fn build_rego_rules(authorization_rules: &Authorization) -> String {
+fn build_rego_rules(authorization_rules: &Authorization) -> String {
     let mut rules = String::new();
 
     rules.push_str(&format!("    package {}\n\n", authorization_rules.package));
