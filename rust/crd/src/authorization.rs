@@ -1,13 +1,39 @@
 use crate::{TrinoCluster, TrinoClusterSpec};
+
 use serde::{Deserialize, Serialize};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
-use stackable_operator::error::OperatorResult;
 use stackable_operator::kube::api::PostParams;
 use stackable_operator::kube::core::ObjectMeta;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
-use tracing::{debug, warn};
+use tracing::debug;
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("failed to update rego rule [{}/{}]", name, namespace))]
+    FailedRegoRuleUpdate {
+        source: stackable_operator::kube::Error,
+        name: String,
+        namespace: String,
+    },
+    #[snafu(display("failed to create rego rule [{}/{}]", name, namespace))]
+    FailedRegoRuleCreate {
+        source: stackable_operator::kube::Error,
+        name: String,
+        namespace: String,
+    },
+    #[snafu(display("no `metadata.name` found for rego rule [{}/{}]", name, namespace))]
+    MissingRegoRuleName { name: String, namespace: String },
+    #[snafu(display("failed to convert [{:?}] to json", permissions))]
+    FailedJsonConversion {
+        source: serde_json::Error,
+        permissions: BTreeMap<String, UserPermission>,
+    },
+}
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,16 +50,17 @@ pub struct UserPermission {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccessPermission {
     pub read: Option<bool>,
     pub write: Option<bool>,
 }
 
-pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> OperatorResult<()> {
+pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Result<()> {
     let spec: &TrinoClusterSpec = &trino.spec;
 
     if let Some(authorization) = &spec.authorization {
-        let rego_rules = build_rego_rules(authorization);
+        let rego_rules = build_rego_rules(authorization)?;
         create_or_update_rego_rule_resource(client, &authorization.package, rego_rules).await?;
     }
 
@@ -44,8 +71,9 @@ async fn create_or_update_rego_rule_resource(
     client: &Client,
     package_name: &str,
     rego_rules: String,
-) -> OperatorResult<RegoRule> {
+) -> Result<RegoRule> {
     let new_rego_rule_spec = RegoRuleSpec { rego: rego_rules };
+    let namespace = "default";
 
     let rego_rule_resource = RegoRule {
         metadata: ObjectMeta {
@@ -55,7 +83,8 @@ async fn create_or_update_rego_rule_resource(
         spec: new_rego_rule_spec.clone(),
     };
 
-    match client.get::<RegoRule>(package_name, Some("default")).await {
+    // TODO: make namespace configurable
+    match client.get::<RegoRule>(package_name, Some(namespace)).await {
         Ok(mut old_rego_rule) => {
             debug!("Found existing rego rule: {:?}", old_rego_rule);
 
@@ -63,59 +92,65 @@ async fn create_or_update_rego_rule_resource(
                 old_rego_rule.spec.rego = new_rego_rule_spec.rego;
                 debug!(
                     "Existing Rego Rule [{}] differs from spec. Replacing content...",
-                    old_rego_rule
-                        .metadata
-                        .name
-                        .as_deref()
-                        .unwrap_or("<no-name-set>")
+                    old_rego_rule.metadata.name.as_deref().with_context(|| {
+                        MissingRegoRuleName {
+                            name: package_name.to_string(),
+                            namespace: namespace.to_string(),
+                        }
+                    })?
                 );
 
-                let api = client.get_namespaced_api("default");
+                let api = client.get_namespaced_api(namespace);
                 api.replace(package_name, &PostParams::default(), &old_rego_rule)
-                    .await?;
+                    .await
+                    .with_context(|| FailedRegoRuleUpdate {
+                        name: package_name.to_string(),
+                        namespace: namespace.to_string(),
+                    })?;
             }
         }
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
-            let api = client.get_namespaced_api("default");
+            let api = client.get_namespaced_api(namespace);
             api.create(&PostParams::default(), &rego_rule_resource)
-                .await?;
+                .await
+                .with_context(|| FailedRegoRuleCreate {
+                    name: package_name.to_string(),
+                    namespace: namespace.to_string(),
+                })?;
         }
     }
 
     Ok(rego_rule_resource)
 }
 
-fn build_rego_rules(authorization_rules: &Authorization) -> String {
+fn build_rego_rules(authorization_rules: &Authorization) -> Result<String> {
     let mut rules = String::new();
 
     rules.push_str(&format!("    package {}\n\n", authorization_rules.package));
     rules.push_str(&build_user_permission_json(
         &authorization_rules.permissions,
-    ));
+    )?);
     rules.push_str(&build_main_rego_rules());
     rules.push_str(&build_helper_rego_rules());
 
-    rules
+    Ok(rules)
 }
 
-fn build_user_permission_json(user_permissions: &BTreeMap<String, UserPermission>) -> String {
+fn build_user_permission_json(
+    user_permissions: &BTreeMap<String, UserPermission>,
+) -> Result<String> {
     let mut user_json = String::new();
 
+    let json = &serde_json::to_string(&user_permissions).with_context(|| FailedJsonConversion {
+        permissions: user_permissions.clone(),
+    })?;
+
     user_json.push_str("    users = ");
-    match &serde_json::to_string(&user_permissions) {
-        Ok(json) => user_json.push_str(json),
-        Err(err) => {
-            warn!(
-                "Could not convert user permissions to json. Please check the input: {}",
-                err.to_string()
-            );
-            user_json.push_str("{}");
-        }
-    }
+    user_json.push_str(json);
     user_json.push('\n');
 
-    user_json
+    Ok(user_json)
 }
 
 fn build_main_rego_rules() -> String {
@@ -240,13 +275,15 @@ mod tests {
                 read: true
     "},
     )]
-    fn test_build_rego_rules(#[case] auth: &str) {
+    fn test_build_rego_rules(#[case] auth: &str) -> Result<()> {
         let authorization = parse_authorization_from_yaml(auth);
-        let rego_rules = build_rego_rules(&authorization);
+        let rego_rules = build_rego_rules(&authorization)?;
 
         assert!(rego_rules.contains("package trino"));
         assert!(rego_rules.contains("user_can_read_table"));
         assert!(rego_rules.contains("can_drop_schema"));
+
+        Ok(())
     }
 
     fn parse_authorization_from_yaml(authorization: &str) -> Authorization {
