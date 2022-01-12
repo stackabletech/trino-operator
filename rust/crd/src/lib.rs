@@ -1,7 +1,6 @@
 pub mod authentication;
 pub mod authorization;
 pub mod discovery;
-pub mod error;
 
 use crate::authorization::Authorization;
 use crate::discovery::TrinoPodRef;
@@ -35,7 +34,6 @@ pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
 pub const PASSWORD_DB: &str = "password.db";
-pub const CERTIFICATE_PEM: &str = "clustercoord.pem";
 pub const HIVE_PROPERTIES: &str = "hive.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
@@ -55,7 +53,7 @@ pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-no
 pub const DISCOVERY_URI: &str = "discovery.uri";
 // password-authenticator.properties
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
-pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file"; // the value of the property above
+pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
 pub const FILE_PASSWORD_FILE: &str = "file.password-file";
 // file content keys
 pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
@@ -310,14 +308,6 @@ impl Configuration for TrinoConfig {
                         Some(format!("{}/{}", CONFIG_DIR_NAME, PASSWORD_DB)),
                     );
                 }
-            }
-            PASSWORD_DB => {
-                // if let Some(pw_file_content) = &self.password_file_content {
-                //     result.insert(
-                //         PW_FILE_CONTENT_MAP_KEY.to_string(),
-                //         Some(pw_file_content.to_string()),
-                //     );
-                // }
             }
             HIVE_PROPERTIES => {
                 if let Some(s3_connection) = &resource.spec.s3 {

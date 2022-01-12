@@ -2,6 +2,7 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
 use stackable_operator::k8s_openapi::api::core::v1::{ExecAction, Probe, Secret};
+use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
@@ -29,9 +30,9 @@ use stackable_trino_crd::authentication::{BasicAuthentication, SecretRef};
 use stackable_trino_crd::authorization::create_rego_rules;
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
-    TrinoCluster, TrinoClusterSpec, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME,
-    DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME, JVM_CONFIG,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    authorization, TrinoCluster, TrinoClusterSpec, CONFIG_DIR_NAME, CONFIG_PROPERTIES,
+    DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME,
+    JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, TLS_DIR_NAME,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
@@ -56,10 +57,6 @@ pub enum Error {
     MissingTrinoRole { role: String },
     #[snafu(display("failed to calculate global service name"))]
     GlobalServiceNameNotFound,
-    #[snafu(display("failed to calculate service name for role {}", rolegroup))]
-    RoleGroupServiceNameNotFound {
-        rolegroup: RoleGroupRef<TrinoCluster>,
-    },
     #[snafu(display("failed to apply global Service"))]
     ApplyRoleService {
         source: stackable_operator::error::Error,
@@ -92,10 +89,6 @@ pub enum Error {
     ObjectMissingMetadataForOwnerRef {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("failed to update status"))]
-    ApplyStatus {
-        source: stackable_operator::error::Error,
-    },
     #[snafu(display("failed to transform configs"))]
     ProductConfigTransform {
         source: stackable_operator::product_config_utils::ConfigError,
@@ -104,10 +97,10 @@ pub enum Error {
     PropertiesWriteError {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
     },
-    #[snafu(display("operator-rs reported error"))]
-    OperatorFrameworkError {
-        source: stackable_operator::error::Error,
-    },
+    #[snafu(display("Failed to load Product Config"))]
+    ProductConfigLoadFailed,
+    #[snafu(display("failed to create rego rules for authorization"))]
+    RegoRuleAuthorizationError { source: authorization::Error },
     #[snafu(display("failed to get config map [{}/{}]", namespace, name,))]
     MissingConfigMap {
         source: stackable_operator::error::Error,
@@ -133,8 +126,8 @@ pub enum Error {
     },
     #[snafu(display("no secrets were provided in the custom resource"))]
     MissingSecretInCrd,
-    #[snafu(display("failed to retrieve string data from secret [{}/{}]", namespace, name))]
-    MissingStringDataInSecret { name: String, namespace: String },
+    #[snafu(display("failed to retrieve data from secret [{}/{}]", namespace, name))]
+    MissingDataInSecret { name: String, namespace: String },
     #[snafu(display(
         "failed to retrieve property [{}] from secret [{}/{}]",
         property,
@@ -155,67 +148,14 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
 
     let client = &ctx.get_ref().client;
     let version = trino_version(&trino)?;
-    let mut roles = HashMap::new();
 
-    let config_files = vec![
-        PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-        PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
-        PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-        PropertyNameKind::File(JVM_CONFIG.to_string()),
-        PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-    ];
-
-    roles.insert(
-        TrinoRole::Coordinator.to_string(),
-        (
-            [
-                config_files.clone(),
-                vec![
-                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
-                    PropertyNameKind::File(PASSWORD_DB.to_string()),
-                ],
-            ]
-            .concat(),
-            trino
-                .spec
-                .coordinators
-                .clone()
-                .with_context(|| MissingTrinoRole {
-                    role: TrinoRole::Coordinator.to_string(),
-                })?,
-        ),
-    );
-
-    roles.insert(
-        TrinoRole::Worker.to_string(),
-        (
-            config_files,
-            trino
-                .spec
-                .workers
-                .clone()
-                .with_context(|| MissingTrinoRole {
-                    role: TrinoRole::Worker.to_string(),
-                })?,
-        ),
-    );
+    let validated_config =
+        validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
 
     // rego rules
     create_rego_rules(client, &trino)
         .await
-        .context(OperatorFrameworkError)?;
-
-    let role_config =
-        transform_all_roles_to_config(&trino, roles).context(ProductConfigTransform)?;
-
-    let validated_config = validate_all_roles_and_groups_config(
-        version,
-        &role_config,
-        &ctx.get_ref().product_config,
-        false,
-        false,
-    )
-    .context(InvalidProductConfig)?;
+        .context(RegoRuleAuthorizationError)?;
 
     let coordinator_role_service = build_coordinator_role_service(&trino)?;
     client
@@ -317,26 +257,7 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
             .with_recommended_labels(trino, APP_NAME, trino_version(trino)?, &role_name, "global")
             .build(),
         spec: Some(ServiceSpec {
-            ports: Some(vec![
-                ServicePort {
-                    name: Some(HTTP_PORT_NAME.to_string()),
-                    port: HTTP_PORT.into(),
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-                ServicePort {
-                    name: Some(HTTPS_PORT_NAME.to_string()),
-                    port: HTTPS_PORT.into(),
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-                ServicePort {
-                    name: Some(METRICS_PORT_NAME.to_string()),
-                    port: METRICS_PORT.into(),
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-            ]),
+            ports: Some(service_ports()),
             selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
             type_: Some("NodePort".to_string()),
             ..ServiceSpec::default()
@@ -352,7 +273,7 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     opa_connect: &Option<String>,
-    basic_auth: &Vec<BasicAuthentication>,
+    basic_auth: &[BasicAuthentication],
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -432,7 +353,8 @@ fn build_rolegroup_config_map(
         .map(|auth| auth.combined())
         .collect::<Vec<_>>()
         .join("\n");
-    cm_conf_data.insert(PASSWORD_DB.to_string(), pw_file_content.to_string());
+
+    cm_conf_data.insert(PASSWORD_DB.to_string(), pw_file_content);
 
     if let Some(opa) = opa_connect {
         let package = match trino.spec.authorization.as_ref() {
@@ -719,26 +641,7 @@ fn build_rolegroup_service(
             .build(),
         spec: Some(ServiceSpec {
             cluster_ip: Some("None".to_string()),
-            ports: Some(vec![
-                ServicePort {
-                    name: Some(HTTP_PORT_NAME.to_string()),
-                    port: HTTP_PORT.into(),
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-                ServicePort {
-                    name: Some(HTTPS_PORT_NAME.to_string()),
-                    port: HTTPS_PORT.into(),
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-                ServicePort {
-                    name: Some(METRICS_PORT_NAME.to_string()),
-                    port: METRICS_PORT.into(),
-                    protocol: Some("TCP".to_string()),
-                    ..ServicePort::default()
-                },
-            ]),
+            ports: Some(service_ports()),
             selector: Some(role_group_selector_labels(
                 trino,
                 APP_NAME,
@@ -827,7 +730,7 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
             })?
             // TODO: hive now offers all pods fqdn(s) instead of the service
             //    this should be removed
-            .split("\n")
+            .split('\n')
             .collect::<Vec<_>>()
             .into_iter()
             .next()
@@ -853,13 +756,13 @@ async fn extract_basic_auth_from_secret(
             .to_string();
 
         let secret = client
-            .get::<Secret>(&name, secret.namespace.as_deref())
+            .get::<Secret>(name, secret.namespace.as_deref())
             .await
             .with_context(|| MissingSecret { name, namespace })?;
 
         let data = secret
             .data
-            .with_context(|| MissingStringDataInSecret { name, namespace })?;
+            .with_context(|| MissingDataInSecret { name, namespace })?;
 
         let user_property = "username";
         let user_name = data
@@ -904,5 +807,94 @@ async fn tls_config_map_exists(trino: &TrinoCluster, client: &Client) -> Result<
             })?;
         return Ok(Some(name));
     }
-    return Ok(None);
+    Ok(None)
+}
+
+/// Defines all required roles and their required configuration.
+///
+/// The roles and their configs are then validated and complemented by the product config.
+///
+/// # Arguments
+/// * `resource`        - The NifiCluster containing the role definitions.
+/// * `version`         - The NifiCluster version.
+/// * `product_config`  - The product config to validate and complement the user config.
+///
+fn validated_product_config(
+    resource: &TrinoCluster,
+    version: &str,
+    product_config: &ProductConfigManager,
+) -> Result<ValidatedRoleConfigByPropertyKind, Error> {
+    let mut roles = HashMap::new();
+
+    let config_files = vec![
+        PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+        PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
+        PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+        PropertyNameKind::File(JVM_CONFIG.to_string()),
+        PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+    ];
+
+    roles.insert(
+        TrinoRole::Coordinator.to_string(),
+        (
+            [
+                config_files.clone(),
+                vec![
+                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
+                    PropertyNameKind::File(PASSWORD_DB.to_string()),
+                ],
+            ]
+            .concat(),
+            resource
+                .spec
+                .coordinators
+                .clone()
+                .with_context(|| MissingTrinoRole {
+                    role: TrinoRole::Coordinator.to_string(),
+                })?,
+        ),
+    );
+
+    roles.insert(
+        TrinoRole::Worker.to_string(),
+        (
+            config_files,
+            resource
+                .spec
+                .workers
+                .clone()
+                .with_context(|| MissingTrinoRole {
+                    role: TrinoRole::Worker.to_string(),
+                })?,
+        ),
+    );
+
+    let role_config =
+        transform_all_roles_to_config(resource, roles).context(ProductConfigTransform)?;
+
+    validate_all_roles_and_groups_config(version, &role_config, product_config, false, false)
+        .context(InvalidProductConfig)
+}
+
+fn service_ports() -> Vec<ServicePort> {
+    vec![
+        ServicePort {
+            name: Some(HTTP_PORT_NAME.to_string()),
+            port: HTTP_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ServicePort::default()
+        },
+        ServicePort {
+            name: Some(HTTPS_PORT_NAME.to_string()),
+            port: HTTPS_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ServicePort::default()
+        },
+        ServicePort {
+            name: Some(METRICS_PORT_NAME.to_string()),
+            port: METRICS_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ServicePort::default()
+        },
+    ]
 }
