@@ -31,33 +31,32 @@ Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator 
 
 === Authentication
 
-We provide single user authentication via secrets that can be referred in the custom resource:
+We provide user authentication via secret that can be referred in the custom resource:
 
-    authentication:
-      basic:
-        - name: simple-trino-user-admin-secret
-          namespace: default
-        - name: simple-trino-user-alice-secret
-          namespace: default
-        - name: simple-trino-user-bob-secret
-          namespace: default
+  authentication:
+    method: multiUser
+    secrets:
+      userCredentials:
+        namespace: default
+        name: simple-trino-users-secret
 
-These secrets need to be created manually before startup (check `examples/simple-trino-user-secret.yaml`):
+These secrets need to be created manually before startup (check `examples/simple-trino-users-secret.yaml`):
 
-    kubectl apply -f examples/simple-trino-user-secret.yaml
+    kubectl apply -f examples/simple-trino-users-secret.yaml
 
-=== TLS
+The secret looks the following:
 
-We need a valid TLS keystore/certificates configmap which is referred to in the custom resource:
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: simple-trino-users-secret
+    type: kubernetes.io/opaque
+    stringData:
+      admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
+      alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
+      bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
 
-  tls:
-    namespace: default
-    name: trino-key-config
-    storeType: JKS
-
-An example keystore can be found in the `tls` directory
-
-    kubectl create configmap trino-key-config --from-file=keystore.jks --append-hash=false
+The <user>:<password> combinations are provided in the `stringData` field. Passwords need to be base64 encoded.
 
 === Regorule Server (Authorization)
 
@@ -139,18 +138,12 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
       opa:
         namespace: default
         name: simple-opa
-      tls:
-        namespace: default
-        name: trino-key-config
-        storeType: JKS
       authentication:
-        basic:
-          - name: simple-trino-user-admin-secret
+        method: multiUser
+        secrets:
+          userCredentials:
             namespace: default
-          - name: simple-trino-user-alice-secret
-            namespace: default
-          - name: simple-trino-user-bob-secret
-            namespace: default
+            name: simple-trino-users-secret
       authorization:
         package: trino
         permissions:
