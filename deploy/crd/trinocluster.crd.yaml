@@ -23,21 +23,33 @@ spec:
             spec:
               properties:
                 authentication:
+                  description: A reference to a secret containing username/password for defined users
                   nullable: true
                   properties:
-                    basic:
-                      items:
+                    config:
+                      additionalProperties:
+                        type: string
+                      nullable: true
+                      type: object
+                    method:
+                      enum:
+                        - multiUser
+                      type: string
+                    secrets:
+                      additionalProperties:
+                        description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
                         properties:
                           name:
+                            description: Name is unique within a namespace to reference a secret resource.
                             type: string
                           namespace:
-                            nullable: true
+                            description: Namespace defines the space within which the secret name must be unique.
                             type: string
-                        required:
-                          - name
                         type: object
                       nullable: true
-                      type: array
+                      type: object
+                  required:
+                    - method
                   type: object
                 authorization:
                   nullable: true
@@ -249,20 +261,6 @@ spec:
                   description: "Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)"
                   nullable: true
                   type: boolean
-                tls:
-                  nullable: true
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      nullable: true
-                      type: string
-                    storeType:
-                      nullable: true
-                      type: string
-                  required:
-                    - name
-                  type: object
                 version:
                   nullable: true
                   type: string

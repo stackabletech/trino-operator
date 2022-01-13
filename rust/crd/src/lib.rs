@@ -5,7 +5,7 @@ pub mod discovery;
 use crate::authorization::Authorization;
 use crate::discovery::TrinoPodRef;
 
-use crate::authentication::{Authentication, TlsRef};
+use crate::authentication::{AuthenticationConfig, TrinoAuthenticationMethod};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::kube::runtime::reflector::ObjectRef;
@@ -71,7 +71,8 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
-pub const TLS_DIR_NAME: &str = "/stackable/tls";
+pub const KEYSTORE_DIR_NAME: &str = "/stackable/keystore";
+pub const USER_PASSWORD_DATA: &str = "/stackable/users";
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
@@ -100,8 +101,9 @@ pub struct TrinoClusterSpec {
     pub hive: Option<ClusterRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<ClusterRef>,
+    /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authentication: Option<Authentication>,
+    pub authentication: Option<AuthenticationConfig<TrinoAuthenticationMethod>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authorization: Option<Authorization>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -110,8 +112,6 @@ pub struct TrinoClusterSpec {
     pub coordinators: Option<Role<TrinoConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfig>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tls: Option<TlsRef>,
 }
 
 #[derive(
@@ -270,18 +270,17 @@ impl Configuration for TrinoConfig {
                     );
                 }
 
-                // if a certificate is provided, we enable TLS
-                if resource.spec.tls.is_some() {
+                if resource.spec.authentication.is_some() {
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
                         Some(true.to_string()),
                     );
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", TLS_DIR_NAME, "keystore.jks")),
+                        Some(format!("{}/{}", KEYSTORE_DIR_NAME, "keystore.p12")),
                     );
 
-                    // TODO: get password from secret
+                    // TODO: required?
                     result.insert(
                         "http-server.https.keystore.key".to_string(),
                         Some("secret".to_string()),
@@ -305,7 +304,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         FILE_PASSWORD_FILE.to_string(),
-                        Some(format!("{}/{}", CONFIG_DIR_NAME, PASSWORD_DB)),
+                        Some(format!("{}/{}", USER_PASSWORD_DATA, PASSWORD_DB)),
                     );
                 }
             }

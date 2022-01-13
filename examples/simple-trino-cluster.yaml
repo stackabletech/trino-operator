@@ -11,18 +11,12 @@ spec:
   opa:
     namespace: default
     name: simple-opa
-  tls:
-    namespace: default
-    name: trino-key-config
-    storeType: JKS
   authentication:
-    basic:
-      - name: simple-trino-user-admin-secret
+    method: multiUser
+    secrets:
+      userCredentials:
         namespace: default
-      - name: simple-trino-user-alice-secret
-        namespace: default
-      - name: simple-trino-user-bob-secret
-        namespace: default
+        name: simple-trino-users-secret
   authorization:
     package: trino
     permissions:
@@ -58,7 +52,6 @@ spec:
             kubernetes.io/os: linux
         replicas: 1
         config:
-          coordinator: true
           nodeDataDir: /stackable/trino/data
   workers:
     roleGroups:
