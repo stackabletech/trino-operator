@@ -60,11 +60,11 @@ async fn main() -> anyhow::Result<()> {
             );
             let product_config = product_config.load(&[
                 "deploy/config-spec/properties.yaml",
-                "/etc/stackable/hive-operator/config-spec/properties.yaml",
+                "/etc/stackable/trino-operator/config-spec/properties.yaml",
             ])?;
 
             let client =
-                stackable_operator::client::create_client(Some("hive.stackable.tech".to_string()))
+                stackable_operator::client::create_client(Some("trino.stackable.tech".to_string()))
                     .await?;
 
             let trino_controller_builder =

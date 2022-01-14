@@ -36,7 +36,7 @@ impl TrinoDiscovery {
     pub fn connection_string(&self) -> String {
         format!(
             "{}://{}:{}",
-            self.protocol.to_string(),
+            self.protocol,
             self.pod_ref.fqdn(),
             self.protocol.port()
         )
