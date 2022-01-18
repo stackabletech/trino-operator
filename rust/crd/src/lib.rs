@@ -5,7 +5,7 @@ pub mod discovery;
 use crate::authorization::Authorization;
 use crate::discovery::TrinoPodRef;
 
-use crate::authentication::{AuthenticationConfig, TrinoAuthenticationMethod};
+use crate::authentication::Authentication;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::kube::runtime::reflector::ObjectRef;
@@ -103,7 +103,7 @@ pub struct TrinoClusterSpec {
     pub opa: Option<ClusterRef>,
     /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authentication: Option<AuthenticationConfig<TrinoAuthenticationMethod>>,
+    pub authentication: Option<Authentication>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authorization: Option<Authorization>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

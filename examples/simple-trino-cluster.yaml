@@ -12,11 +12,11 @@ spec:
     namespace: default
     name: simple-opa
   authentication:
-    method: multiUser
-    secrets:
-      userCredentials:
-        namespace: default
-        name: simple-trino-users-secret
+    method:
+      multiUser:
+        userCredentialsSecret:
+          namespace: default
+          name: simple-trino-users-secret
   authorization:
     package: trino
     permissions:

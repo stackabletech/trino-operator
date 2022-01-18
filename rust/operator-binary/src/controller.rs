@@ -2,8 +2,9 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
 use stackable_operator::k8s_openapi::api::core::v1::{
-    CSIVolumeSource, ExecAction, Probe, SecurityContext,
+    CSIVolumeSource, ContainerPort, Probe, SecurityContext, TCPSocketAction,
 };
+use stackable_operator::k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
@@ -28,7 +29,7 @@ use stackable_operator::{
     product_config::{types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{transform_all_roles_to_config, validate_all_roles_and_groups_config},
 };
-use stackable_trino_crd::authentication::TrinoAuthenticationMethodConfig;
+use stackable_trino_crd::authentication::TrinoAuthenticationConfig;
 use stackable_trino_crd::authorization::create_rego_rules;
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
@@ -120,8 +121,8 @@ pub enum Error {
         name: String,
         namespace: String,
     },
-    #[snafu(display("failed to materialize authentication config element from k8s"))]
-    MaterializeError { source: authentication::Error },
+    #[snafu(display("failed to processing authentication config element from k8s"))]
+    FailedProcessingAuthentication { source: authentication::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -153,15 +154,15 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
     let opa_connect = opa_connect(&trino, &ctx.get_ref().client).await?;
     let hive_connect = hive_connect(&trino, &ctx.get_ref().client).await?;
 
-    let mut auth_config = TrinoAuthenticationMethodConfig::Nothing;
-    if let Some(auth) = &trino.spec.authentication {
-        let auth_reference = authentication::build_auth_reference(auth)
-            .await
-            .with_context(|| MaterializeError {})?;
-
-        auth_config = authentication::materialize_auth_config(client, &auth_reference)
-            .await
-            .with_context(|| MaterializeError {})?;
+    let mut authentication_config = None;
+    if let Some(authentication) = &trino.spec.authentication {
+        authentication_config = Some(
+            authentication
+                .method
+                .materialize(client)
+                .await
+                .context(FailedProcessingAuthentication)?,
+        );
     }
 
     for (role, role_config) in validated_config {
@@ -178,7 +179,7 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
                 &trino_role,
                 &rolegroup,
                 &config,
-                &auth_config,
+                &authentication_config,
             )?;
 
             client
@@ -449,7 +450,7 @@ fn build_rolegroup_statefulset(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    auth_config: &TrinoAuthenticationMethodConfig,
+    authentication_config: &Option<TrinoAuthenticationConfig>,
 ) -> Result<StatefulSet> {
     let rolegroup = role
         .get_spec(trino)
@@ -474,14 +475,18 @@ fn build_rolegroup_statefulset(
         })
         .collect::<Vec<_>>();
 
-    let user_data = match &auth_config {
-        TrinoAuthenticationMethodConfig::Nothing => "".to_string(),
-        TrinoAuthenticationMethodConfig::MultiUser { users } => users
-            .iter()
-            .map(|(user, password)| format!("{}:{}", user, password))
-            .collect::<Vec<_>>()
-            .join("\n"),
-    };
+    let mut user_data = String::new();
+    if let Some(auth_config) = authentication_config {
+        match auth_config {
+            TrinoAuthenticationConfig::MultiUser { user_credentials } => {
+                user_data = user_credentials
+                    .iter()
+                    .map(|(user, password)| format!("{}:{}", user, password))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+        }
+    }
 
     let mut container_prepare = ContainerBuilder::new("prepare")
         .image(&image)
@@ -502,8 +507,7 @@ fn build_rolegroup_statefulset(
             "chown -R stackable:stackable /stackable/keystore",
             "echo chmodding keystore directory",
             "chmod -R a=,u=rwX /stackable/keystore",
-        ]
-            .join(" && ")])
+        ].join(" && ")])
         .add_volume_mount("keystore", "/stackable/keystore")
         .build();
 
@@ -533,16 +537,24 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("conf", CONFIG_DIR_NAME)
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
+        .add_container_ports(container_ports())
         .readiness_probe(Probe {
-            exec: Some(ExecAction {
-                command: Some(vec![
-                    "/bin/bash".to_string(),
-                    "-c".to_string(),
-                    // TODO: check https as well? Or check logs for "======== SERVER STARTED ========"?
-                    format!("curl http://localhost:{}", HTTP_PORT),
-                ]),
+            initial_delay_seconds: Some(10),
+            period_seconds: Some(10),
+            failure_threshold: Some(5),
+            tcp_socket: Some(TCPSocketAction {
+                port: IntOrString::String(HTTPS_PORT_NAME.to_string()),
+                ..TCPSocketAction::default()
             }),
-            period_seconds: Some(1),
+            ..Probe::default()
+        })
+        .liveness_probe(Probe {
+            initial_delay_seconds: Some(30),
+            period_seconds: Some(10),
+            tcp_socket: Some(TCPSocketAction {
+                port: IntOrString::String(HTTPS_PORT_NAME.to_string()),
+                ..TCPSocketAction::default()
+            }),
             ..Probe::default()
         })
         .build();
@@ -759,11 +771,9 @@ fn validated_product_config(
         (
             [
                 config_files.clone(),
-                vec![
-                    PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
-                    // We do not want to expose the passwords in the config map
-                    //PropertyNameKind::File(PASSWORD_DB.to_string()),
-                ],
+                vec![PropertyNameKind::File(
+                    PASSWORD_AUTHENTICATOR_PROPERTIES.to_string(),
+                )],
             ]
             .concat(),
             resource
@@ -843,11 +853,34 @@ fn service_ports() -> Vec<ServicePort> {
     ]
 }
 
+fn container_ports() -> Vec<ContainerPort> {
+    vec![
+        ContainerPort {
+            name: Some(HTTP_PORT_NAME.to_string()),
+            container_port: HTTP_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ContainerPort::default()
+        },
+        ContainerPort {
+            name: Some(HTTPS_PORT_NAME.to_string()),
+            container_port: HTTPS_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ContainerPort::default()
+        },
+        ContainerPort {
+            name: Some(METRICS_PORT_NAME.to_string()),
+            container_port: METRICS_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ContainerPort::default()
+        },
+    ]
+}
+
 fn get_stackable_secret_volume_attributes() -> BTreeMap<String, String> {
     let mut result = BTreeMap::new();
     result.insert(
-        "secrets.stackable.tech/type".to_string(),
-        "secret".to_string(),
+        "secrets.stackable.tech/class".to_string(),
+        "tls".to_string(),
     );
     result.insert(
         "secrets.stackable.tech/scope".to_string(),

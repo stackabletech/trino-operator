@@ -26,27 +26,26 @@ spec:
                   description: A reference to a secret containing username/password for defined users
                   nullable: true
                   properties:
-                    config:
-                      additionalProperties:
-                        type: string
-                      nullable: true
-                      type: object
                     method:
-                      enum:
-                        - multiUser
-                      type: string
-                    secrets:
-                      additionalProperties:
-                        description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
-                        properties:
-                          name:
-                            description: Name is unique within a namespace to reference a secret resource.
-                            type: string
-                          namespace:
-                            description: Namespace defines the space within which the secret name must be unique.
-                            type: string
-                        type: object
-                      nullable: true
+                      oneOf:
+                        - required:
+                            - multiUser
+                      properties:
+                        multiUser:
+                          properties:
+                            userCredentialsSecret:
+                              description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
+                              properties:
+                                name:
+                                  description: Name is unique within a namespace to reference a secret resource.
+                                  type: string
+                                namespace:
+                                  description: Namespace defines the space within which the secret name must be unique.
+                                  type: string
+                              type: object
+                          required:
+                            - userCredentialsSecret
+                          type: object
                       type: object
                   required:
                     - method
