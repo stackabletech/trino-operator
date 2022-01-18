@@ -1,0 +1,10 @@
+---
+extends: default
+
+ignore: |
+  deploy/helm/**/templates
+
+rules:
+  line-length: disable
+  truthy:
+    check-keys: false
