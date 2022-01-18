@@ -1,5 +1,6 @@
 mod controller;
 
+use clap::Parser;
 use futures::stream::StreamExt;
 use stackable_operator::cli::Command;
 use stackable_operator::{
@@ -18,16 +19,15 @@ use stackable_operator::{
     },
 };
 use stackable_trino_crd::TrinoCluster;
-use structopt::StructOpt;
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-#[derive(StructOpt)]
-#[structopt(about = built_info::PKG_DESCRIPTION, author = "Stackable GmbH - info@stackable.de")]
+#[derive(Parser)]
+#[clap(about = built_info::PKG_DESCRIPTION, author = stackable_operator::cli::AUTHOR)]
 struct Opts {
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     cmd: Command,
 }
 
@@ -46,10 +46,10 @@ fn erase_controller_result_type<K: Resource, E: std::error::Error + Send + Sync 
 async fn main() -> anyhow::Result<()> {
     stackable_operator::logging::initialize_logging("TRINO_OPERATOR_LOG");
 
-    let opts = Opts::from_args();
+    let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => println!("{}", serde_yaml::to_string(&TrinoCluster::crd())?,),
-        Command::Run { product_config } => {
+        Command::Run(product_config) => {
             stackable_operator::utils::print_startup_string(
                 built_info::PKG_DESCRIPTION,
                 built_info::PKG_VERSION,
@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
                 built_info::BUILT_TIME_UTC,
                 built_info::RUSTC_VERSION,
             );
-            let product_config = product_config.load(&[
+            let product_config = product_config.product_config.load(&[
                 "deploy/config-spec/properties.yaml",
                 "/etc/stackable/trino-operator/config-spec/properties.yaml",
             ])?;
