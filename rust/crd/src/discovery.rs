@@ -62,6 +62,6 @@ impl TrinoDiscoveryProtocol {
 
 impl Default for TrinoDiscoveryProtocol {
     fn default() -> Self {
-        Self::Http
+        Self::Https
     }
 }

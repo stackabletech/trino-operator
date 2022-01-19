@@ -6,6 +6,7 @@ use crate::authorization::Authorization;
 use crate::discovery::TrinoPodRef;
 
 use crate::authentication::Authentication;
+use crate::Error::UnknownTrinoRole;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::kube::runtime::reflector::ObjectRef;
@@ -15,10 +16,14 @@ use stackable_operator::role_utils::Role;
 use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::schemars::{self, JsonSchema};
 use std::collections::BTreeMap;
+use std::str::FromStr;
+use strum::IntoEnumIterator;
 use strum_macros::Display;
 use strum_macros::EnumIter;
 
+pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 pub const APP_NAME: &str = "trino";
+
 // ports
 pub const HTTP_PORT: u16 = 8080;
 pub const HTTPS_PORT: u16 = 8443;
@@ -73,6 +78,14 @@ pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const KEYSTORE_DIR_NAME: &str = "/stackable/keystore";
 pub const USER_PASSWORD_DATA: &str = "/stackable/users";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("object has no namespace associated"))]
+    NoNamespaceError,
+    #[snafu(display("Unknown Trino role found {}. Should be one of {:?}", role, roles))]
+    UnknownTrinoRole { role: String, roles: Vec<String> },
+}
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
@@ -153,14 +166,29 @@ impl TrinoRole {
             role_group: group_name.into(),
         }
     }
+
+    pub fn roles() -> Vec<String> {
+        let mut roles = vec![];
+        for role in Self::iter() {
+            roles.push(role.to_string())
+        }
+        roles
+    }
 }
 
-impl From<String> for TrinoRole {
-    fn from(item: String) -> Self {
-        if item == Self::Coordinator.to_string() {
-            Self::Coordinator
+impl FromStr for TrinoRole {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == Self::Coordinator.to_string() {
+            Ok(Self::Coordinator)
+        } else if s == Self::Worker.to_string() {
+            Ok(Self::Worker)
         } else {
-            Self::Worker
+            Err(UnknownTrinoRole {
+                role: s.to_string(),
+                roles: TrinoRole::roles(),
+            })
         }
     }
 }
@@ -197,8 +225,6 @@ pub struct TrinoConfig {
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
     pub query_max_total_memory_per_node: Option<String>,
-    // node.properties
-    pub node_data_dir: Option<String>,
     // log.properties
     pub io_trino: Option<String>,
 }
@@ -236,10 +262,6 @@ impl Configuration for TrinoConfig {
                     NODE_ENVIRONMENT.to_string(),
                     Some(resource.spec.node_environment.clone()),
                 );
-
-                if let Some(node_data_dir) = &self.node_data_dir {
-                    result.insert(NODE_DATA_DIR.to_string(), Some(node_data_dir.to_string()));
-                }
             }
             CONFIG_PROPERTIES => {
                 if role_name == TrinoRole::Coordinator.to_string() {
@@ -348,10 +370,6 @@ impl Configuration for TrinoConfig {
     }
 }
 
-#[derive(Debug, Snafu)]
-#[snafu(display("object has no namespace associated"))]
-pub struct NoNamespaceError;
-
 impl TrinoCluster {
     /// The name of the role-level load-balanced Kubernetes `Service` for the worker nodes
     pub fn worker_role_service_name(&self) -> Option<String> {
@@ -391,14 +409,8 @@ impl TrinoCluster {
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to
     /// avoid instance churn.
-    pub fn coordinator_pods(
-        &self,
-    ) -> Result<impl Iterator<Item = TrinoPodRef> + '_, NoNamespaceError> {
-        let ns = self
-            .metadata
-            .namespace
-            .clone()
-            .context(NoNamespaceContext)?;
+    pub fn coordinator_pods(&self) -> Result<impl Iterator<Item = TrinoPodRef> + '_, Error> {
+        let ns = self.metadata.namespace.clone().context(NoNamespaceSnafu)?;
         Ok(self
             .spec
             .coordinators

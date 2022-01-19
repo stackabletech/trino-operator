@@ -3,6 +3,7 @@ use snafu::ResultExt;
 use snafu::{OptionExt, Snafu};
 use stackable_operator::client::Client;
 use stackable_operator::k8s_openapi::api::core::v1::{Secret, SecretReference};
+use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::schemars::{self, JsonSchema};
 use std::collections::BTreeMap;
 use std::string::FromUtf8Error;
@@ -12,24 +13,22 @@ const USER_CREDENTIALS: &str = "userCredentials";
 #[derive(Snafu, Debug)]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
-    #[snafu(display("Failed to find referenced secret [{}/{}]", name, namespace))]
+    #[snafu(display("Failed to find referenced {}", secret))]
     MissingSecret {
         source: stackable_operator::error::Error,
-        name: String,
-        namespace: String,
+        secret: ObjectRef<Secret>,
     },
     #[snafu(display(
         "A required value was not found when parsing the authentication config: [{}]",
         value
     ))]
     MissingRequiredValue { value: String },
-    #[snafu(display(
-        "Unable to convert from Utf8 to String when reading Secret: [{}]",
-        value
-    ))]
-    Utf8Error {
+    #[snafu(display("Unable to parse key {} from {} as UTF-8: {:?}", key, secret, value))]
+    NonUtf8Secret {
         source: FromUtf8Error,
-        value: String,
+        key: String,
+        secret: ObjectRef<Secret>,
+        value: Vec<u8>,
     },
 }
 
@@ -69,20 +68,27 @@ impl TrinoAuthenticationMethod {
                 let secret_content = client
                     .get::<Secret>(secret_name, secret_namespace)
                     .await
-                    .with_context(|| MissingSecret {
-                        name: secret_name.to_string(),
-                        namespace: secret_namespace.unwrap_or("undefined"),
+                    .with_context(|_| MissingSecretSnafu {
+                        secret: ObjectRef::new(secret_name)
+                            .within(secret_namespace.unwrap_or("<undefined>")),
                     })?;
 
-                let data = &secret_content.data.with_context(|| MissingRequiredValue {
-                    value: format!("{} secret contains no data", USER_CREDENTIALS),
-                })?;
+                let data = &secret_content
+                    .data
+                    .with_context(|| MissingRequiredValueSnafu {
+                        value: format!("{} secret contains no data", USER_CREDENTIALS),
+                    })?;
 
                 let mut users = BTreeMap::new();
 
                 for (user_name, password) in data {
-                    let pw = String::from_utf8(password.0.clone()).with_context(|| Utf8Error {
-                        value: format!("{:?}", password),
+                    let pw = String::from_utf8(password.0.clone()).with_context(|_| {
+                        NonUtf8SecretSnafu {
+                            key: user_name.clone(),
+                            value: password.0.clone(),
+                            secret: ObjectRef::new(secret_name)
+                                .within(secret_namespace.unwrap_or("<undefined>")),
+                        }
                     })?;
 
                     users.insert(user_name.clone(), pw);

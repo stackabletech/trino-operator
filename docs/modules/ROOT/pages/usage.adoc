@@ -57,7 +57,7 @@ The secret looks the following:
       alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
       bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
 
-The <user>:<password> combinations are provided in the `stringData` field. Passwords need to be base64 encoded.
+The <user>:<password> combinations are provided in the `stringData` field. Passwords need to be base64 encoded. The hashes are created using bcrypt with 10 rounds or more.
 
 === Regorule Server (Authorization)
 
@@ -123,7 +123,7 @@ With the prerequisites fulfilled, the CRD for this operator must be created:
 
     kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
 
-To create a single node Trino (v362) cluster with Prometheus metrics exposed on port 8081. Please adapt the `s3` with your credentials.
+To create a single node Trino (v362) cluster. Please adapt the `s3` with your credentials.
 
     cat <<EOF | kubectl apply -f -
     apiVersion: trino.stackable.tech/v1alpha1
@@ -179,8 +179,7 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
               matchLabels:
                 kubernetes.io/os: linux
             replicas: 1
-            config:
-              nodeDataDir: /stackable/trino/data
+            config: {}
       workers:
         roleGroups:
           default:
@@ -188,8 +187,7 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
               matchLabels:
                 kubernetes.io/os: linux
             replicas: 1
-            config:
-              nodeDataDir: /stackable/trino/data
+            config: {}
     EOF
 
 Assuming you've downloaded and installed the Trino client, connect to the Trino coordinator:

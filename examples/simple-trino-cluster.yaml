@@ -51,8 +51,7 @@ spec:
           matchLabels:
             kubernetes.io/os: linux
         replicas: 1
-        config:
-          nodeDataDir: /stackable/trino/data
+        config: {}
   workers:
     roleGroups:
       default:
@@ -60,5 +59,4 @@ spec:
           matchLabels:
             kubernetes.io/os: linux
         replicas: 1
-        config:
-          nodeDataDir: /stackable/trino/data
+        config: {}

@@ -43,28 +43,6 @@ properties:
           required: true
       asOfVersion: "0.0.0"
 
-  - property: &nodeDataDir
-      propertyNames:
-        - name: "node.data-dir"
-          kind:
-            type: "file"
-            file: "node.properties"
-      datatype:
-        type: "string"
-        unit: *unitDirectory
-      defaultValues:
-        - fromVersion: "0.0.0"
-          value: "/var/trino/data"
-      recommendedValues:
-        - fromVersion: "0.0.0"
-          value: "/stackable/trino/data"
-      roles:
-        - name: "coordinator"
-          required: true
-        - name: "worker"
-          required: true
-      asOfVersion: "0.0.0"
-
 ###################################################################################################
 # config.properties
 ###################################################################################################

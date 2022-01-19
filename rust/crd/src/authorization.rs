@@ -1,10 +1,10 @@
-use crate::{TrinoCluster, TrinoClusterSpec};
+use crate::{TrinoCluster, TrinoClusterSpec, FIELD_MANAGER_SCOPE};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
-use stackable_operator::kube::api::PostParams;
 use stackable_operator::kube::core::ObjectMeta;
+use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
@@ -12,20 +12,18 @@ use tracing::debug;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("failed to update rego rule [{}/{}]", name, namespace))]
+    #[snafu(display("failed to update rego rule"))]
     FailedRegoRuleUpdate {
-        source: stackable_operator::kube::Error,
-        name: String,
-        namespace: String,
+        source: stackable_operator::error::Error,
+        rego: ObjectRef<RegoRule>,
     },
-    #[snafu(display("failed to create rego rule [{}/{}]", name, namespace))]
+    #[snafu(display("failed to create rego rule"))]
     FailedRegoRuleCreate {
-        source: stackable_operator::kube::Error,
-        name: String,
-        namespace: String,
+        source: stackable_operator::error::Error,
+        rego: ObjectRef<RegoRule>,
     },
-    #[snafu(display("no `metadata.name` found for rego rule [{}/{}]", name, namespace))]
-    MissingRegoRuleName { name: String, namespace: String },
+    #[snafu(display("no `metadata.name` found for rego rule"))]
+    MissingRegoRuleName { rego: ObjectRef<RegoRule> },
     #[snafu(display("failed to convert [{:?}] to json", permissions))]
     FailedJsonConversion {
         source: serde_json::Error,
@@ -73,6 +71,7 @@ async fn create_or_update_rego_rule_resource(
     rego_rules: String,
 ) -> Result<RegoRule> {
     let new_rego_rule_spec = RegoRuleSpec { rego: rego_rules };
+    // TODO: make namespace configurable
     let namespace = "default";
 
     let rego_rule_resource = RegoRule {
@@ -83,7 +82,6 @@ async fn create_or_update_rego_rule_resource(
         spec: new_rego_rule_spec.clone(),
     };
 
-    // TODO: make namespace configurable
     match client.get::<RegoRule>(package_name, Some(namespace)).await {
         Ok(mut old_rego_rule) => {
             debug!("Found existing rego rule: {:?}", old_rego_rule);
@@ -93,30 +91,36 @@ async fn create_or_update_rego_rule_resource(
                 debug!(
                     "Existing Rego Rule [{}] differs from spec. Replacing content...",
                     old_rego_rule.metadata.name.as_deref().with_context(|| {
-                        MissingRegoRuleName {
-                            name: package_name.to_string(),
-                            namespace: namespace.to_string(),
+                        MissingRegoRuleNameSnafu {
+                            rego: ObjectRef::from_obj(&old_rego_rule),
                         }
                     })?
                 );
 
-                let api = client.get_namespaced_api(namespace);
-                api.replace(package_name, &PostParams::default(), &old_rego_rule)
+                client
+                    .apply_patch(
+                        FIELD_MANAGER_SCOPE,
+                        &rego_rule_resource,
+                        &rego_rule_resource,
+                    )
                     .await
-                    .with_context(|| FailedRegoRuleUpdate {
-                        name: package_name.to_string(),
-                        namespace: namespace.to_string(),
+                    .with_context(|_| FailedRegoRuleUpdateSnafu {
+                        rego: ObjectRef::from_obj(&old_rego_rule),
                     })?;
             }
         }
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
-            let api = client.get_namespaced_api(namespace);
-            api.create(&PostParams::default(), &rego_rule_resource)
+
+            client
+                .apply_patch(
+                    FIELD_MANAGER_SCOPE,
+                    &rego_rule_resource,
+                    &rego_rule_resource,
+                )
                 .await
-                .with_context(|| FailedRegoRuleCreate {
-                    name: package_name.to_string(),
-                    namespace: namespace.to_string(),
+                .with_context(|_| FailedRegoRuleCreateSnafu {
+                    rego: ObjectRef::from_obj(&rego_rule_resource),
                 })?;
         }
     }
@@ -142,9 +146,10 @@ fn build_user_permission_json(
 ) -> Result<String> {
     let mut user_json = String::new();
 
-    let json = &serde_json::to_string(&user_permissions).with_context(|| FailedJsonConversion {
-        permissions: user_permissions.clone(),
-    })?;
+    let json =
+        &serde_json::to_string(&user_permissions).with_context(|_| FailedJsonConversionSnafu {
+            permissions: user_permissions.clone(),
+        })?;
 
     user_json.push_str("    users = ");
     user_json.push_str(json);

@@ -100,9 +100,6 @@ spec:
                         ioTrino:
                           nullable: true
                           type: string
-                        nodeDataDir:
-                          nullable: true
-                          type: string
                         queryMaxMemory:
                           nullable: true
                           type: string
@@ -137,9 +134,6 @@ spec:
                             default: {}
                             properties:
                               ioTrino:
-                                nullable: true
-                                type: string
-                              nodeDataDir:
                                 nullable: true
                                 type: string
                               queryMaxMemory:
@@ -277,9 +271,6 @@ spec:
                         ioTrino:
                           nullable: true
                           type: string
-                        nodeDataDir:
-                          nullable: true
-                          type: string
                         queryMaxMemory:
                           nullable: true
                           type: string
@@ -314,9 +305,6 @@ spec:
                             default: {}
                             properties:
                               ioTrino:
-                                nullable: true
-                                type: string
-                              nodeDataDir:
                                 nullable: true
                                 type: string
                               queryMaxMemory:
