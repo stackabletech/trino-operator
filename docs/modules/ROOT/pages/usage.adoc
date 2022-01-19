@@ -35,11 +35,11 @@ Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator 
 We provide user authentication via secret that can be referred in the custom resource:
 
   authentication:
-    method: multiUser
-    secrets:
-      userCredentials:
-        namespace: default
-        name: simple-trino-users-secret
+    method:
+      multiUser:
+        userCredentialsSecret:
+          namespace: default
+          name: simple-trino-users-secret
 
 These secrets need to be created manually before startup (check `examples/simple-trino-users-secret.yaml`):
 
@@ -140,11 +140,11 @@ To create a single node Trino (v362) cluster with Prometheus metrics exposed on 
         namespace: default
         name: simple-opa
       authentication:
-        method: multiUser
-        secrets:
-          userCredentials:
-            namespace: default
-            name: simple-trino-users-secret
+        method:
+          multiUser:
+            userCredentialsSecret:
+              namespace: default
+              name: simple-trino-users-secret
       authorization:
         package: trino
         permissions:
