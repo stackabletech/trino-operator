@@ -21,7 +21,6 @@ use strum::IntoEnumIterator;
 use strum_macros::Display;
 use strum_macros::EnumIter;
 
-pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 pub const APP_NAME: &str = "trino";
 
 // ports

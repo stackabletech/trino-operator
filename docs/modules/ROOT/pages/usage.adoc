@@ -5,7 +5,7 @@ Trino works together with the Apache Hive metastore and S3 bucket.
 == Prerequisites
 
 * Deployed Stackable Apache Hive metastore
-* Deployed Stackable https://github.com/stackabletech/secret-operator[secret-operator ]
+* Deployed Stackable https://github.com/stackabletech/secret-operator[secret-operator]
 * Accessible S3 Bucket
     ** Endpoint, access-key and secret-key
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)

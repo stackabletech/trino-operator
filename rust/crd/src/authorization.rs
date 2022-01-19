@@ -1,8 +1,9 @@
-use crate::{TrinoCluster, TrinoClusterSpec, FIELD_MANAGER_SCOPE};
+use crate::{TrinoCluster, TrinoClusterSpec};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
+use stackable_operator::kube::api::PostParams;
 use stackable_operator::kube::core::ObjectMeta;
 use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::schemars::{self, JsonSchema};
@@ -14,12 +15,12 @@ use tracing::debug;
 pub enum Error {
     #[snafu(display("failed to update rego rule"))]
     FailedRegoRuleUpdate {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::kube::Error,
         rego: ObjectRef<RegoRule>,
     },
     #[snafu(display("failed to create rego rule"))]
     FailedRegoRuleCreate {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::kube::Error,
         rego: ObjectRef<RegoRule>,
     },
     #[snafu(display("no `metadata.name` found for rego rule"))]
@@ -97,27 +98,19 @@ async fn create_or_update_rego_rule_resource(
                     })?
                 );
 
-                client
-                    .apply_patch(
-                        FIELD_MANAGER_SCOPE,
-                        &rego_rule_resource,
-                        &rego_rule_resource,
-                    )
+                let api = client.get_namespaced_api(namespace);
+                api.replace(package_name, &PostParams::default(), &rego_rule_resource)
                     .await
                     .with_context(|_| FailedRegoRuleUpdateSnafu {
-                        rego: ObjectRef::from_obj(&old_rego_rule),
+                        rego: ObjectRef::from_obj(&rego_rule_resource),
                     })?;
             }
         }
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
 
-            client
-                .apply_patch(
-                    FIELD_MANAGER_SCOPE,
-                    &rego_rule_resource,
-                    &rego_rule_resource,
-                )
+            let api = client.get_namespaced_api(namespace);
+            api.create(&PostParams::default(), &rego_rule_resource)
                 .await
                 .with_context(|_| FailedRegoRuleCreateSnafu {
                     rego: ObjectRef::from_obj(&rego_rule_resource),
