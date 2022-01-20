@@ -57,7 +57,9 @@ The secret looks the following:
       alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
       bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
 
-The <user>:<password> combinations are provided in the `stringData` field. Passwords need to be base64 encoded. The hashes are created using bcrypt with 10 rounds or more.
+The <user>:<password> combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds or more.
+
+    htpasswd -nbBC 10 admin admin
 
 === Regorule Server (Authorization)
 
