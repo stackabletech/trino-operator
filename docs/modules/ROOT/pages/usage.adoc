@@ -22,13 +22,13 @@ Please refer to the S3 provider.
 
 === Hive operator
 
-Please refer to the https://github.com/stackabletech/hive-operator[Hive] operator and https://docs.stackable.tech/home/index.html[docs].
+Please refer to the https://github.com/stackabletech/hive-operator[Hive] operator and https://docs.stackable.tech/hive/index.html[docs].
 
 Both Hive and Trino need the same S3 authentication.
 
 === OPA operator
 
-Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator and https://docs.stackable.tech/home/index.html[docs].
+Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator and https://docs.stackable.tech/opa/index.html[docs].
 
 === Authentication
 
@@ -115,7 +115,7 @@ spec:
     can_view_query_owned_by = true
 ```
 
-You can let the Trino operator specify Rego rules by configuring the `authorization` field in the custom resource. This is a rudimentary implementation for user access.
+You can let the Trino operator write its own Rego rules by configuring the `authorization` field in the custom resource. This is a rudimentary implementation for user access.
 
 === Trino
 
