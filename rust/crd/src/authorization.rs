@@ -6,6 +6,7 @@ use stackable_operator::client::Client;
 use stackable_operator::kube::api::PostParams;
 use stackable_operator::kube::core::ObjectMeta;
 use stackable_operator::kube::runtime::reflector::ObjectRef;
+use stackable_operator::kube::ResourceExt;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
@@ -13,6 +14,8 @@ use tracing::debug;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("object has no namespace associated {trino}"))]
+    NoNamespace { trino: ObjectRef<TrinoCluster> },
     #[snafu(display("failed to update rego rule {rego}"))]
     FailedRegoRuleUpdate {
         source: stackable_operator::kube::Error,
@@ -60,7 +63,8 @@ pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Result<
 
     if let Some(authorization) = &spec.authorization {
         let rego_rules = build_rego_rules(authorization)?;
-        create_or_update_rego_rule_resource(client, &authorization.package, rego_rules).await?;
+        create_or_update_rego_rule_resource(client, trino, &authorization.package, rego_rules)
+            .await?;
     }
 
     Ok(())
@@ -68,12 +72,14 @@ pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Result<
 
 async fn create_or_update_rego_rule_resource(
     client: &Client,
+    trino: &TrinoCluster,
     package_name: &str,
     rego_rules: String,
 ) -> Result<RegoRule> {
     let new_rego_rule_spec = RegoRuleSpec { rego: rego_rules };
-    // TODO: make namespace configurable
-    let namespace = "default";
+    let namespace = trino.namespace().with_context(|| NoNamespaceSnafu {
+        trino: ObjectRef::from_obj(trino),
+    })?;
 
     let rego_rule_resource = RegoRule {
         metadata: ObjectMeta {
@@ -83,7 +89,7 @@ async fn create_or_update_rego_rule_resource(
         spec: new_rego_rule_spec.clone(),
     };
 
-    match client.get::<RegoRule>(package_name, Some(namespace)).await {
+    match client.get::<RegoRule>(package_name, Some(&namespace)).await {
         Ok(mut old_rego_rule) => {
             debug!("Found existing rego rule: {:?}", old_rego_rule);
 
@@ -98,7 +104,7 @@ async fn create_or_update_rego_rule_resource(
                     })?
                 );
 
-                let api = client.get_namespaced_api(namespace);
+                let api = client.get_namespaced_api(&namespace);
                 api.replace(package_name, &PostParams::default(), &rego_rule_resource)
                     .await
                     .with_context(|_| FailedRegoRuleUpdateSnafu {
@@ -109,7 +115,7 @@ async fn create_or_update_rego_rule_resource(
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
 
-            let api = client.get_namespaced_api(namespace);
+            let api = client.get_namespaced_api(&namespace);
             api.create(&PostParams::default(), &rego_rule_resource)
                 .await
                 .with_context(|_| FailedRegoRuleCreateSnafu {
