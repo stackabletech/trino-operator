@@ -1,9 +1,8 @@
-use crate::{TrinoCluster, TrinoClusterSpec};
+use crate::{TrinoCluster, TrinoClusterSpec, FIELD_MANAGER_SCOPE};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
-use stackable_operator::kube::api::PostParams;
 use stackable_operator::kube::core::ObjectMeta;
 use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::kube::ResourceExt;
@@ -18,12 +17,12 @@ pub enum Error {
     NoNamespace { trino: ObjectRef<TrinoCluster> },
     #[snafu(display("failed to update rego rule {rego}"))]
     FailedRegoRuleUpdate {
-        source: stackable_operator::kube::Error,
+        source: stackable_operator::error::Error,
         rego: ObjectRef<RegoRule>,
     },
     #[snafu(display("failed to create rego rule {rego}"))]
     FailedRegoRuleCreate {
-        source: stackable_operator::kube::Error,
+        source: stackable_operator::error::Error,
         rego: ObjectRef<RegoRule>,
     },
     #[snafu(display("no `metadata.name` found for rego rule {rego}"))]
@@ -77,24 +76,25 @@ async fn create_or_update_rego_rule_resource(
     rego_rules: String,
 ) -> Result<RegoRule> {
     let new_rego_rule_spec = RegoRuleSpec { rego: rego_rules };
-    let namespace = trino.namespace().with_context(|| NoNamespaceSnafu {
-        trino: ObjectRef::from_obj(trino),
-    })?;
+    let namespace = trino.namespace();
 
     let rego_rule_resource = RegoRule {
         metadata: ObjectMeta {
             name: Some(package_name.to_string()),
+            namespace: namespace.clone(),
             ..Default::default()
         },
         spec: new_rego_rule_spec.clone(),
     };
 
-    match client.get::<RegoRule>(package_name, Some(&namespace)).await {
-        Ok(mut old_rego_rule) => {
+    match client
+        .get::<RegoRule>(package_name, namespace.as_deref())
+        .await
+    {
+        Ok(old_rego_rule) => {
             debug!("Found existing rego rule: {:?}", old_rego_rule);
 
             if old_rego_rule.spec.rego != new_rego_rule_spec.rego {
-                old_rego_rule.spec.rego = new_rego_rule_spec.rego;
                 debug!(
                     "Existing Rego Rule [{}] differs from spec. Replacing content...",
                     old_rego_rule.metadata.name.as_deref().with_context(|| {
@@ -104,8 +104,12 @@ async fn create_or_update_rego_rule_resource(
                     })?
                 );
 
-                let api = client.get_namespaced_api(&namespace);
-                api.replace(package_name, &PostParams::default(), &rego_rule_resource)
+                client
+                    .apply_patch(
+                        FIELD_MANAGER_SCOPE,
+                        &rego_rule_resource,
+                        &rego_rule_resource,
+                    )
                     .await
                     .with_context(|_| FailedRegoRuleUpdateSnafu {
                         rego: ObjectRef::from_obj(&rego_rule_resource),
@@ -115,8 +119,12 @@ async fn create_or_update_rego_rule_resource(
         Err(_) => {
             debug!("No rego rule resource found. Attempting to create it...");
 
-            let api = client.get_namespaced_api(&namespace);
-            api.create(&PostParams::default(), &rego_rule_resource)
+            client
+                .apply_patch(
+                    FIELD_MANAGER_SCOPE,
+                    &rego_rule_resource,
+                    &rego_rule_resource,
+                )
                 .await
                 .with_context(|_| FailedRegoRuleCreateSnafu {
                     rego: ObjectRef::from_obj(&rego_rule_resource),

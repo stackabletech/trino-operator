@@ -22,7 +22,7 @@ use strum_macros::Display;
 use strum_macros::EnumIter;
 
 pub const APP_NAME: &str = "trino";
-
+pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 // ports
 pub const HTTP_PORT: u16 = 8080;
 pub const HTTPS_PORT: u16 = 8443;
