@@ -1587,7 +1587,7 @@ dependencies = [
 [[package]]
 name = "stackable-regorule-crd"
 version = "0.5.0-nightly"
-source = "git+https://github.com/stackabletech/regorule-operator.git?branch=added_cluster_ip_service#d87ae153435b39a83ab1611d6235bd1bad40eac6"
+source = "git+https://github.com/stackabletech/regorule-operator.git?branch=main#d3b3f139678e6db45b25f415e2cbf5584f1a97db"
 dependencies = [
  "serde",
  "serde_json",
