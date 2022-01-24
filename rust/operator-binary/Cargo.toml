@@ -11,6 +11,7 @@ version = "0.3.0-nightly"
 [dependencies]
 stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.8.0" }
 stackable-trino-crd = { path = "../crd" }
+stackable-regorule-crd = { git = "https://github.com/stackabletech/regorule-operator.git", branch = "added_cluster_ip_service" }
 
 anyhow = "1.0"
 clap = "3.0"

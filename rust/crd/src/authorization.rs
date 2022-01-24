@@ -2,8 +2,8 @@ use crate::{TrinoCluster, TrinoClusterSpec};
 
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
+use stackable_operator::builder::ObjectMetaBuilder;
 use stackable_operator::client::Client;
-use stackable_operator::kube::core::ObjectMeta;
 use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
@@ -17,6 +17,10 @@ pub enum Error {
     RegoRuleApply {
         source: stackable_operator::error::Error,
         rego: ObjectRef<RegoRule>,
+    },
+    #[snafu(display("object is missing metadata to build owner reference"))]
+    ObjectMissingMetadataForOwnerRef {
+        source: stackable_operator::error::Error,
     },
     #[snafu(display("failed to convert permission set to JSON: {permissions:?}"))]
     JsonConversion {
@@ -53,7 +57,8 @@ pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Result<
 
     if let Some(authorization) = &spec.authorization {
         let rego_rules = build_rego_rules(authorization)?;
-        create_or_update_rego_rule_resource(client, &authorization.package, rego_rules).await?;
+        create_or_update_rego_rule_resource(client, trino, &authorization.package, rego_rules)
+            .await?;
     }
 
     Ok(())
@@ -61,18 +66,17 @@ pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Result<
 
 async fn create_or_update_rego_rule_resource(
     client: &Client,
+    trino: &TrinoCluster,
     package_name: &str,
     rego_rules: String,
 ) -> Result<RegoRule> {
-    // TODO: make namespace configurable
-    let namespace = "default";
-
     let obj = RegoRule {
-        metadata: ObjectMeta {
-            name: Some(package_name.to_string()),
-            namespace: Some(namespace.to_string()),
-            ..Default::default()
-        },
+        metadata: ObjectMetaBuilder::new()
+            .name_and_namespace(trino)
+            .name(package_name)
+            .ownerreference_from_resource(trino, None, Some(true))
+            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .build(),
         spec: RegoRuleSpec { rego: rego_rules },
     };
 
