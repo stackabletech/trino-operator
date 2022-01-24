@@ -13,19 +13,19 @@ use tracing::debug;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("failed to update rego rule"))]
+    #[snafu(display("failed to update rego rule {rego}"))]
     FailedRegoRuleUpdate {
         source: stackable_operator::kube::Error,
         rego: ObjectRef<RegoRule>,
     },
-    #[snafu(display("failed to create rego rule"))]
+    #[snafu(display("failed to create rego rule {rego}"))]
     FailedRegoRuleCreate {
         source: stackable_operator::kube::Error,
         rego: ObjectRef<RegoRule>,
     },
-    #[snafu(display("no `metadata.name` found for rego rule"))]
+    #[snafu(display("no `metadata.name` found for rego rule {rego}"))]
     MissingRegoRuleName { rego: ObjectRef<RegoRule> },
-    #[snafu(display("failed to convert [{:?}] to json", permissions))]
+    #[snafu(display("failed to convert permission set to JSON: {permissions:?}"))]
     FailedJsonConversion {
         source: serde_json::Error,
         permissions: BTreeMap<String, UserPermission>,

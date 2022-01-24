@@ -7,7 +7,7 @@ spec:
   nodeEnvironment: production
   hive:
     namespace: default
-    name: simple-derby
+    name: simple-hive-derby
   opa:
     namespace: default
     name: simple-opa

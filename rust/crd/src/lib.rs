@@ -82,7 +82,7 @@ pub const USER_PASSWORD_DATA: &str = "/stackable/users";
 pub enum Error {
     #[snafu(display("object has no namespace associated"))]
     NoNamespaceError,
-    #[snafu(display("Unknown Trino role found {}. Should be one of {:?}", role, roles))]
+    #[snafu(display("Unknown Trino role found {role}. Should be one of {roles:?}"))]
     UnknownTrinoRole { role: String, roles: Vec<String> },
 }
 

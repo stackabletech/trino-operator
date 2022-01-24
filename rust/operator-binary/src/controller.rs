@@ -260,6 +260,7 @@ fn build_rolegroup_config_map(
     let mut cm_conf_data = BTreeMap::new();
 
     // TODO: create via product config?
+    // from https://trino.io/docs/current/installation/deployment.html#jvm-config
     let mut jvm_config = "-server
         -Xmx16G
         -XX:-UseBiasedLocking
