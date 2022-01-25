@@ -1,34 +1,29 @@
-use crate::{TrinoCluster, TrinoClusterSpec, FIELD_MANAGER_SCOPE};
+use crate::{TrinoCluster, TrinoClusterSpec};
 
 use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu};
+use stackable_operator::builder::ObjectMetaBuilder;
 use stackable_operator::client::Client;
-use stackable_operator::kube::core::ObjectMeta;
 use stackable_operator::kube::runtime::reflector::ObjectRef;
-use stackable_operator::kube::ResourceExt;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
-use tracing::debug;
+
+const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("object has no namespace associated {trino}"))]
-    NoNamespace { trino: ObjectRef<TrinoCluster> },
-    #[snafu(display("failed to update rego rule {rego}"))]
-    FailedRegoRuleUpdate {
+    #[snafu(display("failed to apply rego rule {rego}"))]
+    RegoRuleApply {
         source: stackable_operator::error::Error,
         rego: ObjectRef<RegoRule>,
     },
-    #[snafu(display("failed to create rego rule {rego}"))]
-    FailedRegoRuleCreate {
+    #[snafu(display("object is missing metadata to build owner reference"))]
+    ObjectMissingMetadataForOwnerRef {
         source: stackable_operator::error::Error,
-        rego: ObjectRef<RegoRule>,
     },
-    #[snafu(display("no `metadata.name` found for rego rule {rego}"))]
-    MissingRegoRuleName { rego: ObjectRef<RegoRule> },
     #[snafu(display("failed to convert permission set to JSON: {permissions:?}"))]
-    FailedJsonConversion {
+    JsonConversion {
         source: serde_json::Error,
         permissions: BTreeMap<String, UserPermission>,
     },
@@ -75,64 +70,22 @@ async fn create_or_update_rego_rule_resource(
     package_name: &str,
     rego_rules: String,
 ) -> Result<RegoRule> {
-    let new_rego_rule_spec = RegoRuleSpec { rego: rego_rules };
-    let namespace = trino.namespace();
-
-    let rego_rule_resource = RegoRule {
-        metadata: ObjectMeta {
-            name: Some(package_name.to_string()),
-            namespace: namespace.clone(),
-            ..Default::default()
-        },
-        spec: new_rego_rule_spec.clone(),
+    let obj = RegoRule {
+        metadata: ObjectMetaBuilder::new()
+            .name_and_namespace(trino)
+            .name(package_name)
+            .ownerreference_from_resource(trino, None, Some(true))
+            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .build(),
+        spec: RegoRuleSpec { rego: rego_rules },
     };
 
-    match client
-        .get::<RegoRule>(package_name, namespace.as_deref())
+    client
+        .apply_patch(FIELD_MANAGER_SCOPE, &obj, &obj)
         .await
-    {
-        Ok(old_rego_rule) => {
-            debug!("Found existing rego rule: {:?}", old_rego_rule);
-
-            if old_rego_rule.spec.rego != new_rego_rule_spec.rego {
-                debug!(
-                    "Existing Rego Rule [{}] differs from spec. Replacing content...",
-                    old_rego_rule.metadata.name.as_deref().with_context(|| {
-                        MissingRegoRuleNameSnafu {
-                            rego: ObjectRef::from_obj(&old_rego_rule),
-                        }
-                    })?
-                );
-
-                client
-                    .apply_patch(
-                        FIELD_MANAGER_SCOPE,
-                        &rego_rule_resource,
-                        &rego_rule_resource,
-                    )
-                    .await
-                    .with_context(|_| FailedRegoRuleUpdateSnafu {
-                        rego: ObjectRef::from_obj(&rego_rule_resource),
-                    })?;
-            }
-        }
-        Err(_) => {
-            debug!("No rego rule resource found. Attempting to create it...");
-
-            client
-                .apply_patch(
-                    FIELD_MANAGER_SCOPE,
-                    &rego_rule_resource,
-                    &rego_rule_resource,
-                )
-                .await
-                .with_context(|_| FailedRegoRuleCreateSnafu {
-                    rego: ObjectRef::from_obj(&rego_rule_resource),
-                })?;
-        }
-    }
-
-    Ok(rego_rule_resource)
+        .with_context(|_| RegoRuleApplySnafu {
+            rego: ObjectRef::from_obj(&obj),
+        })
 }
 
 fn build_rego_rules(authorization_rules: &Authorization) -> Result<String> {
@@ -153,10 +106,9 @@ fn build_user_permission_json(
 ) -> Result<String> {
     let mut user_json = String::new();
 
-    let json =
-        &serde_json::to_string(&user_permissions).with_context(|_| FailedJsonConversionSnafu {
-            permissions: user_permissions.clone(),
-        })?;
+    let json = &serde_json::to_string(&user_permissions).with_context(|_| JsonConversionSnafu {
+        permissions: user_permissions.clone(),
+    })?;
 
     user_json.push_str("    users = ");
     user_json.push_str(json);

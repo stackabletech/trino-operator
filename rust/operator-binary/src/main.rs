@@ -14,6 +14,7 @@ use stackable_operator::{
         CustomResourceExt,
     },
 };
+use stackable_regorule_crd::RegoRule;
 use stackable_trino_crd::TrinoCluster;
 
 mod built_info {
@@ -59,6 +60,7 @@ async fn main() -> anyhow::Result<()> {
                 .owns(client.get_all_api::<Service>(), ListParams::default())
                 .owns(client.get_all_api::<StatefulSet>(), ListParams::default())
                 .owns(client.get_all_api::<ConfigMap>(), ListParams::default())
+                .owns(client.get_all_api::<RegoRule>(), ListParams::default())
                 .shutdown_on_signal()
                 .run(
                     controller::reconcile_trino,
