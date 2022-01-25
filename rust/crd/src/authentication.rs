@@ -23,12 +23,11 @@ pub enum Error {
         value
     ))]
     MissingRequiredValue { value: String },
-    #[snafu(display("Unable to parse key {} from {} as UTF-8: {:?}", key, secret, value))]
+    #[snafu(display("Unable to parse key {} from {} as UTF8", key, secret))]
     NonUtf8Secret {
         source: FromUtf8Error,
         key: String,
         secret: ObjectRef<Secret>,
-        value: Vec<u8>,
     },
 }
 
@@ -73,7 +72,7 @@ impl TrinoAuthenticationMethod {
                             .within(secret_namespace.unwrap_or("<undefined>")),
                     })?;
 
-                let data = &secret_content
+                let data = secret_content
                     .data
                     .with_context(|| MissingRequiredValueSnafu {
                         value: format!("{} secret contains no data", USER_CREDENTIALS),
@@ -82,14 +81,12 @@ impl TrinoAuthenticationMethod {
                 let mut users = BTreeMap::new();
 
                 for (user_name, password) in data {
-                    let pw = String::from_utf8(password.0.clone()).with_context(|_| {
-                        NonUtf8SecretSnafu {
+                    let pw =
+                        String::from_utf8(password.0).with_context(|_| NonUtf8SecretSnafu {
                             key: user_name.clone(),
-                            value: password.0.clone(),
                             secret: ObjectRef::new(secret_name)
                                 .within(secret_namespace.unwrap_or("<undefined>")),
-                        }
-                    })?;
+                        })?;
 
                     users.insert(user_name.clone(), pw);
                 }

@@ -1595,6 +1595,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "stackable-regorule-crd"
+version = "0.5.0-nightly"
+source = "git+https://github.com/stackabletech/regorule-operator.git?branch=main#d3b3f139678e6db45b25f415e2cbf5584f1a97db"
+dependencies = [
+ "serde",
+ "serde_json",
+ "stackable-operator",
+]
+
+[[package]]
 name = "stackable-trino-crd"
 version = "0.3.0-nightly"
 dependencies = [
@@ -1606,7 +1616,7 @@ dependencies = [
  "serde_yaml",
  "snafu",
  "stackable-operator",
- "stackable-regorule-crd",
+ "stackable-regorule-crd 0.5.0-nightly (git+https://github.com/stackabletech/regorule-operator.git?branch=main)",
  "strum",
  "strum_macros",
  "tracing",
@@ -1627,7 +1637,7 @@ dependencies = [
  "serde_yaml",
  "snafu",
  "stackable-operator",
- "stackable-regorule-crd",
+ "stackable-regorule-crd 0.5.0-nightly (git+https://github.com/stackabletech/regorule-operator.git?branch=added_cluster_ip_service)",
  "stackable-trino-crd",
  "strum",
  "strum_macros",
