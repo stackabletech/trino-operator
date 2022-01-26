@@ -730,7 +730,7 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
     let mut hive_connect_string = None;
 
     if let Some(hive_reference) = &trino.spec.hive {
-        let product = "hive";
+        let product = "HIVE";
 
         hive_connect_string = cluster_ref_cm_data(client, hive_reference, product)
             .await?
