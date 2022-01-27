@@ -137,9 +137,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.0.12"
+version = "3.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2afefa54b5c7dd40918dc1e09f213a171ab5937aadccab45e804780b238f9f43"
+checksum = "08799f92c961c7a1cf0cc398a9073da99e21ce388b46372c37f3191f2f3eed3e"
 dependencies = [
  "atty",
  "bitflags",
@@ -1542,9 +1542,9 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f82496b90c36d70af5fcd482edaa2e0bd16fade569de1330405fecbbdac736b"
+checksum = "66d72b759436ae32898a2af0a14218dbf55efde3feeb170eb623637db85ee1e0"
 dependencies = [
  "libc",
  "winapi",
@@ -1586,8 +1586,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-regorule-crd"
-version = "0.5.0-nightly"
-source = "git+https://github.com/stackabletech/regorule-operator.git?branch=main#d3b3f139678e6db45b25f415e2cbf5584f1a97db"
+version = "0.5.0"
+source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.5.0#b89602609911df7890079b24b118bdb0a73fe16d"
 dependencies = [
  "serde",
  "serde_json",
