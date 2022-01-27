@@ -1585,13 +1585,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "stackable-operator"
+version = "0.9.0"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.9.0#e7c3e2a10c7dd6469c1fdf2fc570e962ea776762"
+dependencies = [
+ "async-trait",
+ "backoff",
+ "chrono",
+ "clap",
+ "const_format",
+ "derivative",
+ "either",
+ "futures 0.3.19",
+ "json-patch",
+ "k8s-openapi",
+ "kube",
+ "lazy_static",
+ "product-config",
+ "rand",
+ "regex",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "stackable-regorule-crd"
 version = "0.5.0"
 source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.5.0#b89602609911df7890079b24b118bdb0a73fe16d"
 dependencies = [
  "serde",
  "serde_json",
- "stackable-operator",
+ "stackable-operator 0.8.0",
 ]
 
 [[package]]
@@ -1605,7 +1639,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "snafu",
- "stackable-operator",
+ "stackable-operator 0.9.0",
  "stackable-regorule-crd",
  "strum",
  "strum_macros",
@@ -1626,7 +1660,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "snafu",
- "stackable-operator",
+ "stackable-operator 0.9.0",
  "stackable-regorule-crd",
  "stackable-trino-crd",
  "strum",

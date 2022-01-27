@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.4.0` → `0.8.0` ([#81]).
+- `operator-rs` `0.4.0` → `0.9.0` ([#81]).
 - User authentication now provided via secret instead of custom resource ([#81]).
 - User authentication not exposed in configmap anymore ([#81]).
 - TLS certificates / keystore now retrieved via secret-operator ([#81]).
