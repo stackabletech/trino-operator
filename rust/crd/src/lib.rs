@@ -301,10 +301,10 @@ impl Configuration for TrinoConfig {
                         Some(format!("{}/{}", KEYSTORE_DIR_NAME, "keystore.p12")),
                     );
 
-                    // result.insert(
-                    //     "http-server.https.keystore.key".to_string(),
-                    //     Some("secret".to_string()),
-                    // );
+                    result.insert(
+                        "http-server.https.keystore.key".to_string(),
+                        Some("secret".to_string()),
+                    );
                 }
 
                 if resource.spec.authentication.is_some()
