@@ -11,4 +11,4 @@ spec:
           matchLabels:
             kubernetes.io/os: linux
         config:
-          regoRuleReference: "http://regorule-operator/opa/v1"
+          regoRuleReference: "http://regorule-operator:3030/opa/v1"
