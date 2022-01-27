@@ -24,7 +24,7 @@ serde_yaml = "0.8"
 snafu = "0.7"
 strum = "0.23"
 strum_macros = "0.23"
-tokio = { version = "1.14", features = ["full"] }
+tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
 
 [build-dependencies]
