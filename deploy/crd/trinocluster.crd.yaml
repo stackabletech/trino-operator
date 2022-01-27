@@ -97,7 +97,7 @@ spec:
                     config:
                       default: {}
                       properties:
-                        ioTrino:
+                        logLevel:
                           nullable: true
                           type: string
                         queryMaxMemory:
@@ -133,7 +133,7 @@ spec:
                           config:
                             default: {}
                             properties:
-                              ioTrino:
+                              logLevel:
                                 nullable: true
                                 type: string
                               queryMaxMemory:
@@ -268,7 +268,7 @@ spec:
                     config:
                       default: {}
                       properties:
-                        ioTrino:
+                        logLevel:
                           nullable: true
                           type: string
                         queryMaxMemory:
@@ -304,7 +304,7 @@ spec:
                           config:
                             default: {}
                             properties:
-                              ioTrino:
+                              logLevel:
                                 nullable: true
                                 type: string
                               queryMaxMemory:

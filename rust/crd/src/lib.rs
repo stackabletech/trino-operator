@@ -225,7 +225,7 @@ pub struct TrinoConfig {
     pub query_max_memory_per_node: Option<String>,
     pub query_max_total_memory_per_node: Option<String>,
     // log.properties
-    pub io_trino: Option<String>,
+    pub log_level: Option<String>,
 }
 
 impl Configuration for TrinoConfig {
@@ -301,11 +301,10 @@ impl Configuration for TrinoConfig {
                         Some(format!("{}/{}", KEYSTORE_DIR_NAME, "keystore.p12")),
                     );
 
-                    // TODO: required?
-                    result.insert(
-                        "http-server.https.keystore.key".to_string(),
-                        Some("secret".to_string()),
-                    );
+                    // result.insert(
+                    //     "http-server.https.keystore.key".to_string(),
+                    //     Some("secret".to_string()),
+                    // );
                 }
 
                 if resource.spec.authentication.is_some()
@@ -358,8 +357,8 @@ impl Configuration for TrinoConfig {
                 }
             }
             LOG_PROPERTIES => {
-                if let Some(io_trino) = &self.io_trino {
-                    result.insert(IO_TRINO.to_string(), Some(io_trino.to_string()));
+                if let Some(log_level) = &self.log_level {
+                    result.insert(IO_TRINO.to_string(), Some(log_level.to_string()));
                 }
             }
             _ => {}
