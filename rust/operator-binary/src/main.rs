@@ -53,10 +53,7 @@ async fn main() -> anyhow::Result<()> {
                 stackable_operator::client::create_client(Some("trino.stackable.tech".to_string()))
                     .await?;
 
-            let trino_controller_builder =
-                Controller::new(client.get_all_api::<TrinoCluster>(), ListParams::default());
-
-            trino_controller_builder
+            Controller::new(client.get_all_api::<TrinoCluster>(), ListParams::default())
                 .owns(client.get_all_api::<Service>(), ListParams::default())
                 .owns(client.get_all_api::<StatefulSet>(), ListParams::default())
                 .owns(client.get_all_api::<ConfigMap>(), ListParams::default())
