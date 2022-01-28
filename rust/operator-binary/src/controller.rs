@@ -763,7 +763,7 @@ fn name_and_namespace(trino: &TrinoCluster, cluster_ref: &ClusterRef) -> (String
     let namespace = cluster_ref
         .namespace
         .clone()
-        .unwrap_or(trino_namespace.unwrap_or("default".to_string()));
+        .unwrap_or_else(|| trino_namespace.unwrap_or_else(|| "default".to_string()));
 
     (name, namespace)
 }
