@@ -1,0 +1,25 @@
+apiVersion: hive.stackable.tech/v1alpha1
+kind: HiveCluster
+metadata:
+  name: simple-hive-derby
+spec:
+  version: 2.3.9
+  metastore:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config:
+          database:
+            connString: jdbc:derby:;databaseName=/stackable/metastore_db;create=true
+            user: APP
+            password: mine
+            dbType: derby
+          s3Connection:
+            endPoint: changeme
+            accessKey: changeme
+            secretKey: changeme
+            sslEnabled: false
+            pathStyleAccess: true

@@ -1,7 +1,0 @@
-apiVersion: command.trino.stackable.tech/v1alpha1
-kind: Stop
-metadata:
-  name: trino-cluster-command-stop
-spec:
-  name: "simple"
-  rolling: true
