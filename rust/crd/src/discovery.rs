@@ -2,7 +2,7 @@ use crate::{HTTPS_PORT, HTTP_PORT};
 
 use strum_macros::Display;
 
-/// Reference to a single `Pod` that is a component of a [`TrinoCluster`]
+/// Reference to a single `Pod` that is a component of a [`crate::TrinoCluster`]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TrinoPodRef {
     pub namespace: String,
