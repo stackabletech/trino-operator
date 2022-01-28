@@ -211,10 +211,10 @@ spec:
                     name:
                       type: string
                     namespace:
+                      nullable: true
                       type: string
                   required:
                     - name
-                    - namespace
                   type: object
                 nodeEnvironment:
                   type: string
@@ -227,10 +227,10 @@ spec:
                     name:
                       type: string
                     namespace:
+                      nullable: true
                       type: string
                   required:
                     - name
-                    - namespace
                   type: object
                 s3:
                   description: Contains all the required connection information for S3.
