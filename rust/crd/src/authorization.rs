@@ -1,12 +1,35 @@
+use crate::{TrinoCluster, TrinoClusterSpec};
+
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+use stackable_operator::builder::ObjectMetaBuilder;
 use stackable_operator::client::Client;
-use stackable_operator::error::OperatorResult;
-use stackable_operator::kube::api::PostParams;
-use stackable_operator::kube::core::ObjectMeta;
+use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::schemars::{self, JsonSchema};
 use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
-use tracing::{debug, warn};
+
+const FIELD_MANAGER_SCOPE: &str = "trinocluster";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("failed to apply rego rule {rego}"))]
+    RegoRuleApply {
+        source: stackable_operator::error::Error,
+        rego: ObjectRef<RegoRule>,
+    },
+    #[snafu(display("object is missing metadata to build owner reference"))]
+    ObjectMissingMetadataForOwnerRef {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to convert permission set to JSON: {permissions:?}"))]
+    JsonConversion {
+        source: serde_json::Error,
+        permissions: BTreeMap<String, UserPermission>,
+    },
+}
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,89 +46,75 @@ pub struct UserPermission {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccessPermission {
     pub read: Option<bool>,
     pub write: Option<bool>,
 }
 
-pub async fn create_or_update_rego_rule_resource(
-    client: &Client,
-    package_name: &str,
-    rego_rules: String,
-) -> OperatorResult<RegoRule> {
-    let new_rego_rule_spec = RegoRuleSpec { rego: rego_rules };
+pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Result<()> {
+    let spec: &TrinoClusterSpec = &trino.spec;
 
-    let rego_rule_resource = RegoRule {
-        api_version: "opa.stackable.tech/v1alpha1".to_string(),
-        kind: "RegoRule".to_string(),
-        metadata: ObjectMeta {
-            name: Some(package_name.to_string()),
-            ..Default::default()
-        },
-        spec: new_rego_rule_spec.clone(),
-    };
-
-    match client.get::<RegoRule>(package_name, Some("default")).await {
-        Ok(mut old_rego_rule) => {
-            debug!("Found existing rego rule: {:?}", old_rego_rule);
-
-            if old_rego_rule.spec.rego != new_rego_rule_spec.rego {
-                old_rego_rule.spec.rego = new_rego_rule_spec.rego;
-                debug!(
-                    "Existing Rego Rule [{}] differs from spec. Replacing content...",
-                    old_rego_rule
-                        .metadata
-                        .name
-                        .as_deref()
-                        .unwrap_or("<no-name-set>")
-                );
-
-                let api = client.get_namespaced_api("default");
-                api.replace(package_name, &PostParams::default(), &old_rego_rule)
-                    .await?;
-            }
-        }
-        Err(_) => {
-            debug!("No rego rule resource found. Attempting to create it...");
-            let api = client.get_namespaced_api("default");
-            api.create(&PostParams::default(), &rego_rule_resource)
-                .await?;
-        }
+    if let Some(authorization) = &spec.authorization {
+        let rego_rules = build_rego_rules(authorization)?;
+        create_or_update_rego_rule_resource(client, trino, &authorization.package, rego_rules)
+            .await?;
     }
 
-    Ok(rego_rule_resource)
+    Ok(())
 }
 
-pub fn build_rego_rules(authorization_rules: &Authorization) -> String {
+async fn create_or_update_rego_rule_resource(
+    client: &Client,
+    trino: &TrinoCluster,
+    package_name: &str,
+    rego_rules: String,
+) -> Result<RegoRule> {
+    let obj = RegoRule {
+        metadata: ObjectMetaBuilder::new()
+            .name_and_namespace(trino)
+            .name(package_name)
+            .ownerreference_from_resource(trino, None, Some(true))
+            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .build(),
+        spec: RegoRuleSpec { rego: rego_rules },
+    };
+
+    client
+        .apply_patch(FIELD_MANAGER_SCOPE, &obj, &obj)
+        .await
+        .with_context(|_| RegoRuleApplySnafu {
+            rego: ObjectRef::from_obj(&obj),
+        })
+}
+
+fn build_rego_rules(authorization_rules: &Authorization) -> Result<String> {
     let mut rules = String::new();
 
     rules.push_str(&format!("    package {}\n\n", authorization_rules.package));
     rules.push_str(&build_user_permission_json(
         &authorization_rules.permissions,
-    ));
+    )?);
     rules.push_str(&build_main_rego_rules());
     rules.push_str(&build_helper_rego_rules());
 
-    rules
+    Ok(rules)
 }
 
-fn build_user_permission_json(user_permissions: &BTreeMap<String, UserPermission>) -> String {
+fn build_user_permission_json(
+    user_permissions: &BTreeMap<String, UserPermission>,
+) -> Result<String> {
     let mut user_json = String::new();
 
+    let json = &serde_json::to_string(&user_permissions).with_context(|_| JsonConversionSnafu {
+        permissions: user_permissions.clone(),
+    })?;
+
     user_json.push_str("    users = ");
-    match &serde_json::to_string(&user_permissions) {
-        Ok(json) => user_json.push_str(json),
-        Err(err) => {
-            warn!(
-                "Could not convert user permissions to json. Please check the input: {}",
-                err.to_string()
-            );
-            user_json.push_str("{}");
-        }
-    }
+    user_json.push_str(json);
     user_json.push('\n');
 
-    user_json
+    Ok(user_json)
 }
 
 fn build_main_rego_rules() -> String {
@@ -230,13 +239,15 @@ mod tests {
                 read: true
     "},
     )]
-    fn test_build_rego_rules(#[case] auth: &str) {
+    fn test_build_rego_rules(#[case] auth: &str) -> Result<()> {
         let authorization = parse_authorization_from_yaml(auth);
-        let rego_rules = build_rego_rules(&authorization);
+        let rego_rules = build_rego_rules(&authorization)?;
 
         assert!(rego_rules.contains("package trino"));
         assert!(rego_rules.contains("user_can_read_table"));
         assert!(rego_rules.contains("can_drop_schema"));
+
+        Ok(())
     }
 
     fn parse_authorization_from_yaml(authorization: &str) -> Authorization {
