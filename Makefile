@@ -51,7 +51,7 @@ deploy/helm/trino-operator/crds/crds.yaml:
 	cat deploy/crd/*.yaml | yq eval '.metadata.annotations["helm.sh/resource-policy"]="keep"' - > ${@}
 
 chart-lint: compile-chart
-	docker run -it -v $(shell pwd):/build/helm-charts -w /build/helm-charts quay.io/helmpack/chart-testing:v3.4.0  ct lint --config deploy/helm/chart_testing.yaml
+	docker run -it -v $(shell pwd):/build/helm-charts -w /build/helm-charts quay.io/helmpack/chart-testing:v3.5.0  ct lint --config deploy/helm/ct.yaml
 
 ## Manifest related targets
 clean-manifests:
