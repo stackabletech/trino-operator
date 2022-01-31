@@ -58,6 +58,8 @@ pub struct Ctx {
 pub enum Error {
     #[snafu(display("object defines no version"))]
     ObjectHasNoVersion,
+    #[snafu(display("object defines no namespace"))]
+    ObjectHasNoNamespace,
     #[snafu(display("object defines no {} role", role))]
     MissingTrinoRole { role: String },
     #[snafu(display("failed to calculate global service name"))]
@@ -724,7 +726,7 @@ async fn opa_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<Str
     if let Some(opa_reference) = &spec.opa {
         let product = "OPA";
 
-        let (name, namespace) = name_and_namespace(trino, opa_reference);
+        let (name, namespace) = name_and_namespace(trino, opa_reference)?;
 
         opa_connect_string = Some(cluster_ref_cm_data(client, &name, &namespace, product).await?);
     }
@@ -738,7 +740,7 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
     if let Some(hive_reference) = &trino.spec.hive {
         let product = "HIVE";
 
-        let (name, namespace) = name_and_namespace(trino, hive_reference);
+        let (name, namespace) = name_and_namespace(trino, hive_reference)?;
 
         hive_connect_string = cluster_ref_cm_data(client, &name, &namespace, product)
             .await?
@@ -756,16 +758,15 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
 
 /// Return the name and adapted namespace of the `cluster_ref`.
 /// If `cluster_ref` has no namespace defined we default to the `trino` namespace.
-/// If `trino` has no namespace defined we default to the `default` namespace.
-fn name_and_namespace(trino: &TrinoCluster, cluster_ref: &ClusterRef) -> (String, String) {
-    let trino_namespace = trino.namespace();
+/// If `trino` has no namespace defined we throw an error.
+fn name_and_namespace(trino: &TrinoCluster, cluster_ref: &ClusterRef) -> Result<(String, String)> {
     let name = cluster_ref.name.clone();
-    let namespace = cluster_ref
-        .namespace
-        .clone()
-        .unwrap_or_else(|| trino_namespace.unwrap_or_else(|| "default".to_string()));
+    let namespace = match &cluster_ref.namespace {
+        Some(ns) => ns.clone(),
+        None => trino.namespace().context(ObjectHasNoNamespaceSnafu)?,
+    };
 
-    (name, namespace)
+    Ok((name, namespace))
 }
 
 /// Defines all required roles and their required configuration.
