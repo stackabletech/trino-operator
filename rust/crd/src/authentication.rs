@@ -13,6 +13,8 @@ const USER_CREDENTIALS: &str = "userCredentials";
 #[derive(Snafu, Debug)]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
+    #[snafu(display("Failed to get secret name"))]
+    MissingSecretName,
     #[snafu(display("Failed to find referenced {}", secret))]
     MissingSecret {
         source: stackable_operator::error::Error,
@@ -56,20 +58,29 @@ pub enum TrinoAuthenticationConfig {
 }
 
 impl TrinoAuthenticationMethod {
-    pub async fn materialize(&self, client: &Client) -> Result<TrinoAuthenticationConfig> {
+    pub async fn materialize(
+        &self,
+        client: &Client,
+        trino_namespace: &str,
+    ) -> Result<TrinoAuthenticationConfig> {
         match self {
             TrinoAuthenticationMethod::MultiUser {
                 user_credentials_secret: user_credential_secret,
             } => {
-                let secret_name = user_credential_secret.name.as_deref().unwrap();
-                let secret_namespace = user_credential_secret.namespace.as_deref();
+                let secret_name = user_credential_secret
+                    .name
+                    .as_deref()
+                    .context(MissingSecretNameSnafu)?;
+                let secret_namespace = match user_credential_secret.namespace.as_deref() {
+                    Some(ns) => ns,
+                    None => trino_namespace,
+                };
 
                 let secret_content = client
-                    .get::<Secret>(secret_name, secret_namespace)
+                    .get::<Secret>(secret_name, Some(secret_namespace))
                     .await
                     .with_context(|_| MissingSecretSnafu {
-                        secret: ObjectRef::new(secret_name)
-                            .within(secret_namespace.unwrap_or("<undefined>")),
+                        secret: ObjectRef::new(secret_name).within(secret_namespace),
                     })?;
 
                 let data = secret_content
@@ -84,8 +95,7 @@ impl TrinoAuthenticationMethod {
                     let pw =
                         String::from_utf8(password.0).with_context(|_| NonUtf8SecretSnafu {
                             key: user_name.clone(),
-                            secret: ObjectRef::new(secret_name)
-                                .within(secret_namespace.unwrap_or("<undefined>")),
+                            secret: ObjectRef::new(secret_name).within(secret_namespace),
                         })?;
 
                     users.insert(user_name.clone(), pw);

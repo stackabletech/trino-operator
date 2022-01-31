@@ -163,7 +163,13 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
         Some(authentication) => Some(
             authentication
                 .method
-                .materialize(client)
+                .materialize(
+                    client,
+                    trino
+                        .namespace()
+                        .as_deref()
+                        .context(ObjectHasNoNamespaceSnafu)?,
+                )
                 .await
                 .context(FailedProcessingAuthenticationSnafu)?,
         ),
