@@ -10,5 +10,6 @@
 - [ ] Documentation added (or not applicable)
 - [ ] Changelog updated (or not applicable)
 - [ ] Cargo.toml only contains references to git tags (not specific commits or branches)
+- [ ] Helm chart can be installed and deployed operator works (or not applicable)
 
 Once the review is done, comment `bors r+` (or `bors merge`) to merge. [Further information](https://bors.tech/documentation/getting-started/#reviewing-pull-requests)
