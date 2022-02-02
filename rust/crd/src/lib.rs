@@ -201,7 +201,7 @@ pub struct TrinoClusterStatus {}
 #[serde(rename_all = "camelCase")]
 pub struct ClusterRef {
     pub name: String,
-    pub namespace: String,
+    pub namespace: Option<String>,
     pub chroot: Option<String>,
 }
 

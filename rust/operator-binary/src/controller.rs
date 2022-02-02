@@ -6,6 +6,7 @@ use stackable_operator::k8s_openapi::api::core::v1::{
 };
 use stackable_operator::k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 use stackable_operator::kube::runtime::reflector::ObjectRef;
+use stackable_operator::kube::ResourceExt;
 use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
@@ -57,6 +58,8 @@ pub struct Ctx {
 pub enum Error {
     #[snafu(display("object defines no version"))]
     ObjectHasNoVersion,
+    #[snafu(display("object defines no namespace"))]
+    ObjectHasNoNamespace,
     #[snafu(display("object defines no {} role", role))]
     MissingTrinoRole { role: String },
     #[snafu(display("failed to calculate global service name"))]
@@ -160,7 +163,13 @@ pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<R
         Some(authentication) => Some(
             authentication
                 .method
-                .materialize(client)
+                .materialize(
+                    client,
+                    trino
+                        .namespace()
+                        .as_deref()
+                        .context(ObjectHasNoNamespaceSnafu)?,
+                )
                 .await
                 .context(FailedProcessingAuthenticationSnafu)?,
         ),
@@ -718,9 +727,14 @@ pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> ReconcilerAction {
 async fn opa_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<String>> {
     let mut opa_connect_string = None;
 
-    if let Some(opa_reference) = &trino.spec.opa {
+    let spec: &TrinoClusterSpec = &trino.spec;
+
+    if let Some(opa_reference) = &spec.opa {
         let product = "OPA";
-        opa_connect_string = Some(cluster_ref_cm_data(client, opa_reference, product).await?);
+
+        let (name, namespace) = name_and_namespace(trino, opa_reference)?;
+
+        opa_connect_string = Some(cluster_ref_cm_data(client, &name, &namespace, product).await?);
     }
 
     Ok(opa_connect_string)
@@ -732,7 +746,9 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
     if let Some(hive_reference) = &trino.spec.hive {
         let product = "HIVE";
 
-        hive_connect_string = cluster_ref_cm_data(client, hive_reference, product)
+        let (name, namespace) = name_and_namespace(trino, hive_reference)?;
+
+        hive_connect_string = cluster_ref_cm_data(client, &name, &namespace, product)
             .await?
             // TODO: hive now offers all pods fqdn(s) instead of the service
             //    this should be removed
@@ -744,6 +760,19 @@ async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<St
     }
 
     Ok(hive_connect_string)
+}
+
+/// Return the name and adapted namespace of the `cluster_ref`.
+/// If `cluster_ref` has no namespace defined we default to the `trino` namespace.
+/// If `trino` has no namespace defined we throw an error.
+fn name_and_namespace(trino: &TrinoCluster, cluster_ref: &ClusterRef) -> Result<(String, String)> {
+    let name = cluster_ref.name.clone();
+    let namespace = match &cluster_ref.namespace {
+        Some(ns) => ns.clone(),
+        None => trino.namespace().context(ObjectHasNoNamespaceSnafu)?,
+    };
+
+    Ok((name, namespace))
 }
 
 /// Defines all required roles and their required configuration.
@@ -813,12 +842,10 @@ fn validated_product_config(
 
 async fn cluster_ref_cm_data(
     client: &Client,
-    cluster_ref: &ClusterRef,
+    name: &str,
+    namespace: &str,
     product_name: &str,
 ) -> Result<String> {
-    let name = &cluster_ref.name;
-    let namespace = &cluster_ref.namespace;
-
     Ok(client
         .get::<ConfigMap>(name, Some(namespace))
         .await
