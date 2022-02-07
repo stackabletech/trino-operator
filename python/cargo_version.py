@@ -3,7 +3,9 @@
 # Utility for viewing and managing versions of cargo workspaces and crates.
 # For workspaces, it assumes that all crate members use a single shared version.
 #
-# usage: cargo_version.py [-h] [-p PROJECT] [-r] [-n {major,minor,patch}] [-s SET] [-o]
+# usage:
+# cargo_version.py [-h] [-p PROJECT] [-r] [-n {major,minor,patch}]
+#                  [-s SET] [-o] [-m PRERELEASE]
 #
 # Change versions of cargo projects.
 #
@@ -16,6 +18,9 @@
 #                         Version
 #   -s SET, --set SET     Version
 #   -o, --show            Version
+#   -m PRERELEASE, --prerelease PRERELEASE
+#                         Set pre-prelease string.
+#
 
 import argparse
 import semver
@@ -39,35 +44,42 @@ class Crate:
 
   @classmethod
   def bump_level(cls, version, level):
-    v = semver.VersionInfo.parse(version)
+    parsed_version = semver.VersionInfo.parse(version)
     if level == 'major':
-      return str(v.bump_major())
+      return str(parsed_version.bump_major())
     if level == 'minor':
-      return str(v.bump_minor())
+      return str(parsed_version.bump_minor())
     if level == 'patch':
-      return str(v.bump_patch())
-    else:
-      return str(v.bump_prerelease('nightly'))[:-2]  ### remove the .1 suffix that semver always adds to the prererelease.
+      return str(parsed_version.bump_patch())
+
+    ### remove the .1 suffix that semver always adds to the prererelease before returning
+    return str(parsed_version.bump_prerelease('nightly'))[:-2]
 
   @classmethod
   def prerelease(cls, version, prerelease):
-    v = semver.VersionInfo.parse(version)
-    return str(semver.VersionInfo(v.major, v.minor, v.patch, prerelease))
+    parsed_version = semver.VersionInfo.parse(version)
+    return str(semver.VersionInfo(parsed_version.major, parsed_version.minor,
+                                  parsed_version.patch, prerelease))
 
   def finalize_version(self):
-    return Crate(self.path, self.name, Crate.finalize(self.version), self.dependencies.copy())
+    return Crate(self.path, self.name, Crate.finalize(self.version),
+                 self.dependencies.copy())
 
   def bump_version(self, level):
-    return Crate(self.path, self.name, Crate.bump_level(self.version, level), self.dependencies.copy())
+    return Crate(self.path, self.name, Crate.bump_level(self.version, level),
+                 self.dependencies.copy())
 
   def set_version(self, version):
     return Crate(self.path, self.name, version, self.dependencies.copy())
 
   def set_prerelease(self, prerelease):
-    return Crate(self.path, self.name, Crate.prerelease(self.version, prerelease), self.dependencies.copy())
+    return Crate(self.path, self.name, Crate.prerelease(self.version, prerelease),
+                 self.dependencies.copy())
 
   def next_version(self):
-    return Crate(self.path, self.name, str(semver.VersionInfo.parse(self.version).next_version('patch')), self.dependencies.copy())
+    return Crate(self.path, self.name,
+                 str(semver.VersionInfo.parse(self.version).next_version('patch')),
+                 self.dependencies.copy())
 
   def show_version(self):
     return self.version
@@ -75,8 +87,8 @@ class Crate:
   def save(self, previous):
     contents = []
     cargo_file = f"{self.path}/Cargo.toml"
-    with open(cargo_file, 'r') as r:
-      for line in r.readlines():
+    with open(cargo_file, mode='r', encoding='utf-8') as cargo_file_read:
+      for line in cargo_file_read.readlines():
         if line.startswith("version"):
           line = line.replace(previous.version, self.version)
         else:
@@ -85,8 +97,8 @@ class Crate:
               line = line.replace(previous.dependencies[dname], dversion)
         contents.append(line)
 
-    with open(cargo_file, 'w') as w:
-      w.write(''.join(contents))
+    with open(cargo_file, mode='w', encoding='utf-8') as cargo_file_write:
+      cargo_file_write.write(''.join(contents))
 
   def __str__(self):
     return f'Crate({self.path}, {self.name}, {self.version}, {self.dependencies})'
@@ -94,7 +106,7 @@ class Crate:
 
 class Workspace:
   def __init__(self, crates):
-    names = set([c.name for c in crates])
+    names = {c.name for c in crates}
     self.crates = {c.name: c.with_dependencies(names) for c in crates}
 
   def finalize_version(self):
@@ -118,8 +130,8 @@ class Workspace:
     return Workspace(Workspace.update_dependencies(crates).values())
 
   def show_version(self):
-    for c in self.crates.values():
-      return c.show_version()
+    for crate in self.crates.values():
+      return crate.show_version()
     return "0.0.0"
 
   @classmethod
@@ -133,16 +145,21 @@ class Workspace:
     return f'Workspace({[str(c) for c in self.crates.values()]})'
 
   def save(self, previous):
-    for cn in self.crates.keys():
-      self.crates[cn].save(previous.crates[cn])
+    for crate_key in self.crates.keys():
+      self.crates[crate_key].save(previous.crates[crate_key])
 
 
 def load(root):
-  r = toml.load(f"{root}/Cargo.toml")
-  if "workspace" in r:
-    return Workspace([load(f"{root}/{path}") for path in r["workspace"]["members"]])
+  root_cargo_file = toml.load(f"{root}/Cargo.toml")
+  if "workspace" in root_cargo_file:
+    return Workspace([load(f"{root}/{path}")
+                      for path in root_cargo_file["workspace"]["members"]])
 
-  return Crate(path=root, name=r["package"]["name"], version=r["package"]["version"], dependencies={dn: r["dependencies"][dn]["version"] for dn in r["dependencies"] if "version" in r["dependencies"][dn]})
+  return Crate(path=root, name=root_cargo_file["package"]["name"],
+               version=root_cargo_file["package"]["version"],
+               dependencies={dn: root_cargo_file["dependencies"][dn]["version"]
+                             for dn in root_cargo_file["dependencies"]
+                             if "version" in root_cargo_file["dependencies"][dn]})
 
 
 def parse_args():
