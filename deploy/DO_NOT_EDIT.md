@@ -1,4 +1,10 @@
 These Helm charts and manifests are automatically generated.
-Please do not edit anything in this directory manually.
+Please do not edit anything except for files explicitly mentioned below in this
+directory manually.
 
-The details are in-motion but check this repository for a few details: https://github.com/stackabletech/operator-templating
+The following files are ok to edit:
+
+- helm/trino-operator/templates/roles.yaml
+
+The details are in-motion but check this repository for a few details:
+<https://github.com/stackabletech/operator-templating>
