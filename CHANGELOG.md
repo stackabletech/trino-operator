@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- monitoring scraping label `prometheus.io/scrape: true` ([#118]).
+
 ### Changed
 
 - BREAKING: `ClusterRef` namespace now optional ([#95]).
@@ -12,11 +16,12 @@ All notable changes to this project will be documented in this file.
 - User authentication not exposed in configmap anymore ([#81]).
 - TLS certificates / keystore now retrieved via secret-operator ([#81]).
 - The Trino version is now a string instead of enum ([#81]).
-- `operator-rs` `0.4.0` → `0.9.0` ([#81], [#95]).
-- `stackable-regorule-crd` `0.2.0` → `0.5.0` ([#81]).
+- `operator-rs` `0.4.0` → `0.10.0` ([#81], [#95], [#118]).
+- `stackable-regorule-crd` `0.2.0` → `0.6.0` ([#81], [#118]).
 
 [#81]: https://github.com/stackabletech/trino-operator/pull/81
 [#95]: https://github.com/stackabletech/trino-operator/pull/95
+[#118]: https://github.com/stackabletech/trino-operator/pull/118
 
 ## [0.2.0] - 2021-12-06
 
