@@ -13,58 +13,58 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: reviewdog/action-actionlint@v1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-actionlint@770f28d89158724be653dfcf13610123437cdce1 # renovate: tag=v1.18.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   detect-secrets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: reviewdog/action-detect-secrets@master
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-detect-secrets@v0.7.1
         with:
           github_token: ${{ secrets.github_token }}
 
   flake8:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: actions/setup-python@7f80679172b057fc5e90d70d197929d454754a5a # renovate: tag=v2
         with:
           python-version: "3.9"
-      - uses: reviewdog/action-flake8@v3
+      - uses: reviewdog/action-flake8@49cfab000299623090ddea740bbe30178ef12247 # renovate: tag=v3.2.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   hadolint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: reviewdog/action-hadolint@v1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-hadolint@1e34f93387b47709298a91edb132af6c02a4bae1 # renovate: tag=v1.6.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   markdownlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: reviewdog/action-markdownlint@v0.1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-markdownlint@a506383bccd0869312895b715b68a4ecd924e9f7 # renovate: tag=v0.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   shellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: reviewdog/action-shellcheck@v1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-shellcheck@180be9f01392cc8636cae13e58837f209a34620b # renovate: tag=v1.13.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   yamllint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: reviewdog/action-yamllint@v1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-yamllint@aabd7aef24430a8da23122ca6711faec445dfcf6 # renovate: tag=v1.4.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
