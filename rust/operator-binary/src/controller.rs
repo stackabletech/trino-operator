@@ -42,9 +42,10 @@ use stackable_trino_crd::{
     PASSWORD_DB, USER_PASSWORD_DATA,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
-use std::str::FromStr;
 use std::{
     collections::{BTreeMap, HashMap},
+    str::FromStr,
+    sync::Arc,
     time::Duration,
 };
 
@@ -132,7 +133,10 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub async fn reconcile_trino(trino: TrinoCluster, ctx: Context<Ctx>) -> Result<ReconcilerAction> {
+pub async fn reconcile_trino(
+    trino: Arc<TrinoCluster>,
+    ctx: Context<Ctx>,
+) -> Result<ReconcilerAction> {
     tracing::info!("Starting reconcile");
 
     let client = &ctx.get_ref().client;
@@ -683,6 +687,7 @@ fn build_rolegroup_service(
                 &rolegroup.role,
                 &rolegroup.role_group,
             )
+            .with_label("prometheus.io/scrape", "true")
             .build(),
         spec: Some(ServiceSpec {
             cluster_ip: Some("None".to_string()),
