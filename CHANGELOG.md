@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- monitoring scraping label `prometheus.io/scrape: true` ([#118]).
+- Monitoring scraping label `prometheus.io/scrape: true` ([#118]).
 
 ### Changed
 
