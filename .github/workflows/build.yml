@@ -19,7 +19,7 @@ env:
   RUSTFLAGS: "-D warnings"
   RUSTDOCFLAGS: "-D warnings"
   RUST_LOG: "info"
-  PRODUCT_NAME: trino
+  PRODUCT_NAME: "trino"
   DEV_REPO_HELM_URL: https://repo.stackable.tech/repository/helm-dev
   TEST_REPO_HELM_URL: https://repo.stackable.tech/repository/helm-test
   STABLE_REPO_HELM_URL: https://repo.stackable.tech/repository/helm-stable
