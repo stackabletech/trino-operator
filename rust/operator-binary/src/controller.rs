@@ -221,7 +221,7 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
             .with_recommended_labels(trino, APP_NAME, trino_version(trino)?, &role_name, "global")
             .build(),
         spec: Some(ServiceSpec {
-            ports: Some(service_ports()),
+            ports: Some(service_ports(trino)),
             selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
             type_: Some("NodePort".to_string()),
             ..ServiceSpec::default()
@@ -496,26 +496,9 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("rwconf", RW_CONFIG_DIR_NAME)
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
-        .add_container_ports(container_ports())
-        .readiness_probe(Probe {
-            initial_delay_seconds: Some(10),
-            period_seconds: Some(10),
-            failure_threshold: Some(5),
-            tcp_socket: Some(TCPSocketAction {
-                port: IntOrString::String(HTTPS_PORT_NAME.to_string()),
-                ..TCPSocketAction::default()
-            }),
-            ..Probe::default()
-        })
-        .liveness_probe(Probe {
-            initial_delay_seconds: Some(30),
-            period_seconds: Some(10),
-            tcp_socket: Some(TCPSocketAction {
-                port: IntOrString::String(HTTPS_PORT_NAME.to_string()),
-                ..TCPSocketAction::default()
-            }),
-            ..Probe::default()
-        })
+        .add_container_ports(container_ports(trino))
+        .readiness_probe(readiness_probe(trino))
+        .liveness_probe(liveness_probe(trino))
         .build();
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
@@ -643,7 +626,7 @@ fn build_rolegroup_service(
             .build(),
         spec: Some(ServiceSpec {
             cluster_ip: Some("None".to_string()),
-            ports: Some(service_ports()),
+            ports: Some(service_ports(trino)),
             selector: Some(role_group_selector_labels(
                 trino,
                 APP_NAME,
@@ -860,17 +843,11 @@ fn validated_product_config(
         .context(InvalidProductConfigSnafu)
 }
 
-fn service_ports() -> Vec<ServicePort> {
-    vec![
+fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
+    let mut ports = vec![
         ServicePort {
             name: Some(HTTP_PORT_NAME.to_string()),
             port: HTTP_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ServicePort::default()
-        },
-        ServicePort {
-            name: Some(HTTPS_PORT_NAME.to_string()),
-            port: HTTPS_PORT.into(),
             protocol: Some("TCP".to_string()),
             ..ServicePort::default()
         },
@@ -880,20 +857,25 @@ fn service_ports() -> Vec<ServicePort> {
             protocol: Some("TCP".to_string()),
             ..ServicePort::default()
         },
-    ]
+    ];
+
+    if trino.spec.authentication.is_some() {
+        ports.push(ServicePort {
+            name: Some(HTTPS_PORT_NAME.to_string()),
+            port: HTTPS_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ServicePort::default()
+        });
+    }
+
+    ports
 }
 
-fn container_ports() -> Vec<ContainerPort> {
-    vec![
+fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
+    let mut ports = vec![
         ContainerPort {
             name: Some(HTTP_PORT_NAME.to_string()),
             container_port: HTTP_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ContainerPort::default()
-        },
-        ContainerPort {
-            name: Some(HTTPS_PORT_NAME.to_string()),
-            container_port: HTTPS_PORT.into(),
             protocol: Some("TCP".to_string()),
             ..ContainerPort::default()
         },
@@ -903,7 +885,18 @@ fn container_ports() -> Vec<ContainerPort> {
             protocol: Some("TCP".to_string()),
             ..ContainerPort::default()
         },
-    ]
+    ];
+
+    if trino.spec.authentication.is_some() {
+        ports.push(ContainerPort {
+            name: Some(HTTPS_PORT_NAME.to_string()),
+            container_port: HTTPS_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ContainerPort::default()
+        });
+    }
+
+    ports
 }
 
 fn get_stackable_secret_volume_attributes() -> BTreeMap<String, String> {
@@ -917,4 +910,39 @@ fn get_stackable_secret_volume_attributes() -> BTreeMap<String, String> {
         "node,pod".to_string(),
     );
     result
+}
+
+fn readiness_probe(trino: &TrinoCluster) -> Probe {
+    let port_name = match trino.spec.authentication {
+        Some(_) => HTTPS_PORT_NAME,
+        _ => HTTP_PORT_NAME,
+    };
+
+    Probe {
+        initial_delay_seconds: Some(10),
+        period_seconds: Some(10),
+        failure_threshold: Some(5),
+        tcp_socket: Some(TCPSocketAction {
+            port: IntOrString::String(port_name.to_string()),
+            ..TCPSocketAction::default()
+        }),
+        ..Probe::default()
+    }
+}
+
+fn liveness_probe(trino: &TrinoCluster) -> Probe {
+    let port_name = match trino.spec.authentication {
+        Some(_) => HTTPS_PORT_NAME,
+        _ => HTTP_PORT_NAME,
+    };
+
+    Probe {
+        initial_delay_seconds: Some(30),
+        period_seconds: Some(10),
+        tcp_socket: Some(TCPSocketAction {
+            port: IntOrString::String(port_name.to_string()),
+            ..TCPSocketAction::default()
+        }),
+        ..Probe::default()
+    }
 }

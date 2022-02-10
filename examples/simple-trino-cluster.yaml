@@ -25,19 +25,6 @@ spec:
             sslEnabled: false
             pathStyleAccess: true
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: simple-trino-users-secret
-type: kubernetes.io/opaque
-stringData:
-  # admin:admin
-  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
-  # alice:alice
-  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-  # bob:bob
-  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
----
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
@@ -46,12 +33,6 @@ spec:
   version: "0.0.362"
   nodeEnvironment: production
   hiveConfigMapName: simple-hive-derby
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          namespace: default
-          name: simple-trino-users-secret
   s3:
     endPoint: changeme
     accessKey: changeme

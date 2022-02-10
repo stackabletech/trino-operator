@@ -299,6 +299,10 @@ impl Configuration for TrinoConfig {
                         Some(true.to_string()),
                     );
                     result.insert(
+                        HTTP_SERVER_HTTPS_PORT.to_string(),
+                        Some(HTTPS_PORT.to_string()),
+                    );
+                    result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
                         Some(format!("{}/{}", KEYSTORE_DIR_NAME, "keystore.p12")),
                     );
@@ -307,15 +311,14 @@ impl Configuration for TrinoConfig {
                         "http-server.https.keystore.key".to_string(),
                         Some("secret".to_string()),
                     );
-                }
 
-                if resource.spec.authentication.is_some()
-                    && role_name == TrinoRole::Coordinator.to_string()
-                {
-                    result.insert(
-                        HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                        Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                    );
+                    // password ui login
+                    if role_name == TrinoRole::Coordinator.to_string() {
+                        result.insert(
+                            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                            Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                        );
+                    }
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {
