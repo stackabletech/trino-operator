@@ -461,23 +461,7 @@ fn build_rolegroup_statefulset(
     let mut container_prepare = ContainerBuilder::new("prepare")
         .image(&image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(vec![[
-            "microdnf install openssl",
-            "echo Storing password",
-            "echo secret > /stackable/keystore/password",
-            "echo Creating truststore",
-            "keytool -importcert -file /stackable/keystore/ca.crt -keystore /stackable/keystore/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret",
-            "echo Creating certificate chain",
-            "cat /stackable/keystore/ca.crt /stackable/keystore/tls.crt > /stackable/keystore/chain.crt",
-            "echo Creating keystore",
-            "openssl pkcs12 -export -in /stackable/keystore/chain.crt -inkey /stackable/keystore/tls.key -out /stackable/keystore/keystore.p12 --passout file:/stackable/keystore/password",
-            "echo Cleaning up password",
-            "rm -f /stackable/keystore/password",
-            "echo chowning keystore directory",
-            "chown -R stackable:stackable /stackable/keystore",
-            "echo chmodding keystore directory",
-            "chmod -R a=,u=rwX /stackable/keystore",
-        ].join(" && ")])
+        .args(container_prepare_args())
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .build();
 
@@ -686,6 +670,26 @@ async fn user_authentication(
     })
 }
 
+fn container_prepare_args() -> Vec<String> {
+    vec![[
+        "microdnf install openssl",
+        "echo Storing password",
+        "echo secret > /stackable/keystore/password",
+        "echo Creating truststore",
+        "keytool -importcert -file /stackable/keystore/ca.crt -keystore /stackable/keystore/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret",
+        "echo Creating certificate chain",
+        "cat /stackable/keystore/ca.crt /stackable/keystore/tls.crt > /stackable/keystore/chain.crt",
+        "echo Creating keystore",
+        "openssl pkcs12 -export -in /stackable/keystore/chain.crt -inkey /stackable/keystore/tls.key -out /stackable/keystore/keystore.p12 --passout file:/stackable/keystore/password",
+        "echo Cleaning up password",
+        "rm -f /stackable/keystore/password",
+        "echo chowning keystore directory",
+        "chown -R stackable:stackable /stackable/keystore",
+        "echo chmodding keystore directory",
+        "chmod -R a=,u=rwX /stackable/keystore",
+    ].join(" && ")]
+}
+
 fn container_trino_args(
     trino: &TrinoCluster,
     user_authentication: Option<TrinoAuthenticationConfig>,
@@ -761,21 +765,19 @@ fn container_trino_args(
 }
 
 fn discovery_config_map(config_map_name: &Option<String>, env_var: &str) -> Option<EnvVar> {
-    match config_map_name {
-        Some(cm_name) => Some(EnvVar {
-            name: env_var.to_string(),
-            value_from: Some(EnvVarSource {
-                config_map_key_ref: Some(ConfigMapKeySelector {
-                    name: Some(cm_name.to_string()),
-                    key: env_var.to_string(),
-                    ..ConfigMapKeySelector::default()
-                }),
-                ..EnvVarSource::default()
+    config_map_name.as_ref().map(|cm_name| EnvVar {
+        name: env_var.to_string(),
+        value_from: Some(EnvVarSource {
+            config_map_key_ref: Some(ConfigMapKeySelector {
+                name: Some(cm_name.to_string()),
+                key: env_var.to_string(),
+
+                ..ConfigMapKeySelector::default()
             }),
-            ..EnvVar::default()
+            ..EnvVarSource::default()
         }),
-        None => None,
-    }
+        ..EnvVar::default()
+    })
 }
 
 /// Defines all required roles and their required configuration.
