@@ -11,7 +11,7 @@
   ],
   "rollbackPrs": true,
   "schedule": [
-    "after 22:00 and before 6:00 every weekday"
+    "after 5:00 and before 6:00 every weekday"
   ],
   "timezone": "Europe/Berlin",
   "packageRules": [
@@ -25,7 +25,8 @@
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": [
-      "after 22:00 and before 6:00 every weekday"
+      "after 5:00 and before 6:00 every weekday"
     ]
-  }
+  },
+  "ignorePaths": [".github/workflows/build.yml", ".github/workflows/reviewdog.yaml", ".github/workflows/daily_security.yml"]
 }
