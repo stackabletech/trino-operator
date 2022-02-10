@@ -33,13 +33,15 @@ Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator 
 === Authentication
 
 We provide user authentication via secret that can be referred in the custom resource:
-
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          namespace: default
-          name: simple-trino-users-secret
+[source,yaml]
+----
+authentication:
+  method:
+    multiUser:
+      userCredentialsSecret:
+        namespace: default
+        name: simple-trino-users-secret
+----
 
 These secrets need to be created manually before startup. The secret may look like the following snippet:
 [source,yaml]
