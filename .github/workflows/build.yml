@@ -19,7 +19,7 @@ env:
   RUSTFLAGS: "-D warnings"
   RUSTDOCFLAGS: "-D warnings"
   RUST_LOG: "info"
-  PRODUCT_NAME: trino
+  PRODUCT_NAME: "trino"
   DEV_REPO_HELM_URL: https://repo.stackable.tech/repository/helm-dev
   TEST_REPO_HELM_URL: https://repo.stackable.tech/repository/helm-test
   STABLE_REPO_HELM_URL: https://repo.stackable.tech/repository/helm-stable
@@ -181,7 +181,6 @@ jobs:
       - run_clippy
       - run_rustfmt
       - run_rustdoc
-      - run_udeps
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
@@ -255,10 +254,20 @@ jobs:
       - name: placeholder
         run: echo Tests will go here
 
+  tests_passed:
+    name: All tests passed
+    needs:
+      - test_charts
+      - run_udeps
+    runs-on: ubuntu-latest
+    steps:
+      - name: log
+        run: echo All tests have passed!
+
   package_and_publish:
     name: Package Charts, Build Docker Image and publish them
     needs:
-      - test_charts
+      - tests_passed
       - select_repo
     runs-on: ubuntu-latest
     env:
