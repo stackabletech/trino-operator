@@ -39,6 +39,7 @@ pub const LOG_PROPERTIES: &str = "log.properties";
 pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
 pub const PASSWORD_DB: &str = "password.db";
 pub const HIVE_PROPERTIES: &str = "hive.properties";
+pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 pub const NODE_ID: &str = "node.id";
@@ -74,6 +75,7 @@ pub const IO_TRINO: &str = "io.trino";
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
+pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconf";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const KEYSTORE_DIR_NAME: &str = "/stackable/keystore";
 pub const USER_PASSWORD_DATA: &str = "/stackable/users";
@@ -81,7 +83,7 @@ pub const USER_PASSWORD_DATA: &str = "/stackable/users";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("object has no namespace associated"))]
-    NoNamespaceError,
+    NoNamespace,
     #[snafu(display("Unknown Trino role found {role}. Should be one of {roles:?}"))]
     UnknownTrinoRole { role: String, roles: Vec<String> },
 }
@@ -110,9 +112,9 @@ pub struct TrinoClusterSpec {
     pub version: Option<String>,
     pub node_environment: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hive: Option<ClusterRef>,
+    pub hive_config_map_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub opa: Option<ClusterRef>,
+    pub opa_config_map_name: Option<String>,
     /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,

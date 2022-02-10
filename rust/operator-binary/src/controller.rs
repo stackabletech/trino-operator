@@ -2,10 +2,10 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::client::Client;
 use stackable_operator::k8s_openapi::api::core::v1::{
-    CSIVolumeSource, ContainerPort, Probe, SecurityContext, TCPSocketAction,
+    CSIVolumeSource, ConfigMapKeySelector, ContainerPort, EmptyDirVolumeSource, EnvVarSource,
+    Probe, SecurityContext, TCPSocketAction,
 };
 use stackable_operator::k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
-use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::kube::ResourceExt;
 use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 use stackable_operator::role_utils::RoleGroupRef;
@@ -35,11 +35,11 @@ use stackable_trino_crd::authentication::TrinoAuthenticationConfig;
 use stackable_trino_crd::authorization::create_rego_rules;
 use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
-    authentication, authorization, ClusterRef, TrinoCluster, TrinoClusterSpec, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES,
-    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME, JVM_CONFIG, KEYSTORE_DIR_NAME, LOG_PROPERTIES,
-    METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES,
-    PASSWORD_DB, USER_PASSWORD_DATA,
+    authentication, authorization, TrinoCluster, TrinoClusterSpec, ACCESS_CONTROL_PROPERTIES,
+    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
+    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME, JVM_CONFIG, KEYSTORE_DIR_NAME,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, USER_PASSWORD_DATA,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
 use std::{
@@ -48,6 +48,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use tracing::warn;
 
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
@@ -102,27 +103,13 @@ pub enum Error {
         source: stackable_operator::product_config_utils::ConfigError,
     },
     #[snafu(display("failed to format runtime properties"))]
-    PropertiesWriteError {
+    FailedToWriteJavaProperties {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
     },
-    #[snafu(display("Failed to load Product Config"))]
+    #[snafu(display("failed to load Product Config"))]
     ProductConfigLoadFailed,
-    #[snafu(display("failed to create rego rules for authorization"))]
-    RegoRuleAuthorizationError { source: authorization::Error },
-    #[snafu(display("failed to get config map {}", config_map))]
-    MissingConfigMap {
-        source: stackable_operator::error::Error,
-        config_map: ObjectRef<ConfigMap>,
-    },
-    #[snafu(display(
-        "failed to get [{}] connection string from config map {}",
-        product,
-        config_map
-    ))]
-    MissingConnectString {
-        product: String,
-        config_map: ObjectRef<ConfigMap>,
-    },
+    #[snafu(display("failed to write rego rules for authorization"))]
+    WriteRegoRuleAuthorizationFailed { source: authorization::Error },
     #[snafu(display("failed to processing authentication config element from k8s"))]
     FailedProcessingAuthentication { source: authentication::Error },
     #[snafu(display("internal operator failure"))]
@@ -145,10 +132,12 @@ pub async fn reconcile_trino(
     let validated_config =
         validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
 
+    let authentication_config = user_authentication(&trino, client).await?;
+
     // rego rules
     create_rego_rules(client, &trino)
         .await
-        .context(RegoRuleAuthorizationSnafu)?;
+        .context(WriteRegoRuleAuthorizationFailedSnafu)?;
 
     let coordinator_role_service = build_coordinator_role_service(&trino)?;
     client
@@ -160,41 +149,21 @@ pub async fn reconcile_trino(
         .await
         .context(ApplyRoleServiceSnafu)?;
 
-    let opa_connect = opa_connect(&trino, &ctx.get_ref().client).await?;
-    let hive_connect = hive_connect(&trino, &ctx.get_ref().client).await?;
-
-    let authentication_config = match &trino.spec.authentication {
-        Some(authentication) => Some(
-            authentication
-                .method
-                .materialize(
-                    client,
-                    trino
-                        .namespace()
-                        .as_deref()
-                        .context(ObjectHasNoNamespaceSnafu)?,
-                )
-                .await
-                .context(FailedProcessingAuthenticationSnafu)?,
-        ),
-        _ => None,
-    };
-
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&role).context(InternalOperatorFailureSnafu)?;
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
             let rg_configmap =
-                build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config, &opa_connect)?;
+                build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config)?;
             let rg_catalog_configmap =
-                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config, &hive_connect)?;
+                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config)?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
                 &trino_role,
                 &rolegroup,
                 &config,
-                &authentication_config,
+                authentication_config.to_owned(),
             )?;
 
             client
@@ -267,7 +236,6 @@ fn build_rolegroup_config_map(
     _role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    opa_connect: &Option<String>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -313,7 +281,7 @@ fn build_rolegroup_config_map(
 
                 let config_properties =
                     product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(PropertiesWriteSnafu)?;
+                        .context(FailedToWriteJavaPropertiesSnafu)?;
 
                 cm_conf_data.insert(file_name.to_string(), config_properties);
             }
@@ -321,21 +289,21 @@ fn build_rolegroup_config_map(
             PropertyNameKind::File(file_name) if file_name == NODE_PROPERTIES => {
                 let node_properties =
                     product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(PropertiesWriteSnafu)?;
+                        .context(FailedToWriteJavaPropertiesSnafu)?;
 
                 cm_conf_data.insert(file_name.to_string(), node_properties);
             }
             PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
                 let log_properties =
                     product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(PropertiesWriteSnafu)?;
+                        .context(FailedToWriteJavaPropertiesSnafu)?;
 
                 cm_conf_data.insert(file_name.to_string(), log_properties);
             }
             PropertyNameKind::File(file_name) if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES => {
                 let pw_properties =
                     product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(PropertiesWriteSnafu)?;
+                        .context(FailedToWriteJavaPropertiesSnafu)?;
                 cm_conf_data.insert(file_name.to_string(), pw_properties);
             }
             PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
@@ -349,31 +317,19 @@ fn build_rolegroup_config_map(
         }
     }
 
-    if let Some(opa) = opa_connect {
-        let package = match trino.spec.authorization.as_ref() {
-            Some(auth) => auth.package.clone(),
-            None => {
-                println!("No package specified in 'authorization'. Defaulting to 'trino'.");
-                "trino".to_string()
-            }
-        };
-
+    if trino.spec.opa_config_map_name.is_some() {
         let mut opa_config = BTreeMap::new();
-
+        // the "opa.policy.uri" property will be added via command script later from the env variable "OPA"
         opa_config.insert(
             "access-control.name".to_string(),
             Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
         );
-        opa_config.insert(
-            "opa.policy.uri".to_string(),
-            Some(format!("{}v1/data/{}/", opa, package)),
-        );
 
         let config_properties =
             product_config::writer::to_java_properties_string(opa_config.iter())
-                .context(PropertiesWriteSnafu)?;
+                .context(FailedToWriteJavaPropertiesSnafu)?;
 
-        cm_conf_data.insert("access-control.properties".to_string(), config_properties);
+        cm_conf_data.insert(ACCESS_CONTROL_PROPERTIES.to_string(), config_properties);
     }
 
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
@@ -407,7 +363,6 @@ fn build_rolegroup_catalog_config_map(
     trino: &TrinoCluster,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    hive_connect: &Option<String>,
 ) -> Result<ConfigMap> {
     let mut cm_hive_data = BTreeMap::new();
 
@@ -419,16 +374,16 @@ fn build_rolegroup_catalog_config_map(
 
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == HIVE_PROPERTIES => {
-                if let Some(hive_connect) = &hive_connect {
+                if trino.spec.hive_config_map_name.is_some() {
+                    // hive.metastore.uri will be added later via command script from the
+                    // "HIVE" env variable
                     transformed_config
                         .insert("connector.name".to_string(), Some("hive".to_string()));
-                    transformed_config
-                        .insert("hive.metastore.uri".to_string(), Some(hive_connect.clone()));
 
                     let config_properties = product_config::writer::to_java_properties_string(
                         transformed_config.iter(),
                     )
-                    .context(PropertiesWriteSnafu)?;
+                    .context(FailedToWriteJavaPropertiesSnafu)?;
 
                     cm_hive_data.insert(file_name.to_string(), config_properties);
                 }
@@ -469,7 +424,7 @@ fn build_rolegroup_statefulset(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    authentication_config: &Option<TrinoAuthenticationConfig>,
+    authentication_config: Option<TrinoAuthenticationConfig>,
 ) -> Result<StatefulSet> {
     let rolegroup = role
         .get_spec(trino)
@@ -483,7 +438,8 @@ fn build_rolegroup_statefulset(
         "docker.stackable.tech/stackable/trino:{}-stackable0",
         trino_version
     );
-    let env = config
+
+    let mut env = config
         .get(&PropertyNameKind::Env)
         .iter()
         .flat_map(|env_vars| env_vars.iter())
@@ -494,13 +450,12 @@ fn build_rolegroup_statefulset(
         })
         .collect::<Vec<_>>();
 
-    let user_data = match authentication_config {
-        Some(TrinoAuthenticationConfig::MultiUser { user_credentials }) => user_credentials
-            .iter()
-            .map(|(user, password)| format!("{}:{}", user, password))
-            .collect::<Vec<_>>()
-            .join("\n"),
-        None => String::new(),
+    if let Some(opa) = discovery_config_map(&trino.spec.opa_config_map_name, "OPA") {
+        env.push(opa);
+    };
+
+    if let Some(hive) = discovery_config_map(&trino.spec.hive_config_map_name, "HIVE") {
+        env.push(hive);
     };
 
     let mut container_prepare = ContainerBuilder::new("prepare")
@@ -523,7 +478,7 @@ fn build_rolegroup_statefulset(
             "echo chmodding keystore directory",
             "chmod -R a=,u=rwX /stackable/keystore",
         ].join(" && ")])
-        .add_volume_mount("keystore", "/stackable/keystore")
+        .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .build();
 
     container_prepare
@@ -534,22 +489,11 @@ fn build_rolegroup_statefulset(
     let container_trino = ContainerBuilder::new(APP_NAME)
         .image(image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(vec![[
-            format!(
-                "echo Writing user data to {}/{}",
-                USER_PASSWORD_DATA, PASSWORD_DB
-            ),
-            format!("mkdir {}", USER_PASSWORD_DATA),
-            format!(
-                "echo '{}' > {}/{} ",
-                user_data, USER_PASSWORD_DATA, PASSWORD_DB
-            ),
-            format!("bin/launcher run --etc-dir={}", CONFIG_DIR_NAME),
-        ]
-        .join(" && ")])
+        .args(container_trino_args(trino, authentication_config))
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("conf", CONFIG_DIR_NAME)
+        .add_volume_mount("rwconf", RW_CONFIG_DIR_NAME)
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
         .add_container_ports(container_ports())
@@ -622,6 +566,14 @@ fn build_rolegroup_statefulset(
                         name: Some(rolegroup_ref.object_name()),
                         ..ConfigMapVolumeSource::default()
                     }),
+                    ..Volume::default()
+                })
+                .add_volume(Volume {
+                    empty_dir: Some(EmptyDirVolumeSource {
+                        medium: None,
+                        size_limit: None,
+                    }),
+                    name: "rwconf".to_string(),
                     ..Volume::default()
                 })
                 .add_volume(Volume {
@@ -729,55 +681,118 @@ pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> ReconcilerAction {
     }
 }
 
-async fn opa_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<String>> {
-    let mut opa_connect_string = None;
-
-    let spec: &TrinoClusterSpec = &trino.spec;
-
-    if let Some(opa_reference) = &spec.opa {
-        let product = "OPA";
-
-        let (name, namespace) = name_and_namespace(trino, opa_reference)?;
-
-        opa_connect_string = Some(cluster_ref_cm_data(client, &name, &namespace, product).await?);
-    }
-
-    Ok(opa_connect_string)
+async fn user_authentication(
+    trino: &TrinoCluster,
+    client: &Client,
+) -> Result<Option<TrinoAuthenticationConfig>> {
+    Ok(match &trino.spec.authentication {
+        Some(authentication) => Some(
+            authentication
+                .method
+                .materialize(
+                    client,
+                    trino
+                        .namespace()
+                        .as_deref()
+                        .context(ObjectHasNoNamespaceSnafu)?,
+                )
+                .await
+                .context(FailedProcessingAuthenticationSnafu)?,
+        ),
+        _ => None,
+    })
 }
 
-async fn hive_connect(trino: &TrinoCluster, client: &Client) -> Result<Option<String>> {
-    let mut hive_connect_string = None;
+fn container_trino_args(
+    trino: &TrinoCluster,
+    user_authentication: Option<TrinoAuthenticationConfig>,
+) -> Vec<String> {
+    let mut args = vec![
+        // copy config files to a writeable empty folder
+        format!(
+            "echo Copying {conf} to {rw_conf}",
+            conf = CONFIG_DIR_NAME,
+            rw_conf = RW_CONFIG_DIR_NAME
+        ),
+        format!(
+            "cp -RL {conf}/* {rw_conf}",
+            conf = CONFIG_DIR_NAME,
+            rw_conf = RW_CONFIG_DIR_NAME
+        ),
+    ];
 
-    if let Some(hive_reference) = &trino.spec.hive {
-        let product = "HIVE";
+    if let Some(auth) = user_authentication {
+        let user_data = auth.to_trino_user_data();
+        args.extend(vec![
+            format!(
+                "echo Writing user data to {path}/{db}",
+                path = USER_PASSWORD_DATA,
+                db = PASSWORD_DB
+            ),
+            format!("mkdir {}", USER_PASSWORD_DATA),
+            format!(
+                "echo '{data}' > {path}/{db} ",
+                data = user_data,
+                path = USER_PASSWORD_DATA,
+                db = PASSWORD_DB
+            ),
+        ])
+    }
+    // hive required?
+    if trino.spec.hive_config_map_name.is_some() {
+        args.extend(vec![
+            format!( "echo Writing HIVE connect string \"hive.metastore.uri=${{HIVE}}\" to {rw_conf}/catalog/{hive_properties}",
+                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
+            ),
+            format!( "echo \"hive.metastore.uri=${{HIVE}}\" >> {rw_conf}/catalog/{hive_properties}",
+                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
+            )])
+    }
+    // opa required?
+    if trino.spec.opa_config_map_name.is_some() {
+        let opa_package_name = match trino.spec.authorization.as_ref() {
+            Some(auth) => auth.package.clone(),
+            None => {
+                warn!("No package specified in 'spec.authorization'. Defaulting to 'trino'.");
+                "trino".to_string()
+            }
+        };
 
-        let (name, namespace) = name_and_namespace(trino, hive_reference)?;
-
-        hive_connect_string = cluster_ref_cm_data(client, &name, &namespace, product)
-            .await?
-            // TODO: hive now offers all pods fqdn(s) instead of the service
-            //    this should be removed
-            .split('\n')
-            .collect::<Vec<_>>()
-            .into_iter()
-            .next()
-            .map(|s| s.to_string());
+        args.extend(vec![
+            format!( "echo Writing OPA connect string \"opa.policy.uri=${{OPA}}v1/data/{package_name}\" to {rw_conf}/{access_control}",
+                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
+             ),
+            format!( "echo \"opa.policy.uri=${{OPA}}v1/data/{package_name}/\" >> {rw_conf}/{access_control}",
+                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
+             )])
     }
 
-    Ok(hive_connect_string)
+    // start command
+    args.push(format!(
+        "bin/launcher run --etc-dir={conf} --data-dir={data}",
+        conf = RW_CONFIG_DIR_NAME,
+        data = DATA_DIR_NAME
+    ));
+
+    vec![args.join(" && ")]
 }
 
-/// Return the name and adapted namespace of the `cluster_ref`.
-/// If `cluster_ref` has no namespace defined we default to the `trino` namespace.
-/// If `trino` has no namespace defined we throw an error.
-fn name_and_namespace(trino: &TrinoCluster, cluster_ref: &ClusterRef) -> Result<(String, String)> {
-    let name = cluster_ref.name.clone();
-    let namespace = match &cluster_ref.namespace {
-        Some(ns) => ns.clone(),
-        None => trino.namespace().context(ObjectHasNoNamespaceSnafu)?,
-    };
-
-    Ok((name, namespace))
+fn discovery_config_map(config_map_name: &Option<String>, env_var: &str) -> Option<EnvVar> {
+    match config_map_name {
+        Some(cm_name) => Some(EnvVar {
+            name: env_var.to_string(),
+            value_from: Some(EnvVarSource {
+                config_map_key_ref: Some(ConfigMapKeySelector {
+                    name: Some(cm_name.to_string()),
+                    key: env_var.to_string(),
+                    ..ConfigMapKeySelector::default()
+                }),
+                ..EnvVarSource::default()
+            }),
+            ..EnvVar::default()
+        }),
+        None => None,
+    }
 }
 
 /// Defines all required roles and their required configuration.
@@ -843,26 +858,6 @@ fn validated_product_config(
 
     validate_all_roles_and_groups_config(version, &role_config, product_config, false, false)
         .context(InvalidProductConfigSnafu)
-}
-
-async fn cluster_ref_cm_data(
-    client: &Client,
-    name: &str,
-    namespace: &str,
-    product_name: &str,
-) -> Result<String> {
-    Ok(client
-        .get::<ConfigMap>(name, Some(namespace))
-        .await
-        .with_context(|_| MissingConfigMapSnafu {
-            config_map: ObjectRef::new(name).within(namespace),
-        })?
-        .data
-        .and_then(|mut data| data.remove(product_name))
-        .with_context(|| MissingConnectStringSnafu {
-            product: product_name.to_string(),
-            config_map: ObjectRef::new(name).within(namespace),
-        })?)
 }
 
 fn service_ports() -> Vec<ServicePort> {

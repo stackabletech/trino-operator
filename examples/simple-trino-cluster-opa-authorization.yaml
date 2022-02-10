@@ -25,6 +25,21 @@ spec:
             sslEnabled: false
             pathStyleAccess: true
 ---
+apiVersion: opa.stackable.tech/v1alpha1
+kind: OpenPolicyAgent
+metadata:
+  name: simple-opa
+spec:
+  version: "0.27.1"
+  servers:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        config:
+          regoRuleReference: "http://regorule-operator:3030/opa/v1"
+---
 apiVersion: v1
 kind: Secret
 metadata:
@@ -46,12 +61,34 @@ spec:
   version: "0.0.362"
   nodeEnvironment: production
   hiveConfigMapName: simple-hive-derby
+  opaConfigMapName: simple-opa
   authentication:
     method:
       multiUser:
         userCredentialsSecret:
           namespace: default
           name: simple-trino-users-secret
+  authorization:
+    package: trino
+    permissions:
+      admin:
+        schemas:
+          read: true
+          write: true
+        tables:
+          iris_parquet:
+            read: true
+            write: true
+          iris_csv:
+            read: true
+            write: true
+      bob:
+        schemas:
+          read: false
+          write: false
+        tables:
+          iris_parquet:
+            read: true
   s3:
     endPoint: changeme
     accessKey: changeme
