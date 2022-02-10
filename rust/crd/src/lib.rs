@@ -198,15 +198,6 @@ impl FromStr for TrinoRole {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterStatus {}
 
-// TODO: move to operator-rs? Used for hive, opa, zookeeper ...
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClusterRef {
-    pub name: String,
-    pub namespace: Option<String>,
-    pub chroot: Option<String>,
-}
-
 // TODO: move to operator-rs? Copied from hive operator.
 /// Contains all the required connection information for S3.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize)]
