@@ -121,6 +121,25 @@ spec:
 ----
 
 You can let the Trino operator write its own Rego rules by configuring the `authorization` field in the custom resource. This is a rudimentary implementation for user access.
+[source,yaml]
+----
+authorization:
+  package: trino
+  permissions:
+    admin:
+      schemas:
+        read: true
+        write: true
+      tables:
+        iris_parquet:
+          read: true
+          write: true
+        iris_csv:
+          read: true
+          write: true
+----
+
+Here we define permissions for an admin user who can read and write `schemas`, as well as having full access to the `iris_parquet` and `iris_csv` table. Currently, this is more for demonstration purposes. Users should write their own rego rules for more complex OPA authorization.
 
 === Trino
 
@@ -245,7 +264,7 @@ To access the CLI please execute:
 ./trino-cli-362-executable.jar --debug --server https://<host>:<https-port> --user=admin --password --insecure
 ----
 
-If you use self signed certificates, you also need to add `--insecure` to the command above.
+If you use self signed certificates, you also need the `--insecure` flag above which can be omitted otherwise.
 
 === Test Trino with Hive and S3
 
