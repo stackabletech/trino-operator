@@ -771,7 +771,6 @@ fn discovery_config_map(config_map_name: &Option<String>, env_var: &str) -> Opti
             config_map_key_ref: Some(ConfigMapKeySelector {
                 name: Some(cm_name.to_string()),
                 key: env_var.to_string(),
-
                 ..ConfigMapKeySelector::default()
             }),
             ..EnvVarSource::default()

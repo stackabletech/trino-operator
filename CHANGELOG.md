@@ -10,7 +10,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: CRD changes. The `spec.opa` and `spec.hive` renamed to `spec.opaConfigMapName` and `spec.hiveConfigMapName` which only accept a String ([#131]).
+- BREAKING: CRD changes. The `spec.opa` and `spec.hive` renamed to 
+`spec.opaConfigMapName` and `spec.hiveConfigMapName`
+which only accept a String ([#131]).
 - BREAKING: In case the namespace is omitted, the operator defaults to the `TrinoCluster` namespace instead of `default` ([#95]).
 - User authentication now provided via secret instead of custom resource ([#81]).
 - User authentication not exposed in configmap anymore ([#81]).
