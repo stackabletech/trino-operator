@@ -8,9 +8,9 @@ Trino works together with the Apache Hive metastore and S3 bucket.
 * Accessible S3 Bucket
     ** Endpoint, access-key and secret-key
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
-* Optional deployed Stackable https://github.com/stackabletech/secret-operator[Secret-Operator] for https
-* Optional for authorization: Deployed Stackable https://github.com/stackabletech/opa-operator[OPA-Operator] + https://github.com/stackabletech/regorule-operator[Regorule-Operator]
-* Optional to test queries with https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI]
+* Optional deployed Stackable https://github.com/stackabletech/secret-operator[Secret-Operator] for certificates when deploying for HTTPS
+* Optional for authorization: Deployed Stackable https://github.com/stackabletech/opa-operator[OPA-Operator] and https://github.com/stackabletech/regorule-operator[Regorule-Operator]
+* Optional https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI] to test SQL queries
 
 == Installation
 
@@ -42,20 +42,24 @@ We provide user authentication via secret that can be referred in the custom res
           name: simple-trino-users-secret
 
 These secrets need to be created manually before startup. The secret may look like the following snippet:
-
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: simple-trino-users-secret
-    type: kubernetes.io/opaque
-    stringData:
-      admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
-      alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-      bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple-trino-users-secret
+type: kubernetes.io/opaque
+stringData:
+  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
+  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
+  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+----
 
 The <user>:<password> combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds or more.
-
-    htpasswd -nbBC 10 admin admin
+[source]
+----
+htpasswd -nbBC 10 admin admin
+----
 
 === Regorule Server (Authorization)
 
@@ -65,7 +69,8 @@ Please refer to the https://github.com/stackabletech/regorule-operator[RegoRule]
 
 This is an example custom resource for the Stackable RegoRule server:
 
-```
+[source,yaml]
+----
 apiVersion: opa.stackable.tech/v1alpha1
 kind: RegoRule
 metadata:
@@ -111,152 +116,164 @@ spec:
     }
 
     can_view_query_owned_by = true
-```
+----
 
 You can let the Trino operator write its own Rego rules by configuring the `authorization` field in the custom resource. This is a rudimentary implementation for user access.
 
 === Trino
 
 With the prerequisites fulfilled, the CRD for this operator must be created:
-
-    kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
+[source]
+----
+kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
+----
 
 ==== Insecure for testing:
 
 Create an insecure single node Trino (v362) cluster for testing. You will access the UI/CLI via http and no user / password or authorization is required. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster.yaml` for an example setting up Hive and Trino):
-
-    apiVersion: trino.stackable.tech/v1alpha1
-    kind: TrinoCluster
-    metadata:
-      name: simple-trino
-    spec:
-      version: "0.0.362"
-      nodeEnvironment: production
-      hiveConfigMapName: simple-hive-derby
-      s3:
-        endPoint: changeme
-        accessKey: changeme
-        secretKey: changeme
-        sslEnabled: false
-        pathStyleAccess: true
-      coordinators:
-        roleGroups:
-          default:
-            selector:
-              matchLabels:
-                kubernetes.io/os: linux
-            replicas: 1
-            config: {}
-      workers:
-        roleGroups:
-          default:
-            selector:
-              matchLabels:
-                kubernetes.io/os: linux
-            replicas: 1
-            config: {}
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: "0.0.362"
+  nodeEnvironment: production
+  hiveConfigMapName: simple-hive-derby
+  s3:
+    endPoint: changeme
+    accessKey: changeme
+    secretKey: changeme
+    sslEnabled: false
+    pathStyleAccess: true
+  coordinators:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config: {}
+  workers:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config: {}
+----
 
 To access the CLI please execute:
-
-    ./trino-cli-362-executable.jar --debug --server http://<node>:<http-port> --user=admin
+[source]
+----
+./trino-cli-362-executable.jar --debug --server http://<node>:<http-port> --user=admin
+----
 
 ==== Secure (https) for production:
 
 Create a secure single node Trino (v362) cluster. This will disable the UI access via http and requires username and password from the secret above. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster-authentication-opa-authorization.yaml` for a full example setting up Hive, OPA, Secrets and Trino):
 
-    cat <<EOF | kubectl apply -f -
-    apiVersion: trino.stackable.tech/v1alpha1
-    kind: TrinoCluster
-    metadata:
-      name: simple-trino
-    spec:
-      version: "0.0.362"
-      nodeEnvironment: production
-      hiveConfigMapName: simple-hive-derby
-      opaConfigMapName: simple-opa
-      authentication:
-        method:
-          multiUser:
-            userCredentialsSecret:
-              namespace: default
-              name: simple-trino-users-secret
-      authorization:
-        package: trino
-        permissions:
-          admin:
-            schemas:
-              read: true
-              write: true
-            tables:
-              iris_parquet:
-                read: true
-                write: true
-              iris_csv:
-                read: true
-                write: true
-          bob:
-            schemas:
-              read: false
-              write: false
-            tables:
-              iris_parquet:
-                read: true
-      s3:
-        endPoint: changeme
-        accessKey: changeme
-        secretKey: changeme
-        sslEnabled: false
-        pathStyleAccess: true
-      coordinators:
-        roleGroups:
-          default:
-            selector:
-              matchLabels:
-                kubernetes.io/os: linux
-            replicas: 1
-            config: {}
-      workers:
-        roleGroups:
-          default:
-            selector:
-              matchLabels:
-                kubernetes.io/os: linux
-            replicas: 1
-            config: {}
-    EOF
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: "0.0.362"
+  nodeEnvironment: production
+  hiveConfigMapName: simple-hive-derby
+  opaConfigMapName: simple-opa
+  authentication:
+    method:
+      multiUser:
+        userCredentialsSecret:
+          namespace: default
+          name: simple-trino-users-secret
+  authorization:
+    package: trino
+    permissions:
+      admin:
+        schemas:
+          read: true
+          write: true
+        tables:
+          iris_parquet:
+            read: true
+            write: true
+          iris_csv:
+            read: true
+            write: true
+      bob:
+        schemas:
+          read: false
+          write: false
+        tables:
+          iris_parquet:
+            read: true
+  s3:
+    endPoint: changeme
+    accessKey: changeme
+    secretKey: changeme
+    sslEnabled: false
+    pathStyleAccess: true
+  coordinators:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config: {}
+  workers:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config: {}
+----
 
 To access the CLI please execute:
-
-    ./trino-cli-362-executable.jar --debug --server https://<host>:<https-port> --user=admin --password --insecure
+[source]
+----
+./trino-cli-362-executable.jar --debug --server https://<host>:<https-port> --user=admin --password --insecure
+----
 
 If you use self signed certificates, you also need to add `--insecure` to the command above.
 
 === Test Trino with Hive and S3
 
 Create a schema and a  table for the Iris data located in S3:
+[source,sql]
+----
+CREATE SCHEMA IF NOT EXISTS hive.iris
+WITH (location = 's3a://iris/');
 
-    CREATE SCHEMA IF NOT EXISTS hive.iris
-    WITH (location = 's3a://iris/');
-
-    CREATE TABLE IF NOT EXISTS hive.iris.iris_parquet (
-      sepal_length DOUBLE,
-      sepal_width  DOUBLE,
-      petal_length DOUBLE,
-      petal_width  DOUBLE,
-      class        VARCHAR
-    )
-    WITH (
-      external_location = 's3a://iris/parq',
-      format = 'PARQUET'
-    );
-
+CREATE TABLE IF NOT EXISTS hive.iris.iris_parquet (
+  sepal_length DOUBLE,
+  sepal_width  DOUBLE,
+  petal_length DOUBLE,
+  petal_width  DOUBLE,
+  class        VARCHAR
+)
+WITH (
+  external_location = 's3a://iris/parq',
+  format = 'PARQUET'
+);
+----
 Query the data:
-
-    SELECT
-        sepal_length,
-        class
-    FROM hive.iris.iris_parquet
-    LIMIT 10;
+[source,sql]
+----
+SELECT
+    sepal_length,
+    class
+FROM hive.iris.iris_parquet
+LIMIT 10;
+----
 
 === Tips
 
