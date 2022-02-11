@@ -39,7 +39,7 @@ data:
     \           file: \"config.properties\"\n      datatype:\n        type: \"integer\"\n
     \       min: \"1024\"\n        max: \"65535\"\n      defaultValues:\n        - fromVersion:
     \"0.0.0\"\n          value: \"8443\"\n      roles:\n        - name: \"coordinator\"\n
-    \         required: true\n      asOfVersion: \"0.0.0\"\n\n  - property: &queryMaxMemory\n
+    \         required: false\n      asOfVersion: \"0.0.0\"\n\n  - property: &queryMaxMemory\n
     \     propertyNames:\n        - name: \"query.max-memory\"\n          kind:\n            type:
     \"file\"\n            file: \"config.properties\"\n      datatype:\n        type:
     \"string\"\n        unit: *unitMemory\n      defaultValues:\n        - fromVersion:
