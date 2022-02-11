@@ -1,3 +1,30 @@
+---
+apiVersion: hive.stackable.tech/v1alpha1
+kind: HiveCluster
+metadata:
+  name: simple-hive-derby
+spec:
+  version: 2.3.9
+  metastore:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config:
+          database:
+            connString: jdbc:derby:;databaseName=/stackable/metastore_db;create=true
+            user: APP
+            password: mine
+            dbType: derby
+          s3Connection:
+            endPoint: changeme
+            accessKey: changeme
+            secretKey: changeme
+            sslEnabled: false
+            pathStyleAccess: true
+---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
@@ -5,39 +32,7 @@ metadata:
 spec:
   version: "0.0.362"
   nodeEnvironment: production
-  hive:
-    namespace: default
-    name: simple-hive-derby
-  opa:
-    namespace: default
-    name: simple-opa
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          namespace: default
-          name: simple-trino-users-secret
-  authorization:
-    package: trino
-    permissions:
-      admin:
-        schemas:
-          read: true
-          write: true
-        tables:
-          iris_parquet:
-            read: true
-            write: true
-          iris_csv:
-            read: true
-            write: true
-      bob:
-        schemas:
-          read: false
-          write: false
-        tables:
-          iris_parquet:
-            read: true
+  hiveConfigMapName: simple-hive-derby
   s3:
     endPoint: changeme
     accessKey: changeme

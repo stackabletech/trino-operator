@@ -115,7 +115,7 @@ properties:
           value: "8443"
       roles:
         - name: "coordinator"
-          required: true
+          required: false
       asOfVersion: "0.0.0"
 
   - property: &queryMaxMemory

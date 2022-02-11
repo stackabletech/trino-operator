@@ -50,13 +50,6 @@ pub enum TrinoAuthenticationMethod {
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum TrinoAuthenticationConfig {
-    MultiUser {
-        user_credentials: BTreeMap<String, String>,
-    },
-}
-
 impl TrinoAuthenticationMethod {
     pub async fn materialize(
         &self,
@@ -105,6 +98,25 @@ impl TrinoAuthenticationMethod {
                     user_credentials: users,
                 })
             }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TrinoAuthenticationConfig {
+    MultiUser {
+        user_credentials: BTreeMap<String, String>,
+    },
+}
+
+impl TrinoAuthenticationConfig {
+    pub fn to_trino_user_data(&self) -> String {
+        match self {
+            TrinoAuthenticationConfig::MultiUser { user_credentials } => user_credentials
+                .iter()
+                .map(|(user, password)| format!("{}:{}", user, password))
+                .collect::<Vec<_>>()
+                .join("\n"),
         }
     }
 }

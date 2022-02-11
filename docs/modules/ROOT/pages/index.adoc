@@ -10,6 +10,8 @@ The Stackable Operator for Trino currently supports the following versions of Tr
 
 include::partial$supported-versions.adoc[]
 
+== Get Docker image
+
 [source]
 ----
 docker pull docker.stackable.tech/stackable/trino:<version>

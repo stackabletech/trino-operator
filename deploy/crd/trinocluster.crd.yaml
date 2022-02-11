@@ -199,36 +199,14 @@ spec:
                   required:
                     - roleGroups
                   type: object
-                hive:
+                hiveConfigMapName:
                   nullable: true
-                  properties:
-                    chroot:
-                      nullable: true
-                      type: string
-                    name:
-                      type: string
-                    namespace:
-                      nullable: true
-                      type: string
-                  required:
-                    - name
-                  type: object
+                  type: string
                 nodeEnvironment:
                   type: string
-                opa:
+                opaConfigMapName:
                   nullable: true
-                  properties:
-                    chroot:
-                      nullable: true
-                      type: string
-                    name:
-                      type: string
-                    namespace:
-                      nullable: true
-                      type: string
-                  required:
-                    - name
-                  type: object
+                  type: string
                 s3:
                   description: Contains all the required connection information for S3.
                   nullable: true

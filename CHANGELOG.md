@@ -10,7 +10,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: `ClusterRef` namespace now optional ([#95]).
+- BREAKING: CRD changes. The `spec.opa` and `spec.hive` renamed to
+`spec.opaConfigMapName` and `spec.hiveConfigMapName`
+which only accept a String ([#131]).
 - BREAKING: In case the namespace is omitted, the operator defaults to the `TrinoCluster` namespace instead of `default` ([#95]).
 - User authentication now provided via secret instead of custom resource ([#81]).
 - User authentication not exposed in configmap anymore ([#81]).
@@ -18,10 +20,12 @@ All notable changes to this project will be documented in this file.
 - The Trino version is now a string instead of enum ([#81]).
 - `operator-rs` `0.4.0` → `0.10.0` ([#81], [#95], [#118]).
 - `stackable-regorule-crd` `0.2.0` → `0.6.0` ([#81], [#118]).
+- Improvements to setting up (easy) insecure clusters ([#131])
 
 [#81]: https://github.com/stackabletech/trino-operator/pull/81
 [#95]: https://github.com/stackabletech/trino-operator/pull/95
 [#118]: https://github.com/stackabletech/trino-operator/pull/118
+[#131]: https://github.com/stackabletech/trino-operator/pull/131
 
 ## [0.2.0] - 2021-12-06
 
