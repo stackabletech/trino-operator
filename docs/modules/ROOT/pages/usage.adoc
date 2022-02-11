@@ -363,7 +363,7 @@ workers:
       config: {}
       replicas: 1
       configOverrides:
-        config.properties::
+        config.properties:
           query.max-memory-per-node: "2GB"
 ----
 
@@ -373,7 +373,7 @@ Just as for the `config`, it is possible to specify this at role level as well:
 ----
 workers:
   configOverrides:
-    config.properties::
+    config.properties:
       query.max-memory-per-node: "2GB"
   roleGroups:
     default:
