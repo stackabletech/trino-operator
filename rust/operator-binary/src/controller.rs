@@ -434,10 +434,6 @@ fn build_rolegroup_statefulset(
         .role_groups
         .get(&rolegroup_ref.role_group);
     let trino_version = trino_version_trim(trino)?;
-    let image = format!(
-        "docker.stackable.tech/stackable/trino:{}-stackable0",
-        trino_version
-    );
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -450,16 +446,17 @@ fn build_rolegroup_statefulset(
         })
         .collect::<Vec<_>>();
 
-    if let Some(opa) = discovery_config_map(&trino.spec.opa_config_map_name, "OPA") {
+    if let Some(opa) = env_var_from_discovery_config_map(&trino.spec.opa_config_map_name, "OPA") {
         env.push(opa);
     };
 
-    if let Some(hive) = discovery_config_map(&trino.spec.hive_config_map_name, "HIVE") {
+    if let Some(hive) = env_var_from_discovery_config_map(&trino.spec.hive_config_map_name, "HIVE")
+    {
         env.push(hive);
     };
 
     let mut container_prepare = ContainerBuilder::new("prepare")
-        .image(&image)
+        .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_prepare_args())
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
@@ -471,7 +468,10 @@ fn build_rolegroup_statefulset(
         .run_as_user = Some(0);
 
     let container_trino = ContainerBuilder::new(APP_NAME)
-        .image(image)
+        .image(format!(
+            "docker.stackable.tech/stackable/trino:{}-stackable0",
+            trino_version
+        ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_trino_args(trino, authentication_config))
         .add_env_vars(env)
@@ -672,9 +672,10 @@ async fn user_authentication(
 
 fn container_prepare_args() -> Vec<String> {
     vec![[
-        "microdnf install openssl",
         "echo Storing password",
         "echo secret > /stackable/keystore/password",
+        "echo Cleaning up truststore - just in case",
+        "rm -f /stackable/keystore/truststore.p12",
         "echo Creating truststore",
         "keytool -importcert -file /stackable/keystore/ca.crt -keystore /stackable/keystore/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret",
         "echo Creating certificate chain",
@@ -764,7 +765,10 @@ fn container_trino_args(
     vec![args.join(" && ")]
 }
 
-fn discovery_config_map(config_map_name: &Option<String>, env_var: &str) -> Option<EnvVar> {
+fn env_var_from_discovery_config_map(
+    config_map_name: &Option<String>,
+    env_var: &str,
+) -> Option<EnvVar> {
     config_map_name.as_ref().map(|cm_name| EnvVar {
         name: env_var.to_string(),
         value_from: Some(EnvVarSource {
