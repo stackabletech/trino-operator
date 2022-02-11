@@ -8,6 +8,7 @@ Trino works together with the Apache Hive metastore and S3 bucket.
 * Accessible S3 Bucket
     ** Endpoint, access-key and secret-key
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
+* A https://github.com/stackabletech/regorule-operator/blob/main/deploy/crd/regorule.crd.yaml[Rego rule CRD] even if no OPA is activated
 * Optional deployed Stackable https://github.com/stackabletech/secret-operator[Secret-Operator] for certificates when deploying for HTTPS
 * Optional for authorization: Deployed Stackable https://github.com/stackabletech/opa-operator[OPA-Operator] and https://github.com/stackabletech/regorule-operator[Regorule-Operator]
 * Optional https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI] to test SQL queries
@@ -337,8 +338,84 @@ Peak Memory: 0B
 2.67 [15 rows, 8.08KB] [5 rows/s, 3.02KB/s]
 ----
 
+== Configuration & Environment Overrides
+
+The cluster definition also supports overriding configuration properties and environment variables, either per role or per role group, where the more specific override (role group) has precedence over the less specific one (role).
+
+IMPORTANT: Overriding certain properties (such as `http-server.https.port`) which are set by operator can lead to faulty installations.
+
+=== Configuration Properties
+
+For a role or role group, at the same level of `config`, you can specify: `configOverrides` for:
+
+- `config.properties`
+- `node.properties`
+- `log.properties`
+- `password-authenticator.properties`
+
+For a list of possible configuration properties see: https://trino.io/docs/current/admin/properties.html
+
+[source,yaml]
+----
+workers:
+  roleGroups:
+    default:
+      config: {}
+      replicas: 1
+      configOverrides:
+        config.properties::
+          query.max-memory-per-node: "2GB"
+----
+
+Just as for the `config`, it is possible to specify this at role level as well:
+
+[source,yaml]
+----
+workers:
+  configOverrides:
+    config.properties::
+      query.max-memory-per-node: "2GB"
+  roleGroups:
+    default:
+      config: {}
+      replicas: 1
+----
+
+All override property values must be strings. The properties will be passed on without any escaping or formatting.
+
+=== Environment Variables
+
+Environment variables can be (over)written by adding the `envOverrides` property.
+
+For example per role group:
+
+[source,yaml]
+----
+workers:
+  roleGroups:
+    default:
+      config: {}
+      replicas: 1
+      envOverrides:
+        MY_ENV_VAR: "MY_VALUE"
+----
+
+or per role:
+
+[source,yaml]
+----
+workers:
+  envOverrides:
+    MY_ENV_VAR: "MY_VALUE"
+  roleGroups:
+    default:
+      config: {}
+      replicas: 1
+----
+
+Here too, overriding properties such as `http-server.https.port` will lead to broken installations.
+
 === Tips
 
-If you work with opa, try changing some RegoRule entries to false and see if you are not allowed to e.g. list tables or schemas.
-
-When changing the automatically generated rego rule package name, a restart of the coordinator pod is required.
+- If you work with opa, try changing some RegoRule entries to false and see if you are not allowed to e.g. list tables or schemas.
+- When changing the automatically generated rego rule package name, a restart of the coordinator pod is required.
