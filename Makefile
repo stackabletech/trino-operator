@@ -63,6 +63,7 @@ clean-crds:
 	rm -rf deploy/crd/*
 
 generate-crds:
+	touch rust/operator-binary/build.rs
 	cargo build
 
 regenerate-charts: clean-crds chart-clean clean-manifests generate-crds compile-chart generate-manifests
