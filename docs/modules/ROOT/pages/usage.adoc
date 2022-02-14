@@ -353,7 +353,7 @@ For a role or role group, at the same level of `config`, you can specify: `confi
 - `log.properties`
 - `password-authenticator.properties`
 
-For a list of possible configuration properties see: https://trino.io/docs/current/admin/properties.html
+For a list of possible configuration properties consult the https://trino.io/docs/current/admin/properties.html[Trino Properties Reference].
 
 [source,yaml]
 ----
@@ -397,7 +397,7 @@ workers:
       config: {}
       replicas: 1
       envOverrides:
-        MY_ENV_VAR: "MY_VALUE"
+        JAVA_HOME: "path/to/java"
 ----
 
 or per role:
@@ -406,7 +406,7 @@ or per role:
 ----
 workers:
   envOverrides:
-    MY_ENV_VAR: "MY_VALUE"
+    JAVA_HOME: "path/to/java"
   roleGroups:
     default:
       config: {}
@@ -415,7 +415,7 @@ workers:
 
 Here too, overriding properties such as `http-server.https.port` will lead to broken installations.
 
-=== Tips
+== Tips
 
 - If you work with opa, try changing some RegoRule entries to false and see if you are not allowed to e.g. list tables or schemas.
 - When changing the automatically generated rego rule package name, a restart of the coordinator pod is required.
