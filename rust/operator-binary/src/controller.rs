@@ -460,6 +460,7 @@ fn build_rolegroup_statefulset(
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_prepare_args())
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
+        .add_volume_mount("data", "/stackable/data")
         .build();
 
     container_prepare
@@ -688,6 +689,10 @@ fn container_prepare_args() -> Vec<String> {
         "chown -R stackable:stackable /stackable/keystore",
         "echo chmodding keystore directory",
         "chmod -R a=,u=rwX /stackable/keystore",
+        "echo chowning data directory",
+        "chown -R stackable:stackable /stackable/data",
+        "echo chmodding data directory",
+        "chmod -R a=,u=rwX /stackable/data",
     ].join(" && ")]
 }
 
@@ -698,7 +703,7 @@ fn container_trino_args(
     let mut args = vec![
         // copy config files to a writeable empty folder
         format!(
-            "echo Copying {conf} to {rw_conf}",
+            "echo copying {conf} to {rw_conf}",
             conf = CONFIG_DIR_NAME,
             rw_conf = RW_CONFIG_DIR_NAME
         ),
