@@ -78,7 +78,7 @@ pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconf";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const KEYSTORE_DIR_NAME: &str = "/stackable/keystore";
-pub const USER_PASSWORD_DATA: &str = "/stackable/users";
+pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -320,7 +320,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         FILE_PASSWORD_FILE.to_string(),
-                        Some(format!("{}/{}", USER_PASSWORD_DATA, PASSWORD_DB)),
+                        Some(format!("{}/{}", USER_PASSWORD_DATA_DIR_NAME, PASSWORD_DB)),
                     );
                 }
             }
