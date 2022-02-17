@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Fixed `stackable/data` write permission failure in managed cloud ([#142]).
+- Replaced hardcoded references in init container command to `stackable/keystore` ([#142]). 
+
+[#142]: https://github.com/stackabletech/trino-operator/pull/142
+
 ## [0.3.0] - 2022-02-14
 
 ### Added
