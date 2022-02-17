@@ -5,10 +5,10 @@ kind: Deployment
 metadata:
   name: trino-operator-deployment
   labels:
-    helm.sh/chart: trino-operator-0.4.0-nightly
+    helm.sh/chart: trino-operator-0.4.0
     app.kubernetes.io/name: trino-operator
     app.kubernetes.io/instance: trino-operator
-    app.kubernetes.io/version: "0.4.0-nightly"
+    app.kubernetes.io/version: "0.4.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -31,7 +31,7 @@ spec:
         - name: trino-operator
           securityContext:
             {}
-          image: "docker.stackable.tech/stackable/trino-operator:0.4.0-nightly"
+          image: "docker.stackable.tech/stackable/trino-operator:0.4.0"
           imagePullPolicy: IfNotPresent
           resources:
             {}
