@@ -39,7 +39,8 @@ use stackable_trino_crd::{
     CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
     HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME, JVM_CONFIG, KEYSTORE_DIR_NAME,
     LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, USER_PASSWORD_DATA,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
 use std::{
@@ -459,6 +460,9 @@ fn build_rolegroup_statefulset(
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_prepare_args())
+        .add_volume_mount("data", DATA_DIR_NAME)
+        .add_volume_mount("rwconf", RW_CONFIG_DIR_NAME)
+        .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .build();
 
@@ -478,6 +482,7 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("conf", CONFIG_DIR_NAME)
         .add_volume_mount("rwconf", RW_CONFIG_DIR_NAME)
+        .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
         .add_container_ports(container_ports(trino))
@@ -541,6 +546,14 @@ fn build_rolegroup_statefulset(
                         size_limit: None,
                     }),
                     name: "rwconf".to_string(),
+                    ..Volume::default()
+                })
+                .add_volume(Volume {
+                    empty_dir: Some(EmptyDirVolumeSource {
+                        medium: None,
+                        size_limit: None,
+                    }),
+                    name: "users".to_string(),
                     ..Volume::default()
                 })
                 .add_volume(Volume {
@@ -673,21 +686,35 @@ async fn user_authentication(
 fn container_prepare_args() -> Vec<String> {
     vec![[
         "echo Storing password",
-        "echo secret > /stackable/keystore/password",
+        &format!("echo secret > {keystore_directory}/password", keystore_directory = KEYSTORE_DIR_NAME),
         "echo Cleaning up truststore - just in case",
-        "rm -f /stackable/keystore/truststore.p12",
+        &format!("rm -f {keystore_directory}/truststore.p12", keystore_directory = KEYSTORE_DIR_NAME),
         "echo Creating truststore",
-        "keytool -importcert -file /stackable/keystore/ca.crt -keystore /stackable/keystore/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret",
+        &format!("keytool -importcert -file {keystore_directory}/ca.crt -keystore {keystore_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret", 
+                 keystore_directory = KEYSTORE_DIR_NAME),
         "echo Creating certificate chain",
-        "cat /stackable/keystore/ca.crt /stackable/keystore/tls.crt > /stackable/keystore/chain.crt",
+        &format!("cat {keystore_directory}/ca.crt {keystore_directory}/tls.crt > {keystore_directory}/chain.crt", keystore_directory = KEYSTORE_DIR_NAME),
         "echo Creating keystore",
-        "openssl pkcs12 -export -in /stackable/keystore/chain.crt -inkey /stackable/keystore/tls.key -out /stackable/keystore/keystore.p12 --passout file:/stackable/keystore/password",
+        &format!("openssl pkcs12 -export -in {keystore_directory}/chain.crt -inkey {keystore_directory}/tls.key -out {keystore_directory}/keystore.p12 --passout file:{keystore_directory}/password", 
+                 keystore_directory = KEYSTORE_DIR_NAME),
         "echo Cleaning up password",
-        "rm -f /stackable/keystore/password",
+        &format!("rm -f {keystore_directory}/password", keystore_directory = KEYSTORE_DIR_NAME),
         "echo chowning keystore directory",
-        "chown -R stackable:stackable /stackable/keystore",
+        &format!("chown -R stackable:stackable {keystore_directory}", keystore_directory = KEYSTORE_DIR_NAME),
         "echo chmodding keystore directory",
-        "chmod -R a=,u=rwX /stackable/keystore",
+        &format!("chmod -R a=,u=rwX {keystore_directory}", keystore_directory = KEYSTORE_DIR_NAME),
+        "echo chowning data directory",
+        &format!("chown -R stackable:stackable {data_directory}", data_directory = DATA_DIR_NAME),
+        "echo chmodding data directory",
+        &format!("chmod -R a=,u=rwX {data_directory}", data_directory = DATA_DIR_NAME),
+        "echo chowning rwconf directory",
+        &format!("chown -R stackable:stackable {rwconf_directory}", rwconf_directory = RW_CONFIG_DIR_NAME),
+        "echo chmodding rwconf directory",
+        &format!("chmod -R a=,u=rwX {rwconf_directory}", rwconf_directory = RW_CONFIG_DIR_NAME),
+        "echo chowning users directory",
+        &format!("chown -R stackable:stackable {users_directory}", users_directory = USER_PASSWORD_DATA_DIR_NAME),
+        "echo chmodding users directory",
+        &format!("chmod -R a=,u=rwX {users_directory}", users_directory = USER_PASSWORD_DATA_DIR_NAME),
     ].join(" && ")]
 }
 
@@ -698,7 +725,7 @@ fn container_trino_args(
     let mut args = vec![
         // copy config files to a writeable empty folder
         format!(
-            "echo Copying {conf} to {rw_conf}",
+            "echo copying {conf} to {rw_conf}",
             conf = CONFIG_DIR_NAME,
             rw_conf = RW_CONFIG_DIR_NAME
         ),
@@ -714,14 +741,13 @@ fn container_trino_args(
         args.extend(vec![
             format!(
                 "echo Writing user data to {path}/{db}",
-                path = USER_PASSWORD_DATA,
+                path = USER_PASSWORD_DATA_DIR_NAME,
                 db = PASSWORD_DB
             ),
-            format!("mkdir {}", USER_PASSWORD_DATA),
             format!(
                 "echo '{data}' > {path}/{db} ",
                 data = user_data,
-                path = USER_PASSWORD_DATA,
+                path = USER_PASSWORD_DATA_DIR_NAME,
                 db = PASSWORD_DB
             ),
         ])
