@@ -85,8 +85,8 @@ kind: ConfigMap
 metadata:
   name: trino-operator-configmap
   labels:
-    helm.sh/chart: trino-operator-0.3.1
+    helm.sh/chart: trino-operator-0.3.2-nightly
     app.kubernetes.io/name: trino-operator
     app.kubernetes.io/instance: trino-operator
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2-nightly"
     app.kubernetes.io/managed-by: Helm
