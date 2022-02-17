@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.1] - 2022-02-17
+
 ### Changed
 
 - Fixed `stackable/data` write permission failure in managed cloud ([#142]).
