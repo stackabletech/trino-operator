@@ -1,54 +1,57 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::client::Client;
-use stackable_operator::k8s_openapi::api::core::v1::{
-    CSIVolumeSource, ConfigMapKeySelector, ContainerPort, EmptyDirVolumeSource, EnvVarSource,
-    Probe, SecurityContext, TCPSocketAction,
-};
-use stackable_operator::k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
-use stackable_operator::kube::ResourceExt;
-use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
-use stackable_operator::role_utils::RoleGroupRef;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
+    client::Client,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, EnvVar, PersistentVolumeClaim,
-                PersistentVolumeClaimSpec, ResourceRequirements, Service, ServicePort, ServiceSpec,
-                Volume,
+                CSIVolumeSource, ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource,
+                ContainerPort, EmptyDirVolumeSource, EnvVar, EnvVarSource, PersistentVolumeClaim,
+                PersistentVolumeClaimSpec, Probe, ResourceRequirements, SecurityContext, Service,
+                ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
-        apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
+        apimachinery::pkg::{
+            api::resource::Quantity, apis::meta::v1::LabelSelector, util::intstr::IntOrString,
+        },
     },
     kube::{
         api::ObjectMeta,
         runtime::controller::{Context, ReconcilerAction},
+        ResourceExt,
     },
     labels::{role_group_selector_labels, role_selector_labels},
+    logging::controller::ReconcilerError,
     product_config,
     product_config::{types::PropertyNameKind, ProductConfigManager},
-    product_config_utils::{transform_all_roles_to_config, validate_all_roles_and_groups_config},
+    product_config_utils::{
+        transform_all_roles_to_config, validate_all_roles_and_groups_config,
+        ValidatedRoleConfigByPropertyKind,
+    },
+    role_utils::RoleGroupRef,
 };
-use stackable_trino_crd::authentication::TrinoAuthenticationConfig;
-use stackable_trino_crd::authorization::create_rego_rules;
-use stackable_trino_crd::discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef};
 use stackable_trino_crd::{
-    authentication, authorization, TrinoCluster, TrinoClusterSpec, ACCESS_CONTROL_PROPERTIES,
+    authentication,
+    authentication::TrinoAuthenticationConfig,
+    authorization,
+    authorization::create_rego_rules,
+    discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
+    TrinoCluster, TrinoClusterSpec, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
     CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
-    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT_NAME, JVM_CONFIG, KEYSTORE_DIR_NAME,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
+    KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     USER_PASSWORD_DATA_DIR_NAME,
 };
-use stackable_trino_crd::{TrinoRole, APP_NAME, HTTP_PORT};
 use std::{
     collections::{BTreeMap, HashMap},
     str::FromStr,
     sync::Arc,
     time::Duration,
 };
+use strum::{EnumDiscriminants, IntoStaticStr};
 use tracing::warn;
 
 pub struct Ctx {
@@ -56,7 +59,8 @@ pub struct Ctx {
     pub product_config: ProductConfigManager,
 }
 
-#[derive(Snafu, Debug)]
+#[derive(Snafu, Debug, EnumDiscriminants)]
+#[strum_discriminants(derive(IntoStaticStr))]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
     #[snafu(display("object defines no version"))]
@@ -120,6 +124,12 @@ pub enum Error {
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
+
+impl ReconcilerError for Error {
+    fn category(&self) -> &'static str {
+        ErrorDiscriminants::from(self).into()
+    }
+}
 
 pub async fn reconcile_trino(
     trino: Arc<TrinoCluster>,
