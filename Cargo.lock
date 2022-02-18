@@ -1590,8 +1590,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-regorule-crd"
-version = "0.7.0-nightly"
-source = "git+https://github.com/stackabletech/regorule-operator.git?branch=main#b25caf7bae03289ef15d3039f090428861f791ea"
+version = "0.7.0"
+source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.7.0#fc3e9038892d2124e4be0fd54170edee3c2b427a"
 dependencies = [
  "serde",
  "serde_json",
@@ -1634,7 +1634,6 @@ dependencies = [
  "stackable-regorule-crd",
  "stackable-trino-crd",
  "strum",
- "strum_macros",
  "tokio",
  "tracing",
 ]
