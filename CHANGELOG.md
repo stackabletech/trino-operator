@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Reconciliation errors are now reported as Kubernetes events ([#149]).
+
+### Changed
+
+- `operator-rs` `0.10.0` -> `0.12.0` ([#149]).
+- `stackable-regorule-crd` `0.6.0` → `0.7.0` ([#149]).
+
+[#149]: https://github.com/stackabletech/trino-operator/pull/149
+
 ## [0.3.1] - 2022-02-17
 
 ### Changed
