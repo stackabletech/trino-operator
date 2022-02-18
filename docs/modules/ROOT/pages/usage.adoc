@@ -338,6 +338,11 @@ Peak Memory: 0B
 2.67 [15 rows, 8.08KB] [5 rows/s, 3.02KB/s]
 ----
 
+== Monitoring
+
+The managed Trino instances are automatically configured to export Prometheus metrics. See
+xref:home::monitoring.adoc[] for more details.
+
 == Configuration & Environment Overrides
 
 The cluster definition also supports overriding configuration properties and environment variables, either per role or per role group, where the more specific override (role group) has precedence over the less specific one (role).

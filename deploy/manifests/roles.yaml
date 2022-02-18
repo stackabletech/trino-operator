@@ -10,8 +10,6 @@ rules:
   - apiGroups:
       - opa.stackable.tech
     resources:
-      - openpolicyagents
-      - openpolicyagents/status
       - regorules
     verbs:
       - create
@@ -19,14 +17,6 @@ rules:
       - list
       - watch
       - patch
-  - apiGroups:
-      - hive.stackable.tech
-    resources:
-      - hiveclusters
-    verbs:
-      - get
-      - list
-      - watch
   - apiGroups:
       - ""
     resources:
@@ -92,23 +82,11 @@ rules:
     verbs:
       - get
   - apiGroups:
-      - command.trino.stackable.tech
+      - events.k8s.io
     resources:
-      - inits
-      - restarts
-      - starts
-      - stops
+      - events
     verbs:
-      - get
-      - list
-      - patch
-      - watch
-  - apiGroups:
-      - command.trino.stackable.tech
-    resources:
-      - inits/status
-    verbs:
-      - patch
+      - create
   - apiGroups:
       - trino.stackable.tech
     resources:
