@@ -14,7 +14,7 @@ stackable-trino-crd = { path = "../crd" }
 stackable-regorule-crd = { git = "https://github.com/stackabletech/regorule-operator.git", tag = "0.7.0" }
 
 anyhow = "1.0"
-clap = "3.0"
+clap = "3.1"
 futures = { version = "0.3", features = ["compat"] }
 pin-project = "1.0"
 semver = "1.0"
