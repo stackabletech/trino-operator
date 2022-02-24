@@ -237,7 +237,7 @@ jobs:
         run: git diff --exit-code
       - name: Git Diff showed uncommitted changes
         if: ${{ failure() }}
-        uses: actions/github-script@e3cbab99d3a9b271e1b79fc96d103a4a5534998c # renovate: tag=v5
+        uses: actions/github-script@9ac08808f993958e9de277fe43a64532a609130e # tag=v6
         with:
           script: |
             core.setFailed('Committed charts were not up to date, please regenerate and re-commit!')
