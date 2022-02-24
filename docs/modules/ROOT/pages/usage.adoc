@@ -8,9 +8,8 @@ Trino works together with the Apache Hive metastore and S3 bucket.
 * Accessible S3 Bucket
     ** Endpoint, access-key and secret-key
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
-* A https://github.com/stackabletech/regorule-operator/blob/main/deploy/crd/regorule.crd.yaml[Rego rule CRD] even if no OPA is activated
 * Optional deployed Stackable https://github.com/stackabletech/secret-operator[Secret-Operator] for certificates when deploying for HTTPS
-* Optional for authorization: Deployed Stackable https://github.com/stackabletech/opa-operator[OPA-Operator] and https://github.com/stackabletech/regorule-operator[Regorule-Operator]
+* Optional for authorization: Deployed Stackable https://github.com/stackabletech/opa-operator[OPA-Operator]
 * Optional https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI] to test SQL queries
 
 == Installation
@@ -64,22 +63,20 @@ The <user>:<password> combinations are provided in the `stringData` field. The h
 htpasswd -nbBC 10 admin admin
 ----
 
-=== Regorule Server (Authorization)
+=== Authorization
 
-The OPA cluster requires downloading rules from a RegoRule server. You can use your own solution or fall back on the Stackable Regorule Server
-
-Please refer to the https://github.com/stackabletech/regorule-operator[RegoRule] operator and https://docs.stackable.tech/home/index.html[docs].
-
-This is an example custom resource for the Stackable RegoRule server:
+In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Trino has to be applied. The following example is an all access Rego rule for testing. Do not use that in production!
 
 [source,yaml]
 ----
 apiVersion: opa.stackable.tech/v1alpha1
-kind: RegoRule
+kind: ConfigMap
 metadata:
-  name: simple
-spec:
-  rego: |
+  name: opa-bundle-trino
+  labels:
+    opa.stackable.tech/bundle: "trino"
+data:
+  trino.rego: |
     package trino
 
     can_execute_query = true
@@ -104,24 +101,13 @@ spec:
 
     can_show_tables = true
 
-    default can_select_from_columns = false
-
-    can_select_from_columns {
-      input.request.table.catalog == "system"
-      input.request.table.schema == "information_schema"
-      input.request.table.table == {"tables", "schemata"}[_]
-    }
-
-    can_select_from_columns {
-      input.request.table.catalog == "hive"
-      input.request.table.schema == "iris"
-      input.request.table.table == {"iris_parquet"}[_]
-    }
+    can_select_from_columns = true
 
     can_view_query_owned_by = true
 ----
 
 You can let the Trino operator write its own Rego rules by configuring the `authorization` field in the custom resource. This is a rudimentary implementation for user access.
+
 [source,yaml]
 ----
 authorization:

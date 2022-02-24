@@ -7,13 +7,21 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Reconciliation errors are now reported as Kubernetes events ([#149]).
+- Use cli argument `watch-namespace` / env var `WATCH_NAMESPACE` to specify
+  a single namespace to watch ([#xxx]).
 
 ### Changed
 
-- `operator-rs` `0.10.0` -> `0.12.0` ([#149]).
-- `stackable-regorule-crd` `0.6.0` → `0.7.0` ([#149]).
+- `operator-rs` `0.10.0` -> `0.13.0` ([#149],[#xxx]).
+- The operator now writes a `ConfigMap` for Rego rules instead of the custom 
+  resource for the obsolete regorule-operator. ([#xxx]).
+
+### Removed
+
+- `stackable-regorule-crd` dependency ([#xxx]).
 
 [#149]: https://github.com/stackabletech/trino-operator/pull/149
+[#xxx]:
 
 ## [0.3.1] - 2022-02-17
 
