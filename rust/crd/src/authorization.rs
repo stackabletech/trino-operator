@@ -5,6 +5,7 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::builder::{ConfigMapBuilder, ObjectMetaBuilder};
 use stackable_operator::client::Client;
 use stackable_operator::k8s_openapi::api::core::v1::ConfigMap;
+use stackable_operator::kube::ResourceExt;
 use stackable_operator::schemars::{self, JsonSchema};
 use std::collections::BTreeMap;
 
@@ -79,7 +80,7 @@ async fn create_or_update_rego_config_map(
         .metadata(
             ObjectMetaBuilder::new()
                 .name_and_namespace(trino)
-                .name(package_name)
+                .name(format!("{}-opa-rego-{}", trino.name(), package_name))
                 .labels(
                     [(
                         "opa.stackable.tech/bundle".to_string(),
