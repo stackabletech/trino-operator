@@ -13,9 +13,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - `operator-rs` `0.10.0` -> `0.13.0` ([#149],[#157]).
-- BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of the custom 
-  resource for the obsolete regorule-operator. This means that the rego rule operator
-  is not required anymore for authorization and opa-operator tag >= `0.9.0` ([#157]).
+- BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of
+  the custom resource for the obsolete regorule-operator. This means that 
+  the rego rule operator is not required anymore for authorization and 
+  opa-operator tag >= `0.9.0` ([#157]).
 
 ### Removed
 
