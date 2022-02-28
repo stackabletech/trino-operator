@@ -1,11 +1,28 @@
 
 === product-config
 
-*Default value*: `/etc/stackable/stackable-trino/config-spec/properties.yaml`
+*Default value*: `/etc/stackable/trino-operator/config-spec/properties.yaml`
 
 *Required*: false
 
 *Multiple values:* false
 
+[source]
+----
+cargo run -- run --product-config /foo/bar/properties.yaml
+----
 
-This file contains property definitions for the Trino configuration.
+=== watch-namespace
+
+*Default value*: All namespaces
+
+*Required*: false
+
+*Multiple values:* false
+
+The operator will **only** watch for resources in the provided namespace `test`:
+
+[source]
+----
+cargo run -- run --watch-namespace test
+----

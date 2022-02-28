@@ -2,21 +2,24 @@ use crate::{TrinoCluster, TrinoClusterSpec};
 
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use stackable_operator::builder::ObjectMetaBuilder;
+use stackable_operator::builder::{ConfigMapBuilder, ObjectMetaBuilder};
 use stackable_operator::client::Client;
-use stackable_operator::kube::runtime::reflector::ObjectRef;
+use stackable_operator::k8s_openapi::api::core::v1::ConfigMap;
+use stackable_operator::kube::ResourceExt;
 use stackable_operator::schemars::{self, JsonSchema};
-use stackable_regorule_crd::{RegoRule, RegoRuleSpec};
 use std::collections::BTreeMap;
 
 const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("failed to apply rego rule {rego}"))]
-    RegoRuleApply {
+    #[snafu(display("failed to build rego rule config map"))]
+    FailedRegoRuleConfigMapBuild {
         source: stackable_operator::error::Error,
-        rego: ObjectRef<RegoRule>,
+    },
+    #[snafu(display("failed to apply rego rule config map"))]
+    FailedRegoRuleConfigMapApply {
+        source: stackable_operator::error::Error,
     },
     #[snafu(display("object is missing metadata to build owner reference"))]
     ObjectMissingMetadataForOwnerRef {
@@ -57,35 +60,47 @@ pub async fn create_rego_rules(client: &Client, trino: &TrinoCluster) -> Result<
 
     if let Some(authorization) = &spec.authorization {
         let rego_rules = build_rego_rules(authorization)?;
-        create_or_update_rego_rule_resource(client, trino, &authorization.package, rego_rules)
-            .await?;
+        create_or_update_rego_config_map(client, trino, &authorization.package, rego_rules).await?;
     }
 
     Ok(())
 }
 
-async fn create_or_update_rego_rule_resource(
+async fn create_or_update_rego_config_map(
     client: &Client,
     trino: &TrinoCluster,
     package_name: &str,
     rego_rules: String,
-) -> Result<RegoRule> {
-    let obj = RegoRule {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
-            .name(package_name)
-            .ownerreference_from_resource(trino, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .build(),
-        spec: RegoRuleSpec { rego: rego_rules },
-    };
+) -> Result<ConfigMap> {
+    let config_map_data = [(format!("{}.rego", package_name), rego_rules)]
+        .into_iter()
+        .collect::<BTreeMap<_, _>>();
+
+    let config_map = ConfigMapBuilder::new()
+        .metadata(
+            ObjectMetaBuilder::new()
+                .name_and_namespace(trino)
+                .name(format!("{}-opa-rego-{}", trino.name(), package_name))
+                .labels(
+                    [(
+                        "opa.stackable.tech/bundle".to_string(),
+                        package_name.to_string(),
+                    )]
+                    .into_iter()
+                    .collect::<BTreeMap<_, _>>(),
+                )
+                .ownerreference_from_resource(trino, None, Some(true))
+                .context(ObjectMissingMetadataForOwnerRefSnafu)?
+                .build(),
+        )
+        .data(config_map_data)
+        .build()
+        .context(FailedRegoRuleConfigMapBuildSnafu)?;
 
     client
-        .apply_patch(FIELD_MANAGER_SCOPE, &obj, &obj)
+        .apply_patch(FIELD_MANAGER_SCOPE, &config_map, &config_map)
         .await
-        .with_context(|_| RegoRuleApplySnafu {
-            rego: ObjectRef::from_obj(&obj),
-        })
+        .context(FailedRegoRuleConfigMapApplySnafu)
 }
 
 fn build_rego_rules(authorization_rules: &Authorization) -> Result<String> {

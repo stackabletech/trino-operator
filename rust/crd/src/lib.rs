@@ -18,8 +18,7 @@ use stackable_operator::schemars::{self, JsonSchema};
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use strum::IntoEnumIterator;
-use strum_macros::Display;
-use strum_macros::EnumIter;
+use strum::{Display, EnumIter};
 
 pub const APP_NAME: &str = "trino";
 pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";

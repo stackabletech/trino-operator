@@ -137,9 +137,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.0.14"
+version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b63edc3f163b3c71ec8aa23f9bd6070f77edbf3d1d198b164afa90ff00e4ec62"
+checksum = "5177fac1ab67102d8989464efd043c6ff44191b1557ec1ddd489b4f7e1447e77"
 dependencies = [
  "atty",
  "bitflags",
@@ -154,9 +154,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "3.0.14"
+version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a1132dc3944b31c20dd8b906b3a9f0a5d0243e092d59171414969657ac6aa85"
+checksum = "01d42c94ce7c2252681b5fed4d3627cc807b13dfc033246bd05d5b252399000e"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-error",
@@ -1560,8 +1560,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.12.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.12.0#ac525b91421f7b0d4c74462627bf13e59be5661b"
+version = "0.13.0"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.13.0#401f4053d8c32d0fcd507d94799956181f66105d"
 dependencies = [
  "backoff",
  "chrono",
@@ -1581,21 +1581,11 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "strum",
+ "strum 0.23.0",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "stackable-regorule-crd"
-version = "0.7.0"
-source = "git+https://github.com/stackabletech/regorule-operator.git?tag=0.7.0#fc3e9038892d2124e4be0fd54170edee3c2b427a"
-dependencies = [
- "serde",
- "serde_json",
- "stackable-operator",
 ]
 
 [[package]]
@@ -1610,9 +1600,7 @@ dependencies = [
  "serde_yaml",
  "snafu",
  "stackable-operator",
- "stackable-regorule-crd",
- "strum",
- "strum_macros",
+ "strum 0.24.0",
  "tracing",
 ]
 
@@ -1631,9 +1619,8 @@ dependencies = [
  "serde_yaml",
  "snafu",
  "stackable-operator",
- "stackable-regorule-crd",
  "stackable-trino-crd",
- "strum",
+ "strum 0.24.0",
  "tokio",
  "tracing",
 ]
@@ -1650,7 +1637,16 @@ version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cae14b91c7d11c9a851d3fbc80a963198998c2a64eec840477fa92d8ce9b70bb"
 dependencies = [
- "strum_macros",
+ "strum_macros 0.23.1",
+]
+
+[[package]]
+name = "strum"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e96acfc1b70604b8b2f1ffa4c57e59176c7dbb05d556c71ecd2f5498a1dee7f8"
+dependencies = [
+ "strum_macros 0.24.0",
 ]
 
 [[package]]
@@ -1660,6 +1656,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5bb0dc7ee9c15cea6199cde9a127fa16a4c5819af85395457ad72d68edc85a38"
 dependencies = [
  "heck 0.3.3",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6878079b17446e4d3eba6192bb0a2950d5b14f0ed8424b852310e5a94345d0ef"
+dependencies = [
+ "heck 0.4.0",
  "proc-macro2",
  "quote",
  "rustversion",

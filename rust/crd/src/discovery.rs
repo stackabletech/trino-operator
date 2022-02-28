@@ -1,7 +1,5 @@
 use crate::{HTTPS_PORT, HTTP_PORT};
 
-use strum_macros::Display;
-
 /// Reference to a single `Pod` that is a component of a [`crate::TrinoCluster`]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TrinoPodRef {
@@ -43,7 +41,7 @@ impl TrinoDiscovery {
     }
 }
 
-#[derive(Clone, Debug, Display, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, strum::Display, Eq, Hash, PartialEq)]
 pub enum TrinoDiscoveryProtocol {
     #[strum(serialize = "http")]
     Http,
