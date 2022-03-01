@@ -26,7 +26,7 @@ spec:
             pathStyleAccess: true
 ---
 apiVersion: opa.stackable.tech/v1alpha1
-kind: OpenPolicyAgent
+kind: OpaCluster
 metadata:
   name: simple-opa
 spec:
@@ -37,8 +37,6 @@ spec:
         selector:
           matchLabels:
             kubernetes.io/os: linux
-        config:
-          regoRuleReference: "http://regorule-operator:3030/opa/v1"
 ---
 apiVersion: v1
 kind: Secret
