@@ -187,6 +187,7 @@ fn build_main_rego_rules() -> String {
     default can_select_from_columns = false
     can_select_from_columns {
         is_valid_user
+        can_access_table
     }
     
     default can_view_query_owned_by = false
