@@ -203,6 +203,12 @@ spec:
                   required:
                     - roleGroups
                   type: object
+                customCatalogs:
+                  description: An optional list of references to ConfigMaps that contain catalog definitions which should be deployed into the Trino instance
+                  items:
+                    type: string
+                  nullable: true
+                  type: array
                 hiveConfigMapName:
                   nullable: true
                   type: string

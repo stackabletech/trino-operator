@@ -114,6 +114,9 @@ pub struct TrinoClusterSpec {
     pub hive_config_map_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa_config_map_name: Option<String>,
+    /// An optional list of references to ConfigMaps that contain catalog definitions
+    /// which should be deployed into the Trino instance
+    pub custom_catalogs: Option<Vec<String>>,
     /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,

@@ -1,5 +1,6 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::kube::Resource;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
@@ -121,6 +122,15 @@ pub enum Error {
     InternalOperatorFailure { source: stackable_trino_crd::Error },
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
+    #[snafu(display("Failed retrieving a ConfigMap that was referenced from the cluster definition : [{config_map_name}]"))]
+    ConfigMapReference {
+        source: stackable_operator::error::Error,
+        config_map_name: String,
+    },
+    #[snafu(display(
+        "Duplicate catalog definitions found during reconciliation: [{duplicate_catalogs:?}]"
+    ))]
+    DuplicateCatalogs { duplicate_catalogs: Vec<String> },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -168,7 +178,7 @@ pub async fn reconcile_trino(
             let rg_configmap =
                 build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config)?;
             let rg_catalog_configmap =
-                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config)?;
+                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config, &client).await?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
                 &trino_role,
@@ -370,12 +380,14 @@ fn build_rolegroup_config_map(
 
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
 /// given by the administrator
-fn build_rolegroup_catalog_config_map(
+async fn build_rolegroup_catalog_config_map(
     trino: &TrinoCluster,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    client: &Client,
 ) -> Result<ConfigMap> {
     let mut cm_hive_data = BTreeMap::new();
+    let mut catalog_conflicts: Vec<String> = Vec::new();
 
     for (property_name_kind, config) in config {
         let mut transformed_config: BTreeMap<String, Option<String>> = config
@@ -401,6 +413,41 @@ fn build_rolegroup_catalog_config_map(
             }
             _ => {}
         }
+    }
+
+    let ns = trino
+        .meta()
+        .namespace.as_ref()
+        .with_context(|| ObjectHasNoNamespaceSnafu {})?;
+
+    // Add extra catalogs that have been defined
+    if let Some(catalog_list) = &trino.spec.custom_catalogs {
+        for config_map_name in catalog_list {
+            let config_map = client
+                .get::<ConfigMap>(&config_map_name, Some(&ns))
+                .await
+                .with_context(|_| ConfigMapReferenceSnafu { config_map_name })?;
+
+            if let Some(data) = config_map.data {
+                for (key, value) in data {
+                    // Check if there is already a key of this name, if so, add it to the list
+                    // of conflicts, otherwise add to config
+                    if cm_hive_data.contains_key(&key) {
+                        catalog_conflicts.push(key);
+                    } else {
+                        cm_hive_data.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+        }
+    }
+    if !catalog_conflicts.is_empty() {
+        // There were duplicate entries, which means catalogs of the same name
+        // Instead of silently overwriting this, we'll fail loudly here.
+        return DuplicateCatalogsSnafu {
+            duplicate_catalogs: catalog_conflicts,
+        }
+        .fail();
     }
 
     ConfigMapBuilder::new()

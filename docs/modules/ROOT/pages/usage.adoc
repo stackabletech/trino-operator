@@ -253,6 +253,38 @@ To access the CLI please execute:
 
 If you use self signed certificates, you also need the `--insecure` flag above which can be omitted otherwise.
 
+=== Defining Catalogs
+If you specify a Hive connection in your Trino definition, the 'hive' catalog will automatically be created for you.
+
+To specify additional catalogs, you can add these via the `customCatalogs` option in the TrinoCluster CRD.
+Every entry in this list is treated as the name of a ConfigMap, and all these ConfigMaps will be merged into the catalog definitions which Trino is then configured with.
+
+To define a hive catalog and an additional postgres catalog, you would for example define the following objects:
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  hiveConfigMapName: simple-hive-derby
+  customCatalogs:
+    - trino-postgres
+ ...
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-postgres
+data:
+  postgres.properties: |
+    <insert catalog properties>
+----
+
+WARNING: To avoid hidden failures the operator will fail early on missing configmaps or duplicate keys in configmaps that are referenced!
+
+
 === Test Trino with Hive and S3
 
 Create a schema and a table for the Iris data located in S3 and query data. This assumes to have the Iris data set in the `PARQUET` format available in the S3 bucket which can be downloaded https://www.kaggle.com/gpreda/iris-dataset/version/2?select=iris.parquet[here]
