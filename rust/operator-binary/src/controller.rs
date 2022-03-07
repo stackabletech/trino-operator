@@ -178,7 +178,7 @@ pub async fn reconcile_trino(
             let rg_configmap =
                 build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config)?;
             let rg_catalog_configmap =
-                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config, &client).await?;
+                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config, client).await?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
                 &trino_role,
@@ -417,14 +417,15 @@ async fn build_rolegroup_catalog_config_map(
 
     let ns = trino
         .meta()
-        .namespace.as_ref()
+        .namespace
+        .as_ref()
         .with_context(|| ObjectHasNoNamespaceSnafu {})?;
 
     // Add extra catalogs that have been defined
     if let Some(catalog_list) = &trino.spec.custom_catalogs {
         for config_map_name in catalog_list {
             let config_map = client
-                .get::<ConfigMap>(&config_map_name, Some(&ns))
+                .get::<ConfigMap>(config_map_name, Some(ns))
                 .await
                 .with_context(|_| ConfigMapReferenceSnafu { config_map_name })?;
 
