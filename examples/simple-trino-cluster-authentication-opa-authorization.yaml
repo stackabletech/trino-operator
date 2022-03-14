@@ -77,16 +77,13 @@ spec:
           iris_parquet:
             read: true
             write: true
-          iris_csv:
-            read: true
-            write: true
       bob:
         schemas:
-          read: false
+          read: true
           write: false
         tables:
           iris_parquet:
-            read: true
+            read: false
   s3:
     endPoint: changeme
     accessKey: changeme
