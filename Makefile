@@ -46,7 +46,7 @@ config:
 
 crds:
 	mkdir -p deploy/helm/trino-operator/crds
-	cat deploy/crd/*.yaml | yq eval '.metadata.annotations["helm.sh/resource-policy"]="keep"' - > deploy/helm/trino-operator/crds/crds.yaml
+	cargo run crd | yq eval '.metadata.annotations["helm.sh/resource-policy"]="keep"' - > deploy/helm/trino-operator/crds/crds.yaml
 
 chart-lint: compile-chart
 	docker run -it -v $(shell pwd):/build/helm-charts -w /build/helm-charts quay.io/helmpack/chart-testing:v3.5.0  ct lint --config deploy/helm/ct.yaml
@@ -59,11 +59,4 @@ clean-manifests:
 generate-manifests: clean-manifests compile-chart
 	./scripts/generate-manifests.sh
 
-clean-crds:
-	rm -rf deploy/crd/*
-
-generate-crds:
-	touch rust/operator-binary/build.rs
-	cargo build
-
-regenerate-charts: clean-crds chart-clean clean-manifests generate-crds compile-chart generate-manifests
+regenerate-charts: chart-clean clean-manifests compile-chart generate-manifests

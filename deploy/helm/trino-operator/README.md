@@ -20,8 +20,9 @@ helm install trino-operator deploy/helm/trino-operator
 
 The usage of this operator and its CRDs is described in the [documentation](https://docs.stackable.tech/trino/index.html)
 
-The operator has example requests included in the [`/examples`](https://github.com/stackabletech/trino/operator/tree/main/examples) directory.
+The operator has example requests included in the [`/examples`](https://github.com/stackabletech/trino-operator/tree/main/examples) directory.
 
 ## Links
 
 https://github.com/stackabletech/trino-operator
+
