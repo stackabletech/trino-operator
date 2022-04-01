@@ -1,15 +1,12 @@
 ---
-# Source: trino-operator/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: trino-operator-deployment
   labels:
-    helm.sh/chart: trino-operator-0.3.2-nightly
     app.kubernetes.io/name: trino-operator
     app.kubernetes.io/instance: trino-operator
     app.kubernetes.io/version: "0.3.2-nightly"
-    app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
   strategy:
@@ -25,16 +22,13 @@ spec:
         app.kubernetes.io/instance: trino-operator
     spec:
       serviceAccountName: trino-operator-serviceaccount
-      securityContext:
-        {}
+      securityContext: {}
       containers:
         - name: trino-operator
-          securityContext:
-            {}
+          securityContext: {}
           image: "docker.stackable.tech/stackable/trino-operator:0.3.2-nightly"
           imagePullPolicy: IfNotPresent
-          resources:
-            {}
+          resources: {}
           volumeMounts:
             - mountPath: /etc/stackable/trino-operator/config-spec
               name: config-spec
