@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.10.0` -> `0.13.0` ([#149],[#157]).
+- `operator-rs` `0.10.0` -> `0.15.0` ([#149], [#157], [#183]).
 - BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of
   the custom resource for the obsolete regorule-operator. This means that
   the rego rule operator is not required anymore for authorization and
@@ -21,9 +21,11 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - `stackable-regorule-crd` dependency ([#157]).
+- BREAKING: `nodeEnvironment` from CRD. Will default to the `metadata.name` field (can be overriden) ([#183]).
 
 [#149]: https://github.com/stackabletech/trino-operator/pull/149
 [#157]: https://github.com/stackabletech/trino-operator/pull/157
+[#183]: https://github.com/stackabletech/trino-operator/pull/183
 
 ## [0.3.1] - 2022-02-17
 
@@ -61,7 +63,6 @@ which only accept a String ([#131]).
 [#131]: https://github.com/stackabletech/trino-operator/pull/131
 
 ## [0.2.0] - 2021-12-06
-
 
 ### Changed
 

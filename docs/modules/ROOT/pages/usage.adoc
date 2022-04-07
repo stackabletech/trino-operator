@@ -147,7 +147,6 @@ metadata:
   name: simple-trino
 spec:
   version: "0.0.362"
-  nodeEnvironment: production
   hiveConfigMapName: simple-hive-derby
   s3:
     endPoint: changeme
@@ -191,7 +190,6 @@ metadata:
   name: simple-trino
 spec:
   version: "0.0.362"
-  nodeEnvironment: production
   hiveConfigMapName: simple-hive-derby
   opaConfigMapName: simple-opa
   authentication:

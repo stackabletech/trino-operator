@@ -205,8 +205,6 @@ spec:
                 hiveConfigMapName:
                   nullable: true
                   type: string
-                nodeEnvironment:
-                  type: string
                 opaConfigMapName:
                   nullable: true
                   type: string
@@ -351,8 +349,6 @@ spec:
                   required:
                     - roleGroups
                   type: object
-              required:
-                - nodeEnvironment
               type: object
             status:
               nullable: true

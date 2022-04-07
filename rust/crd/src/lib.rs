@@ -2,23 +2,20 @@ pub mod authentication;
 pub mod authorization;
 pub mod discovery;
 
+use crate::authentication::Authentication;
 use crate::authorization::Authorization;
 use crate::discovery::TrinoPodRef;
 
-use crate::authentication::Authentication;
-use crate::Error::UnknownTrinoRole;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
-use stackable_operator::kube::runtime::reflector::ObjectRef;
-use stackable_operator::kube::CustomResource;
-use stackable_operator::product_config_utils::{ConfigError, Configuration};
-use stackable_operator::role_utils::Role;
-use stackable_operator::role_utils::RoleGroupRef;
-use stackable_operator::schemars::{self, JsonSchema};
-use std::collections::BTreeMap;
-use std::str::FromStr;
-use strum::IntoEnumIterator;
-use strum::{Display, EnumIter};
+use stackable_operator::{
+    kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
+    product_config_utils::{ConfigError, Configuration},
+    role_utils::{Role, RoleGroupRef},
+    schemars::{self, JsonSchema},
+};
+use std::{collections::BTreeMap, str::FromStr};
+use strum::{Display, EnumIter, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
 pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
@@ -109,7 +106,6 @@ pub struct TrinoClusterSpec {
     pub stopped: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
-    pub node_environment: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hive_config_map_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -185,7 +181,7 @@ impl FromStr for TrinoRole {
         } else if s == Self::Worker.to_string() {
             Ok(Self::Worker)
         } else {
-            Err(UnknownTrinoRole {
+            Err(Error::UnknownTrinoRole {
                 role: s.to_string(),
                 roles: TrinoRole::roles(),
             })
@@ -249,10 +245,12 @@ impl Configuration for TrinoConfig {
 
         match file {
             NODE_PROPERTIES => {
-                result.insert(
-                    NODE_ENVIRONMENT.to_string(),
-                    Some(resource.spec.node_environment.clone()),
-                );
+                // The resource name is alphanumeric and may have "-" characters
+                // The Trino node environment is bound to alphanumeric lowercase and "_" characters
+                // and must start with alphanumeric (which is the case for resource names as well?)
+                // see https://trino.io/docs/current/installation/deployment.html
+                let node_env = resource.name().to_ascii_lowercase().replace('-', "_");
+                result.insert(NODE_ENVIRONMENT.to_string(), Some(node_env));
             }
             CONFIG_PROPERTIES => {
                 if role_name == TrinoRole::Coordinator.to_string() {

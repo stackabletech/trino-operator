@@ -19,7 +19,7 @@ use stackable_operator::{
     },
     kube::{
         api::ObjectMeta,
-        runtime::controller::{Context, ReconcilerAction},
+        runtime::controller::{Action, Context},
         ResourceExt,
     },
     labels::{role_group_selector_labels, role_selector_labels},
@@ -131,10 +131,7 @@ impl ReconcilerError for Error {
     }
 }
 
-pub async fn reconcile_trino(
-    trino: Arc<TrinoCluster>,
-    ctx: Context<Ctx>,
-) -> Result<ReconcilerAction> {
+pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Result<Action> {
     tracing::info!("Starting reconcile");
 
     let client = &ctx.get_ref().client;
@@ -211,9 +208,7 @@ pub async fn reconcile_trino(
         }
     }
 
-    Ok(ReconcilerAction {
-        requeue_after: None,
-    })
+    Ok(Action::await_change())
 }
 
 /// The coordinator-role service is the primary endpoint that should be used by clients that do not
@@ -665,10 +660,8 @@ pub fn trino_version_trim(trino: &TrinoCluster) -> Result<&str> {
         .context(ObjectHasNoVersionSnafu)
 }
 
-pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> ReconcilerAction {
-    ReconcilerAction {
-        requeue_after: Some(Duration::from_secs(5)),
-    }
+pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> Action {
+    Action::requeue(Duration::from_secs(5))
 }
 
 async fn user_authentication(
