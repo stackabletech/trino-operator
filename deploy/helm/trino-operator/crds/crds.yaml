@@ -52,42 +52,6 @@ spec:
                   required:
                     - method
                   type: object
-                authorization:
-                  nullable: true
-                  properties:
-                    package:
-                      type: string
-                    permissions:
-                      additionalProperties:
-                        properties:
-                          schemas:
-                            nullable: true
-                            properties:
-                              read:
-                                nullable: true
-                                type: boolean
-                              write:
-                                nullable: true
-                                type: boolean
-                            type: object
-                          tables:
-                            additionalProperties:
-                              properties:
-                                read:
-                                  nullable: true
-                                  type: boolean
-                                write:
-                                  nullable: true
-                                  type: boolean
-                              type: object
-                            nullable: true
-                            type: object
-                        type: object
-                      type: object
-                  required:
-                    - package
-                    - permissions
-                  type: object
                 coordinators:
                   nullable: true
                   properties:
@@ -204,9 +168,17 @@ spec:
                 hiveConfigMapName:
                   nullable: true
                   type: string
-                opaConfigMapName:
+                opa:
                   nullable: true
-                  type: string
+                  properties:
+                    configMapName:
+                      type: string
+                    package:
+                      nullable: true
+                      type: string
+                  required:
+                    - configMapName
+                  type: object
                 s3:
                   description: Contains all the required connection information for S3.
                   nullable: true
