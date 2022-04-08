@@ -23,8 +23,7 @@ All notable changes to this project will be documented in this file.
 
 - `stackable-regorule-crd` dependency ([#157]).
 - BREAKING: `nodeEnvironment` from CRD. Will default to the `metadata.name` field (can be overriden) ([#183]).
-- BREAKING: Removed `authorization` module from CRD and code and provided the opa bundle via `ConfigMap` directly 
-  instead of generating it ([#186]).
+- BREAKING: Removed `authorization` module from CRD and code and provided the opa bundle via `ConfigMap` directly instead of generating it ([#186]).
 
 [#149]: https://github.com/stackabletech/trino-operator/pull/149
 [#157]: https://github.com/stackabletech/trino-operator/pull/157
