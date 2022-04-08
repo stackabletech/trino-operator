@@ -139,6 +139,7 @@ kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
 ==== Insecure for testing:
 
 Create an insecure single node Trino (v362) cluster for testing. You will access the UI/CLI via http and no user / password or authorization is required. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster.yaml` for an example setting up Hive and Trino):
+
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1
@@ -191,31 +192,15 @@ metadata:
 spec:
   version: "0.0.362"
   hiveConfigMapName: simple-hive-derby
-  opaConfigMapName: simple-opa
+  opa:
+    configMapName: simple-opa
+    package: trino
   authentication:
     method:
       multiUser:
         userCredentialsSecret:
           namespace: default
           name: simple-trino-users-secret
-  authorization:
-    package: trino
-    permissions:
-      admin:
-        schemas:
-          read: true
-          write: true
-        tables:
-          iris_parquet:
-            read: true
-            write: true
-      bob:
-        schemas:
-          read: true
-          write: false
-        tables:
-          iris_parquet:
-            read: false
   s3:
     endPoint: changeme
     accessKey: changeme
