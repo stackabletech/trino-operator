@@ -54,7 +54,7 @@ stringData:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: simple-trino-opa-rego
+  name: simple-trino-opa-bundle
   labels:
     opa.stackable.tech/bundle: "trino"
 data:

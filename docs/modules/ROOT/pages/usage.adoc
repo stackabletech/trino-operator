@@ -106,27 +106,7 @@ data:
     can_view_query_owned_by = true
 ----
 
-You can let the Trino operator write its own Rego rules by configuring the `authorization` field in the custom resource. This is a rudimentary implementation for user access.
-
-[source,yaml]
-----
-authorization:
-  package: trino
-  permissions:
-    admin:
-      schemas:
-        read: true
-        write: true
-      tables:
-        iris_parquet:
-          read: true
-          write: true
-        iris_csv:
-          read: true
-          write: true
-----
-
-Here we define permissions for an admin user who can read and write `schemas`, as well as having full access to the `iris_parquet` and `iris_csv` table. Currently, this is more for demonstration purposes. Users should write their own rego rules for more complex OPA authorization.
+Users should write their own rego rules for more complex OPA authorization.
 
 === Trino
 
