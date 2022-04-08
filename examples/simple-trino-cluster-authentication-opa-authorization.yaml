@@ -88,63 +88,51 @@ data:
       }
     }
   
-    default can_access_table = false
     can_access_table {
       user_can_read_table
     }
     
-    default can_create_table = false
     can_create_table {
       user_can_write_table
     }
     
-    default can_drop_table = false
     can_drop_table {
       user_can_write_table
     }
     
-    default can_show_tables = false
     can_show_tables {
       user_can_read_table
     }
     
-    default can_access_schema = false
     can_access_schema {
       user_can_read_schema
     }
     
-    default can_create_schema = false
     can_create_schema {
       user_can_write_schema
     }
     
-    default can_drop_schema = false
     can_drop_schema {
       user_can_write_schema
     }
     
-    default can_show_schemas = false
     can_show_schemas {
       user_can_read_schema
     }
     
-    default can_access_catalog = false
     can_access_catalog {
       is_valid_user
     }
     
-    default can_execute_query = false
     can_execute_query {
       is_valid_user
     }
     
-    default can_select_from_columns = false
     can_select_from_columns {
-    is_valid_user
+      is_valid_user
       can_access_table
     }
     
-    default can_view_query_owned_by = false
     can_view_query_owned_by {
       is_valid_user
     }

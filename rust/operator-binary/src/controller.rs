@@ -343,7 +343,13 @@ fn build_rolegroup_config_map(
             Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
         );
 
-        opa_config.insert("opa.policy.uri".to_string(), Some(opa_connect.to_string()));
+        opa_config.insert(
+            "opa.policy.uri".to_string(),
+            // TODO: We have to add a slash in the end of the URL, otherwise the authorizer
+            //   ignores / cuts off the package name and can not find the rule
+            //   see: https://github.com/stackabletech/trino-opa-authorizer/issues/15
+            Some(format!("{}/", opa_connect)),
+        );
 
         let config_properties =
             product_config::writer::to_java_properties_string(opa_config.iter())
