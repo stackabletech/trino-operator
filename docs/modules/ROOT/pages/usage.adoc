@@ -1,4 +1,4 @@
-/home/felix/repos/kafka-operator= Usage
+= Usage
 
 Trino works together with the Apache Hive metastore and S3 bucket.
 
