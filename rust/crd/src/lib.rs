@@ -1,13 +1,11 @@
 pub mod authentication;
-pub mod authorization;
 pub mod discovery;
 
-use crate::authentication::Authentication;
-use crate::authorization::Authorization;
-use crate::discovery::TrinoPodRef;
+use crate::{authentication::Authentication, discovery::TrinoPodRef};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
+use stackable_operator::opa::OpaConfig;
 use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -109,12 +107,10 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hive_config_map_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub opa_config_map_name: Option<String>,
+    pub opa: Option<OpaConfig>,
     /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authorization: Option<Authorization>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3Connection>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

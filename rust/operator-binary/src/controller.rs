@@ -24,6 +24,7 @@ use stackable_operator::{
     },
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
+    opa::OpaApiVersion,
     product_config,
     product_config::{types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{
@@ -35,8 +36,6 @@ use stackable_operator::{
 use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
-    authorization,
-    authorization::create_rego_rules,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoClusterSpec, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
     CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
@@ -52,7 +51,6 @@ use std::{
     time::Duration,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
-use tracing::warn;
 
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
@@ -113,14 +111,16 @@ pub enum Error {
     },
     #[snafu(display("failed to load Product Config"))]
     ProductConfigLoadFailed,
-    #[snafu(display("failed to write rego rules for authorization"))]
-    WriteRegoRuleAuthorizationFailed { source: authorization::Error },
     #[snafu(display("failed to processing authentication config element from k8s"))]
     FailedProcessingAuthentication { source: authentication::Error },
     #[snafu(display("internal operator failure"))]
     InternalOperatorFailure { source: stackable_trino_crd::Error },
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
+    #[snafu(display("invalid OpaConfig"))]
+    InvalidOpaConfig {
+        source: stackable_operator::error::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -142,10 +142,17 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
 
     let authentication_config = user_authentication(&trino, client).await?;
 
-    // rego rules
-    create_rego_rules(client, &trino)
-        .await
-        .context(WriteRegoRuleAuthorizationFailedSnafu)?;
+    // Assemble the OPA connection string from the discovery and the given path if provided
+    let opa_connect_string = if let Some(opa_config) = &trino.spec.opa {
+        Some(
+            opa_config
+                .full_document_url_from_config_map(client, &*trino, None, OpaApiVersion::V1)
+                .await
+                .context(InvalidOpaConfigSnafu)?,
+        )
+    } else {
+        None
+    };
 
     let coordinator_role_service = build_coordinator_role_service(&trino)?;
     client
@@ -162,8 +169,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
-            let rg_configmap =
-                build_rolegroup_config_map(&trino, &trino_role, &rolegroup, &config)?;
+            let rg_configmap = build_rolegroup_config_map(
+                &trino,
+                &trino_role,
+                &rolegroup,
+                &config,
+                opa_connect_string.as_deref(),
+            )?;
             let rg_catalog_configmap =
                 build_rolegroup_catalog_config_map(&trino, &rolegroup, &config)?;
             let rg_stateful_set = build_rolegroup_statefulset(
@@ -242,6 +254,7 @@ fn build_rolegroup_config_map(
     _role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    opa_connect_string: Option<&str>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -323,12 +336,19 @@ fn build_rolegroup_config_map(
         }
     }
 
-    if trino.spec.opa_config_map_name.is_some() {
+    if let Some(opa_connect) = opa_connect_string {
         let mut opa_config = BTreeMap::new();
-        // the "opa.policy.uri" property will be added via command script later from the env variable "OPA"
         opa_config.insert(
             "access-control.name".to_string(),
             Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
+        );
+
+        opa_config.insert(
+            "opa.policy.uri".to_string(),
+            // TODO: We have to add a slash in the end of the URL, otherwise the authorizer
+            //   ignores / cuts off the package name and can not find the rule
+            //   see: https://github.com/stackabletech/trino-opa-authorizer/issues/15
+            Some(format!("{}/", opa_connect)),
         );
 
         let config_properties =
@@ -451,10 +471,6 @@ fn build_rolegroup_statefulset(
             ..EnvVar::default()
         })
         .collect::<Vec<_>>();
-
-    if let Some(opa) = env_var_from_discovery_config_map(&trino.spec.opa_config_map_name, "OPA") {
-        env.push(opa);
-    };
 
     if let Some(hive) = env_var_from_discovery_config_map(&trino.spec.hive_config_map_name, "HIVE")
     {
@@ -764,24 +780,6 @@ fn container_trino_args(
             format!( "echo \"hive.metastore.uri=${{HIVE}}\" >> {rw_conf}/catalog/{hive_properties}",
                      rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
             )])
-    }
-    // opa required?
-    if trino.spec.opa_config_map_name.is_some() {
-        let opa_package_name = match trino.spec.authorization.as_ref() {
-            Some(auth) => auth.package.clone(),
-            None => {
-                warn!("No package specified in 'spec.authorization'. Defaulting to 'trino'.");
-                "trino".to_string()
-            }
-        };
-
-        args.extend(vec![
-            format!( "echo Writing OPA connect string \"opa.policy.uri=${{OPA}}v1/data/{package_name}\" to {rw_conf}/{access_control}",
-                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
-             ),
-            format!( "echo \"opa.policy.uri=${{OPA}}v1/data/{package_name}/\" >> {rw_conf}/{access_control}",
-                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
-             )])
     }
 
     // start command

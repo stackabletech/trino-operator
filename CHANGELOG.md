@@ -17,15 +17,18 @@ All notable changes to this project will be documented in this file.
   the custom resource for the obsolete regorule-operator. This means that
   the rego rule operator is not required anymore for authorization and
   opa-operator tag >= `0.9.0` ([#157]).
+- BREAKING: `OpaConfigMapName` in CRD to `opa` using the `OpaConfig` from operator-rs ([#186]).
 
 ### Removed
 
 - `stackable-regorule-crd` dependency ([#157]).
 - BREAKING: `nodeEnvironment` from CRD. Will default to the `metadata.name` field (can be overriden) ([#183]).
+- BREAKING: Removed `authorization` module from CRD and code and provided the opa bundle via `ConfigMap` directly instead of generating it ([#186]).
 
 [#149]: https://github.com/stackabletech/trino-operator/pull/149
 [#157]: https://github.com/stackabletech/trino-operator/pull/157
 [#183]: https://github.com/stackabletech/trino-operator/pull/183
+[#186]: https://github.com/stackabletech/trino-operator/pull/186
 
 ## [0.3.1] - 2022-02-17
 
