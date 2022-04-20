@@ -60,101 +60,30 @@ metadata:
 data:
   trino.rego: |
     package trino
-
-    users = {
-      "admin": {
-        "schemas": {
-          "read": true,
-          "write": true
-        },
-        "tables":{
-          "iris_parquet": {
-            "read": true,
-            "write": true
-          }
-        }
-      },
-      "bob": {
-        "schemas": {
-          "read": true,
-          "write": false
-        },
-        "tables": {
-          "iris_parquet": {
-            "read": false,
-            "write": null
-          }
-        }
-      }
+    
+    import future.keywords.in
+    
+    default allow = false
+    
+    allow {
+      is_admin
     }
-
-    can_access_table {
-      user_can_read_table
+    
+    allow {
+      is_bob
+      can_be_accessed_by_bob
     }
-
-    can_create_table {
-      user_can_write_table
+    
+    is_admin() {
+      input.context.identity.user == "admin"
     }
-
-    can_drop_table {
-      user_can_write_table
+    
+    is_bob() {
+      input.context.identity.user == "bob"
     }
-
-    can_show_tables {
-      user_can_read_table
-    }
-
-    can_access_schema {
-      user_can_read_schema
-    }
-
-    can_create_schema {
-      user_can_write_schema
-    }
-
-    can_drop_schema {
-      user_can_write_schema
-    }
-
-    can_show_schemas {
-      user_can_read_schema
-    }
-
-    can_access_catalog {
-      is_valid_user
-    }
-
-    can_execute_query {
-      is_valid_user
-    }
-
-    can_select_from_columns {
-      is_valid_user
-      can_access_table
-    }
-
-    can_view_query_owned_by {
-      is_valid_user
-    }
-
-    user_can_read_table {
-      users[input.user.name].tables[input.request.table.table].read == true
-    }
-
-    user_can_write_table {
-      users[input.user.name].tables[input.request.table.table].write == true
-    }
-
-    user_can_read_schema {
-      users[input.user.name].schemas.read == true
-    }
-
-    user_can_write_schema {
-      users[input.user.name].schemas.write == true
-    }
-
-    is_valid_user {
-      _ = users[input.user.name]
+    
+    can_be_accessed_by_bob() {
+      input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
     }
 ---
 apiVersion: trino.stackable.tech/v1alpha1

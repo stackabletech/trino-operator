@@ -72,9 +72,6 @@ spec:
                         queryMaxMemoryPerNode:
                           nullable: true
                           type: string
-                        queryMaxTotalMemoryPerNode:
-                          nullable: true
-                          type: string
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -106,9 +103,6 @@ spec:
                                 nullable: true
                                 type: string
                               queryMaxMemoryPerNode:
-                                nullable: true
-                                type: string
-                              queryMaxTotalMemoryPerNode:
                                 nullable: true
                                 type: string
                             type: object
@@ -227,9 +221,6 @@ spec:
                         queryMaxMemoryPerNode:
                           nullable: true
                           type: string
-                        queryMaxTotalMemoryPerNode:
-                          nullable: true
-                          type: string
                       type: object
                     configOverrides:
                       additionalProperties:
@@ -261,9 +252,6 @@ spec:
                                 nullable: true
                                 type: string
                               queryMaxMemoryPerNode:
-                                nullable: true
-                                type: string
-                              queryMaxTotalMemoryPerNode:
                                 nullable: true
                                 type: string
                             type: object

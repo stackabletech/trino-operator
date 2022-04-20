@@ -146,7 +146,12 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     let opa_connect_string = if let Some(opa_config) = &trino.spec.opa {
         Some(
             opa_config
-                .full_document_url_from_config_map(client, &*trino, None, OpaApiVersion::V1)
+                .full_document_url_from_config_map(
+                    client,
+                    &*trino,
+                    Some("allow"),
+                    OpaApiVersion::V1,
+                )
                 .await
                 .context(InvalidOpaConfigSnafu)?,
         )
@@ -342,14 +347,7 @@ fn build_rolegroup_config_map(
             "access-control.name".to_string(),
             Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
         );
-
-        opa_config.insert(
-            "opa.policy.uri".to_string(),
-            // TODO: We have to add a slash in the end of the URL, otherwise the authorizer
-            //   ignores / cuts off the package name and can not find the rule
-            //   see: https://github.com/stackabletech/trino-opa-authorizer/issues/15
-            Some(format!("{}/", opa_connect)),
-        );
+        opa_config.insert("opa.policy.uri".to_string(), Some(opa_connect.to_string()));
 
         let config_properties =
             product_config::writer::to_java_properties_string(opa_config.iter())
@@ -494,8 +492,8 @@ fn build_rolegroup_statefulset(
 
     let container_trino = ContainerBuilder::new(APP_NAME)
         .image(format!(
-            "docker.stackable.tech/stackable/trino:{}-stackable0",
-            trino_version
+            "docker.stackable.tech/stackable/trino:0.5.0",
+            //trino_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_trino_args(trino, authentication_config))

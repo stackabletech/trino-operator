@@ -65,7 +65,7 @@ htpasswd -nbBC 10 admin admin
 
 === Authorization
 
-In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Trino has to be applied. The following example is an all access Rego rule for testing. Do not use it in production!
+In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Trino has to be applied. The following example is an all access Rego rule for testing with the user `admin`. Do not use it in production!
 
 [source,yaml]
 ----
@@ -79,31 +79,17 @@ data:
   trino.rego: |
     package trino
 
-    can_execute_query = true
+    import future.keywords.in
 
-    can_access_catalog = true
+    default allow = false
 
-    can_create_schema = true
+    allow {
+      is_admin
+    }
 
-    can_drop_schema = true
-
-    can_access_schema = true
-
-    can_create_table = true
-
-    can_drop_table = true
-
-    can_access_table = true
-
-    can_access_column = true
-
-    can_show_schemas = true
-
-    can_show_tables = true
-
-    can_select_from_columns = true
-
-    can_view_query_owned_by = true
+    is_admin() {
+      input.context.identity.user == "admin"
+    }
 ----
 
 Users should write their own rego rules for more complex OPA authorization.
