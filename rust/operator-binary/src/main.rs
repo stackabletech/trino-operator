@@ -3,6 +3,7 @@ mod controller;
 use clap::Parser;
 use futures::stream::StreamExt;
 use stackable_operator::cli::ProductOperatorRun;
+use stackable_operator::logging::TracingTarget;
 use stackable_operator::{
     cli::Command,
     k8s_openapi::api::{
@@ -16,7 +17,7 @@ use stackable_operator::{
     },
     logging::controller::report_controller_reconciled,
 };
-use stackable_trino_crd::TrinoCluster;
+use stackable_trino_crd::{TrinoCluster, APP_NAME};
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -31,7 +32,11 @@ struct Opts {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    stackable_operator::logging::initialize_logging("TRINO_OPERATOR_LOG");
+    stackable_operator::logging::initialize_logging(
+        "TRINO_OPERATOR_LOG",
+        APP_NAME,
+        TracingTarget::None,
+    );
 
     let opts = Opts::parse();
     match opts.cmd {
@@ -39,6 +44,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Run(ProductOperatorRun {
             product_config,
             watch_namespace,
+            tracing_target: _,
         }) => {
             stackable_operator::utils::print_startup_string(
                 built_info::PKG_DESCRIPTION,

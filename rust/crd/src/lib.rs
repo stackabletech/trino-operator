@@ -5,7 +5,7 @@ use crate::{authentication::Authentication, discovery::TrinoPodRef};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
-use stackable_operator::opa::OpaConfig;
+use stackable_operator::commons::opa::OpaConfig;
 use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},

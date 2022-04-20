@@ -3,6 +3,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
+    commons::opa::OpaApiVersion,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -24,7 +25,6 @@ use stackable_operator::{
     },
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
-    opa::OpaApiVersion,
     product_config,
     product_config::{types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{
@@ -778,24 +778,6 @@ fn container_trino_args(
             format!( "echo \"hive.metastore.uri=${{HIVE}}\" >> {rw_conf}/catalog/{hive_properties}",
                      rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
             )])
-    }
-    // opa required?
-    if trino.spec.opa_config_map_name.is_some() {
-        let opa_package_name = match trino.spec.authorization.as_ref() {
-            Some(auth) => auth.package.clone(),
-            None => {
-                warn!("No package specified in 'spec.authorization'. Defaulting to 'trino'.");
-                "trino".to_string()
-            }
-        };
-
-        args.extend(vec![
-            format!( "echo Writing OPA connect string \"opa.policy.uri=${{OPA}}v1/data/{package_name}\" to {rw_conf}/{access_control}",
-                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
-             ),
-            format!( "echo \"opa.policy.uri=${{OPA}}v1/data/{package_name}/\" >> {rw_conf}/{access_control}",
-                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
-             )])
     }
 
     // start command

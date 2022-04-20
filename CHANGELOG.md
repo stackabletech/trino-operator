@@ -12,23 +12,27 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.10.0` -> `0.15.0` ([#149], [#157], [#183]).
+- `operator-rs` `0.10.0` -> `0.17.0` ([#149], [#157], [#183], [#xxx]).
 - BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of
   the custom resource for the obsolete regorule-operator. This means that
   the rego rule operator is not required anymore for authorization and
   opa-operator tag >= `0.9.0` ([#157]).
 - BREAKING: `OpaConfigMapName` in CRD to `opa` using the `OpaConfig` from operator-rs ([#186]).
+- Trino version to 377 ([#xxx]).
+- Opa rego example adapted to the new `trino-opa-authorizer` ([#xxx]).
 
 ### Removed
 
 - `stackable-regorule-crd` dependency ([#157]).
 - BREAKING: `nodeEnvironment` from CRD. Will default to the `metadata.name` field (can be overriden) ([#183]).
 - BREAKING: Removed `authorization` module from CRD and code and provided the opa bundle via `ConfigMap` directly instead of generating it ([#186]).
+- Possibly BREAKING: Removed `query.max-total-memory-per-node` config parameter ([#xxx]).
 
 [#149]: https://github.com/stackabletech/trino-operator/pull/149
 [#157]: https://github.com/stackabletech/trino-operator/pull/157
 [#183]: https://github.com/stackabletech/trino-operator/pull/183
 [#186]: https://github.com/stackabletech/trino-operator/pull/186
+[#xxx]: https://github.com/stackabletech/trino-operator/pull/xxx
 
 ## [0.3.1] - 2022-02-17
 
