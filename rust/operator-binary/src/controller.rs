@@ -492,8 +492,8 @@ fn build_rolegroup_statefulset(
 
     let container_trino = ContainerBuilder::new(APP_NAME)
         .image(format!(
-            "docker.stackable.tech/stackable/trino:0.5.0",
-            //trino_version
+            "docker.stackable.tech/stackable/trino:{}-stackable0",
+            trino_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_trino_args(trino, authentication_config))
@@ -778,6 +778,24 @@ fn container_trino_args(
             format!( "echo \"hive.metastore.uri=${{HIVE}}\" >> {rw_conf}/catalog/{hive_properties}",
                      rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
             )])
+    }
+    // opa required?
+    if trino.spec.opa_config_map_name.is_some() {
+        let opa_package_name = match trino.spec.authorization.as_ref() {
+            Some(auth) => auth.package.clone(),
+            None => {
+                warn!("No package specified in 'spec.authorization'. Defaulting to 'trino'.");
+                "trino".to_string()
+            }
+        };
+
+        args.extend(vec![
+            format!( "echo Writing OPA connect string \"opa.policy.uri=${{OPA}}v1/data/{package_name}\" to {rw_conf}/{access_control}",
+                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
+             ),
+            format!( "echo \"opa.policy.uri=${{OPA}}v1/data/{package_name}/\" >> {rw_conf}/{access_control}",
+                 package_name = opa_package_name, rw_conf = RW_CONFIG_DIR_NAME, access_control = ACCESS_CONTROL_PROPERTIES
+             )])
     }
 
     // start command
