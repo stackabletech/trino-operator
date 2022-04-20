@@ -30,7 +30,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: "0.0.362"
+  version: "0.0.377"
   hiveConfigMapName: simple-hive-derby
   s3:
     endPoint: changeme
