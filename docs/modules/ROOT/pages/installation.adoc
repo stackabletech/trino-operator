@@ -17,6 +17,12 @@ installation method. First ensure that you have installed the Stackable Operator
 $ helm repo add stackable https://repo.stackable.tech/repository/helm-stable/
 ----
 
+We also need some addition components of the Stackable Data Platform. The secret-operator if you are running with authentication.
+[source,bash]
+----
+$ helm install secret-operator stackable/secret-operator
+----
+
 Then install the Stackable Operator for Trino
 [source,bash]
 ----
