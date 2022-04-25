@@ -656,7 +656,7 @@ fn build_rolegroup_service(
     })
 }
 
-/// Returns our semver representation for product config e.g. 0.0.362
+/// Returns our semver representation for product config e.g. 0.0.377
 pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
     trino
         .spec
@@ -665,7 +665,7 @@ pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
         .context(ObjectHasNoVersionSnafu)
 }
 
-/// Returns the "real" Trino version for docker images e.g. 362
+/// Returns the "real" Trino version for docker images e.g. 377
 pub fn trino_version_trim(trino: &TrinoCluster) -> Result<&str> {
     let spec: &TrinoClusterSpec = &trino.spec;
     spec.version
