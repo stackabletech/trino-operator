@@ -5,7 +5,7 @@ use crate::{authentication::Authentication, discovery::TrinoPodRef};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
-use stackable_operator::opa::OpaConfig;
+use stackable_operator::commons::opa::OpaConfig;
 use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -43,12 +43,12 @@ pub const COORDINATOR: &str = "coordinator";
 pub const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
 pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
 pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
+pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key";
 pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
-pub const QUERY_MAX_TOTAL_MEMORY_PER_NODE: &str = "query.max-total-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";
 // password-authenticator.properties
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
@@ -207,7 +207,6 @@ pub struct TrinoConfig {
     // config.properties
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
-    pub query_max_total_memory_per_node: Option<String>,
     // log.properties
     pub log_level: Option<String>,
 }
@@ -269,14 +268,6 @@ impl Configuration for TrinoConfig {
                     );
                 }
 
-                if let Some(query_max_total_memory_per_node) = &self.query_max_total_memory_per_node
-                {
-                    result.insert(
-                        QUERY_MAX_TOTAL_MEMORY_PER_NODE.to_string(),
-                        Some(query_max_total_memory_per_node.to_string()),
-                    );
-                }
-
                 if resource.spec.authentication.is_some() {
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
@@ -292,7 +283,7 @@ impl Configuration for TrinoConfig {
                     );
 
                     result.insert(
-                        "http-server.https.keystore.key".to_string(),
+                        HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
                         Some("secret".to_string()),
                     );
 

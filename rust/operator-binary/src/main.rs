@@ -16,7 +16,7 @@ use stackable_operator::{
     },
     logging::controller::report_controller_reconciled,
 };
-use stackable_trino_crd::TrinoCluster;
+use stackable_trino_crd::{TrinoCluster, APP_NAME};
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -31,15 +31,19 @@ struct Opts {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    stackable_operator::logging::initialize_logging("TRINO_OPERATOR_LOG");
-
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => println!("{}", serde_yaml::to_string(&TrinoCluster::crd())?,),
         Command::Run(ProductOperatorRun {
             product_config,
             watch_namespace,
+            tracing_target,
         }) => {
+            stackable_operator::logging::initialize_logging(
+                "TRINO_OPERATOR_LOG",
+                APP_NAME,
+                tracing_target,
+            );
             stackable_operator::utils::print_startup_string(
                 built_info::PKG_DESCRIPTION,
                 built_info::PKG_VERSION,

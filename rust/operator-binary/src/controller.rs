@@ -3,6 +3,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
+    commons::opa::OpaApiVersion,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -24,7 +25,6 @@ use stackable_operator::{
     },
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
-    opa::OpaApiVersion,
     product_config,
     product_config::{types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{
@@ -146,7 +146,12 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     let opa_connect_string = if let Some(opa_config) = &trino.spec.opa {
         Some(
             opa_config
-                .full_document_url_from_config_map(client, &*trino, None, OpaApiVersion::V1)
+                .full_document_url_from_config_map(
+                    client,
+                    &*trino,
+                    Some("allow"),
+                    OpaApiVersion::V1,
+                )
                 .await
                 .context(InvalidOpaConfigSnafu)?,
         )
@@ -342,14 +347,7 @@ fn build_rolegroup_config_map(
             "access-control.name".to_string(),
             Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
         );
-
-        opa_config.insert(
-            "opa.policy.uri".to_string(),
-            // TODO: We have to add a slash in the end of the URL, otherwise the authorizer
-            //   ignores / cuts off the package name and can not find the rule
-            //   see: https://github.com/stackabletech/trino-opa-authorizer/issues/15
-            Some(format!("{}/", opa_connect)),
-        );
+        opa_config.insert("opa.policy.uri".to_string(), Some(opa_connect.to_string()));
 
         let config_properties =
             product_config::writer::to_java_properties_string(opa_config.iter())
@@ -658,7 +656,7 @@ fn build_rolegroup_service(
     })
 }
 
-/// Returns our semver representation for product config e.g. 0.0.362
+/// Returns our semver representation for product config e.g. 0.0.377
 pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
     trino
         .spec
@@ -667,7 +665,7 @@ pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
         .context(ObjectHasNoVersionSnafu)
 }
 
-/// Returns the "real" Trino version for docker images e.g. 362
+/// Returns the "real" Trino version for docker images e.g. 377
 pub fn trino_version_trim(trino: &TrinoCluster) -> Result<&str> {
     let spec: &TrinoClusterSpec = &trino.spec;
     spec.version

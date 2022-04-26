@@ -65,7 +65,7 @@ htpasswd -nbBC 10 admin admin
 
 === Authorization
 
-In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Trino has to be applied. The following example is an all access Rego rule for testing. Do not use it in production!
+In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Trino has to be applied. The following example is an all access Rego rule for testing with the user `admin`. Do not use it in production!
 
 [source,yaml]
 ----
@@ -79,31 +79,17 @@ data:
   trino.rego: |
     package trino
 
-    can_execute_query = true
+    import future.keywords.in
 
-    can_access_catalog = true
+    default allow = false
 
-    can_create_schema = true
+    allow {
+      is_admin
+    }
 
-    can_drop_schema = true
-
-    can_access_schema = true
-
-    can_create_table = true
-
-    can_drop_table = true
-
-    can_access_table = true
-
-    can_access_column = true
-
-    can_show_schemas = true
-
-    can_show_tables = true
-
-    can_select_from_columns = true
-
-    can_view_query_owned_by = true
+    is_admin() {
+      input.context.identity.user == "admin"
+    }
 ----
 
 Users should write their own rego rules for more complex OPA authorization.
@@ -118,7 +104,7 @@ kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
 
 ==== Insecure for testing:
 
-Create an insecure single node Trino (v362) cluster for testing. You will access the UI/CLI via http and no user / password or authorization is required. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster.yaml` for an example setting up Hive and Trino):
+Create an insecure single node Trino (v377) cluster for testing. You will access the UI/CLI via http and no user / password or authorization is required. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster.yaml` for an example setting up Hive and Trino):
 
 [source,yaml]
 ----
@@ -127,7 +113,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: "0.0.362"
+  version: "0.0.377"
   hiveConfigMapName: simple-hive-derby
   s3:
     endPoint: changeme
@@ -156,12 +142,12 @@ spec:
 To access the CLI please execute:
 [source]
 ----
-./trino-cli-362-executable.jar --debug --server http://<node>:<http-port> --user=admin
+./trino-cli-377-executable.jar --debug --server http://<node>:<http-port> --user=admin
 ----
 
 ==== Secure (https) for production:
 
-Create a secure single node Trino (v362) cluster. This will disable the UI access via http and requires username and password from the secret above. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster-authentication-opa-authorization.yaml` for a full example setting up Hive, OPA, Secrets and Trino):
+Create a secure single node Trino (v377) cluster. This will disable the UI access via http and requires username and password from the secret above. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster-authentication-opa-authorization.yaml` for a full example setting up Hive, OPA, Secrets and Trino):
 
 [source,yaml]
 ----
@@ -170,7 +156,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: "0.0.362"
+  version: "0.0.377"
   hiveConfigMapName: simple-hive-derby
   opa:
     configMapName: simple-opa
@@ -205,10 +191,10 @@ spec:
         config: {}
 ----
 
-To access the CLI please execute:
+To access the CLI please download the https://repo1.maven.org/maven2/io/trino/trino-cli/377/trino-cli-377-executable.jar[Trino CLI] and execute:
 [source]
 ----
-./trino-cli-362-executable.jar --debug --server https://<host>:<https-port> --user=admin --password --insecure
+./trino-cli-377-executable.jar --debug --server https://<host>:<https-port> --user=admin --password --insecure
 ----
 
 If you use self signed certificates, you also need the `--insecure` flag above which can be omitted otherwise.

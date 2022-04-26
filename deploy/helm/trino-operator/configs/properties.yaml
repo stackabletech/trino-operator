@@ -148,25 +148,6 @@ properties:
           required: true
       asOfVersion: "0.0.0"
 
-  - property: &queryMaxTotalMemoryPerNode
-      propertyNames:
-        - name: "query.max-total-memory-per-node"
-          kind:
-            type: "file"
-            file: "config.properties"
-      datatype:
-        type: "string"
-        unit: *unitMemory
-      defaultValues:
-        - fromVersion: "0.0.0"
-          value: "2GB"
-      roles:
-        - name: "coordinator"
-          required: true
-        - name: "worker"
-          required: true
-      asOfVersion: "0.0.0"
-
   - property: &httpServerAuthenticationType
       propertyNames:
         - name: "http-server.authentication.type"
