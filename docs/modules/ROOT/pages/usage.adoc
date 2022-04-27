@@ -352,8 +352,3 @@ workers:
 ----
 
 Here too, overriding properties such as `http-server.https.port` will lead to broken installations.
-
-== Tips
-
-- If you work with opa, try changing some RegoRule entries to false and see if you are not allowed to e.g. list tables or schemas.
-- When changing the automatically generated rego rule package name, a restart of the coordinator pod is required.
