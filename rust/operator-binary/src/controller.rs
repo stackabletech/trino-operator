@@ -3,15 +3,15 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
-    commons::opa::OpaApiVersion,
+    commons::{opa::OpaApiVersion, s3::S3ConnectionSpec},
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 CSIVolumeSource, ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource,
                 ContainerPort, EmptyDirVolumeSource, EnvVar, EnvVarSource, PersistentVolumeClaim,
-                PersistentVolumeClaimSpec, Probe, ResourceRequirements, SecurityContext, Service,
-                ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                PersistentVolumeClaimSpec, Probe, ResourceRequirements, SecretKeySelector,
+                SecurityContext, Service, ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
@@ -38,10 +38,11 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoClusterSpec, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
-    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
+    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DEFAULT_PATH_STYLE_ACCESS, DISCOVERY_URI,
+    FIELD_MANAGER_SCOPE, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
+    JVM_CONFIG, KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
+    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
+    S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_KEY, S3_SSL_ENABLED,
     USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
@@ -121,6 +122,12 @@ pub enum Error {
     InvalidOpaConfig {
         source: stackable_operator::error::Error,
     },
+    #[snafu(display("failed to resolve S3 connection"))]
+    ResolveS3Connection {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("invalid S3 connection: {reason}"))]
+    InvalidS3Connection { reason: String },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -131,14 +138,83 @@ impl ReconcilerError for Error {
     }
 }
 
+const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
+const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
+const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
+const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
+
 pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Result<Action> {
     tracing::info!("Starting reconcile");
 
     let client = &ctx.get_ref().client;
     let version = trino_version(&trino)?;
 
-    let validated_config =
+    let mut validated_config =
         validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
+
+    let s3_connection_spec = if let Some(s3) = &trino.spec.s3 {
+        Some(
+            s3.resolve(
+                client,
+                Some(
+                    trino
+                        .namespace()
+                        .as_deref()
+                        .context(ObjectHasNoNamespaceSnafu)?,
+                ),
+            )
+            .await
+            .context(ResolveS3ConnectionSnafu)?,
+        )
+    } else {
+        None
+    };
+
+    match &s3_connection_spec {
+        Some(
+            s3_connection_spec @ S3ConnectionSpec {
+                host: Some(_),
+                path_style_access,
+                secret_class,
+                tls,
+                ..
+            },
+        ) => {
+            for role_config in &mut validated_config.values_mut() {
+                for config in role_config.values_mut() {
+                    let hive_properties = config
+                        .entry(PropertyNameKind::File(HIVE_PROPERTIES.to_string()))
+                        .or_default();
+                    hive_properties.insert(
+                        S3_ENDPOINT.to_string(),
+                        s3_connection_spec.endpoint().unwrap(),
+                    );
+                    if secret_class.is_some() {
+                        hive_properties.insert(
+                            S3_ACCESS_KEY.to_string(),
+                            format!("${{ENV:{ENV_S3_ACCESS_KEY}}}"),
+                        );
+                        hive_properties.insert(
+                            S3_SECRET_KEY.to_string(),
+                            format!("${{ENV:{ENV_S3_SECRET_KEY}}}"),
+                        );
+                    }
+                    hive_properties.insert(S3_SSL_ENABLED.to_string(), tls.is_some().to_string());
+                    hive_properties.insert(
+                        S3_PATH_STYLE_ACCESS.to_string(),
+                        path_style_access
+                            .unwrap_or(DEFAULT_PATH_STYLE_ACCESS)
+                            .to_string(),
+                    );
+                }
+            }
+        }
+        Some(S3ConnectionSpec { host: None, .. }) => InvalidS3ConnectionSnafu {
+            reason: "host is missing",
+        }
+        .fail()?,
+        None => (),
+    }
 
     let authentication_config = user_authentication(&trino, client).await?;
 
@@ -189,6 +265,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
                 &rolegroup,
                 &config,
                 authentication_config.to_owned(),
+                s3_connection_spec.as_ref(),
             )?;
 
             client
@@ -449,6 +526,7 @@ fn build_rolegroup_statefulset(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<TrinoAuthenticationConfig>,
+    s3_connection_spec: Option<&S3ConnectionSpec>,
 ) -> Result<StatefulSet> {
     let rolegroup = role
         .get_spec(trino)
@@ -474,6 +552,23 @@ fn build_rolegroup_statefulset(
     {
         env.push(hive);
     };
+
+    if let Some(S3ConnectionSpec {
+        secret_class: Some(secret_name),
+        ..
+    }) = s3_connection_spec
+    {
+        env.push(env_var_from_secret(
+            ENV_S3_ACCESS_KEY,
+            secret_name,
+            SECRET_KEY_S3_ACCESS_KEY,
+        ));
+        env.push(env_var_from_secret(
+            ENV_S3_SECRET_KEY,
+            secret_name,
+            SECRET_KEY_S3_SECRET_KEY,
+        ));
+    }
 
     let mut container_prepare = ContainerBuilder::new("prepare")
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
@@ -806,6 +901,21 @@ fn env_var_from_discovery_config_map(
         }),
         ..EnvVar::default()
     })
+}
+
+fn env_var_from_secret(var_name: &str, secret: &str, secret_key: &str) -> EnvVar {
+    EnvVar {
+        name: String::from(var_name),
+        value_from: Some(EnvVarSource {
+            secret_key_ref: Some(SecretKeySelector {
+                name: Some(String::from(secret)),
+                key: String::from(secret_key),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
 }
 
 /// Defines all required roles and their required configuration.

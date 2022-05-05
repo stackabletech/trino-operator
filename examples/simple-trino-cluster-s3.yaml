@@ -1,0 +1,79 @@
+# helm install commons-operator \
+#     commons-operator \
+#     --repo https://repo.stackable.tech/repository/helm-stable
+# helm install secret-operator \
+#     secret-operator \
+#     --repo https://repo.stackable.tech/repository/helm-stable
+# helm install hive-operator \
+#     hive-operator \
+#     --repo https://repo.stackable.tech/repository/helm-stable
+# helm install minio \
+#     minio \
+#     --repo https://charts.bitnami.com/bitnami \
+#     --set auth.rootUser=minio-access-key \
+#     --set auth.rootPassword=minio-secret-key
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-credentials
+type: Opaque
+stringData:
+  accessKey: minio-access-key
+  secretKey: minio-secret-key
+---
+apiVersion: hive.stackable.tech/v1alpha1
+kind: HiveCluster
+metadata:
+  name: simple-hive-derby
+spec:
+  version: 2.3.9
+  metastore:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config:
+          database:
+            connString: jdbc:derby:;databaseName=/stackable/metastore_db;create=true
+            user: APP
+            password: mine
+            dbType: derby
+          s3Connection:
+            endPoint: http://minio:9000/
+            accessKey: minio-access-key
+            secretKey: minio-secret-key
+            sslEnabled: false
+            pathStyleAccess: true
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: "0.0.377"
+  hiveConfigMapName: simple-hive-derby
+  s3:
+    inline:
+      host: minio
+      port: 9000
+      pathStyleAccess: true
+      secretClass: s3-credentials
+  coordinators:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config: {}
+  workers:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config: {}
