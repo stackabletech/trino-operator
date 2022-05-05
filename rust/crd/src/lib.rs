@@ -6,6 +6,7 @@ use crate::{authentication::Authentication, discovery::TrinoPodRef};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::commons::opa::OpaConfig;
+use stackable_operator::commons::s3::S3ConnectionDef;
 use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -112,7 +113,7 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub s3: Option<S3Connection>,
+    pub s3: Option<S3ConnectionDef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -188,18 +189,6 @@ impl FromStr for TrinoRole {
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterStatus {}
-
-// TODO: move to operator-rs? Copied from hive operator.
-/// Contains all the required connection information for S3.
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct S3Connection {
-    pub end_point: String,
-    pub access_key: String,
-    pub secret_key: String,
-    pub ssl_enabled: bool,
-    pub path_style_access: bool,
-}
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -308,34 +297,34 @@ impl Configuration for TrinoConfig {
                     );
                 }
             }
-            HIVE_PROPERTIES => {
-                if let Some(s3_connection) = &resource.spec.s3 {
-                    result.insert(
-                        S3_ENDPOINT.to_string(),
-                        Some(s3_connection.end_point.clone()),
-                    );
+            // HIVE_PROPERTIES => {
+            //     if let Some(s3_connection) = &resource.spec.s3 {
+            //         result.insert(
+            //             S3_ENDPOINT.to_string(),
+            //             Some(s3_connection.end_point.clone()),
+            //         );
 
-                    result.insert(
-                        S3_ACCESS_KEY.to_string(),
-                        Some(s3_connection.access_key.clone()),
-                    );
+            //         result.insert(
+            //             S3_ACCESS_KEY.to_string(),
+            //             Some(s3_connection.access_key.clone()),
+            //         );
 
-                    result.insert(
-                        S3_SECRET_KEY.to_string(),
-                        Some(s3_connection.secret_key.clone()),
-                    );
+            //         result.insert(
+            //             S3_SECRET_KEY.to_string(),
+            //             Some(s3_connection.secret_key.clone()),
+            //         );
 
-                    result.insert(
-                        S3_SSL_ENABLED.to_string(),
-                        Some(s3_connection.ssl_enabled.to_string()),
-                    );
+            //         result.insert(
+            //             S3_SSL_ENABLED.to_string(),
+            //             Some(s3_connection.ssl_enabled.to_string()),
+            //         );
 
-                    result.insert(
-                        S3_PATH_STYLE_ACCESS.to_string(),
-                        Some(s3_connection.path_style_access.to_string()),
-                    );
-                }
-            }
+            //         result.insert(
+            //             S3_PATH_STYLE_ACCESS.to_string(),
+            //             Some(s3_connection.path_style_access.to_string()),
+            //         );
+            //     }
+            // }
             LOG_PROPERTIES => {
                 if let Some(log_level) = &self.log_level {
                     result.insert(IO_TRINO.to_string(), Some(log_level.to_string()));

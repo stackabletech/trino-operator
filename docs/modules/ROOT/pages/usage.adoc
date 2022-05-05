@@ -116,11 +116,11 @@ spec:
   version: "0.0.377"
   hiveConfigMapName: simple-hive-derby
   s3:
-    endPoint: changeme
-    accessKey: changeme
-    secretKey: changeme
-    sslEnabled: false
-    pathStyleAccess: true
+    inline:
+      host: test-minio
+      port: 9000
+      secretClass: minio-credentials
+      pathStyleAccess: false
   coordinators:
     roleGroups:
       default:
