@@ -41,7 +41,7 @@ use stackable_trino_crd::{
     CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
     HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
     KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ENDPOINT,
     USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
@@ -121,6 +121,10 @@ pub enum Error {
     InvalidOpaConfig {
         source: stackable_operator::error::Error,
     },
+    #[snafu(display("failed to resolve S3 connection"))]
+    ResolveS3Connection {
+        source: stackable_operator::error::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -137,8 +141,35 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     let client = &ctx.get_ref().client;
     let version = trino_version(&trino)?;
 
-    let validated_config =
+    let mut validated_config =
         validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
+
+    if let Some(s3) = &trino.spec.s3 {
+        let s3_connection = s3
+            .resolve(
+                client,
+                Some(
+                    trino
+                        .namespace()
+                        .as_deref()
+                        .context(ObjectHasNoNamespaceSnafu)?,
+                ),
+            )
+            .await
+            .context(ResolveS3ConnectionSnafu)?;
+
+        for role_config in &mut validated_config.values_mut() {
+            for config in role_config.values_mut() {
+                let hive_properties = config
+                    .entry(PropertyNameKind::File(HIVE_PROPERTIES.to_string()))
+                    .or_default();
+                if let Some(endpoint) = &s3_connection.endpoint() {
+                    hive_properties.insert(S3_ENDPOINT.to_string(), endpoint.to_owned());
+                }
+                // TODO Set missing properties
+            }
+        }
+    }
 
     let authentication_config = user_authentication(&trino, client).await?;
 
