@@ -190,18 +190,6 @@ impl FromStr for TrinoRole {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterStatus {}
 
-// TODO: move to operator-rs? Copied from hive operator.
-/// Contains all the required connection information for S3.
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct S3Connection {
-    pub end_point: String,
-    pub access_key: String,
-    pub secret_key: String,
-    pub ssl_enabled: bool,
-    pub path_style_access: bool,
-}
-
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoConfig {
