@@ -18,12 +18,6 @@ spec:
             user: APP
             password: mine
             dbType: derby
-          s3Connection:
-            endPoint: changeme
-            accessKey: changeme
-            secretKey: changeme
-            sslEnabled: false
-            pathStyleAccess: true
 ---
 apiVersion: opa.stackable.tech/v1alpha1
 kind: OpaCluster
@@ -102,12 +96,6 @@ spec:
         userCredentialsSecret:
           namespace: default
           name: simple-trino-users-secret
-  s3:
-    endPoint: changeme
-    accessKey: changeme
-    secretKey: changeme
-    sslEnabled: false
-    pathStyleAccess: true
   coordinators:
     roleGroups:
       default:

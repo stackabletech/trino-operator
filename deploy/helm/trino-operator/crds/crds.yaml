@@ -188,6 +188,9 @@ spec:
                         host:
                           nullable: true
                           type: string
+                        pathStyleAccess:
+                          nullable: true
+                          type: boolean
                         port:
                           format: uint16
                           minimum: 0.0

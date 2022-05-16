@@ -119,8 +119,8 @@ spec:
     inline:
       host: test-minio
       port: 9000
+      pathStyleAccess: true
       secretClass: minio-credentials
-      pathStyleAccess: false
   coordinators:
     roleGroups:
       default:
@@ -168,11 +168,11 @@ spec:
           namespace: default
           name: simple-trino-users-secret
   s3:
-    endPoint: changeme
-    accessKey: changeme
-    secretKey: changeme
-    sslEnabled: false
-    pathStyleAccess: true
+    inline:
+      host: test-minio
+      port: 9000
+      pathStyleAccess: true
+      secretClass: minio-credentials
   coordinators:
     roleGroups:
       default:
@@ -198,6 +198,61 @@ To access the CLI please download the https://repo1.maven.org/maven2/io/trino/tr
 ----
 
 If you use self signed certificates, you also need the `--insecure` flag above which can be omitted otherwise.
+
+==== S3 connection specification
+
+You can specify S3 connection details directly inside the Trino specification
+or by referring to an external `S3Connection` custom resource.
+
+To specify S3 connection details directly as part of the Trino resource, you
+add an inline connection configuration as shown below:
+
+[source,yaml]
+----
+s3: # <1>
+  inline:
+    host: test-minio # <2>
+    port: 9000 # <3>
+    pathStyleAccess: true # <4>
+    secretClass: minio-credentials  # <5>
+----
+<1> Entry point for the connection configuration
+<2> Connection host
+<3> Optional connection port
+<4> Optional flag if path-style URLs should be used; This defaults to `false`
+    which means virtual hosted-style URLs are used.
+<5> Name of the `Secret` object expected to contain the following keys:
+    `accessKey` and `secretKey`
+
+It is also possible to configure the bucket connection details as a separate
+Kubernetes resource and only refer to that object from the Trino specification
+like this:
+
+[source,yaml]
+----
+s3:
+  reference: my-connection-resource # <1>
+----
+<1> Name of the connection resource with connection details
+
+The resource named `my-connection-resource` is then defined as shown below:
+
+[source,yaml]
+----
+---
+apiVersion: s3.stackable.tech/v1alpha1
+kind: S3Connection
+metadata:
+  name: my-connection-resource
+spec:
+  host: test-minio
+  port: 9000
+  pathStyleAccess: true
+  secretClass: minio-credentials
+----
+
+This has the advantage that the connection configuration can be shared across
+applications and reduces the cost of updating these details.
 
 === Test Trino with Hive and S3
 

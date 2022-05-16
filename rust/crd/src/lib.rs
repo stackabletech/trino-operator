@@ -64,6 +64,7 @@ pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
 pub const S3_SECRET_KEY: &str = "hive.s3.aws-secret-key";
 pub const S3_SSL_ENABLED: &str = "hive.s3.ssl.enabled";
 pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
+pub const DEFAULT_PATH_STYLE_ACCESS: bool = false;
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -297,34 +298,6 @@ impl Configuration for TrinoConfig {
                     );
                 }
             }
-            // HIVE_PROPERTIES => {
-            //     if let Some(s3_connection) = &resource.spec.s3 {
-            //         result.insert(
-            //             S3_ENDPOINT.to_string(),
-            //             Some(s3_connection.end_point.clone()),
-            //         );
-
-            //         result.insert(
-            //             S3_ACCESS_KEY.to_string(),
-            //             Some(s3_connection.access_key.clone()),
-            //         );
-
-            //         result.insert(
-            //             S3_SECRET_KEY.to_string(),
-            //             Some(s3_connection.secret_key.clone()),
-            //         );
-
-            //         result.insert(
-            //             S3_SSL_ENABLED.to_string(),
-            //             Some(s3_connection.ssl_enabled.to_string()),
-            //         );
-
-            //         result.insert(
-            //             S3_PATH_STYLE_ACCESS.to_string(),
-            //             Some(s3_connection.path_style_access.to_string()),
-            //         );
-            //     }
-            // }
             LOG_PROPERTIES => {
                 if let Some(log_level) = &self.log_level {
                     result.insert(IO_TRINO.to_string(), Some(log_level.to_string()));

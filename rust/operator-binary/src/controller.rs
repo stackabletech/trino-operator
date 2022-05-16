@@ -38,11 +38,12 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoClusterSpec, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
-    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
-    S3_PATH_STYLE_ACCESS, S3_SSL_ENABLED, USER_PASSWORD_DATA_DIR_NAME,
+    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DEFAULT_PATH_STYLE_ACCESS, DISCOVERY_URI,
+    FIELD_MANAGER_SCOPE, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
+    JVM_CONFIG, KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
+    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
+    S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_KEY, S3_SSL_ENABLED,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -139,6 +140,8 @@ impl ReconcilerError for Error {
 
 const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
 const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
+const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
+const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
 
 pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Result<Action> {
     tracing::info!("Starting reconcile");
@@ -149,7 +152,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     let mut validated_config =
         validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
 
-    let s3_connection = if let Some(s3) = &trino.spec.s3 {
+    let s3_connection_spec = if let Some(s3) = &trino.spec.s3 {
         Some(
             s3.resolve(
                 client,
@@ -167,10 +170,11 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
         None
     };
 
-    match &s3_connection {
+    match &s3_connection_spec {
         Some(
-            s3_connection @ S3ConnectionSpec {
+            s3_connection_spec @ S3ConnectionSpec {
                 host: Some(_),
+                path_style_access,
                 secret_class,
                 tls,
                 ..
@@ -181,25 +185,31 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
                     let hive_properties = config
                         .entry(PropertyNameKind::File(HIVE_PROPERTIES.to_string()))
                         .or_default();
-                    hive_properties
-                        .insert(S3_ENDPOINT.to_string(), s3_connection.endpoint().unwrap());
+                    hive_properties.insert(
+                        S3_ENDPOINT.to_string(),
+                        s3_connection_spec.endpoint().unwrap(),
+                    );
                     if secret_class.is_some() {
                         hive_properties.insert(
                             S3_ACCESS_KEY.to_string(),
                             format!("${{ENV:{ENV_S3_ACCESS_KEY}}}"),
                         );
                         hive_properties.insert(
-                            S3_ACCESS_KEY.to_string(),
+                            S3_SECRET_KEY.to_string(),
                             format!("${{ENV:{ENV_S3_SECRET_KEY}}}"),
                         );
                     }
                     hive_properties.insert(S3_SSL_ENABLED.to_string(), tls.is_some().to_string());
-                    // TODO Set path style access
-                    hive_properties.insert(S3_PATH_STYLE_ACCESS.to_string(), true.to_string());
+                    hive_properties.insert(
+                        S3_PATH_STYLE_ACCESS.to_string(),
+                        path_style_access
+                            .unwrap_or(DEFAULT_PATH_STYLE_ACCESS)
+                            .to_string(),
+                    );
                 }
             }
         }
-        Some(_) => InvalidS3ConnectionSnafu {
+        Some(S3ConnectionSpec { host: None, .. }) => InvalidS3ConnectionSnafu {
             reason: "host is missing",
         }
         .fail()?,
@@ -255,7 +265,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
                 &rolegroup,
                 &config,
                 authentication_config.to_owned(),
-                s3_connection.as_ref(),
+                s3_connection_spec.as_ref(),
             )?;
 
             client
@@ -516,7 +526,7 @@ fn build_rolegroup_statefulset(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<TrinoAuthenticationConfig>,
-    s3_connection: Option<&S3ConnectionSpec>,
+    s3_connection_spec: Option<&S3ConnectionSpec>,
 ) -> Result<StatefulSet> {
     let rolegroup = role
         .get_spec(trino)
@@ -546,17 +556,17 @@ fn build_rolegroup_statefulset(
     if let Some(S3ConnectionSpec {
         secret_class: Some(secret_name),
         ..
-    }) = s3_connection
+    }) = s3_connection_spec
     {
         env.push(env_var_from_secret(
             ENV_S3_ACCESS_KEY,
             secret_name,
-            "accessKeyId",
+            SECRET_KEY_S3_ACCESS_KEY,
         ));
         env.push(env_var_from_secret(
             ENV_S3_SECRET_KEY,
             secret_name,
-            "secretKeyId",
+            SECRET_KEY_S3_SECRET_KEY,
         ));
     }
 
