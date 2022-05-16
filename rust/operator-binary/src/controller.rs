@@ -1,5 +1,6 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::commons::s3::S3AccessStyle;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
@@ -38,12 +39,11 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoClusterSpec, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DEFAULT_PATH_STYLE_ACCESS, DISCOVERY_URI,
-    FIELD_MANAGER_SCOPE, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
-    JVM_CONFIG, KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
-    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
-    S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_KEY, S3_SSL_ENABLED,
-    USER_PASSWORD_DATA_DIR_NAME,
+    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
+    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
+    KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
+    S3_PATH_STYLE_ACCESS, S3_SECRET_KEY, S3_SSL_ENABLED, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -174,7 +174,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
         Some(
             s3_connection_spec @ S3ConnectionSpec {
                 host: Some(_),
-                path_style_access,
+                access_style,
                 secret_class,
                 tls,
                 ..
@@ -202,9 +202,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
                     hive_properties.insert(S3_SSL_ENABLED.to_string(), tls.is_some().to_string());
                     hive_properties.insert(
                         S3_PATH_STYLE_ACCESS.to_string(),
-                        path_style_access
-                            .unwrap_or(DEFAULT_PATH_STYLE_ACCESS)
-                            .to_string(),
+                        (access_style == &Some(S3AccessStyle::Path)).to_string(),
                     );
                 }
             }

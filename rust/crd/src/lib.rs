@@ -64,7 +64,6 @@ pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
 pub const S3_SECRET_KEY: &str = "hive.s3.aws-secret-key";
 pub const S3_SSL_ENABLED: &str = "hive.s3.ssl.enabled";
 pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
-pub const DEFAULT_PATH_STYLE_ACCESS: bool = false;
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
