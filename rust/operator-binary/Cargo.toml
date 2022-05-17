@@ -9,8 +9,7 @@ repository = "https://github.com/stackabletech/trino-operator"
 version = "0.3.2-nightly"
 
 [dependencies]
-#stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.21.0" }
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", branch = "s3-credentials" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.21.0" }
 stackable-trino-crd = { path = "../crd" }
 
 anyhow = "1.0"
@@ -28,6 +27,5 @@ tracing = "0.1"
 
 [build-dependencies]
 built = { version =  "0.5", features = ["chrono", "git2"] }
-#stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.21.0" }
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", branch = "s3-credentials" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.21.0" }
 stackable-trino-crd = { path = "../crd" }
