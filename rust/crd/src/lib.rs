@@ -69,11 +69,12 @@ pub const IO_TRINO: &str = "io.trino";
 // jvm.config
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 // directories
-pub const CONFIG_DIR_NAME: &str = "/stackable/conf";
-pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconf";
+pub const CONFIG_DIR_NAME: &str = "/stackable/config";
+pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const KEYSTORE_DIR_NAME: &str = "/stackable/keystore";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
+pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 
 #[derive(Snafu, Debug)]
 pub enum Error {

@@ -13,11 +13,22 @@
 #     --set auth.rootUser=minio-access-key \
 #     --set auth.rootPassword=minio-secret-key
 ---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: simple-s3-credentials-secret-class
+spec:
+  backend:
+    k8sSearch:
+      searchNamespace:
+        pod: {}
+---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: s3-credentials
-type: Opaque
+  name: simple-hive-s3-credentials
+  labels:
+    secrets.stackable.tech/class: simple-s3-credentials-secret-class
 stringData:
   accessKey: minio-access-key
   secretKey: minio-secret-key
@@ -28,6 +39,13 @@ metadata:
   name: simple-hive-derby
 spec:
   version: 2.3.9
+  s3:
+    inline:
+      host: minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: simple-s3-credentials-secret-class
   metastore:
     roleGroups:
       default:
@@ -41,12 +59,6 @@ spec:
             user: APP
             password: mine
             dbType: derby
-          s3Connection:
-            endPoint: http://minio:9000/
-            accessKey: minio-access-key
-            secretKey: minio-secret-key
-            sslEnabled: false
-            pathStyleAccess: true
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
@@ -59,8 +71,9 @@ spec:
     inline:
       host: minio
       port: 9000
-      pathStyleAccess: true
-      secretClass: s3-credentials
+      accessStyle: Path
+      credentials:
+        secretClass: simple-s3-credentials-secret-class
   coordinators:
     roleGroups:
       default:

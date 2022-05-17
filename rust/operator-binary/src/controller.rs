@@ -1,6 +1,7 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::s3::S3AccessStyle;
+use stackable_operator::builder::{PodSecurityContextBuilder, VolumeBuilder};
+use stackable_operator::commons::s3::{S3AccessStyle, S3ConnectionDef};
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
@@ -10,9 +11,9 @@ use stackable_operator::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 CSIVolumeSource, ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource,
-                ContainerPort, EmptyDirVolumeSource, EnvVar, EnvVarSource, PersistentVolumeClaim,
-                PersistentVolumeClaimSpec, Probe, ResourceRequirements, SecretKeySelector,
-                SecurityContext, Service, ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                ContainerPort, EnvVar, EnvVarSource, PersistentVolumeClaim,
+                PersistentVolumeClaimSpec, Probe, ResourceRequirements, SecurityContext, Service,
+                ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
@@ -43,7 +44,8 @@ use stackable_trino_crd::{
     HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
     KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
-    S3_PATH_STYLE_ACCESS, S3_SECRET_KEY, S3_SSL_ENABLED, USER_PASSWORD_DATA_DIR_NAME,
+    S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY, S3_SSL_ENABLED,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -152,19 +154,12 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     let mut validated_config =
         validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
 
-    let s3_connection_spec = if let Some(s3) = &trino.spec.s3 {
+    let s3_connection_def: &Option<S3ConnectionDef> = &trino.spec.s3;
+    let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
         Some(
-            s3.resolve(
-                client,
-                Some(
-                    trino
-                        .namespace()
-                        .as_deref()
-                        .context(ObjectHasNoNamespaceSnafu)?,
-                ),
-            )
-            .await
-            .context(ResolveS3ConnectionSnafu)?,
+            s3.resolve(client, trino.namespace().as_deref())
+                .await
+                .context(ResolveS3ConnectionSnafu)?,
         )
     } else {
         None
@@ -175,7 +170,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
             s3_connection_spec @ S3ConnectionSpec {
                 host: Some(_),
                 access_style,
-                secret_class,
+                credentials: secret_class,
                 tls,
                 ..
             },
@@ -524,8 +519,11 @@ fn build_rolegroup_statefulset(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<TrinoAuthenticationConfig>,
-    s3_connection_spec: Option<&S3ConnectionSpec>,
+    s3_connection: Option<&S3ConnectionSpec>,
 ) -> Result<StatefulSet> {
+    let mut container_builder = ContainerBuilder::new(APP_NAME);
+    let mut pod_builder = PodBuilder::new();
+
     let rolegroup = role
         .get_spec(trino)
         .with_context(|| MissingTrinoRoleSnafu {
@@ -551,21 +549,14 @@ fn build_rolegroup_statefulset(
         env.push(hive);
     };
 
+    // Add volume and volume mounts for s3 credentials
     if let Some(S3ConnectionSpec {
-        secret_class: Some(secret_name),
+        credentials: Some(credentials),
         ..
-    }) = s3_connection_spec
+    }) = s3_connection
     {
-        env.push(env_var_from_secret(
-            ENV_S3_ACCESS_KEY,
-            secret_name,
-            SECRET_KEY_S3_ACCESS_KEY,
-        ));
-        env.push(env_var_from_secret(
-            ENV_S3_SECRET_KEY,
-            secret_name,
-            SECRET_KEY_S3_SECRET_KEY,
-        ));
+        pod_builder.add_volume(credentials.to_volume("s3-credentials"));
+        container_builder.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
     }
 
     let mut container_prepare = ContainerBuilder::new("prepare")
@@ -573,7 +564,7 @@ fn build_rolegroup_statefulset(
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_prepare_args())
         .add_volume_mount("data", DATA_DIR_NAME)
-        .add_volume_mount("rwconf", RW_CONFIG_DIR_NAME)
+        .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .build();
@@ -583,17 +574,21 @@ fn build_rolegroup_statefulset(
         .get_or_insert_with(SecurityContext::default)
         .run_as_user = Some(0);
 
-    let container_trino = ContainerBuilder::new(APP_NAME)
+    let container_trino = container_builder
         .image(format!(
             "docker.stackable.tech/stackable/trino:{}-stackable0",
             trino_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(container_trino_args(trino, authentication_config))
+        .args(container_trino_args(
+            trino,
+            authentication_config,
+            s3_connection,
+        ))
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
-        .add_volume_mount("conf", CONFIG_DIR_NAME)
-        .add_volume_mount("rwconf", RW_CONFIG_DIR_NAME)
+        .add_volume_mount("config", CONFIG_DIR_NAME)
+        .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
         .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
@@ -632,7 +627,7 @@ fn build_rolegroup_statefulset(
                 ..LabelSelector::default()
             },
             service_name: rolegroup_ref.object_name(),
-            template: PodBuilder::new()
+            template: pod_builder
                 .metadata_builder(|m| {
                     m.with_recommended_labels(
                         trino,
@@ -645,29 +640,23 @@ fn build_rolegroup_statefulset(
                 .add_init_container(container_prepare)
                 .add_container(container_trino)
                 .add_volume(Volume {
-                    name: "conf".to_string(),
+                    name: "config".to_string(),
                     config_map: Some(ConfigMapVolumeSource {
                         name: Some(rolegroup_ref.object_name()),
                         ..ConfigMapVolumeSource::default()
                     }),
                     ..Volume::default()
                 })
-                .add_volume(Volume {
-                    empty_dir: Some(EmptyDirVolumeSource {
-                        medium: None,
-                        size_limit: None,
-                    }),
-                    name: "rwconf".to_string(),
-                    ..Volume::default()
-                })
-                .add_volume(Volume {
-                    empty_dir: Some(EmptyDirVolumeSource {
-                        medium: None,
-                        size_limit: None,
-                    }),
-                    name: "users".to_string(),
-                    ..Volume::default()
-                })
+                .add_volume(
+                    VolumeBuilder::new("rwconfig")
+                        .with_empty_dir(Some(""), None)
+                        .build(),
+                )
+                .add_volume(
+                    VolumeBuilder::new("users")
+                        .with_empty_dir(Some(""), None)
+                        .build(),
+                )
                 .add_volume(Volume {
                     name: "catalog".to_string(),
                     config_map: Some(ConfigMapVolumeSource {
@@ -685,6 +674,7 @@ fn build_rolegroup_statefulset(
                     }),
                     ..Volume::default()
                 })
+                .security_context(PodSecurityContextBuilder::new().fs_group(1000).build())
                 .build_template(),
             volume_claim_templates: Some(vec![PersistentVolumeClaim {
                 metadata: ObjectMeta {
@@ -831,6 +821,7 @@ fn container_prepare_args() -> Vec<String> {
 fn container_trino_args(
     trino: &TrinoCluster,
     user_authentication: Option<TrinoAuthenticationConfig>,
+    s3_connection_spec: Option<&S3ConnectionSpec>,
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder
@@ -845,6 +836,30 @@ fn container_trino_args(
             rw_conf = RW_CONFIG_DIR_NAME
         ),
     ];
+
+    // We need to read the provided s3 credentials from the secret operator / secret class folder
+    // and export it to the required env variables in order for trino to pick them up
+    // out of the config via e.g. ${ENV:S3_ACCESS_KEY}.
+    if let Some(S3ConnectionSpec {
+        credentials: Some(_),
+        ..
+    }) = s3_connection_spec
+    {
+        args.extend(vec![
+            format!(
+                "export {env_var}=$(cat {secret_dir}/{file_name})",
+                env_var = ENV_S3_ACCESS_KEY,
+                secret_dir = S3_SECRET_DIR_NAME,
+                file_name = SECRET_KEY_S3_ACCESS_KEY
+            ),
+            format!(
+                "export {env_var}=$(cat {secret_dir}/{file_name})",
+                env_var = ENV_S3_SECRET_KEY,
+                secret_dir = S3_SECRET_DIR_NAME,
+                file_name = SECRET_KEY_S3_SECRET_KEY
+            ),
+        ]);
+    }
 
     if let Some(auth) = user_authentication {
         let user_data = auth.to_trino_user_data();
@@ -899,21 +914,6 @@ fn env_var_from_discovery_config_map(
         }),
         ..EnvVar::default()
     })
-}
-
-fn env_var_from_secret(var_name: &str, secret: &str, secret_key: &str) -> EnvVar {
-    EnvVar {
-        name: String::from(var_name),
-        value_from: Some(EnvVarSource {
-            secret_key_ref: Some(SecretKeySelector {
-                name: Some(String::from(secret)),
-                key: String::from(secret_key),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }),
-        ..Default::default()
-    }
 }
 
 /// Defines all required roles and their required configuration.

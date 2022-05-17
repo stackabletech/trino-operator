@@ -8,7 +8,8 @@ repository = "https://github.com/stackabletech/trino-operator"
 version = "0.3.2-nightly"
 
 [dependencies]
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.20.0" }
+#stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.21.0" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", branch = "s3-credentials" }
 
 semver = "1.0"
 serde = { version = "1.0", features = ["derive"] }
