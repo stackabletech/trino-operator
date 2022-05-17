@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.10.0` -> `0.17.0` ([#149], [#157], [#183], [#193]).
+- `operator-rs` `0.10.0` -> `0.21.0` ([#149], [#157], [#183], [#193]).
 - BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of
   the custom resource for the obsolete regorule-operator. This means that
   the rego rule operator is not required anymore for authorization and
