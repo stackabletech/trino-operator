@@ -69,14 +69,15 @@ This should be fairly easy to solve and we can look at this as soon as it become
 
 To run tests locally you need the following things installed:
 
-- python3
+- python3 (version >= 3.9)
   - pyyaml library installed
-- ansible
+- ansible (tested with `2.10.8` and `2.12.5`)
+- jq
 
 ### Running
 
 To run tests please execute the following command from the gitroot of the operator repository:
 
-`scripts/run_tests.sh`
+`scripts/run_tests.sh --parallel 2`
 
-This will install the necessarry ansible role into `tests/ansible/roles`, expand the test templates into all defined test scenarios and execute kuttl to test these scenarios.
+This will install the necessary ansible role into `tests/ansible/roles`, expand the test templates into all defined test scenarios and execute kuttl to test these scenarios. Any arguments are passed on to `kuttl`.
