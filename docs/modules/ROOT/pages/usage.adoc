@@ -119,8 +119,9 @@ spec:
     inline:
       host: test-minio
       port: 9000
-      pathStyleAccess: true
-      secretClass: minio-credentials
+      accessStyle: Path
+      credentials:
+        secretClass: minio-credentials
   coordinators:
     roleGroups:
       default:
@@ -161,18 +162,19 @@ spec:
   opa:
     configMapName: simple-opa
     package: trino
+  s3:
+    inline:
+      host: test-minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: minio-credentials
   authentication:
     method:
       multiUser:
         userCredentialsSecret:
           namespace: default
           name: simple-trino-users-secret
-  s3:
-    inline:
-      host: test-minio
-      port: 9000
-      pathStyleAccess: true
-      secretClass: minio-credentials
   coordinators:
     roleGroups:
       default:
@@ -247,8 +249,9 @@ metadata:
 spec:
   host: test-minio
   port: 9000
-  pathStyleAccess: true
-  secretClass: minio-credentials
+  accessStyle: Path
+  credentials:
+    secretClass: minio-credentials
 ----
 
 This has the advantage that the connection configuration can be shared across
