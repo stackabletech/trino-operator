@@ -26,7 +26,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: simple-hive-s3-credentials
+  name: simple-s3-credentials-secret
   labels:
     secrets.stackable.tech/class: simple-s3-credentials-secret-class
 stringData:
@@ -55,7 +55,7 @@ spec:
         replicas: 1
         config:
           database:
-            connString: jdbc:derby:;databaseName=/stackable/metastore_db;create=true
+            connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
             user: APP
             password: mine
             dbType: derby
