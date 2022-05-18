@@ -14,16 +14,10 @@ spec:
         replicas: 1
         config:
           database:
-            connString: jdbc:derby:;databaseName=/stackable/metastore_db;create=true
+            connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
             user: APP
             password: mine
             dbType: derby
-          s3Connection:
-            endPoint: changeme
-            accessKey: changeme
-            secretKey: changeme
-            sslEnabled: false
-            pathStyleAccess: true
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
@@ -32,12 +26,6 @@ metadata:
 spec:
   version: "0.0.377"
   hiveConfigMapName: simple-hive-derby
-  s3:
-    endPoint: changeme
-    accessKey: changeme
-    secretKey: changeme
-    sslEnabled: false
-    pathStyleAccess: true
   coordinators:
     roleGroups:
       default:
