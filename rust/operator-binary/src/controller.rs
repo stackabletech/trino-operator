@@ -2,6 +2,7 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::builder::{PodSecurityContextBuilder, VolumeBuilder};
 use stackable_operator::commons::s3::{S3AccessStyle, S3ConnectionDef};
+use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
@@ -10,10 +11,9 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                CSIVolumeSource, ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource,
-                ContainerPort, EnvVar, EnvVarSource, PersistentVolumeClaim,
-                PersistentVolumeClaimSpec, Probe, ResourceRequirements, SecurityContext, Service,
-                ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                CSIVolumeSource, ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar,
+                PersistentVolumeClaim, PersistentVolumeClaimSpec, Probe, ResourceRequirements,
+                SecurityContext, Service, ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
@@ -35,18 +35,19 @@ use stackable_operator::{
     },
     role_utils::RoleGroupRef,
 };
+use stackable_trino_crd::catalog::TrinoCatalog;
 use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoClusterSpec, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
-    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
-    S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY, S3_SSL_ENABLED,
-    USER_PASSWORD_DATA_DIR_NAME,
+    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT,
+    HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, KEYSTORE_DIR_NAME, LOG_PROPERTIES,
+    METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES,
+    PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS,
+    S3_SECRET_DIR_NAME, S3_SECRET_KEY, S3_SSL_ENABLED, USER_PASSWORD_DATA_DIR_NAME,
 };
+use std::borrow::Cow;
 use std::{
     collections::{BTreeMap, HashMap},
     str::FromStr,
@@ -55,10 +56,14 @@ use std::{
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
+use crate::catalog::{self, CatalogConfig};
+
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
     pub product_config: ProductConfigManager,
 }
+
+const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -72,6 +77,15 @@ pub enum Error {
     MissingTrinoRole { role: String },
     #[snafu(display("failed to calculate global service name"))]
     GlobalServiceNameNotFound,
+    #[snafu(display("failed to get associated TrinoCatalogs"))]
+    GetCatalogs {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to parse {catalog}"))]
+    ParseCatalog {
+        source: catalog::FromTrinoCatalogError,
+        catalog: ObjectRef<TrinoCatalog>,
+    },
     #[snafu(display("failed to apply global Service"))]
     ApplyRoleService {
         source: stackable_operator::error::Error,
@@ -151,6 +165,26 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     let client = &ctx.get_ref().client;
     let version = trino_version(&trino)?;
 
+    let catalogs = client
+        .list_with_label_selector::<TrinoCatalog>(
+            trino.metadata.namespace.as_deref(),
+            &trino
+                .spec
+                .catalog_label_selector
+                .as_ref()
+                .map_or_else(Cow::default, Cow::Borrowed),
+        )
+        .await
+        .context(GetCatalogsSnafu)?
+        .into_iter()
+        .map(|catalog| {
+            let catalog_ref = ObjectRef::from_obj(&catalog);
+            CatalogConfig::try_from(catalog).context(ParseCatalogSnafu {
+                catalog: catalog_ref,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+
     let mut validated_config =
         validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
 
@@ -229,6 +263,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     };
 
     let coordinator_role_service = build_coordinator_role_service(&trino)?;
+
     client
         .apply_patch(
             FIELD_MANAGER_SCOPE,
@@ -251,7 +286,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
                 opa_connect_string.as_deref(),
             )?;
             let rg_catalog_configmap =
-                build_rolegroup_catalog_config_map(&trino, &rolegroup, &config)?;
+                build_rolegroup_catalog_config_map(&trino, &rolegroup, &catalogs)?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
                 &trino_role,
@@ -259,6 +294,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
                 &config,
                 authentication_config.to_owned(),
                 s3_connection_spec.as_ref(),
+                &catalogs,
             )?;
 
             client
@@ -456,36 +492,8 @@ fn build_rolegroup_config_map(
 fn build_rolegroup_catalog_config_map(
     trino: &TrinoCluster,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    catalogs: &[CatalogConfig],
 ) -> Result<ConfigMap> {
-    let mut cm_hive_data = BTreeMap::new();
-
-    for (property_name_kind, config) in config {
-        let mut transformed_config: BTreeMap<String, Option<String>> = config
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(v.clone())))
-            .collect();
-
-        match property_name_kind {
-            PropertyNameKind::File(file_name) if file_name == HIVE_PROPERTIES => {
-                if trino.spec.hive_config_map_name.is_some() {
-                    // hive.metastore.uri will be added later via command script from the
-                    // "HIVE" env variable
-                    transformed_config
-                        .insert("connector.name".to_string(), Some("hive".to_string()));
-
-                    let config_properties = product_config::writer::to_java_properties_string(
-                        transformed_config.iter(),
-                    )
-                    .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                    cm_hive_data.insert(file_name.to_string(), config_properties);
-                }
-            }
-            _ => {}
-        }
-    }
-
     ConfigMapBuilder::new()
         .metadata(
             ObjectMetaBuilder::new()
@@ -502,7 +510,25 @@ fn build_rolegroup_catalog_config_map(
                 )
                 .build(),
         )
-        .data(cm_hive_data)
+        .data(
+            catalogs
+                .iter()
+                .map(|catalog| {
+                    let catalog_props = catalog
+                        .properties
+                        .iter()
+                        .map(|(k, v)| (k.to_string(), Some(v.to_string())))
+                        .collect::<Vec<_>>();
+                    Ok((
+                        format!("{}.properties", catalog.name),
+                        product_config::writer::to_java_properties_string(
+                            catalog_props.iter().map(|(k, v)| (k, v)),
+                        )
+                        .context(FailedToWriteJavaPropertiesSnafu)?,
+                    ))
+                })
+                .collect::<Result<_>>()?,
+        )
         .build()
         .with_context(|_| BuildRoleGroupConfigSnafu {
             rolegroup: rolegroup_ref.clone(),
@@ -520,6 +546,7 @@ fn build_rolegroup_statefulset(
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<TrinoAuthenticationConfig>,
     s3_connection: Option<&S3ConnectionSpec>,
+    catalogs: &[CatalogConfig],
 ) -> Result<StatefulSet> {
     let mut container_builder = ContainerBuilder::new(APP_NAME);
     let mut pod_builder = PodBuilder::new();
@@ -543,11 +570,17 @@ fn build_rolegroup_statefulset(
             ..EnvVar::default()
         })
         .collect::<Vec<_>>();
-
-    if let Some(hive) = env_var_from_discovery_config_map(&trino.spec.hive_config_map_name, "HIVE")
-    {
-        env.push(hive);
-    };
+    env.extend(
+        catalogs
+            .iter()
+            .flat_map(|catalog| &catalog.env_bindings)
+            .cloned(),
+    );
+    env.push(EnvVar {
+        name: "HADOOP_OPTIONAL_TOOLS".to_string(),
+        value: Some("hadoop-azure-datalake".to_string()),
+        value_from: None,
+    });
 
     // Add volume and volume mounts for s3 credentials
     if let Some(S3ConnectionSpec {
@@ -580,11 +613,7 @@ fn build_rolegroup_statefulset(
             trino_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(container_trino_args(
-            trino,
-            authentication_config,
-            s3_connection,
-        ))
+        .args(container_trino_args(authentication_config, s3_connection))
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("config", CONFIG_DIR_NAME)
@@ -819,7 +848,6 @@ fn container_prepare_args() -> Vec<String> {
 }
 
 fn container_trino_args(
-    trino: &TrinoCluster,
     user_authentication: Option<TrinoAuthenticationConfig>,
     s3_connection_spec: Option<&S3ConnectionSpec>,
 ) -> Vec<String> {
@@ -877,16 +905,6 @@ fn container_trino_args(
             ),
         ])
     }
-    // hive required?
-    if trino.spec.hive_config_map_name.is_some() {
-        args.extend(vec![
-            format!( "echo Writing HIVE connect string \"hive.metastore.uri=${{HIVE}}\" to {rw_conf}/catalog/{hive_properties}",
-                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
-            ),
-            format!( "echo \"hive.metastore.uri=${{HIVE}}\" >> {rw_conf}/catalog/{hive_properties}",
-                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
-            )])
-    }
 
     // start command
     args.push(format!(
@@ -896,24 +914,6 @@ fn container_trino_args(
     ));
 
     vec![args.join(" && ")]
-}
-
-fn env_var_from_discovery_config_map(
-    config_map_name: &Option<String>,
-    env_var: &str,
-) -> Option<EnvVar> {
-    config_map_name.as_ref().map(|cm_name| EnvVar {
-        name: env_var.to_string(),
-        value_from: Some(EnvVarSource {
-            config_map_key_ref: Some(ConfigMapKeySelector {
-                name: Some(cm_name.to_string()),
-                key: env_var.to_string(),
-                ..ConfigMapKeySelector::default()
-            }),
-            ..EnvVarSource::default()
-        }),
-        ..EnvVar::default()
-    })
 }
 
 /// Defines all required roles and their required configuration.

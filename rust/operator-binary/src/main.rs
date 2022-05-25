@@ -1,8 +1,10 @@
+mod catalog;
 mod controller;
 
 use clap::Parser;
 use futures::stream::StreamExt;
 use stackable_operator::cli::ProductOperatorRun;
+use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::{
     cli::Command,
     k8s_openapi::api::{
@@ -16,6 +18,7 @@ use stackable_operator::{
     },
     logging::controller::report_controller_reconciled,
 };
+use stackable_trino_crd::catalog::TrinoCatalog;
 use stackable_trino_crd::{TrinoCluster, APP_NAME};
 
 mod built_info {
@@ -33,7 +36,11 @@ struct Opts {
 async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
-        Command::Crd => println!("{}", serde_yaml::to_string(&TrinoCluster::crd())?,),
+        Command::Crd => println!(
+            "{}{}",
+            serde_yaml::to_string(&TrinoCluster::crd())?,
+            serde_yaml::to_string(&TrinoCatalog::crd())?
+        ),
         Command::Run(ProductOperatorRun {
             product_config,
             watch_namespace,
@@ -61,36 +68,53 @@ async fn main() -> anyhow::Result<()> {
                 stackable_operator::client::create_client(Some("trino.stackable.tech".to_string()))
                     .await?;
 
-            Controller::new(
+            let cluster_controller = Controller::new(
                 watch_namespace.get_api::<TrinoCluster>(&client),
                 ListParams::default(),
-            )
-            .owns(
-                watch_namespace.get_api::<Service>(&client),
-                ListParams::default(),
-            )
-            .owns(
-                watch_namespace.get_api::<StatefulSet>(&client),
-                ListParams::default(),
-            )
-            .owns(
-                watch_namespace.get_api::<ConfigMap>(&client),
-                ListParams::default(),
-            )
-            .shutdown_on_signal()
-            .run(
-                controller::reconcile_trino,
-                controller::error_policy,
-                Context::new(controller::Ctx {
-                    client: client.clone(),
-                    product_config,
-                }),
-            )
-            .map(|res| {
-                report_controller_reconciled(&client, "trinoclusters.trino.stackable.tech", &res)
-            })
-            .collect::<()>()
-            .await;
+            );
+            let cluster_store = cluster_controller.store();
+            cluster_controller
+                .owns(
+                    watch_namespace.get_api::<Service>(&client),
+                    ListParams::default(),
+                )
+                .owns(
+                    watch_namespace.get_api::<StatefulSet>(&client),
+                    ListParams::default(),
+                )
+                .owns(
+                    watch_namespace.get_api::<ConfigMap>(&client),
+                    ListParams::default(),
+                )
+                .watches(
+                    watch_namespace.get_api::<TrinoCatalog>(&client),
+                    ListParams::default(),
+                    move |_catalog| {
+                        // TODO: Filter clusters?
+                        cluster_store
+                            .state()
+                            .into_iter()
+                            .map(|cluster| ObjectRef::from_obj(&*cluster))
+                    },
+                )
+                .shutdown_on_signal()
+                .run(
+                    controller::reconcile_trino,
+                    controller::error_policy,
+                    Context::new(controller::Ctx {
+                        client: client.clone(),
+                        product_config,
+                    }),
+                )
+                .map(|res| {
+                    report_controller_reconciled(
+                        &client,
+                        "trinoclusters.trino.stackable.tech",
+                        &res,
+                    )
+                })
+                .collect::<()>()
+                .await;
         }
     }
 

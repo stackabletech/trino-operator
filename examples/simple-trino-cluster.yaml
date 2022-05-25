@@ -20,12 +20,24 @@ spec:
             dbType: derby
 ---
 apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: simple-trino-hive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastoreConfigMap: simple-hive-derby
+---
+apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
   version: "0.0.377"
-  hiveConfigMapName: simple-hive-derby
+  catalogLabelSelector:
+    trino: simple-trino
   coordinators:
     roleGroups:
       default:

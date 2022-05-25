@@ -1,4 +1,5 @@
 pub mod authentication;
+pub mod catalog;
 pub mod discovery;
 
 use crate::{authentication::Authentication, discovery::TrinoPodRef};
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::commons::opa::OpaConfig;
 use stackable_operator::commons::s3::S3ConnectionDef;
+use stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -17,7 +19,6 @@ use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
-pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 // ports
 pub const HTTP_PORT: u16 = 8080;
 pub const HTTPS_PORT: u16 = 8443;
@@ -107,14 +108,14 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hive_config_map_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
     /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3ConnectionDef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catalog_label_selector: Option<LabelSelector>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
