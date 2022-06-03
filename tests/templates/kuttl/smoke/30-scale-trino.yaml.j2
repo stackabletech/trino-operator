@@ -1,0 +1,39 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: test-trino
+spec:
+  version: {{ test_scenario['values']['trino'] }}
+  hiveConfigMapName: test-hive-postgres
+  opa:
+    configMapName: test-opa
+    package: trino
+  s3:
+    inline:
+      host: test-minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: test-s3-credentials-secret-class
+  authentication:
+    method:
+      multiUser:
+        userCredentialsSecret:
+          name: test-trino-users-secret
+  coordinators:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config: {}
+  workers:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 2
+        config: {}
