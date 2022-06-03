@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.10.0` -> `0.17.0` ([#149], [#157], [#183], [#193]).
+- `operator-rs` `0.10.0` -> `0.21.0` ([#149], [#157], [#183], [#193]).
 - BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of
   the custom resource for the obsolete regorule-operator. This means that
   the rego rule operator is not required anymore for authorization and
@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: `OpaConfigMapName` in CRD to `opa` using the `OpaConfig` from operator-rs ([#186]).
 - Trino version to 377 ([#193]).
 - Opa rego example adapted to the new `trino-opa-authorizer` ([#193]).
+- BREAKING: Configuration of S3 adapted to ADR016 ([#200]).
 
 ### Removed
 
@@ -33,6 +34,7 @@ All notable changes to this project will be documented in this file.
 [#183]: https://github.com/stackabletech/trino-operator/pull/183
 [#186]: https://github.com/stackabletech/trino-operator/pull/186
 [#193]: https://github.com/stackabletech/trino-operator/pull/193
+[#200]: https://github.com/stackabletech/trino-operator/pull/200
 
 ## [0.3.1] - 2022-02-17
 
