@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.10.0` -> `0.21.0` ([#149], [#157], [#183], [#193]).
+- `operator-rs` `0.10.0` -> `0.21.1` ([#149], [#157], [#183], [#193], [#206]).
 - BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of
   the custom resource for the obsolete regorule-operator. This means that
   the rego rule operator is not required anymore for authorization and
@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 [#186]: https://github.com/stackabletech/trino-operator/pull/186
 [#193]: https://github.com/stackabletech/trino-operator/pull/193
 [#200]: https://github.com/stackabletech/trino-operator/pull/200
+[#206]: https://github.com/stackabletech/trino-operator/pull/206
 
 ## [0.3.1] - 2022-02-17
 
