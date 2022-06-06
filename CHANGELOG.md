@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Reconciliation errors are now reported as Kubernetes events ([#149]).
 - Use cli argument `watch-namespace` / env var `WATCH_NAMESPACE` to specify
   a single namespace to watch ([#157]).
+- Moved tests from integration tests repo to operator repo ([#211]).
 
 ### Changed
 
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Trino version to 377 ([#193]).
 - Opa rego example adapted to the new `trino-opa-authorizer` ([#193]).
 - BREAKING: Configuration of S3 adapted to ADR016 ([#200]).
+- BREAKING: Specifying the product version has been changed to adhere to [ADR018](https://docs.stackable.tech/home/contributor/adr/ADR018-product_image_versioning.html) instead of just specifying the product version you will now have to add the Stackable image version as well, so version: 3.1.0 becomes (for example) version: 3.1.0-stackable0 ([#211])
 
 ### Removed
 
@@ -36,6 +38,7 @@ All notable changes to this project will be documented in this file.
 [#193]: https://github.com/stackabletech/trino-operator/pull/193
 [#200]: https://github.com/stackabletech/trino-operator/pull/200
 [#206]: https://github.com/stackabletech/trino-operator/pull/206
+[#211]: https://github.com/stackabletech/trino-operator/pull/211
 
 ## [0.3.1] - 2022-02-17
 
