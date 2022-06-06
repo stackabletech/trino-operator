@@ -151,10 +151,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     tracing::info!("Starting reconcile");
 
     let client = &ctx.get_ref().client;
-    let version = trino_image_version(&trino)?;
+    let trino_product_version = trino_product_version(&trino)?;
 
-    let mut validated_config =
-        validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
+    let mut validated_config = validated_product_config(
+        &trino,
+        &trino_product_version,
+        &ctx.get_ref().product_config,
+    )?;
 
     let s3_connection_def: &Option<S3ConnectionDef> = &trino.spec.s3;
     let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
@@ -539,7 +542,7 @@ fn build_rolegroup_statefulset(
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
-    let trino_version = trino_version_trim(trino)?;
+    let trino_image_version = trino_image_version(trino)?;
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -585,7 +588,7 @@ fn build_rolegroup_statefulset(
     let container_trino = container_builder
         .image(format!(
             "docker.stackable.tech/stackable/trino:{}",
-            trino_version
+            trino_image_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_trino_args(
@@ -613,7 +616,7 @@ fn build_rolegroup_statefulset(
             .with_recommended_labels(
                 trino,
                 APP_NAME,
-                trino_version,
+                trino_image_version,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             )
@@ -640,7 +643,7 @@ fn build_rolegroup_statefulset(
                     m.with_recommended_labels(
                         trino,
                         APP_NAME,
-                        trino_version,
+                        trino_image_version,
                         &rolegroup_ref.role,
                         &rolegroup_ref.role_group,
                     )
@@ -757,29 +760,17 @@ pub fn trino_image_version(trino: &TrinoCluster) -> Result<&str> {
 }
 
 /// Returns our semver representation for product config e.g. 0.0.377
-pub fn trino_product_version(trino: &TrinoCluster) -> Result<&str> {
+pub fn trino_product_version(trino: &TrinoCluster) -> Result<String> {
     let image_version = trino_image_version(trino)?;
-    image_version
+    let product_version = image_version
         .split('-')
         .collect::<Vec<_>>()
         .first()
         .cloned()
         .with_context(|| FailedTrinoProductVersionRetrievalSnafu {
             version: image_version.to_string(),
-        })
-}
-
-/// Returns the "real" Trino version for docker images e.g. 377
-pub fn trino_version_trim(trino: &TrinoCluster) -> Result<&str> {
-    let trino_product_version = trino_product_version(trino)?;
-    trino_product_version
-        .split('.')
-        .collect::<Vec<_>>()
-        .last()
-        .cloned()
-        .with_context(|| FailedTrinoProductVersionRetrievalSnafu {
-            version: trino_product_version.to_string(),
-        })
+        })?;
+    Ok(format!("0.0.{}", product_version))
 }
 
 pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> Action {
