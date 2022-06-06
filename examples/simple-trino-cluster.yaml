@@ -4,7 +4,7 @@ kind: HiveCluster
 metadata:
   name: simple-hive-derby
 spec:
-  version: 2.3.9
+  version: 2.3.9-stackable0.4.0
   metastore:
     roleGroups:
       default:
