@@ -3,5 +3,6 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
 metadata:
   name: install-opa
+timeout: 300
 commands:
   - script: kubectl -n $NAMESPACE rollout status daemonset test-opa-server-default --timeout 300s
