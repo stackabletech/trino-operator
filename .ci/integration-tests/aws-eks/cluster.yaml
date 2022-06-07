@@ -1,0 +1,15 @@
+---
+apiVersion: t2.stackable.tech/v1
+kind: Infra
+template: aws-eks
+metadata:
+  name: trino-operator-integration-tests
+  description: "Cluster for Trino Operator Integration Tests (AWS EKS)"
+publicKeys: []
+spec:
+  region: "eu-central-1"
+  awsInstanceType: "t2.medium"
+  versions:
+    _-operator: NIGHTLY
+    trino-operator: "$TRINO_OPERATOR_VERSION"
+  node_count: 3
