@@ -39,10 +39,10 @@ use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    TrinoCluster, TrinoClusterSpec, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE,
-    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
+    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES,
+    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, KEYSTORE_DIR_NAME,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
     S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY, S3_SSL_ENABLED,
     USER_PASSWORD_DATA_DIR_NAME,
@@ -64,8 +64,6 @@ pub struct Ctx {
 #[strum_discriminants(derive(IntoStaticStr))]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
-    #[snafu(display("object defines no version"))]
-    ObjectHasNoVersion,
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
     #[snafu(display("object defines no {} role", role))]
@@ -130,6 +128,8 @@ pub enum Error {
     },
     #[snafu(display("invalid S3 connection: {reason}"))]
     InvalidS3Connection { reason: String },
+    #[snafu(display("failed to parse trino product version"))]
+    TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -149,10 +149,15 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     tracing::info!("Starting reconcile");
 
     let client = &ctx.get_ref().client;
-    let version = trino_version(&trino)?;
+    let trino_product_version = trino
+        .product_version()
+        .context(TrinoProductVersionParseFailureSnafu)?;
 
-    let mut validated_config =
-        validated_product_config(&trino, version, &ctx.get_ref().product_config)?;
+    let mut validated_config = validated_product_config(
+        &trino,
+        &trino_product_version,
+        &ctx.get_ref().product_config,
+    )?;
 
     let s3_connection_def: &Option<S3ConnectionDef> = &trino.spec.s3;
     let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
@@ -311,7 +316,15 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
             .name(&role_svc_name)
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(trino, APP_NAME, trino_version(trino)?, &role_name, "global")
+            .with_recommended_labels(
+                trino,
+                APP_NAME,
+                trino
+                    .image_version()
+                    .context(TrinoProductVersionParseFailureSnafu)?,
+                &role_name,
+                "global",
+            )
             .build(),
         spec: Some(ServiceSpec {
             ports: Some(service_ports(trino)),
@@ -438,7 +451,9 @@ fn build_rolegroup_config_map(
                 .with_recommended_labels(
                     trino,
                     APP_NAME,
-                    trino_version(trino)?,
+                    trino
+                        .image_version()
+                        .context(TrinoProductVersionParseFailureSnafu)?,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -496,7 +511,9 @@ fn build_rolegroup_catalog_config_map(
                 .with_recommended_labels(
                     trino,
                     APP_NAME,
-                    trino_version(trino)?,
+                    trino
+                        .image_version()
+                        .context(TrinoProductVersionParseFailureSnafu)?,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -531,7 +548,9 @@ fn build_rolegroup_statefulset(
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
-    let trino_version = trino_version_trim(trino)?;
+    let trino_image_version = trino
+        .image_version()
+        .context(TrinoProductVersionParseFailureSnafu)?;
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -576,8 +595,8 @@ fn build_rolegroup_statefulset(
 
     let container_trino = container_builder
         .image(format!(
-            "docker.stackable.tech/stackable/trino:{}-stackable0",
-            trino_version
+            "docker.stackable.tech/stackable/trino:{}",
+            trino_image_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(container_trino_args(
@@ -605,7 +624,7 @@ fn build_rolegroup_statefulset(
             .with_recommended_labels(
                 trino,
                 APP_NAME,
-                trino_version,
+                trino_image_version,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             )
@@ -632,7 +651,7 @@ fn build_rolegroup_statefulset(
                     m.with_recommended_labels(
                         trino,
                         APP_NAME,
-                        trino_version,
+                        trino_image_version,
                         &rolegroup_ref.role,
                         &rolegroup_ref.role_group,
                     )
@@ -717,7 +736,9 @@ fn build_rolegroup_service(
             .with_recommended_labels(
                 trino,
                 APP_NAME,
-                trino_version(trino)?,
+                trino
+                    .image_version()
+                    .context(TrinoProductVersionParseFailureSnafu)?,
                 &rolegroup.role,
                 &rolegroup.role_group,
             )
@@ -737,24 +758,6 @@ fn build_rolegroup_service(
         }),
         status: None,
     })
-}
-
-/// Returns our semver representation for product config e.g. 0.0.377
-pub fn trino_version(trino: &TrinoCluster) -> Result<&str> {
-    trino
-        .spec
-        .version
-        .as_deref()
-        .context(ObjectHasNoVersionSnafu)
-}
-
-/// Returns the "real" Trino version for docker images e.g. 377
-pub fn trino_version_trim(trino: &TrinoCluster) -> Result<&str> {
-    let spec: &TrinoClusterSpec = &trino.spec;
-    spec.version
-        .as_deref()
-        .and_then(|v| v.split('.').collect::<Vec<_>>().last().cloned())
-        .context(ObjectHasNoVersionSnafu)
 }
 
 pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> Action {

@@ -1,0 +1,16 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+timeout: 300
+commands:
+  - script: >-
+      helm upgrade test-minio
+      --install
+      --namespace $NAMESPACE
+      --set mode=standalone
+      --set replicas=1
+      --set persistence.enabled=false
+      --set buckets[0].name=test,buckets[0].policy=none
+      --set users[0].accessKey=minio-access-key,users[0].secretKey=minio-secret-key,users[0].policy=readwrite
+      --set resources.requests.memory=1Gi
+      --repo https://charts.min.io/ minio

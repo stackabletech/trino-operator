@@ -1,0 +1,15 @@
+---
+apiVersion: t2.stackable.tech/v1
+kind: Infra
+template: ionos-k8s
+metadata:
+  name: trino-operator-integration-tests
+  description: "Cluster for Trino Operator Integration Tests (IONOS Cloud managed K8s)"
+domain: stackable.test
+publicKeys: []
+spec:
+  region: de/fra
+  versions:
+    _-operator: NIGHTLY
+    trino-operator: "$TRINO_OPERATOR_VERSION"
+  node_count: 3

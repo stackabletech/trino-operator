@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: kubectl cp -n $NAMESPACE ./check-active-workers.py  trino-test-helper-0:/tmp
+  - script: kubectl cp -n $NAMESPACE ./check-opa.py  trino-test-helper-0:/tmp
+  - script: kubectl cp -n $NAMESPACE ./check-s3.py  trino-test-helper-0:/tmp
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- pip install trino

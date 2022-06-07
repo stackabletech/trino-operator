@@ -4,7 +4,7 @@ kind: HiveCluster
 metadata:
   name: simple-hive-derby
 spec:
-  version: 2.3.9
+  version: 2.3.9-stackable0.4.0
   metastore:
     roleGroups:
       default:
@@ -24,7 +24,7 @@ kind: OpaCluster
 metadata:
   name: simple-opa
 spec:
-  version: "0.37.2"
+  version: 0.37.2-stackable0.2.0
   servers:
     roleGroups:
       default:
@@ -85,7 +85,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: "0.0.377"
+  version: 377-stackable0
   hiveConfigMapName: simple-hive-derby
   opa:
     configMapName: simple-opa
