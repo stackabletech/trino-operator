@@ -64,8 +64,6 @@ pub struct Ctx {
 #[strum_discriminants(derive(IntoStaticStr))]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
-    #[snafu(display("object defines no version"))]
-    ObjectHasNoVersion,
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
     #[snafu(display("object defines no {} role", role))]
@@ -130,8 +128,8 @@ pub enum Error {
     },
     #[snafu(display("invalid S3 connection: {reason}"))]
     InvalidS3Connection { reason: String },
-    #[snafu(display("could not extract trino product version (x.x.x) from image: [{version}]. Expected format e.g. x.x.x-stackable0.1.0"))]
-    FailedTrinoProductVersionRetrieval { version: String },
+    #[snafu(display("failed to parse trino product version"))]
+    TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -151,7 +149,9 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
     tracing::info!("Starting reconcile");
 
     let client = &ctx.get_ref().client;
-    let trino_product_version = trino_product_version(&trino)?;
+    let trino_product_version = trino
+        .product_version()
+        .context(TrinoProductVersionParseFailureSnafu)?;
 
     let mut validated_config = validated_product_config(
         &trino,
@@ -319,7 +319,9 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
             .with_recommended_labels(
                 trino,
                 APP_NAME,
-                trino_image_version(trino)?,
+                trino
+                    .image_version()
+                    .context(TrinoProductVersionParseFailureSnafu)?,
                 &role_name,
                 "global",
             )
@@ -449,7 +451,9 @@ fn build_rolegroup_config_map(
                 .with_recommended_labels(
                     trino,
                     APP_NAME,
-                    trino_image_version(trino)?,
+                    trino
+                        .image_version()
+                        .context(TrinoProductVersionParseFailureSnafu)?,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -507,7 +511,9 @@ fn build_rolegroup_catalog_config_map(
                 .with_recommended_labels(
                     trino,
                     APP_NAME,
-                    trino_image_version(trino)?,
+                    trino
+                        .image_version()
+                        .context(TrinoProductVersionParseFailureSnafu)?,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -542,7 +548,9 @@ fn build_rolegroup_statefulset(
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
-    let trino_image_version = trino_image_version(trino)?;
+    let trino_image_version = trino
+        .image_version()
+        .context(TrinoProductVersionParseFailureSnafu)?;
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -728,7 +736,9 @@ fn build_rolegroup_service(
             .with_recommended_labels(
                 trino,
                 APP_NAME,
-                trino_image_version(trino)?,
+                trino
+                    .image_version()
+                    .context(TrinoProductVersionParseFailureSnafu)?,
                 &rolegroup.role,
                 &rolegroup.role_group,
             )
@@ -748,29 +758,6 @@ fn build_rolegroup_service(
         }),
         status: None,
     })
-}
-
-/// Returns the provided docker image e.g. 0.0.377-stackable0
-pub fn trino_image_version(trino: &TrinoCluster) -> Result<&str> {
-    trino
-        .spec
-        .version
-        .as_deref()
-        .context(ObjectHasNoVersionSnafu)
-}
-
-/// Returns our semver representation for product config e.g. 0.0.377
-pub fn trino_product_version(trino: &TrinoCluster) -> Result<String> {
-    let image_version = trino_image_version(trino)?;
-    let product_version = image_version
-        .split('-')
-        .collect::<Vec<_>>()
-        .first()
-        .cloned()
-        .with_context(|| FailedTrinoProductVersionRetrievalSnafu {
-            version: image_version.to_string(),
-        })?;
-    Ok(format!("0.0.{}", product_version))
 }
 
 pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> Action {
