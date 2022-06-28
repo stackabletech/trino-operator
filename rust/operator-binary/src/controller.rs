@@ -398,7 +398,7 @@ fn build_rolegroup_config_map(
                 // Required from Trino 378 (accepted in 377)
                 transformed_config.insert(
                     INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                    Some(format!("${{ENV:{{INTERNAL_SECRET}}}}")),
+                    Some(format!("${{ENV:{INTERNAL_SECRET}}}")),
                 );
 
                 let config_properties =
