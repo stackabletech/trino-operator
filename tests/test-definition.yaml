@@ -9,9 +9,14 @@ dimensions:
   - name: opa
     values:
       - 0.37.2-stackable0.2.0
+  - name: s3-use-tls
+    values:
+      - "true"
+      - "false"
 tests:
   - name: smoke
     dimensions:
       - trino
       - hive
       - opa
+      - s3-use-tls

@@ -1,0 +1,20 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: >-
+      helm install minio
+      --namespace $NAMESPACE
+      --set mode=standalone
+      --set replicas=1
+      --set persistence.enabled=false
+      --set buckets[0].name=trino,buckets[0].policy=none
+      --set users[0].accessKey=trino,users[0].secretKey=trinotrino,users[0].policy=readwrite
+      --set resources.requests.memory=1Gi
+      --set service.type=NodePort,service.nodePort=null
+      --set consoleService.type=NodePort,consoleService.nodePort=null
+{% if test_scenario['values']['s3-use-tls'] == 'true' %}
+      --set tls.enabled=true,tls.certSecret=minio-tls-certificates,tls.publicCrt=tls.crt,tls.privateKey=tls.key
+{% endif %}
+      --repo https://charts.min.io/ minio
+    timeout: 600
