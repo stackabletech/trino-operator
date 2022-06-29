@@ -1,59 +1,8 @@
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: trino-users
-type: kubernetes.io/opaque
-stringData:
-  # admin:admin
-  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
-  # alice:alice
-  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-  # bob:bob
-  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
----
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCluster
-metadata:
-  name: trino
-spec:
-  version: {{ test_scenario['values']['trino'] }}
-  hiveConfigMapName: hive
-  opa:
-    configMapName: opa
-    package: trino
-  s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: s3-credentials
-{% if test_scenario['values']['s3-use-tls'] == 'true' %}
-      tls:
-        verification:
-          server:
-            caCert:
-              secretClass: minio-tls-certificates
-{% endif %}
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: trino-users
-  coordinators:
-    roleGroups:
-      default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
-        replicas: 1
-        config: {}
-  workers:
-    roleGroups:
-      default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
-        replicas: 2
-        config: {}
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: >-
+      kubectl --namespace $NAMESPACE
+      patch trinoclusters.trino.stackable.tech trino
+      --type=merge --patch '{"spec":{"workers": {"roleGroups": {"default": {"replicas": 2}}}}}'
