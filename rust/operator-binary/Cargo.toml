@@ -15,6 +15,7 @@ stackable-trino-crd = { path = "../crd" }
 anyhow = "1.0"
 clap = "3.2"
 futures = { version = "0.3", features = ["compat"] }
+openssl = "0.10.40"
 pin-project = "1.0"
 semver = "1.0"
 serde = "1.0"
@@ -24,7 +25,6 @@ snafu = "0.7"
 strum = { version = "0.24", features = ["derive"] }
 tokio = { version = "1.19", features = ["full"] }
 tracing = "0.1"
-uuid = { version = "1.1.2", features = ["v4"] }
 
 [build-dependencies]
 built = { version =  "0.5", features = ["chrono", "git2"] }

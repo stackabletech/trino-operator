@@ -55,7 +55,6 @@ use std::{
     time::Duration,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
-use uuid::Uuid;
 
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
@@ -398,7 +397,7 @@ fn build_rolegroup_config_map(
                 // Required from Trino 378 (accepted in 377)
                 transformed_config.insert(
                     INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                    Some(format!("${{ENV:{INTERNAL_SECRET}}}")),
+                    Some(format!("${{ENV:{secret}}}", secret = INTERNAL_SECRET)),
                 );
 
                 let config_properties =
@@ -941,7 +940,7 @@ fn env_var_from_discovery_config_map(
 
 fn env_var_from_secret(secret_name: &Option<String>, env_var: &str) -> Option<EnvVar> {
     secret_name.as_ref().map(|secret| EnvVar {
-        name: secret.to_string(),
+        name: env_var.to_string(),
         value_from: Some(EnvVarSource {
             secret_key_ref: Some(SecretKeySelector {
                 optional: Some(false),
@@ -1037,7 +1036,7 @@ async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) ->
 
 fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
     let mut internal_secret = BTreeMap::new();
-    internal_secret.insert(INTERNAL_SECRET.to_string(), Uuid::new_v4().to_string());
+    internal_secret.insert(INTERNAL_SECRET.to_string(), get_random_base64());
 
     Ok(Secret {
         immutable: Some(true),
@@ -1054,6 +1053,12 @@ fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
 
 fn build_shared_internal_secret_name(trino: &TrinoCluster) -> String {
     format!("{}-internal-secret", trino.name())
+}
+
+fn get_random_base64() -> String {
+    let mut buf = [0; 512];
+    openssl::rand::rand_bytes(&mut buf).unwrap();
+    openssl::base64::encode_block(&buf)
 }
 
 fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
