@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Use cli argument `watch-namespace` / env var `WATCH_NAMESPACE` to specify
   a single namespace to watch ([#157]).
 - Moved tests from integration tests repo to operator repo ([#211]).
+- Added `internal-communication.shared-secret` property which is read from (operator created secret). Must be set from Trino version 378 ([#224]).
 
 ### Changed
 
@@ -39,6 +40,7 @@ All notable changes to this project will be documented in this file.
 [#200]: https://github.com/stackabletech/trino-operator/pull/200
 [#206]: https://github.com/stackabletech/trino-operator/pull/206
 [#211]: https://github.com/stackabletech/trino-operator/pull/211
+[#224]: https://github.com/stackabletech/trino-operator/pull/224
 
 ## [0.3.1] - 2022-02-17
 

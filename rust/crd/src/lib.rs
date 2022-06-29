@@ -48,6 +48,7 @@ pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key
 pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
+pub const INTERNAL_COMMUNICATION_SHARED_SECRET: &str = "internal-communication.shared-secret";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";

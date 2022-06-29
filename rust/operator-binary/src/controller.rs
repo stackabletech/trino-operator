@@ -2,6 +2,7 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::builder::{PodSecurityContextBuilder, VolumeBuilder};
 use stackable_operator::commons::s3::{S3AccessStyle, S3ConnectionDef};
+use stackable_operator::k8s_openapi::api::core::v1::{Secret, SecretKeySelector};
 use stackable_operator::{
     builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
     client::Client,
@@ -41,11 +42,11 @@ use stackable_trino_crd::{
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
     CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES,
-    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, KEYSTORE_DIR_NAME,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
-    S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY, S3_SSL_ENABLED,
-    USER_PASSWORD_DATA_DIR_NAME,
+    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, INTERNAL_COMMUNICATION_SHARED_SECRET,
+    JVM_CONFIG, KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
+    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
+    S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
+    S3_SSL_ENABLED, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -93,6 +94,10 @@ pub enum Error {
     ApplyRoleGroupStatefulSet {
         source: stackable_operator::error::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
+    },
+    #[snafu(display("failed to apply internal secret"))]
+    ApplyInternalSecret {
+        source: stackable_operator::error::Error,
     },
     #[snafu(display("invalid product config"))]
     InvalidProductConfig {
@@ -144,6 +149,7 @@ const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
 const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
 const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
 const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
+const INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 
 pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Result<Action> {
     tracing::info!("Starting reconcile");
@@ -242,6 +248,8 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Res
         )
         .await
         .context(ApplyRoleServiceSnafu)?;
+
+    create_shared_internal_secret(&trino, client).await?;
 
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&role).context(InternalOperatorFailureSnafu)?;
@@ -384,6 +392,12 @@ fn build_rolegroup_config_map(
                 transformed_config.insert(
                     DISCOVERY_URI.to_string(),
                     Some(discovery.connection_string()),
+                );
+
+                // Required from Trino 378 (accepted in 377)
+                transformed_config.insert(
+                    INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
+                    Some(format!("${{ENV:{secret}}}", secret = INTERNAL_SECRET)),
                 );
 
                 let config_properties =
@@ -566,6 +580,11 @@ fn build_rolegroup_statefulset(
     if let Some(hive) = env_var_from_discovery_config_map(&trino.spec.hive_config_map_name, "HIVE")
     {
         env.push(hive);
+    };
+
+    let secret_name = build_shared_internal_secret_name(trino);
+    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), INTERNAL_SECRET) {
+        env.push(internal_secret);
     };
 
     // Add volume and volume mounts for s3 credentials
@@ -919,6 +938,21 @@ fn env_var_from_discovery_config_map(
     })
 }
 
+fn env_var_from_secret(secret_name: &Option<String>, env_var: &str) -> Option<EnvVar> {
+    secret_name.as_ref().map(|secret| EnvVar {
+        name: env_var.to_string(),
+        value_from: Some(EnvVarSource {
+            secret_key_ref: Some(SecretKeySelector {
+                optional: Some(false),
+                name: Some(secret.to_string()),
+                key: env_var.to_string(),
+            }),
+            ..EnvVarSource::default()
+        }),
+        ..EnvVar::default()
+    })
+}
+
 /// Defines all required roles and their required configuration.
 ///
 /// The roles and their configs are then validated and complemented by the product config.
@@ -982,6 +1016,49 @@ fn validated_product_config(
 
     validate_all_roles_and_groups_config(version, &role_config, product_config, false, false)
         .context(InvalidProductConfigSnafu)
+}
+
+async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) -> Result<()> {
+    let secret = build_shared_internal_secret(trino)?;
+    if !client
+        .exists::<Secret>(&secret.name(), secret.namespace().as_deref())
+        .await
+        .context(ApplyInternalSecretSnafu)?
+    {
+        client
+            .apply_patch(FIELD_MANAGER_SCOPE, &secret, &secret)
+            .await
+            .context(ApplyInternalSecretSnafu)?;
+    }
+
+    Ok(())
+}
+
+fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
+    let mut internal_secret = BTreeMap::new();
+    internal_secret.insert(INTERNAL_SECRET.to_string(), get_random_base64());
+
+    Ok(Secret {
+        immutable: Some(true),
+        metadata: ObjectMetaBuilder::new()
+            .name(build_shared_internal_secret_name(trino))
+            .namespace_opt(trino.namespace())
+            .ownerreference_from_resource(trino, None, Some(true))
+            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .build(),
+        string_data: Some(internal_secret),
+        ..Secret::default()
+    })
+}
+
+fn build_shared_internal_secret_name(trino: &TrinoCluster) -> String {
+    format!("{}-internal-secret", trino.name())
+}
+
+fn get_random_base64() -> String {
+    let mut buf = [0; 512];
+    openssl::rand::rand_bytes(&mut buf).unwrap();
+    openssl::base64::encode_block(&buf)
 }
 
 fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
