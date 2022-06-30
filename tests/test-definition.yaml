@@ -3,12 +3,14 @@ dimensions:
   - name: trino
     values:
       - 377-stackable0
+      - 387-stackable0
   - name: hive
     values:
       - 2.3.9-stackable0.4.0
   - name: opa
     values:
       - 0.37.2-stackable0.2.0
+      - 0.41.0-stackable0.1.0
 tests:
   - name: smoke
     dimensions:
