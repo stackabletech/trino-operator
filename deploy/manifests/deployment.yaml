@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trino-operator
     app.kubernetes.io/instance: trino-operator
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.0-nightly"
 spec:
   replicas: 1
   strategy:
@@ -26,7 +26,7 @@ spec:
       containers:
         - name: trino-operator
           securityContext: {}
-          image: "docker.stackable.tech/stackable/trino-operator:0.4.0"
+          image: "docker.stackable.tech/stackable/trino-operator:0.5.0-nightly"
           imagePullPolicy: IfNotPresent
           resources: {}
           volumeMounts:
