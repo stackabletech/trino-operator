@@ -1,6 +1,6 @@
 # Stackable Operator for Trino
 
-[![Build Actions Status](https://ci.stackable.tech/job/trino%2doperator%2dit%2dnightly/badge/icon?subject=Integration%20Tests)](https://ci.stackable.tech/job/Trino%20Operator%20Integration%20Tests)
+[![Build Actions Status](https://ci.stackable.tech/job/trino%2doperator%2dit%2dnightly/badge/icon?subject=Integration%20Tests)](https://ci.stackable.tech/job/trino%2doperator%2dit%2dnightly)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/stackabletech/trino-operator/graphs/commit-activity)
 
 This is a Kubernetes Operator to manage [Trino](https://trino.io/) ensembles.
