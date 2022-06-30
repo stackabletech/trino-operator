@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.2] - 2022-06-30
+
 ### Added
 
 - Reconciliation errors are now reported as Kubernetes events ([#149]).

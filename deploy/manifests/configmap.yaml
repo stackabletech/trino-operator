@@ -8,4 +8,4 @@ metadata:
   labels:
     app.kubernetes.io/name: trino-operator
     app.kubernetes.io/instance: trino-operator
-    app.kubernetes.io/version: "0.3.2-nightly"
+    app.kubernetes.io/version: "0.3.2"

@@ -1,6 +1,6 @@
 name: trino
-version: nightly
+version: "0.3"
 title: Stackable Operator for Trino
 nav:
   - modules/ROOT/nav.adoc
-prerelease: true
+prerelease: false
