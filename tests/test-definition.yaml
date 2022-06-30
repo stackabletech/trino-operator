@@ -3,7 +3,7 @@ dimensions:
   - name: trino
     values:
       - 377-stackable0
-      - 387-stackable0
+      - 387-stackable0.1.0
   - name: hive
     values:
       - 2.3.9-stackable0.4.0
