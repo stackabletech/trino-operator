@@ -50,6 +50,7 @@ use stackable_trino_crd::{
 };
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write,
     str::FromStr,
     sync::Arc,
     time::Duration,
@@ -432,7 +433,7 @@ fn build_rolegroup_config_map(
                 cm_conf_data.insert(file_name.to_string(), "".to_string());
             }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
-                jvm_config.push_str(&format!("\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", METRICS_PORT));
+                let _ = write!(jvm_config, "\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
             }
             _ => {}
         }
