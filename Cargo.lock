@@ -1777,7 +1777,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-crd"
-version = "0.3.2-nightly"
+version = "0.5.0-nightly"
 dependencies = [
  "indoc",
  "rstest",
@@ -1793,12 +1793,13 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-operator"
-version = "0.3.2-nightly"
+version = "0.5.0-nightly"
 dependencies = [
  "anyhow",
  "built",
  "clap",
  "futures 0.3.21",
+ "openssl",
  "pin-project",
  "semver",
  "serde",
