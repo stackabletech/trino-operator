@@ -32,7 +32,7 @@ openssl req -new \
 echo "Signing the client cert with the root ca"
 openssl x509 \
   -req \
-  -extfile <(printf "subjectAltName=DNS:${FQDN}") \
+  -extfile <(printf "subjectAltName=DNS:%s" "$FQDN") \
   -in client.csr.pem \
   -CA root-ca.crt.pem \
   -CAkey root-ca.key.pem \
