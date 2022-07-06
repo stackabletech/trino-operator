@@ -1,31 +1,30 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::builder::{PodSecurityContextBuilder, VolumeBuilder};
-use stackable_operator::commons::s3::{S3AccessStyle, S3ConnectionDef};
-use stackable_operator::k8s_openapi::api::core::v1::{Secret, SecretKeySelector};
 use stackable_operator::{
-    builder::{ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder},
+    builder::{
+        ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
+        PodSecurityContextBuilder, VolumeBuilder,
+    },
     client::Client,
-    commons::{opa::OpaApiVersion, s3::S3ConnectionSpec},
+    commons::{
+        opa::OpaApiVersion,
+        s3::{S3AccessStyle, S3ConnectionDef, S3ConnectionSpec},
+    },
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 CSIVolumeSource, ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource,
                 ContainerPort, EnvVar, EnvVarSource, PersistentVolumeClaim,
-                PersistentVolumeClaimSpec, Probe, ResourceRequirements, SecurityContext, Service,
-                ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                PersistentVolumeClaimSpec, Probe, ResourceRequirements, Secret, SecretKeySelector,
+                SecurityContext, Service, ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
             api::resource::Quantity, apis::meta::v1::LabelSelector, util::intstr::IntOrString,
         },
     },
-    kube::{
-        api::ObjectMeta,
-        runtime::controller::{Action, Context},
-        ResourceExt,
-    },
+    kube::{api::ObjectMeta, runtime::controller::Action, ResourceExt},
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
     product_config,
@@ -152,19 +151,16 @@ const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
 const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
 const INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 
-pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Context<Ctx>) -> Result<Action> {
+pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<Action> {
     tracing::info!("Starting reconcile");
 
-    let client = &ctx.get_ref().client;
+    let client = &ctx.client;
     let trino_product_version = trino
         .product_version()
         .context(TrinoProductVersionParseFailureSnafu)?;
 
-    let mut validated_config = validated_product_config(
-        &trino,
-        &trino_product_version,
-        &ctx.get_ref().product_config,
-    )?;
+    let mut validated_config =
+        validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
     let s3_connection_def: &Option<S3ConnectionDef> = &trino.spec.s3;
     let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
@@ -780,7 +776,7 @@ fn build_rolegroup_service(
     })
 }
 
-pub fn error_policy(_error: &Error, _ctx: Context<Ctx>) -> Action {
+pub fn error_policy(_error: &Error, _ctx: Arc<Ctx>) -> Action {
     Action::requeue(Duration::from_secs(5))
 }
 
@@ -813,12 +809,12 @@ fn container_prepare_args() -> Vec<String> {
         "echo Cleaning up truststore - just in case",
         &format!("rm -f {keystore_directory}/truststore.p12", keystore_directory = KEYSTORE_DIR_NAME),
         "echo Creating truststore",
-        &format!("keytool -importcert -file {keystore_directory}/ca.crt -keystore {keystore_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret", 
+        &format!("keytool -importcert -file {keystore_directory}/ca.crt -keystore {keystore_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret",
                  keystore_directory = KEYSTORE_DIR_NAME),
         "echo Creating certificate chain",
         &format!("cat {keystore_directory}/ca.crt {keystore_directory}/tls.crt > {keystore_directory}/chain.crt", keystore_directory = KEYSTORE_DIR_NAME),
         "echo Creating keystore",
-        &format!("openssl pkcs12 -export -in {keystore_directory}/chain.crt -inkey {keystore_directory}/tls.key -out {keystore_directory}/keystore.p12 --passout file:{keystore_directory}/password", 
+        &format!("openssl pkcs12 -export -in {keystore_directory}/chain.crt -inkey {keystore_directory}/tls.key -out {keystore_directory}/keystore.p12 --passout file:{keystore_directory}/password",
                  keystore_directory = KEYSTORE_DIR_NAME),
         "echo Cleaning up password",
         &format!("rm -f {keystore_directory}/password", keystore_directory = KEYSTORE_DIR_NAME),

@@ -2,21 +2,17 @@ mod controller;
 
 use clap::Parser;
 use futures::stream::StreamExt;
-use stackable_operator::cli::ProductOperatorRun;
 use stackable_operator::{
-    cli::Command,
+    cli::{Command, ProductOperatorRun},
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service},
     },
-    kube::{
-        api::ListParams,
-        runtime::{controller::Context, Controller},
-        CustomResourceExt,
-    },
+    kube::{api::ListParams, runtime::Controller, CustomResourceExt},
     logging::controller::report_controller_reconciled,
 };
 use stackable_trino_crd::{TrinoCluster, APP_NAME};
+use std::sync::Arc;
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -81,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
             .run(
                 controller::reconcile_trino,
                 controller::error_policy,
-                Context::new(controller::Ctx {
+                Arc::new(controller::Ctx {
                     client: client.clone(),
                     product_config,
                 }),
