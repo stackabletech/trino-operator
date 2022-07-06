@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [0.4.0] - 2022-06-30
 
+### Changed
+
+- Include chart name when installing with a custom release name ([#233], [#xxx]).
+
+[#233]: https://github.com/stackabletech/trino-operator/pull/233
+[#xxx]: https://github.com/stackabletech/trino-operator/pull/xxx
+
 ## [Unreleased]
 
 ### Added
@@ -95,6 +102,7 @@ which only accept a String ([#131]).
 ## [0.1.0] - 2021-10-28
 
 ### Changed
+
 - Switched to operator-rs tag 0.3.0 ([#21])
 
 [#21]: https://github.com/stackabletech/hdfs-operator/pull/21
