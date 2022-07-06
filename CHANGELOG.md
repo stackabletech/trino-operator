@@ -6,10 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Include chart name when installing with a custom release name ([#233], [#xxx]).
+- Include chart name when installing with a custom release name ([#233], [#234]).
 
 [#233]: https://github.com/stackabletech/trino-operator/pull/233
-[#xxx]: https://github.com/stackabletech/trino-operator/pull/xxx
+[#234]: https://github.com/stackabletech/trino-operator/pull/234
 
 ## [Unreleased]
 
