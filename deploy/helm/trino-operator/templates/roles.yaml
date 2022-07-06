@@ -2,7 +2,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Release.Name }}-clusterrole
+  name: {{ include "operator.fullname" . }}-clusterrole
 rules:
   # For OPA dependents. Note that OPA it's self is listed here because it's own resource name
   # doesn't follow the *clusters convention
