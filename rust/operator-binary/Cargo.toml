@@ -15,7 +15,7 @@ stackable-trino-crd = { path = "../crd" }
 anyhow = "1.0"
 clap = "3.2"
 futures = { version = "0.3", features = ["compat"] }
-openssl = "0.10.40"
+openssl = "0.10.41"
 pin-project = "1.0"
 semver = "1.0"
 serde = "1.0"
