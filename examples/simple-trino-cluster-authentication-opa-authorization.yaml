@@ -80,6 +80,19 @@ data:
       input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
     }
 ---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: simple-trino-tls-certificates
+spec:
+  backend:
+    autoTls:
+      ca:
+        secret:
+          name: secret-provisioner-trino-tls-ca
+          namespace: default
+        autoGenerate: true
+---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
@@ -96,6 +109,11 @@ spec:
         userCredentialsSecret:
           namespace: default
           name: simple-trino-users-secret
+        tls:
+          verification:
+            server:
+              caCert:
+                secretClass: simple-trino-tls-certificates
   coordinators:
     roleGroups:
       default:

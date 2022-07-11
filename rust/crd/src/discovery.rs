@@ -39,6 +39,10 @@ impl TrinoDiscovery {
             self.protocol.port()
         )
     }
+
+    pub fn unsecure_connection_string(&self) -> String {
+        format!("http://{}:{}", self.pod_ref.fqdn(), HTTP_PORT)
+    }
 }
 
 #[derive(Clone, Debug, strum::Display, Eq, Hash, PartialEq)]
@@ -55,11 +59,5 @@ impl TrinoDiscoveryProtocol {
             TrinoDiscoveryProtocol::Http => HTTP_PORT,
             TrinoDiscoveryProtocol::Https => HTTPS_PORT,
         }
-    }
-}
-
-impl Default for TrinoDiscoveryProtocol {
-    fn default() -> Self {
-        Self::Https
     }
 }

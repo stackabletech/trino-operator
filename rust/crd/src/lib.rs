@@ -73,7 +73,7 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
-pub const KEYSTORE_DIR_NAME: &str = "/stackable/keystore";
+pub const TLS_DIR_NAME: &str = "/stackable/tls";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 
@@ -274,7 +274,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", KEYSTORE_DIR_NAME, "keystore.p12")),
+                        Some(format!("{}/{}", TLS_DIR_NAME, "keystore.p12")),
                     );
 
                     result.insert(

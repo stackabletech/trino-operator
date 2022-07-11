@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use snafu::{OptionExt, Snafu};
 use stackable_operator::client::Client;
+use stackable_operator::commons::tls::{CaCert, Tls, TlsVerification};
 use stackable_operator::k8s_openapi::api::core::v1::{Secret, SecretReference};
 use stackable_operator::kube::runtime::reflector::ObjectRef;
 use stackable_operator::schemars::{self, JsonSchema};
@@ -47,6 +48,7 @@ pub enum TrinoAuthenticationMethod {
     #[serde(rename_all = "camelCase")]
     MultiUser {
         user_credentials_secret: SecretReference,
+        tls: Option<Tls>,
     },
 }
 
@@ -59,6 +61,7 @@ impl TrinoAuthenticationMethod {
         match self {
             TrinoAuthenticationMethod::MultiUser {
                 user_credentials_secret: user_credential_secret,
+                tls,
             } => {
                 let secret_name = user_credential_secret
                     .name
@@ -96,6 +99,7 @@ impl TrinoAuthenticationMethod {
 
                 Ok(TrinoAuthenticationConfig::MultiUser {
                     user_credentials: users,
+                    tls: tls.clone(),
                 })
             }
         }
@@ -106,17 +110,46 @@ impl TrinoAuthenticationMethod {
 pub enum TrinoAuthenticationConfig {
     MultiUser {
         user_credentials: BTreeMap<String, String>,
+        tls: Option<Tls>,
     },
 }
 
 impl TrinoAuthenticationConfig {
+    /// Extracts the user and passwords provided in the `user_credentials`.
     pub fn to_trino_user_data(&self) -> String {
         match self {
-            TrinoAuthenticationConfig::MultiUser { user_credentials } => user_credentials
+            TrinoAuthenticationConfig::MultiUser {
+                user_credentials, ..
+            } => user_credentials
                 .iter()
                 .map(|(user, password)| format!("{}:{}", user, password))
                 .collect::<Vec<_>>()
                 .join("\n"),
         }
+    }
+
+    /// Extracts the TLS SecretClass used for authentication if specified by the user.
+    /// Defaults to `tls` because Trino always needs tls enabled if authentication is required.
+    pub fn to_trino_tls_secret(&self) -> String {
+        let mut trino_secret_class = "tls";
+        match self {
+            TrinoAuthenticationConfig::MultiUser { tls, .. } => {
+                if let Some(tls) = tls {
+                    match &tls.verification {
+                        TlsVerification::None {} => {}
+                        TlsVerification::Server(server_verification) => {
+                            match &server_verification.ca_cert {
+                                CaCert::WebPki {} => {}
+                                CaCert::SecretClass(secret_class) => {
+                                    trino_secret_class = secret_class
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        trino_secret_class.to_string()
     }
 }
