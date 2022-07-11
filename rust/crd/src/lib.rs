@@ -1,4 +1,5 @@
 pub mod authentication;
+mod config;
 pub mod discovery;
 
 use crate::{authentication::Authentication, discovery::TrinoPodRef};
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::commons::opa::OpaConfig;
 use stackable_operator::commons::s3::S3ConnectionDef;
+use stackable_operator::commons::tls::Tls;
 use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -37,21 +39,32 @@ pub const HIVE_PROPERTIES: &str = "hive.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
-pub const NODE_ID: &str = "node.id";
-pub const NODE_DATA_DIR: &str = "node.data-dir";
 // config.properties
 pub const COORDINATOR: &str = "coordinator";
+pub const DISCOVERY_URI: &str = "discovery.uri";
 pub const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
+pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
+pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
+// - client
 pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
 pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
 pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key";
 pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
+// - internal tls
+pub const INTERNAL_COMMUNICATION_SHARED_SECRET: &str = "internal-communication.shared-secret";
+pub const INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH: &str =
+    "internal-communication.https.keystore.path";
+pub const INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY: &str =
+    "internal-communication.https.keystore.key";
+pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH: &str =
+    "internal-communication.https.truststore.path";
+pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY: &str =
+    "internal-communication.https.truststore.key";
+pub const NODE_INTERNAL_ADDRESS_SOURCE: &str = "node.internal-address-source";
+pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
+// - authentication
 pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
-pub const INTERNAL_COMMUNICATION_SHARED_SECRET: &str = "internal-communication.shared-secret";
-pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
-pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
-pub const DISCOVERY_URI: &str = "discovery.uri";
 // password-authenticator.properties
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
@@ -73,13 +86,21 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
-pub const TLS_DIR_NAME: &str = "/stackable/tls";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 
+pub const TLS_MAIN_DIR: &str = "/stackable/tls";
+pub const TLS_INTERNAL_CLIENT_DIR: &str = "/stackable/tls/internal/client";
+pub const TLS_INTERNAL_SHARED_SECRET_DIR: &str = "/stackable/tls/internal/shared_secret";
+pub const TLS_EXTERNAL_S3_DIR: &str = "/stackable/tls/external/s3";
+pub const TLS_EXTERNAL_LDAP_DIR: &str = "/stackable/tls/external/ldap";
+
+pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
+pub const ENV_TLS_STORE_SECRET: &str = "TLS_STORE_SECRET";
+
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("could not parse product version from image: [{image_version}]. Expected format e.g. [377-stackable0.1.0]"))]
+    #[snafu(display("could not parse product version from image: [{image_version}]. Expected format e.g. [387-stackable0.1.0]"))]
     TrinoProductVersion { image_version: String },
     #[snafu(display("object has no namespace associated"))]
     NoNamespace,
@@ -115,15 +136,35 @@ pub struct TrinoClusterSpec {
     pub hive_config_map_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
-    /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authentication: Option<Authentication>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub s3: Option<S3ConnectionDef>,
+    pub config: Option<GlobalTrinoConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfig>>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalTrinoConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub security: Option<TrinoSecurityConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub s3: Option<S3ConnectionDef>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrinoSecurityConfig {
+    /// Enable client TLS authentication
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client: Option<Tls>,
+    /// Enable internal TLS authentication
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub internal: Option<Tls>,
+    /// A reference to a secret containing username/password for defined users
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authentication: Option<Authentication>,
 }
 
 #[derive(
@@ -232,6 +273,7 @@ impl Configuration for TrinoConfig {
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
+        let authenticated: bool = resource.get_authentication().is_some();
 
         match file {
             NODE_PROPERTIES => {
@@ -263,24 +305,25 @@ impl Configuration for TrinoConfig {
                     );
                 }
 
-                if resource.spec.authentication.is_some() {
-                    result.insert(
-                        HTTP_SERVER_HTTPS_ENABLED.to_string(),
-                        Some(true.to_string()),
-                    );
-                    result.insert(
-                        HTTP_SERVER_HTTPS_PORT.to_string(),
-                        Some(HTTPS_PORT.to_string()),
-                    );
-                    result.insert(
-                        HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", TLS_DIR_NAME, "keystore.p12")),
-                    );
-
-                    result.insert(
-                        HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
-                        Some("secret".to_string()),
-                    );
+                // We have to differentiate several options here:
+                // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
+                //   - requires both internal and client TLS to be configured
+                // - Client TLS
+                //   - set HTTPS port
+                //   - set https enabled -> true
+                //   - set http server keystore path
+                //   - set http server keystore password
+                // - Internal TLS required:
+                //   - set HTTPS port
+                //   - set https enabled -> true
+                //   - set internal-communications keystore path
+                //   - set internal-communications keystore password
+                //   - set internal-communications truststore path
+                //   - set internal-communications keystore password
+                //   - set node internal address source to FQDN
+                if authenticated {
+                    config::client_tls_config(&mut result);
+                    config::internal_tls_config(&mut result);
 
                     // password ui login
                     if role_name == TrinoRole::Coordinator.to_string() {
@@ -288,11 +331,29 @@ impl Configuration for TrinoConfig {
                             HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
                             Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
                         );
+                    } else if resource
+                        .spec
+                        .config
+                        .as_ref()
+                        .and_then(|config| config.security.as_ref())
+                        .and_then(|security| security.client.as_ref())
+                        .is_some()
+                    {
+                        config::client_tls_config(&mut result);
+                    } else if resource
+                        .spec
+                        .config
+                        .as_ref()
+                        .and_then(|config| config.security.as_ref())
+                        .and_then(|security| security.internal.as_ref())
+                        .is_some()
+                    {
+                        config::internal_tls_config(&mut result);
                     }
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                if resource.spec.authentication.is_some() {
+                if authenticated {
                     result.insert(
                         PASSWORD_AUTHENTICATOR_NAME.to_string(),
                         Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()),
@@ -395,5 +456,32 @@ impl TrinoCluster {
                 image_version: image_version.to_string(),
             })?;
         Ok(format!("{}.0.0", product_version))
+    }
+
+    /// Returns user provided authentication settings
+    pub fn get_authentication(&self) -> Option<&Authentication> {
+        self.spec
+            .config
+            .as_ref()
+            .and_then(|config| config.security.as_ref())
+            .and_then(|security| security.authentication.as_ref())
+    }
+
+    /// Return user provided internal TLS settings
+    pub fn get_internal_tls(&self) -> Option<&Tls> {
+        self.spec
+            .config
+            .as_ref()
+            .and_then(|config| config.security.as_ref())
+            .and_then(|security| security.internal.as_ref())
+    }
+
+    /// Return user provided client TLS settings
+    pub fn get_client_tls(&self) -> Option<&Tls> {
+        self.spec
+            .config
+            .as_ref()
+            .and_then(|config| config.security.as_ref())
+            .and_then(|security| security.client.as_ref())
     }
 }

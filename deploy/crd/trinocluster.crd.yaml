@@ -22,18 +22,66 @@ spec:
           properties:
             spec:
               properties:
-                authentication:
-                  description: A reference to a secret containing username/password for defined users
+                config:
                   nullable: true
                   properties:
-                    method:
+                    s3:
+                      description: Operators are expected to define fields for this type in order to work with S3 connections.
+                      nullable: true
                       oneOf:
                         - required:
-                            - multiUser
+                            - inline
+                        - required:
+                            - reference
                       properties:
-                        multiUser:
+                        inline:
+                          description: S3 connection definition as CRD.
                           properties:
+                            accessStyle:
+                              description: "Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>"
+                              enum:
+                                - Path
+                                - VirtualHosted
+                              nullable: true
+                              type: string
+                            credentials:
+                              description: "If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient."
+                              nullable: true
+                              properties:
+                                scope:
+                                  description: "[Scope](https://docs.stackable.tech/secret-operator/scope.html) of the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)"
+                                  nullable: true
+                                  properties:
+                                    node:
+                                      default: false
+                                      type: boolean
+                                    pod:
+                                      default: false
+                                      type: boolean
+                                    services:
+                                      default: []
+                                      items:
+                                        type: string
+                                      type: array
+                                  type: object
+                                secretClass:
+                                  description: "[SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) containing the LDAP bind credentials"
+                                  type: string
+                              required:
+                                - secretClass
+                              type: object
+                            host:
+                              description: Hostname of the S3 server without any protocol or port
+                              nullable: true
+                              type: string
+                            port:
+                              description: Port the S3 server listens on. If not specified the products will determine the port to use.
+                              format: uint16
+                              minimum: 0.0
+                              nullable: true
+                              type: integer
                             tls:
+                              description: If you want to use TLS when talking to S3 you can enable TLS encrypted communication with this setting.
                               nullable: true
                               properties:
                                 verification:
@@ -72,22 +120,122 @@ spec:
                               required:
                                 - verification
                               type: object
-                            userCredentialsSecret:
-                              description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
+                          type: object
+                        reference:
+                          type: string
+                      type: object
+                    security:
+                      nullable: true
+                      properties:
+                        authentication:
+                          description: A reference to a secret containing username/password for defined users
+                          nullable: true
+                          properties:
+                            method:
+                              oneOf:
+                                - required:
+                                    - multiUser
                               properties:
-                                name:
-                                  description: name is unique within a namespace to reference a secret resource.
-                                  type: string
-                                namespace:
-                                  description: namespace defines the space within which the secret name must be unique.
-                                  type: string
+                                multiUser:
+                                  properties:
+                                    userCredentialsSecret:
+                                      description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
+                                      properties:
+                                        name:
+                                          description: name is unique within a namespace to reference a secret resource.
+                                          type: string
+                                        namespace:
+                                          description: namespace defines the space within which the secret name must be unique.
+                                          type: string
+                                      type: object
+                                  required:
+                                    - userCredentialsSecret
+                                  type: object
                               type: object
                           required:
-                            - userCredentialsSecret
+                            - method
+                          type: object
+                        client:
+                          description: Enable client TLS authentication
+                          nullable: true
+                          properties:
+                            verification:
+                              description: The verification method used to verify the certificates of the server and/or the client
+                              oneOf:
+                                - required:
+                                    - none
+                                - required:
+                                    - server
+                              properties:
+                                none:
+                                  description: "Use TLS but don't verify certificates"
+                                  type: object
+                                server:
+                                  description: Use TLS and ca certificate to verify the server
+                                  properties:
+                                    caCert:
+                                      description: Ca cert to verify the server
+                                      oneOf:
+                                        - required:
+                                            - webPki
+                                        - required:
+                                            - secretClass
+                                      properties:
+                                        secretClass:
+                                          description: "Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method."
+                                          type: string
+                                        webPki:
+                                          description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                          type: object
+                                      type: object
+                                  required:
+                                    - caCert
+                                  type: object
+                              type: object
+                          required:
+                            - verification
+                          type: object
+                        internal:
+                          description: Enable internal TLS authentication
+                          nullable: true
+                          properties:
+                            verification:
+                              description: The verification method used to verify the certificates of the server and/or the client
+                              oneOf:
+                                - required:
+                                    - none
+                                - required:
+                                    - server
+                              properties:
+                                none:
+                                  description: "Use TLS but don't verify certificates"
+                                  type: object
+                                server:
+                                  description: Use TLS and ca certificate to verify the server
+                                  properties:
+                                    caCert:
+                                      description: Ca cert to verify the server
+                                      oneOf:
+                                        - required:
+                                            - webPki
+                                        - required:
+                                            - secretClass
+                                      properties:
+                                        secretClass:
+                                          description: "Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method."
+                                          type: string
+                                        webPki:
+                                          description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                          type: object
+                                      type: object
+                                  required:
+                                    - caCert
+                                  type: object
+                              type: object
+                          required:
+                            - verification
                           type: object
                       type: object
-                  required:
-                    - method
                   type: object
                 coordinators:
                   nullable: true
@@ -209,105 +357,6 @@ spec:
                       type: string
                   required:
                     - configMapName
-                  type: object
-                s3:
-                  description: Operators are expected to define fields for this type in order to work with S3 connections.
-                  nullable: true
-                  oneOf:
-                    - required:
-                        - inline
-                    - required:
-                        - reference
-                  properties:
-                    inline:
-                      description: S3 connection definition as CRD.
-                      properties:
-                        accessStyle:
-                          description: "Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>"
-                          enum:
-                            - Path
-                            - VirtualHosted
-                          nullable: true
-                          type: string
-                        credentials:
-                          description: "If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient."
-                          nullable: true
-                          properties:
-                            scope:
-                              description: "[Scope](https://docs.stackable.tech/secret-operator/scope.html) of the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)"
-                              nullable: true
-                              properties:
-                                node:
-                                  default: false
-                                  type: boolean
-                                pod:
-                                  default: false
-                                  type: boolean
-                                services:
-                                  default: []
-                                  items:
-                                    type: string
-                                  type: array
-                              type: object
-                            secretClass:
-                              description: "[SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) containing the LDAP bind credentials"
-                              type: string
-                          required:
-                            - secretClass
-                          type: object
-                        host:
-                          description: Hostname of the S3 server without any protocol or port
-                          nullable: true
-                          type: string
-                        port:
-                          description: Port the S3 server listens on. If not specified the products will determine the port to use.
-                          format: uint16
-                          minimum: 0.0
-                          nullable: true
-                          type: integer
-                        tls:
-                          description: If you want to use TLS when talking to S3 you can enable TLS encrypted communication with this setting.
-                          nullable: true
-                          properties:
-                            verification:
-                              description: The verification method used to verify the certificates of the server and/or the client
-                              oneOf:
-                                - required:
-                                    - none
-                                - required:
-                                    - server
-                              properties:
-                                none:
-                                  description: "Use TLS but don't verify certificates"
-                                  type: object
-                                server:
-                                  description: Use TLS and ca certificate to verify the server
-                                  properties:
-                                    caCert:
-                                      description: Ca cert to verify the server
-                                      oneOf:
-                                        - required:
-                                            - webPki
-                                        - required:
-                                            - secretClass
-                                      properties:
-                                        secretClass:
-                                          description: "Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method."
-                                          type: string
-                                        webPki:
-                                          description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
-                                          type: object
-                                      type: object
-                                  required:
-                                    - caCert
-                                  type: object
-                              type: object
-                          required:
-                            - verification
-                          type: object
-                      type: object
-                    reference:
-                      type: string
                   type: object
                 stopped:
                   description: "Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)"

@@ -83,13 +83,26 @@ data:
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: simple-trino-tls-certificates
+  name: simple-trino-client-tls
 spec:
   backend:
     autoTls:
       ca:
         secret:
-          name: secret-provisioner-trino-tls-ca
+          name: secret-provisioner-trino-client-tls-ca
+          namespace: default
+        autoGenerate: true
+---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: simple-trino-internal-tls
+spec:
+  backend:
+    autoTls:
+      ca:
+        secret:
+          name: secret-provisioner-trino-internal-tls-ca
           namespace: default
         autoGenerate: true
 ---
@@ -103,17 +116,26 @@ spec:
   opa:
     configMapName: simple-opa
     package: trino
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          namespace: default
-          name: simple-trino-users-secret
+  config:
+    security:
+      internal:
         tls:
           verification:
             server:
               caCert:
-                secretClass: simple-trino-tls-certificates
+                secretClass: simple-trino-internal-tls
+      client:
+        tls:
+          verification:
+            server:
+              caCert:
+                secretClass: simple-trino-client-tls
+      authentication:
+        method:
+          multiUser:
+            userCredentialsSecret:
+              namespace: default
+              name: simple-trino-users-secret
   coordinators:
     roleGroups:
       default:

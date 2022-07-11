@@ -31,17 +31,13 @@ impl TrinoDiscovery {
         }
     }
 
-    pub fn connection_string(&self) -> String {
+    pub fn discovery_uri(&self) -> String {
         format!(
             "{}://{}:{}",
             self.protocol,
             self.pod_ref.fqdn(),
             self.protocol.port()
         )
-    }
-
-    pub fn unsecure_connection_string(&self) -> String {
-        format!("http://{}:{}", self.pod_ref.fqdn(), HTTP_PORT)
     }
 }
 

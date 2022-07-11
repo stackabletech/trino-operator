@@ -40,12 +40,15 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES,
-    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, INTERNAL_COMMUNICATION_SHARED_SECRET,
-    JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
-    S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY, S3_SSL_ENABLED, TLS_DIR_NAME,
-    USER_PASSWORD_DATA_DIR_NAME,
+    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, FIELD_MANAGER_SCOPE,
+    HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
+    INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY, INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH,
+    INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY, INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH,
+    INTERNAL_COMMUNICATION_SHARED_SECRET, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT,
+    METRICS_PORT_NAME, NODE_INTERNAL_ADDRESS_SOURCE, NODE_INTERNAL_ADDRESS_SOURCE_FQDN,
+    NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
+    S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
+    S3_SSL_ENABLED, TLS_MAIN_DIR, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -149,7 +152,6 @@ const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
 const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
 const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
 const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
-const INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 
 pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<Action> {
     tracing::info!("Starting reconcile");
@@ -162,7 +164,11 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let mut validated_config =
         validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
-    let s3_connection_def: &Option<S3ConnectionDef> = &trino.spec.s3;
+    let s3_connection_def: &Option<S3ConnectionDef> = &trino
+        .spec
+        .config
+        .as_ref()
+        .and_then(|config| config.s3.clone());
     let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
         Some(
             s3.resolve(client, trino.namespace().as_deref())
@@ -385,23 +391,42 @@ fn build_rolegroup_config_map(
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
                 // Trino requires https enabled if authentication is required
-                let protocol = match &trino.spec.authentication {
+                let protocol = match trino.get_authentication() {
                     Some(_) => TrinoDiscoveryProtocol::Https,
                     None => TrinoDiscoveryProtocol::Http,
                 };
                 let discovery = TrinoDiscovery::new(&coordinator_ref, protocol);
-                transformed_config.insert(
-                    DISCOVERY_URI.to_string(),
-                    // TODO: Normally we would like to use the https and https port connection string
-                    //    This currently does not support fqdns etc. so we fall back on http.
-                    //Some(discovery.connection_string()),
-                    Some(discovery.unsecure_connection_string()),
-                );
+                transformed_config
+                    .insert(DISCOVERY_URI.to_string(), Some(discovery.discovery_uri()));
 
                 // Required from Trino 378 (accepted in 377)
                 transformed_config.insert(
                     INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                    Some(format!("${{ENV:{secret}}}", secret = INTERNAL_SECRET)),
+                    Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
+                );
+
+                transformed_config.insert(
+                    INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
+                    Some(format!("{}/keystore.p12", TLS_MAIN_DIR)),
+                );
+                transformed_config.insert(
+                    INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY.to_string(),
+                    Some("secret".to_string()),
+                );
+
+                transformed_config.insert(
+                    INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH.to_string(),
+                    Some(format!("{}/truststore.p12", TLS_MAIN_DIR)),
+                );
+
+                transformed_config.insert(
+                    INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY.to_string(),
+                    Some("secret".to_string()),
+                );
+
+                transformed_config.insert(
+                    NODE_INTERNAL_ADDRESS_SOURCE.to_string(),
+                    Some(NODE_INTERNAL_ADDRESS_SOURCE_FQDN.to_string()),
                 );
 
                 let config_properties =
@@ -587,7 +612,7 @@ fn build_rolegroup_statefulset(
     };
 
     let secret_name = build_shared_internal_secret_name(trino);
-    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), INTERNAL_SECRET) {
+    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), ENV_INTERNAL_SECRET) {
         env.push(internal_secret);
     };
 
@@ -608,7 +633,7 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
-        .add_volume_mount("tls", TLS_DIR_NAME)
+        .add_volume_mount("tls", TLS_MAIN_DIR)
         .build();
 
     container_prepare
@@ -632,7 +657,7 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("config", CONFIG_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
-        .add_volume_mount("tls", TLS_DIR_NAME)
+        .add_volume_mount("tls", TLS_MAIN_DIR)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
         .add_container_ports(container_ports(trino))
         .readiness_probe(readiness_probe(trino))
@@ -679,11 +704,13 @@ fn build_rolegroup_statefulset(
         })
         .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
 
-    if let Some(authentication) = &authentication_config {
+    //if let Some(authentication) = &authentication_config {
+    if authentication_config.is_some() {
         pod_builder.add_volume(
             VolumeBuilder::new("tls")
                 .ephemeral(
-                    SecretOperatorVolumeSourceBuilder::new(authentication.to_trino_tls_secret())
+                    // TODO: configurable client TLS
+                    SecretOperatorVolumeSourceBuilder::new("tls")
                         .with_node_scope()
                         .with_pod_scope()
                         .build(),
@@ -797,7 +824,7 @@ async fn user_authentication(
     trino: &TrinoCluster,
     client: &Client,
 ) -> Result<Option<TrinoAuthenticationConfig>> {
-    Ok(match &trino.spec.authentication {
+    Ok(match &trino.get_authentication() {
         Some(authentication) => Some(
             authentication
                 .method
@@ -818,23 +845,23 @@ async fn user_authentication(
 fn container_prepare_args() -> Vec<String> {
     vec![[
         "echo Storing password",
-        &format!("echo secret > {tls_directory}/password", tls_directory = TLS_DIR_NAME),
+        &format!("echo secret > {tls_directory}/password", tls_directory = TLS_MAIN_DIR),
         "echo Cleaning up truststore - just in case",
-        &format!("rm -f {tls_directory}/truststore.p12", tls_directory = TLS_DIR_NAME),
+        &format!("rm -f {tls_directory}/truststore.p12", tls_directory = TLS_MAIN_DIR),
         "echo Creating truststore",
         &format!("keytool -importcert -file {tls_directory}/ca.crt -keystore {tls_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret",
-                 tls_directory = TLS_DIR_NAME),
+                 tls_directory = TLS_MAIN_DIR),
         "echo Creating certificate chain",
-        &format!("cat {tls_directory}/ca.crt {tls_directory}/tls.crt > {tls_directory}/chain.crt", tls_directory = TLS_DIR_NAME),
+        &format!("cat {tls_directory}/ca.crt {tls_directory}/tls.crt > {tls_directory}/chain.crt", tls_directory = TLS_MAIN_DIR),
         "echo Creating keystore",
         &format!("openssl pkcs12 -export -in {tls_directory}/chain.crt -inkey {tls_directory}/tls.key -out {tls_directory}/keystore.p12 --passout file:{tls_directory}/password",
-                 tls_directory = TLS_DIR_NAME),
+                 tls_directory = TLS_MAIN_DIR),
         "echo Cleaning up password",
-        &format!("rm -f {tls_directory}/password", tls_directory = TLS_DIR_NAME),
+        &format!("rm -f {tls_directory}/password", tls_directory = TLS_MAIN_DIR),
         "echo chowning keystore directory",
-        &format!("chown -R stackable:stackable {tls_directory}", tls_directory = TLS_DIR_NAME),
+        &format!("chown -R stackable:stackable {tls_directory}", tls_directory = TLS_MAIN_DIR),
         "echo chmodding keystore directory",
-        &format!("chmod -R a=,u=rwX {tls_directory}", tls_directory = TLS_DIR_NAME),
+        &format!("chmod -R a=,u=rwX {tls_directory}", tls_directory = TLS_MAIN_DIR),
         "echo chowning data directory",
         &format!("chown -R stackable:stackable {data_directory}", data_directory = DATA_DIR_NAME),
         "echo chmodding data directory",
@@ -1046,7 +1073,7 @@ async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) ->
 
 fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
     let mut internal_secret = BTreeMap::new();
-    internal_secret.insert(INTERNAL_SECRET.to_string(), get_random_base64());
+    internal_secret.insert(ENV_INTERNAL_SECRET.to_string(), get_random_base64());
 
     Ok(Secret {
         immutable: Some(true),
@@ -1087,7 +1114,8 @@ fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
         },
     ];
 
-    if trino.spec.authentication.is_some() {
+    // We expose the HTTPS port if either authentication or client tls are enabled
+    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
         ports.push(ServicePort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             port: HTTPS_PORT.into(),
@@ -1115,7 +1143,8 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
         },
     ];
 
-    if trino.spec.authentication.is_some() {
+    // We expose the HTTPS port if either authentication or client tls are enabled
+    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
         ports.push(ContainerPort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             container_port: HTTPS_PORT.into(),
@@ -1128,10 +1157,11 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
 }
 
 fn readiness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = match trino.spec.authentication {
-        Some(_) => HTTPS_PORT_NAME,
-        _ => HTTP_PORT_NAME,
-    };
+    let mut port_name = HTTP_PORT_NAME;
+
+    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
+        port_name = HTTPS_PORT_NAME
+    }
 
     Probe {
         initial_delay_seconds: Some(10),
@@ -1146,10 +1176,11 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
 }
 
 fn liveness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = match trino.spec.authentication {
-        Some(_) => HTTPS_PORT_NAME,
-        _ => HTTP_PORT_NAME,
-    };
+    let mut port_name = HTTP_PORT_NAME;
+
+    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
+        port_name = HTTPS_PORT_NAME
+    }
 
     Probe {
         initial_delay_seconds: Some(30),
