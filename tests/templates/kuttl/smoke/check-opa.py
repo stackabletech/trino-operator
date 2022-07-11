@@ -9,7 +9,7 @@ warnings.simplefilter("ignore")
 
 
 def get_connection(username, password, namespace):
-    host = 'test-trino-coordinator-default-0.test-trino-coordinator-default.' + namespace + '.svc.cluster.local'
+    host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
     conn = trino.dbapi.connect(
         host=host,
         port=8443,

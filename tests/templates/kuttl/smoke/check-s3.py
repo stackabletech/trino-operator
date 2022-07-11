@@ -9,7 +9,7 @@ warnings.simplefilter("ignore")
 
 
 def get_connection(username, password, namespace):
-    host = 'test-trino-coordinator-default-0.test-trino-coordinator-default.' + namespace + '.svc.cluster.local'
+    host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
     conn = trino.dbapi.connect(
         host=host,
         port=8443,
@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     print("Starting S3 tests...")
     print("Trying to create SCHEMA...")
-    test_query("admin", "admin", namespace, "CREATE SCHEMA IF NOT EXISTS hive.taxi WITH (location = 's3a://test/')")
+    test_query("admin", "admin", namespace, "CREATE SCHEMA IF NOT EXISTS hive.taxi WITH (location = 's3a://trino/')")
 
     print("Trying to create TABLE...")
     test_query("admin", "admin", namespace,
@@ -53,7 +53,7 @@ if __name__ == '__main__':
                 "pickup VARCHAR,"
                 "dropoff VARCHAR)"
                 " WITH ("
-                "external_location = 's3a://test/',"
+                "external_location = 's3a://trino/',"
                 "format = 'CSV',"
                 "skip_header_line_count=1)"
                 ))
