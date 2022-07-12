@@ -25,8 +25,36 @@ spec:
                 config:
                   nullable: true
                   properties:
+                    authentication:
+                      description: A reference to an authentication method
+                      nullable: true
+                      properties:
+                        method:
+                          oneOf:
+                            - required:
+                                - multiUser
+                          properties:
+                            multiUser:
+                              properties:
+                                userCredentialsSecret:
+                                  description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
+                                  properties:
+                                    name:
+                                      description: name is unique within a namespace to reference a secret resource.
+                                      type: string
+                                    namespace:
+                                      description: namespace defines the space within which the secret name must be unique.
+                                      type: string
+                                  type: object
+                              required:
+                                - userCredentialsSecret
+                              type: object
+                          type: object
+                      required:
+                        - method
+                      type: object
                     s3:
-                      description: Operators are expected to define fields for this type in order to work with S3 connections.
+                      description: A reference to a S3 bucket
                       nullable: true
                       oneOf:
                         - required:
@@ -124,37 +152,10 @@ spec:
                         reference:
                           type: string
                       type: object
-                    security:
+                    tls:
+                      description: Client and internal TLS settings
                       nullable: true
                       properties:
-                        authentication:
-                          description: A reference to a secret containing username/password for defined users
-                          nullable: true
-                          properties:
-                            method:
-                              oneOf:
-                                - required:
-                                    - multiUser
-                              properties:
-                                multiUser:
-                                  properties:
-                                    userCredentialsSecret:
-                                      description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
-                                      properties:
-                                        name:
-                                          description: name is unique within a namespace to reference a secret resource.
-                                          type: string
-                                        namespace:
-                                          description: namespace defines the space within which the secret name must be unique.
-                                          type: string
-                                      type: object
-                                  required:
-                                    - userCredentialsSecret
-                                  type: object
-                              type: object
-                          required:
-                            - method
-                          type: object
                         client:
                           description: Enable client TLS authentication
                           nullable: true

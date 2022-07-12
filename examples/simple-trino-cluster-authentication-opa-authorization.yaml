@@ -117,25 +117,24 @@ spec:
     configMapName: simple-opa
     package: trino
   config:
-    security:
+    tls:
       internal:
-        tls:
-          verification:
-            server:
-              caCert:
-                secretClass: simple-trino-internal-tls
+        verification:
+          server:
+            caCert:
+              #secretClass: simple-trino-internal-tls
+              secretClass: simple-trino-client-tls
       client:
-        tls:
-          verification:
-            server:
-              caCert:
-                secretClass: simple-trino-client-tls
-      authentication:
-        method:
-          multiUser:
-            userCredentialsSecret:
-              namespace: default
-              name: simple-trino-users-secret
+        verification:
+          server:
+            caCert:
+              secretClass: simple-trino-client-tls
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            namespace: default
+            name: simple-trino-users-secret
   coordinators:
     roleGroups:
       default:
