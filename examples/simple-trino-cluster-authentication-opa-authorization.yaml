@@ -118,17 +118,10 @@ spec:
     package: trino
   config:
     tls:
-      internal:
-        verification:
-          server:
-            caCert:
-              secretClass: simple-trino-internal-tls
-              #secretClass: simple-trino-client-tls
-      client:
-        verification:
-          server:
-            caCert:
-              secretClass: simple-trino-client-tls
+      verification:
+        server:
+          caCert:
+            secretClass: simple-trino-tls
     authentication:
       method:
         multiUser:

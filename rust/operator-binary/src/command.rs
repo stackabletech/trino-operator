@@ -3,63 +3,34 @@ use stackable_trino_crd::authentication::TrinoAuthenticationConfig;
 use stackable_trino_crd::{
     TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME, ENV_S3_ACCESS_KEY, ENV_S3_SECRET_KEY,
     ENV_TLS_STORE_SECRET, HIVE_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_SECRET_DIR_NAME,
-    SECRET_KEY_S3_ACCESS_KEY, SECRET_KEY_S3_SECRET_KEY, TLS_INTERNAL_CLIENT_DIR,
-    TLS_INTERNAL_SHARED_SECRET_DIR, USER_PASSWORD_DATA_DIR_NAME,
+    SECRET_KEY_S3_ACCESS_KEY, SECRET_KEY_S3_SECRET_KEY, TLS_INTERNAL_DIR,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 
 pub fn container_prepare_args(trino: &TrinoCluster) -> Vec<String> {
     let mut args = vec![];
 
-    // if authentication is enabled we have to create client and internal tls stores
-    if trino.get_authentication().is_some() {
+    if trino.tls_enabled() {
         // generate passwords for client and internal stores
-        args.extend(generate_password_and_export(
-            TLS_INTERNAL_CLIENT_DIR,
+        args.push(generate_password_to_file(
+            TLS_INTERNAL_DIR,
             ENV_TLS_STORE_SECRET,
         ));
-        args.extend(generate_password_and_export(
-            TLS_INTERNAL_SHARED_SECRET_DIR,
-            ENV_TLS_STORE_SECRET,
-        ));
+        // export to env var for later use (create_key_and_trust_store)
+        args.push(export_var_from_file(TLS_INTERNAL_DIR, ENV_TLS_STORE_SECRET));
 
-        // create client and internal truststores
-        args.extend(create_key_and_trust_store_cmd(
-            TLS_INTERNAL_CLIENT_DIR,
+        // create TLS keystores
+        args.extend(create_key_and_trust_store(
+            TLS_INTERNAL_DIR,
             ENV_TLS_STORE_SECRET,
         ));
-        args.extend(create_key_and_trust_store_cmd(
-            TLS_INTERNAL_SHARED_SECRET_DIR,
-            ENV_TLS_STORE_SECRET,
-        ));
-        // chown and chmod client, internal and user password data dirs
-        args.extend(chown_and_chmod(TLS_INTERNAL_CLIENT_DIR));
-        args.extend(chown_and_chmod(TLS_INTERNAL_SHARED_SECRET_DIR));
+        // chown and chmod keystores and user password data dirs
+        args.extend(chown_and_chmod(TLS_INTERNAL_DIR));
         args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
-    } else {
-        // client tls store
-        if trino.get_client_tls().is_some() {
-            args.extend(generate_password_and_export(
-                TLS_INTERNAL_CLIENT_DIR,
-                ENV_TLS_STORE_SECRET,
-            ));
-            args.extend(create_key_and_trust_store_cmd(
-                TLS_INTERNAL_CLIENT_DIR,
-                ENV_TLS_STORE_SECRET,
-            ));
-            args.extend(chown_and_chmod(TLS_INTERNAL_CLIENT_DIR));
-        }
-        // internal tls store
-        if trino.get_internal_tls().is_some() {
-            args.extend(generate_password_and_export(
-                TLS_INTERNAL_SHARED_SECRET_DIR,
-                ENV_TLS_STORE_SECRET,
-            ));
-            args.extend(create_key_and_trust_store_cmd(
-                TLS_INTERNAL_SHARED_SECRET_DIR,
-                ENV_TLS_STORE_SECRET,
-            ));
-            args.extend(chown_and_chmod(TLS_INTERNAL_SHARED_SECRET_DIR));
-        }
+    }
+
+    if trino.get_authentication().is_some() {
+        args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
     }
 
     args.extend(chown_and_chmod(RW_CONFIG_DIR_NAME));
@@ -87,6 +58,13 @@ pub fn container_trino_args(
         ),
     ];
 
+    if trino.get_tls().is_some() || user_authentication.is_some() {
+        // we need to get the keystores password and export it
+        args.push(export_var_from_file(TLS_INTERNAL_DIR, ENV_TLS_STORE_SECRET));
+        // and remove
+        args.push(remove_file(TLS_INTERNAL_DIR, ENV_TLS_STORE_SECRET));
+    }
+
     if let Some(auth) = user_authentication {
         let user_data = auth.to_trino_user_data();
         args.extend(vec![
@@ -102,28 +80,6 @@ pub fn container_trino_args(
                 db = PASSWORD_DB
             ),
         ]);
-        // remove passwords from internal and client tls
-        args.extend(export_and_remove_password_file(
-            TLS_INTERNAL_CLIENT_DIR,
-            ENV_TLS_STORE_SECRET,
-        ));
-        args.extend(export_and_remove_password_file(
-            TLS_INTERNAL_SHARED_SECRET_DIR,
-            ENV_TLS_STORE_SECRET,
-        ));
-    } else {
-        if trino.get_client_tls().is_some() {
-            args.extend(export_and_remove_password_file(
-                TLS_INTERNAL_CLIENT_DIR,
-                ENV_TLS_STORE_SECRET,
-            ));
-        }
-        if trino.get_internal_tls().is_some() {
-            args.extend(export_and_remove_password_file(
-                TLS_INTERNAL_SHARED_SECRET_DIR,
-                ENV_TLS_STORE_SECRET,
-            ));
-        }
     }
 
     // We need to read the provided s3 credentials from the secret operator / secret class folder
@@ -173,7 +129,7 @@ pub fn container_trino_args(
 
 /// Generates the shell script to create key and truststores from the certificates provided
 /// by the secret operator.
-fn create_key_and_trust_store_cmd(directory: &str, password_secret_name: &str) -> Vec<String> {
+fn create_key_and_trust_store(directory: &str, password_secret_name: &str) -> Vec<String> {
     vec![
         format!("echo [{dir}] Creating truststore", dir = directory),
         format!("keytool -importcert -file {dir}/ca.crt -keystore {dir}/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass ${secret}",
@@ -188,18 +144,16 @@ fn create_key_and_trust_store_cmd(directory: &str, password_secret_name: &str) -
 
 /// Generates the shell script to write a random 20 character password to a file in the directory
 /// `directory` with name `file_name`.
-fn generate_password_and_export(directory: &str, file_name: &str) -> Vec<String> {
-    vec![
-        format!(
-            //        "export {secret}=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20 ; echo '')",
-            "echo $(tr -dc A-Za-z0-9 </dev/urandom | head -c 20 ; echo '') >> {dir}/{name}",
-            dir = directory,
-            name = file_name
-        ),
-        export_var_from_file(directory, file_name),
-    ]
+fn generate_password_to_file(directory: &str, file_name: &str) -> String {
+    format!(
+        "echo $(tr -dc A-Za-z0-9 </dev/urandom | head -c 20 ; echo '') >> {dir}/{name}",
+        dir = directory,
+        name = file_name
+    )
 }
 
+/// Exports the content of the file in the directory `directory` with the name `file_name` to
+/// an env variable with name `file_name`.
 fn export_var_from_file(directory: &str, file_name: &str) -> String {
     format!(
         "export {env_var}=$(cat {dir}/{name})",
@@ -207,18 +161,6 @@ fn export_var_from_file(directory: &str, file_name: &str) -> String {
         dir = directory,
         name = file_name
     )
-}
-
-fn export_and_remove_password_file(directory: &str, file_name: &str) -> Vec<String> {
-    vec![
-        format!(
-            "export {env_var}=$(cat {dir}/{name})",
-            env_var = file_name,
-            dir = directory,
-            name = file_name
-        ),
-        remove_file(directory, file_name),
-    ]
 }
 
 /// Generates the shell script to remove a file in the `directory` called `file_name`.

@@ -1,5 +1,4 @@
 pub mod authentication;
-mod config;
 pub mod discovery;
 
 use crate::{authentication::Authentication, discovery::TrinoPodRef};
@@ -89,11 +88,9 @@ pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 
-pub const TLS_MAIN_DIR: &str = "/stackable/tls";
-pub const TLS_INTERNAL_CLIENT_DIR: &str = "/stackable/tls/internal/client";
-pub const TLS_INTERNAL_SHARED_SECRET_DIR: &str = "/stackable/tls/internal/shared_secret";
-pub const TLS_EXTERNAL_S3_DIR: &str = "/stackable/tls/external/s3";
-pub const TLS_EXTERNAL_LDAP_DIR: &str = "/stackable/tls/external/ldap";
+pub const TLS_INTERNAL_DIR: &str = "/stackable/tls/";
+pub const TLS_EXTERNAL_S3_DIR: &str = "/stackable/tls/s3";
+pub const TLS_EXTERNAL_LDAP_DIR: &str = "/stackable/tls/ldap";
 
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_TLS_STORE_SECRET: &str = "TLS_STORE_SECRET";
@@ -132,19 +129,25 @@ pub enum Error {
 #[kube(status = "TrinoClusterStatus")]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
-    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)
+    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped: Option<bool>,
+    /// The provided image version in the form `x.x.x-stackableY.Y.Y` e.g. `1.5.0-stackable0.1.0`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
+    /// The discovery ConfigMap name of the Hive cluster (usually the same as the Hive cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hive_config_map_name: Option<String>,
+    /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
+    /// Global Trino Config for settings like TLS, Authentication, S3 etc.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub config: Option<GlobalTrinoConfig>,
+    /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
+    /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfig>>,
 }
@@ -152,26 +155,17 @@ pub struct TrinoClusterSpec {
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GlobalTrinoConfig {
-    /// Client and internal TLS settings
+    /// Client and internal TLS setting. This will be shared for client and internal cluster
+    /// communication. Trino does not support setting these separately.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tls: Option<TrinoTlsConfig>,
-    /// A reference to an authentication method
+    pub tls: Option<Tls>,
+    /// A reference to an authentication method. Client and internal cluster TLS will be
+    /// automatically enabled if any form of authentication is set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
-    /// A reference to a S3 bucket
+    /// A reference to a S3 bucket.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3ConnectionDef>,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TrinoTlsConfig {
-    /// Enable client TLS authentication
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub client: Option<Tls>,
-    /// Enable internal TLS authentication
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub internal: Option<Tls>,
 }
 
 #[derive(
@@ -280,7 +274,7 @@ impl Configuration for TrinoConfig {
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
-        let authenticated: bool = resource.get_authentication().is_some();
+        let authentication_enabled: bool = resource.get_authentication().is_some();
 
         match file {
             NODE_PROPERTIES => {
@@ -297,7 +291,7 @@ impl Configuration for TrinoConfig {
                 } else {
                     result.insert(COORDINATOR.to_string(), Some("false".to_string()));
                 }
-
+                // TrinoConfig properties
                 if let Some(query_max_memory) = &self.query_max_memory {
                     result.insert(
                         QUERY_MAX_MEMORY.to_string(),
@@ -312,12 +306,59 @@ impl Configuration for TrinoConfig {
                     );
                 }
 
+                // TLS
+                // If TLS is set explicitly or authentication is enabled, we need to set both
+                // client and internal TLS settings.
+                if resource.get_tls().is_some() || authentication_enabled {
+                    // client TLS
+                    result.insert(
+                        HTTP_SERVER_HTTPS_ENABLED.to_string(),
+                        Some(true.to_string()),
+                    );
+                    result.insert(
+                        HTTP_SERVER_HTTPS_PORT.to_string(),
+                        Some(HTTPS_PORT.to_string()),
+                    );
+                    result.insert(
+                        HTTP_SERVER_KEYSTORE_PATH.to_string(),
+                        Some(format!("{}/{}", TLS_INTERNAL_DIR, "keystore.p12")),
+                    );
+                    result.insert(
+                        HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
+                        Some(format!("${{ENV:{secret}}}", secret = ENV_TLS_STORE_SECRET)),
+                    );
+                    // internal TLS
+                    result.insert(
+                        INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
+                        Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
+                        Some(format!("{}/keystore.p12", TLS_INTERNAL_DIR)),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY.to_string(),
+                        Some(format!("${{ENV:{secret}}}", secret = ENV_TLS_STORE_SECRET)),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH.to_string(),
+                        Some(format!("{}/truststore.p12", TLS_INTERNAL_DIR)),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY.to_string(),
+                        Some(format!("${{ENV:{secret}}}", secret = ENV_TLS_STORE_SECRET)),
+                    );
+                    result.insert(
+                        NODE_INTERNAL_ADDRESS_SOURCE.to_string(),
+                        Some(NODE_INTERNAL_ADDRESS_SOURCE_FQDN.to_string()),
+                    );
+                }
+
+                // Authentication
                 // We have to differentiate several options here:
                 // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
                 // - requires both internal and client TLS to be configured
-                if authenticated {
-                    config::client_tls_config(&mut result);
-                    config::internal_tls_config(&mut result);
+                if authentication_enabled {
                     // password ui login
                     if role_name == TrinoRole::Coordinator.to_string() {
                         result.insert(
@@ -326,30 +367,10 @@ impl Configuration for TrinoConfig {
                             Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
                         );
                     }
-                } else {
-                    // - Client TLS
-                    //   - set HTTPS port
-                    //   - set https enabled -> true
-                    //   - set http server keystore path
-                    //   - set http server keystore password
-                    if resource.get_client_tls().is_some() {
-                        config::client_tls_config(&mut result);
-                    }
-                    // - Internal TLS required:
-                    //   - set HTTPS port
-                    //   - set https enabled -> true
-                    //   - set internal-communications keystore path
-                    //   - set internal-communications keystore password
-                    //   - set internal-communications truststore path
-                    //   - set internal-communications keystore password
-                    //   - set node internal address source to FQDN
-                    if resource.get_internal_tls().is_some() {
-                        config::internal_tls_config(&mut result);
-                    }
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                if authenticated {
+                if authentication_enabled {
                     result.insert(
                         PASSWORD_AUTHENTICATOR_NAME.to_string(),
                         Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()),
@@ -463,20 +484,15 @@ impl TrinoCluster {
     }
 
     /// Return user provided client TLS settings
-    pub fn get_client_tls(&self) -> Option<&Tls> {
+    pub fn get_tls(&self) -> Option<&Tls> {
         self.spec
             .config
             .as_ref()
             .and_then(|config| config.tls.as_ref())
-            .and_then(|tls| tls.client.as_ref())
     }
 
-    /// Return user provided internal TLS settings
-    pub fn get_internal_tls(&self) -> Option<&Tls> {
-        self.spec
-            .config
-            .as_ref()
-            .and_then(|config| config.tls.as_ref())
-            .and_then(|tls| tls.internal.as_ref())
+    /// Returns if the Trino cluster has tls enabled
+    pub fn tls_enabled(&self) -> bool {
+        self.get_tls().is_some() || self.get_authentication().is_some()
     }
 }

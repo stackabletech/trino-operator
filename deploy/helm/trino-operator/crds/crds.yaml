@@ -25,10 +25,11 @@ spec:
             spec:
               properties:
                 config:
+                  description: "Global Trino Config for settings like TLS, Authentication, S3 etc."
                   nullable: true
                   properties:
                     authentication:
-                      description: A reference to an authentication method
+                      description: A reference to an authentication method. Client and internal cluster TLS will be automatically enabled if any form of authentication is set.
                       nullable: true
                       properties:
                         method:
@@ -56,7 +57,7 @@ spec:
                         - method
                       type: object
                     s3:
-                      description: A reference to a S3 bucket
+                      description: A reference to a S3 bucket.
                       nullable: true
                       oneOf:
                         - required:
@@ -155,92 +156,48 @@ spec:
                           type: string
                       type: object
                     tls:
-                      description: Client and internal TLS settings
+                      description: Client and internal TLS setting. This will be shared for client and internal cluster communication. Trino does not support setting these separately.
                       nullable: true
                       properties:
-                        client:
-                          description: Enable client TLS authentication
-                          nullable: true
+                        verification:
+                          description: The verification method used to verify the certificates of the server and/or the client
+                          oneOf:
+                            - required:
+                                - none
+                            - required:
+                                - server
                           properties:
-                            verification:
-                              description: The verification method used to verify the certificates of the server and/or the client
-                              oneOf:
-                                - required:
-                                    - none
-                                - required:
-                                    - server
-                              properties:
-                                none:
-                                  description: "Use TLS but don't verify certificates"
-                                  type: object
-                                server:
-                                  description: Use TLS and ca certificate to verify the server
-                                  properties:
-                                    caCert:
-                                      description: Ca cert to verify the server
-                                      oneOf:
-                                        - required:
-                                            - webPki
-                                        - required:
-                                            - secretClass
-                                      properties:
-                                        secretClass:
-                                          description: "Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method."
-                                          type: string
-                                        webPki:
-                                          description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
-                                          type: object
-                                      type: object
-                                  required:
-                                    - caCert
-                                  type: object
+                            none:
+                              description: "Use TLS but don't verify certificates"
                               type: object
-                          required:
-                            - verification
-                          type: object
-                        internal:
-                          description: Enable internal TLS authentication
-                          nullable: true
-                          properties:
-                            verification:
-                              description: The verification method used to verify the certificates of the server and/or the client
-                              oneOf:
-                                - required:
-                                    - none
-                                - required:
-                                    - server
+                            server:
+                              description: Use TLS and ca certificate to verify the server
                               properties:
-                                none:
-                                  description: "Use TLS but don't verify certificates"
-                                  type: object
-                                server:
-                                  description: Use TLS and ca certificate to verify the server
+                                caCert:
+                                  description: Ca cert to verify the server
+                                  oneOf:
+                                    - required:
+                                        - webPki
+                                    - required:
+                                        - secretClass
                                   properties:
-                                    caCert:
-                                      description: Ca cert to verify the server
-                                      oneOf:
-                                        - required:
-                                            - webPki
-                                        - required:
-                                            - secretClass
-                                      properties:
-                                        secretClass:
-                                          description: "Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method."
-                                          type: string
-                                        webPki:
-                                          description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
-                                          type: object
+                                    secretClass:
+                                      description: "Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method."
+                                      type: string
+                                    webPki:
+                                      description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
                                       type: object
-                                  required:
-                                    - caCert
                                   type: object
+                              required:
+                                - caCert
                               type: object
-                          required:
-                            - verification
                           type: object
+                      required:
+                        - verification
                       type: object
                   type: object
                 coordinators:
+                  description: Settings for the Coordinator Role/Process.
                   nullable: true
                   properties:
                     cliOverrides:
@@ -348,9 +305,11 @@ spec:
                     - roleGroups
                   type: object
                 hiveConfigMapName:
+                  description: The discovery ConfigMap name of the Hive cluster (usually the same as the Hive cluster name).
                   nullable: true
                   type: string
                 opa:
+                  description: The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
                   nullable: true
                   properties:
                     configMapName:
@@ -362,13 +321,15 @@ spec:
                     - configMapName
                   type: object
                 stopped:
-                  description: "Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)"
+                  description: "Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)."
                   nullable: true
                   type: boolean
                 version:
+                  description: "The provided image version in the form `x.x.x-stackableY.Y.Y` e.g. `1.5.0-stackable0.1.0`."
                   nullable: true
                   type: string
                 workers:
+                  description: Settings for the Worker Role/Process.
                   nullable: true
                   properties:
                     cliOverrides:

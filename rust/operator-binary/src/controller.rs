@@ -48,8 +48,7 @@ use stackable_trino_crd::{
     HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
-    S3_SSL_ENABLED, TLS_INTERNAL_CLIENT_DIR, TLS_INTERNAL_SHARED_SECRET_DIR,
-    USER_PASSWORD_DATA_DIR_NAME,
+    S3_SSL_ENABLED, TLS_INTERNAL_DIR, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -387,10 +386,13 @@ fn build_rolegroup_config_map(
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
                 // Trino requires https enabled if authentication is required
-                let protocol = match trino.get_authentication() {
-                    Some(_) => TrinoDiscoveryProtocol::Https,
-                    None => TrinoDiscoveryProtocol::Http,
+                let protocol = if trino.get_tls().is_some() || trino.get_authentication().is_some()
+                {
+                    TrinoDiscoveryProtocol::Https
+                } else {
+                    TrinoDiscoveryProtocol::Http
                 };
+
                 let discovery = TrinoDiscovery::new(&coordinator_ref, protocol);
                 transformed_config
                     .insert(DISCOVERY_URI.to_string(), Some(discovery.discovery_uri()));
@@ -586,6 +588,15 @@ fn build_rolegroup_statefulset(
     // If authentication is required, add volume for users and both client and internal tls is
     // required
     let authentication: Option<&Authentication> = trino.get_authentication();
+    let tls: Option<&Tls> = trino.get_tls();
+
+    if tls.is_some() || authentication.is_some() {
+        // if tls or authentication are specified we need to provide mounts for certs and keys
+        cb_prepare.add_volume_mount("tls", TLS_INTERNAL_DIR);
+        cb_trino.add_volume_mount("tls", TLS_INTERNAL_DIR);
+        pod_builder.add_volume(create_tls_volume("tls", trino.get_tls()));
+    }
+
     if let Some(auth) = authentication {
         match auth.method {
             TrinoAuthenticationMethod::MultiUser { .. } => {
@@ -597,25 +608,6 @@ fn build_rolegroup_statefulset(
                         .build(),
                 );
             }
-        }
-
-        // add volumes for client and internal tls
-        cb_prepare.add_volume_mount("client-tls", TLS_INTERNAL_CLIENT_DIR);
-        cb_prepare.add_volume_mount("internal-tls", TLS_INTERNAL_SHARED_SECRET_DIR);
-        cb_trino.add_volume_mount("client-tls", TLS_INTERNAL_CLIENT_DIR);
-        cb_trino.add_volume_mount("internal-tls", TLS_INTERNAL_SHARED_SECRET_DIR);
-        pod_builder.add_volume(create_tls_volume("client-tls", trino.get_client_tls()));
-        pod_builder.add_volume(create_tls_volume("internal-tls", trino.get_internal_tls()));
-    } else {
-        if let Some(client_tls) = trino.get_client_tls() {
-            cb_prepare.add_volume_mount("client-tls", TLS_INTERNAL_CLIENT_DIR);
-            cb_trino.add_volume_mount("client-tls", TLS_INTERNAL_CLIENT_DIR);
-            pod_builder.add_volume(create_tls_volume("client-tls", Some(client_tls)));
-        }
-        if let Some(internal_tls) = trino.get_internal_tls() {
-            cb_prepare.add_volume_mount("internal-tls", TLS_INTERNAL_SHARED_SECRET_DIR);
-            cb_trino.add_volume_mount("internal-tls", TLS_INTERNAL_SHARED_SECRET_DIR);
-            pod_builder.add_volume(create_tls_volume("internal-tls", Some(internal_tls)));
         }
     }
 
@@ -975,7 +967,7 @@ fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
     ];
 
     // We expose the HTTPS port if either authentication or client tls are enabled
-    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
+    if trino.tls_enabled() {
         ports.push(ServicePort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             port: HTTPS_PORT.into(),
@@ -1004,7 +996,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
     ];
 
     // We expose the HTTPS port if either authentication or client tls are enabled
-    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
+    if trino.tls_enabled() {
         ports.push(ContainerPort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             container_port: HTTPS_PORT.into(),
@@ -1019,7 +1011,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
 fn readiness_probe(trino: &TrinoCluster) -> Probe {
     let mut port_name = HTTP_PORT_NAME;
 
-    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
+    if trino.tls_enabled() {
         port_name = HTTPS_PORT_NAME
     }
 
@@ -1038,7 +1030,7 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
 fn liveness_probe(trino: &TrinoCluster) -> Probe {
     let mut port_name = HTTP_PORT_NAME;
 
-    if trino.get_authentication().is_some() || trino.get_client_tls().is_some() {
+    if trino.tls_enabled() {
         port_name = HTTPS_PORT_NAME
     }
 
