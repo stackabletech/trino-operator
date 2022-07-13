@@ -322,6 +322,7 @@ impl Configuration for TrinoConfig {
                     if role_name == TrinoRole::Coordinator.to_string() {
                         result.insert(
                             HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                            // TODO: Now is is only set to PASSWORD, should probably be changed to CERTIFICATE,PASSWORD
                             Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
                         );
                     }

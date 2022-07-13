@@ -90,7 +90,6 @@ pub fn container_trino_args(
     if let Some(auth) = user_authentication {
         let user_data = auth.to_trino_user_data();
         args.extend(vec![
-            format!("echo TLS_STORE_SECRET: ${}", ENV_TLS_STORE_SECRET),
             format!(
                 "echo Writing user data to {path}/{db}",
                 path = USER_PASSWORD_DATA_DIR_NAME,

@@ -122,8 +122,8 @@ spec:
         verification:
           server:
             caCert:
-              #secretClass: simple-trino-internal-tls
-              secretClass: simple-trino-client-tls
+              secretClass: simple-trino-internal-tls
+              #secretClass: simple-trino-client-tls
       client:
         verification:
           server:
