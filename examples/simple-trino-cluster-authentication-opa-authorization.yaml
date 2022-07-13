@@ -83,26 +83,13 @@ data:
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: simple-trino-client-tls
+  name: simple-trino-tls
 spec:
   backend:
     autoTls:
       ca:
         secret:
-          name: secret-provisioner-trino-client-tls-ca
-          namespace: default
-        autoGenerate: true
----
-apiVersion: secrets.stackable.tech/v1alpha1
-kind: SecretClass
-metadata:
-  name: simple-trino-internal-tls
-spec:
-  backend:
-    autoTls:
-      ca:
-        secret:
-          name: secret-provisioner-trino-internal-tls-ca
+          name: secret-provisioner-trino-tls-ca
           namespace: default
         autoGenerate: true
 ---
