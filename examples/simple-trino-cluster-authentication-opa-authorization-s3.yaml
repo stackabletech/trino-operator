@@ -115,6 +115,16 @@ spec:
           userCredentialsSecret:
             namespace: default
             name: simple-trino-users-secret
+    s3:
+      inline:
+        host: minio
+        port: 9000
+        accessStyle: Path
+        credentials:
+          secretClass: simple-s3-credentials-secret-class
+        tls:
+          verification:
+            none: {}
   coordinators:
     roleGroups:
       default:

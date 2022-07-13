@@ -44,7 +44,7 @@ pub const DISCOVERY_URI: &str = "discovery.uri";
 pub const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
-// - client
+// - client tls
 pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
 pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
 pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key";
@@ -87,14 +87,11 @@ pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
-
 pub const TLS_INTERNAL_DIR: &str = "/stackable/tls/";
-pub const TLS_EXTERNAL_S3_DIR: &str = "/stackable/tls/s3";
-pub const TLS_EXTERNAL_LDAP_DIR: &str = "/stackable/tls/ldap";
-
+// secret vars
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_TLS_STORE_SECRET: &str = "TLS_STORE_SECRET";
-
+// S3 secrets
 pub const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
 pub const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
 pub const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
@@ -286,11 +283,11 @@ impl Configuration for TrinoConfig {
                 result.insert(NODE_ENVIRONMENT.to_string(), Some(node_env));
             }
             CONFIG_PROPERTIES => {
-                if role_name == TrinoRole::Coordinator.to_string() {
-                    result.insert(COORDINATOR.to_string(), Some("true".to_string()));
-                } else {
-                    result.insert(COORDINATOR.to_string(), Some("false".to_string()));
-                }
+                // coordinator or worker
+                result.insert(
+                    COORDINATOR.to_string(),
+                    Some((role_name == TrinoRole::Coordinator.to_string()).to_string()),
+                );
                 // TrinoConfig properties
                 if let Some(query_max_memory) = &self.query_max_memory {
                     result.insert(
@@ -298,14 +295,12 @@ impl Configuration for TrinoConfig {
                         Some(query_max_memory.to_string()),
                     );
                 }
-
                 if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
                     result.insert(
                         QUERY_MAX_MEMORY_PER_NODE.to_string(),
                         Some(query_max_memory_per_node.to_string()),
                     );
                 }
-
                 // TLS
                 // If TLS is set explicitly or authentication is enabled, we need to set both
                 // client and internal TLS settings.
@@ -353,7 +348,6 @@ impl Configuration for TrinoConfig {
                         Some(NODE_INTERNAL_ADDRESS_SOURCE_FQDN.to_string()),
                     );
                 }
-
                 // Authentication
                 // We have to differentiate several options here:
                 // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
