@@ -48,7 +48,7 @@ use stackable_trino_crd::{
     HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
-    S3_SSL_ENABLED, TLS_INTERNAL_DIR, USER_PASSWORD_DATA_DIR_NAME,
+    S3_SSL_ENABLED, TLS_CERTS_DIR, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -138,6 +138,10 @@ pub enum Error {
     InvalidS3Connection { reason: String },
     #[snafu(display("failed to parse trino product version"))]
     TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
+    #[snafu(display(
+        "Trino does not support skipping the verification of the tls enabled S3 server"
+    ))]
+    S3TlsNoVerificationNotSupported,
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -159,11 +163,11 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let mut validated_config =
         validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
-    let s3_connection_def: &Option<S3ConnectionDef> = &trino
+    let s3_connection_def: Option<&S3ConnectionDef> = trino
         .spec
         .config
         .as_ref()
-        .and_then(|config| config.s3.clone());
+        .and_then(|config| config.s3.as_ref());
     let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
         Some(
             s3.resolve(client, trino.namespace().as_deref())
@@ -592,9 +596,12 @@ fn build_rolegroup_statefulset(
 
     if tls.is_some() || authentication.is_some() {
         // if tls or authentication are specified we need to provide mounts for certs and keys
-        cb_prepare.add_volume_mount("tls", TLS_INTERNAL_DIR);
-        cb_trino.add_volume_mount("tls", TLS_INTERNAL_DIR);
-        pod_builder.add_volume(create_tls_volume("tls", trino.get_tls()));
+        cb_prepare.add_volume_mount("internal-tls-certificate", TLS_CERTS_DIR);
+        cb_trino.add_volume_mount("internal-tls-certificate", TLS_CERTS_DIR);
+        pod_builder.add_volume(create_tls_volume(
+            "internal-tls-certificate",
+            trino.get_tls(),
+        ));
     }
 
     if let Some(auth) = authentication {
@@ -611,20 +618,45 @@ fn build_rolegroup_statefulset(
         }
     }
 
-    // Add volume and volume mounts for s3 credentials
-    if let Some(S3ConnectionSpec {
-        credentials: Some(credentials),
-        ..
-    }) = s3_connection
-    {
-        pod_builder.add_volume(credentials.to_volume("s3-credentials"));
-        cb_trino.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
+    if let Some(s3_conn) = s3_connection {
+        // Add volume and volume mounts for s3 credentials
+        if let Some(credentials) = &s3_conn.credentials {
+            pod_builder.add_volume(credentials.to_volume("s3-credentials"));
+            cb_trino.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
+        }
+        // Handle tls
+        if let Some(tls) = &s3_conn.tls {
+            match &tls.verification {
+                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
+                TlsVerification::Server(server_verification) => {
+                    match &server_verification.ca_cert {
+                        CaCert::WebPki {} => {}
+                        CaCert::SecretClass(secret_class) => {
+                            let volume = VolumeBuilder::new(secret_class)
+                                .ephemeral(
+                                    SecretOperatorVolumeSourceBuilder::new(secret_class).build(),
+                                )
+                                .build();
+                            pod_builder.add_volume(volume);
+                            cb_prepare.add_volume_mount(
+                                secret_class,
+                                format!("{TLS_CERTS_DIR}/{secret_class}"),
+                            );
+                            cb_trino.add_volume_mount(
+                                secret_class,
+                                format!("{TLS_CERTS_DIR}/{secret_class}"),
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     let container_prepare = cb_prepare
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(command::container_prepare_args(trino))
+        .args(command::container_prepare_args(trino, s3_connection))
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .security_context(SecurityContextBuilder::run_as_root())

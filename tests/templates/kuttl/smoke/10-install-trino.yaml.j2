@@ -22,25 +22,26 @@ spec:
   opa:
     configMapName: opa
     package: trino
-  s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: s3-credentials
+  config:
+    s3:
+      inline:
+        host: minio
+        port: 9000
+        accessStyle: Path
+        credentials:
+          secretClass: s3-credentials
 {% if test_scenario['values']['s3-use-tls'] == 'true' %}
-      tls:
-        verification:
-          server:
-            caCert:
-              secretClass: minio-tls-certificates
+        tls:
+          verification:
+            server:
+              caCert:
+                secretClass: minio-tls-certificates
 {% endif %}
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: trino-users
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            name: trino-users
   coordinators:
     roleGroups:
       default:

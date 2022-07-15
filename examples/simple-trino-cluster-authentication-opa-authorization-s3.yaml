@@ -5,6 +5,18 @@ metadata:
   name: simple-hive-derby
 spec:
   version: 2.3.9-stackable0.4.0
+  s3:
+    inline:
+      host: minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: simple-trino-s3-secret-class
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: minio-tls-certificates
   metastore:
     roleGroups:
       default:
@@ -44,6 +56,26 @@ stringData:
   alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
   # bob:bob
   bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: simple-trino-s3-secret-class
+spec:
+  backend:
+    k8sSearch:
+      searchNamespace:
+        pod: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple-trino-s3-secret
+  labels:
+    secrets.stackable.tech/class: simple-trino-s3-secret-class
+stringData:
+  accessKey: trino
+  secretKey: trinotrino
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -121,10 +153,12 @@ spec:
         port: 9000
         accessStyle: Path
         credentials:
-          secretClass: simple-s3-credentials-secret-class
+          secretClass: simple-trino-s3-secret-class
         tls:
           verification:
-            none: {}
+            server:
+              caCert:
+                secretClass: minio-tls-certificates
   coordinators:
     roleGroups:
       default:

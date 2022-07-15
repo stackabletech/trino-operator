@@ -4,6 +4,7 @@ kind: TestStep
 commands:
   - script: >-
       helm install minio
+      --version 4.0.2
       --namespace $NAMESPACE
       --set mode=standalone
       --set replicas=1
