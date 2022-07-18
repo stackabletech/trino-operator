@@ -24,6 +24,7 @@ def get_connection(username, password, namespace):
     conn._http_session.verify = False
     return conn
 
+
 def run_query(connection, query):
     print(f"[DEBUG] Executing query {query}")
     cursor = connection.cursor()
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     print("Starting S3 tests...")
     connection = get_connection("admin", "admin", namespace)
 
-    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.taxi WITH (location = 's3a://trino/')")[0][0] == True
+    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.taxi WITH (location = 's3a://trino/')")[0][0] is True
     assert run_query(connection, """
 CREATE TABLE IF NOT EXISTS hive.taxi.taxi_data (
     vendor_id VARCHAR,
@@ -56,7 +57,7 @@ CREATE TABLE IF NOT EXISTS hive.taxi.taxi_data (
     format = 'csv',
     skip_header_line_count = 1
 )
-    """)[0][0] == True
+    """)[0][0] is True
     assert run_query(connection, "SELECT COUNT(*) FROM hive.taxi.taxi_data")[0][0] == 5000
     rows_written = run_query(connection, "CREATE TABLE IF NOT EXISTS hive.taxi.taxi_data_copy AS SELECT * FROM hive.taxi.taxi_data")[0][0]
     assert rows_written == 0 or rows_written == 5000
