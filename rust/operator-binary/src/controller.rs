@@ -30,8 +30,7 @@ use stackable_operator::{
     kube::{api::ObjectMeta, runtime::controller::Action, ResourceExt},
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
-    product_config,
-    product_config::{types::PropertyNameKind, ProductConfigManager},
+    product_config::{self, types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{
         transform_all_roles_to_config, validate_all_roles_and_groups_config,
         ValidatedRoleConfigByPropertyKind,
@@ -139,7 +138,7 @@ pub enum Error {
     #[snafu(display("failed to parse trino product version"))]
     TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
     #[snafu(display(
-        "Trino does not support skipping the verification of the tls enabled S3 server"
+        "trino does not support skipping the verification of the tls enabled S3 server"
     ))]
     S3TlsNoVerificationNotSupported,
 }
