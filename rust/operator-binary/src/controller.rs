@@ -6,6 +6,7 @@ use stackable_operator::{
         PodSecurityContextBuilder, VolumeBuilder,
     },
     client::Client,
+    cluster_resources::ClusterResources,
     commons::{
         opa::OpaApiVersion,
         s3::{S3AccessStyle, S3ConnectionDef, S3ConnectionSpec},
@@ -24,7 +25,7 @@ use stackable_operator::{
             api::resource::Quantity, apis::meta::v1::LabelSelector, util::intstr::IntOrString,
         },
     },
-    kube::{api::ObjectMeta, runtime::controller::Action, ResourceExt},
+    kube::{api::ObjectMeta, runtime::controller::Action, Resource, ResourceExt},
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
     product_config,
@@ -56,6 +57,8 @@ use std::{
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
+const CONTROLLER_NAME: &str = "trino-operator";
+
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
     pub product_config: ProductConfigManager,
@@ -71,6 +74,14 @@ pub enum Error {
     MissingTrinoRole { role: String },
     #[snafu(display("failed to calculate global service name"))]
     GlobalServiceNameNotFound,
+    #[snafu(display("failed to create cluster resources"))]
+    CreateClusterResources {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to delete orphaned resources"))]
+    FinalizeClusterResources {
+        source: stackable_operator::error::Error,
+    },
     #[snafu(display("failed to apply global Service"))]
     ApplyRoleService {
         source: stackable_operator::error::Error,
@@ -236,13 +247,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         None
     };
 
+    let mut cluster_resources =
+        ClusterResources::new(APP_NAME, CONTROLLER_NAME, &trino.object_ref(&()))
+            .context(CreateClusterResourcesSnafu)?;
+
     let coordinator_role_service = build_coordinator_role_service(&trino)?;
-    client
-        .apply_patch(
-            FIELD_MANAGER_SCOPE,
-            &coordinator_role_service,
-            &coordinator_role_service,
-        )
+    cluster_resources
+        .add(client, &coordinator_role_service)
         .await
         .context(ApplyRoleServiceSnafu)?;
 
@@ -271,39 +282,40 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 s3_connection_spec.as_ref(),
             )?;
 
-            client
-                .apply_patch(FIELD_MANAGER_SCOPE, &rg_service, &rg_service)
+            cluster_resources
+                .add(client, &rg_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            client
-                .apply_patch(FIELD_MANAGER_SCOPE, &rg_configmap, &rg_configmap)
+            cluster_resources
+                .add(client, &rg_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            client
-                .apply_patch(
-                    FIELD_MANAGER_SCOPE,
-                    &rg_catalog_configmap,
-                    &rg_catalog_configmap,
-                )
+            cluster_resources
+                .add(client, &rg_catalog_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            client
-                .apply_patch(FIELD_MANAGER_SCOPE, &rg_stateful_set, &rg_stateful_set)
+            cluster_resources
+                .add(client, &rg_stateful_set)
                 .await
                 .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
         }
     }
+
+    cluster_resources
+        .finalize(client)
+        .await
+        .context(FinalizeClusterResourcesSnafu)?;
 
     Ok(Action::await_change())
 }
@@ -327,6 +339,7 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
                 trino
                     .image_version()
                     .context(TrinoProductVersionParseFailureSnafu)?,
+                CONTROLLER_NAME,
                 &role_name,
                 "global",
             )
@@ -465,6 +478,7 @@ fn build_rolegroup_config_map(
                     trino
                         .image_version()
                         .context(TrinoProductVersionParseFailureSnafu)?,
+                    CONTROLLER_NAME,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -525,6 +539,7 @@ fn build_rolegroup_catalog_config_map(
                     trino
                         .image_version()
                         .context(TrinoProductVersionParseFailureSnafu)?,
+                    CONTROLLER_NAME,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -641,6 +656,7 @@ fn build_rolegroup_statefulset(
                 trino,
                 APP_NAME,
                 trino_image_version,
+                CONTROLLER_NAME,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             )
@@ -668,6 +684,7 @@ fn build_rolegroup_statefulset(
                         trino,
                         APP_NAME,
                         trino_image_version,
+                        CONTROLLER_NAME,
                         &rolegroup_ref.role,
                         &rolegroup_ref.role_group,
                     )
@@ -755,6 +772,7 @@ fn build_rolegroup_service(
                 trino
                     .image_version()
                     .context(TrinoProductVersionParseFailureSnafu)?,
+                CONTROLLER_NAME,
                 &rolegroup.role,
                 &rolegroup.role_group,
             )

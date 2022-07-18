@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Include chart name when installing with a custom release name ([#233], [#234]).
+- Orphaned resources are deleted
 - `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
 
 [#233]: https://github.com/stackabletech/trino-operator/pull/233
