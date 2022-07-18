@@ -40,7 +40,7 @@ use stackable_operator::{
 };
 use stackable_trino_crd::{
     authentication,
-    authentication::{Authentication, TrinoAuthenticationConfig, TrinoAuthenticationMethod},
+    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationMethod},
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
     CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_S3_ACCESS_KEY,
@@ -358,8 +358,7 @@ fn build_rolegroup_config_map(
 
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
-    let mut jvm_config = format!(
-        "-server
+    let mut jvm_config = "-server
         -Xmx16G
         -XX:-UseBiasedLocking
         -XX:+UseG1GC
@@ -372,12 +371,18 @@ fn build_rolegroup_config_map(
         -XX:PerMethodRecompilationCutoff=10000
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
-        -Djdk.nio.maxCachedBufferSize=2000000
-        -Djavax.net.ssl.trustStore={dir}/truststore.p12
-        -Djavax.net.ssl.trustStorePassword=changeit
-        -Djavax.net.ssl.trustStoreType=pkcs12",
-        dir = STACKABLE_TLS_CERTS_DIR
-    );
+        -Djdk.nio.maxCachedBufferSize=2000000"
+        .to_string();
+
+    if trino.tls_enabled() {
+        jvm_config.push_str(&format!(
+            "
+            -Djavax.net.ssl.trustStore={dir}/truststore.p12
+            -Djavax.net.ssl.trustStorePassword=changeit
+            -Djavax.net.ssl.trustStoreType=pkcs12",
+            dir = STACKABLE_TLS_CERTS_DIR
+        ));
+    }
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -395,8 +400,7 @@ fn build_rolegroup_config_map(
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
                 // Trino requires https enabled if authentication is required
-                let protocol = if trino.get_tls().is_some() || trino.get_authentication().is_some()
-                {
+                let protocol = if trino.tls_enabled() {
                     TrinoDiscoveryProtocol::Https
                 } else {
                     TrinoDiscoveryProtocol::Http
@@ -594,12 +598,8 @@ fn build_rolegroup_statefulset(
         env.push(internal_secret);
     };
 
-    // If authentication is required, add volume for users and both client and internal tls is
-    // required
-    let authentication: Option<&Authentication> = trino.get_authentication();
-    let tls: Option<&Tls> = trino.get_tls();
-
-    if tls.is_some() || authentication.is_some() {
+    // If tls is required, add volume for users and both client and internal communications
+    if trino.tls_enabled() {
         // if tls or authentication are specified we need to provide mounts for certs and keys
         cb_prepare.add_volume_mount("internal-tls-certificate", STACKABLE_TLS_CERTS_DIR);
         cb_trino.add_volume_mount("internal-tls-certificate", STACKABLE_TLS_CERTS_DIR);
@@ -609,7 +609,8 @@ fn build_rolegroup_statefulset(
         ));
     }
 
-    if let Some(auth) = authentication {
+    // If authentication is required (tls already activated) add volume mount for user pw database
+    if let Some(auth) = trino.get_authentication() {
         match auth.method {
             TrinoAuthenticationMethod::MultiUser { .. } => {
                 cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
@@ -624,12 +625,12 @@ fn build_rolegroup_statefulset(
     }
 
     if let Some(s3_conn) = s3_connection {
-        // Add volume and volume mounts for s3 credentials
+        // Add volume and volume mounts for S3 credentials
         if let Some(credentials) = &s3_conn.credentials {
             pod_builder.add_volume(credentials.to_volume("s3-credentials"));
             cb_trino.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
         }
-        // Handle tls
+        // Handle S3 TLS
         if let Some(tls) = &s3_conn.tls {
             match &tls.verification {
                 TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
@@ -885,13 +886,13 @@ fn env_var_from_secret(secret_name: &Option<String>, env_var: &str) -> Option<En
 /// * `product_config`  - The product config to validate and complement the user config.
 ///
 fn validated_product_config(
-    resource: &TrinoCluster,
+    trino: &TrinoCluster,
     version: &str,
     product_config: &ProductConfigManager,
 ) -> Result<ValidatedRoleConfigByPropertyKind, Error> {
     let mut roles = HashMap::new();
 
-    let config_files = vec![
+    let mut config_files = vec![
         PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
         PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
@@ -899,17 +900,17 @@ fn validated_product_config(
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
     ];
 
+    if trino.get_authentication().is_some() {
+        config_files.push(PropertyNameKind::File(
+            PASSWORD_AUTHENTICATOR_PROPERTIES.to_string(),
+        ))
+    }
+
     roles.insert(
         TrinoRole::Coordinator.to_string(),
         (
-            [
-                config_files.clone(),
-                vec![PropertyNameKind::File(
-                    PASSWORD_AUTHENTICATOR_PROPERTIES.to_string(),
-                )],
-            ]
-            .concat(),
-            resource
+            config_files.clone(),
+            trino
                 .spec
                 .coordinators
                 .clone()
@@ -923,7 +924,7 @@ fn validated_product_config(
         TrinoRole::Worker.to_string(),
         (
             config_files,
-            resource
+            trino
                 .spec
                 .workers
                 .clone()
@@ -934,7 +935,7 @@ fn validated_product_config(
     );
 
     let role_config =
-        transform_all_roles_to_config(resource, roles).context(ProductConfigTransformSnafu)?;
+        transform_all_roles_to_config(trino, roles).context(ProductConfigTransformSnafu)?;
 
     validate_all_roles_and_groups_config(version, &role_config, product_config, false, false)
         .context(InvalidProductConfigSnafu)

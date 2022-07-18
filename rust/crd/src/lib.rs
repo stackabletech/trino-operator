@@ -70,9 +70,6 @@ pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
 pub const FILE_PASSWORD_FILE: &str = "file.password-file";
-// file content keys
-pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
-pub const CERT_FILE_CONTENT_MAP_KEY: &str = "serverCertificate";
 // hive.properties
 pub const S3_ENDPOINT: &str = "hive.s3.endpoint";
 pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
@@ -309,7 +306,7 @@ impl Configuration for TrinoConfig {
                 // TLS
                 // If TLS is set explicitly or authentication is enabled, we need to set both
                 // client and internal TLS settings.
-                if resource.get_tls().is_some() || authentication_enabled {
+                if resource.tls_enabled() {
                     // client TLS
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
@@ -365,15 +362,12 @@ impl Configuration for TrinoConfig {
                 // We have to differentiate several options here:
                 // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
                 // - requires both internal and client TLS to be configured
-                if authentication_enabled {
+                if authentication_enabled && role_name == TrinoRole::Coordinator.to_string() {
                     // password ui login
-                    if role_name == TrinoRole::Coordinator.to_string() {
-                        result.insert(
-                            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                            // TODO: Now is is only set to PASSWORD, should probably be changed to CERTIFICATE,PASSWORD
-                            Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                        );
-                    }
+                    result.insert(
+                        HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                        Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                    );
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {

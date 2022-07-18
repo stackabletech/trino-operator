@@ -16,7 +16,7 @@
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: simple-s3-credentials-secret-class
+  name: simple-trino-s3-secret-class
 spec:
   backend:
     k8sSearch:
@@ -26,9 +26,9 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: simple-s3-credentials-secret
+  name: simple-trino-s3-secret-class
   labels:
-    secrets.stackable.tech/class: simple-s3-credentials-secret-class
+    secrets.stackable.tech/class: simple-trino-s3-secret-class
 stringData:
   accessKey: minio-access-key
   secretKey: minio-secret-key
@@ -39,13 +39,14 @@ metadata:
   name: simple-hive-derby
 spec:
   version: 2.3.9-stackable0.4.0
-  s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: simple-s3-credentials-secret-class
+  config:
+    s3:
+      inline:
+        host: minio
+        port: 9000
+        accessStyle: Path
+        credentials:
+          secretClass: simple-trino-s3-secret-class
   metastore:
     roleGroups:
       default:
@@ -67,13 +68,14 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
-  s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: simple-s3-credentials-secret-class
+  config:
+    s3:
+      inline:
+        host: minio
+        port: 9000
+        accessStyle: Path
+        credentials:
+          secretClass: simple-trino-s3-secret-class
   coordinators:
     roleGroups:
       default:

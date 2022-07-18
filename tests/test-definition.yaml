@@ -13,7 +13,7 @@ dimensions:
       - 0.41.0-stackable0.1.0
   - name: s3-use-tls
     values:
-      # - "true" Not supported yet
+      - "true"
       - "false"
 tests:
   - name: smoke

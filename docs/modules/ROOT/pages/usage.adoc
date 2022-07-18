@@ -115,13 +115,14 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
-  s3:
-    inline:
-      host: test-minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: minio-credentials
+  config:
+    s3:
+      inline:
+        host: test-minio
+        port: 9000
+        accessStyle: Path
+        credentials:
+          secretClass: minio-credentials
   coordinators:
     roleGroups:
       default:
@@ -162,19 +163,19 @@ spec:
   opa:
     configMapName: simple-opa
     package: trino
-  s3:
-    inline:
-      host: test-minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: minio-credentials
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          namespace: default
-          name: simple-trino-users-secret
+  config:
+    s3:
+      inline:
+        host: test-minio
+        port: 9000
+        accessStyle: Path
+        credentials:
+          secretClass: minio-credentials
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            name: simple-trino-users-secret
   coordinators:
     roleGroups:
       default:

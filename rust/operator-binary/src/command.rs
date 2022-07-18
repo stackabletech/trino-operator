@@ -12,12 +12,11 @@ pub fn container_prepare_args(
     trino: &TrinoCluster,
     s3_spec: Option<&S3ConnectionSpec>,
 ) -> Vec<String> {
-    let mut args = vec![
-        // Copy system truststore to stackable truststore
-        format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt")
-    ];
+    let mut args = vec![];
 
     if trino.tls_enabled() {
+        // Copy system truststore to stackable truststore
+        args.push(format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
         // create TLS keystores
         args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
 
@@ -35,8 +34,6 @@ pub fn container_prepare_args(
 
         // chown and chmod keystores and user password data dirs
         args.extend(chown_and_chmod(STACKABLE_TLS_CERTS_DIR));
-        args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
-    } else if trino.get_authentication().is_some() {
         args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
     }
 
