@@ -374,13 +374,14 @@ fn build_rolegroup_config_map(
         .to_string();
 
     if trino.tls_enabled() {
-        jvm_config.push_str(&format!(
+        let _ = write!(
+            jvm_config,
             "
             -Djavax.net.ssl.trustStore={dir}/truststore.p12
             -Djavax.net.ssl.trustStorePassword=changeit
             -Djavax.net.ssl.trustStoreType=pkcs12",
             dir = STACKABLE_TLS_CERTS_DIR
-        ));
+        );
     }
 
     // TODO: we support only one coordinator for now
