@@ -8,10 +8,13 @@ All notable changes to this project will be documented in this file.
 
 - Include chart name when installing with a custom release name ([#233], [#234]).
 - `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
+- Internal and client TLS now configurable instead of defaulting to "tls" secret class ([#244]).
+- S3 TLS properly supported ([#244]).
 
 [#233]: https://github.com/stackabletech/trino-operator/pull/233
 [#234]: https://github.com/stackabletech/trino-operator/pull/234
 [#235]: https://github.com/stackabletech/trino-operator/pull/235
+[#244]: https://github.com/stackabletech/trino-operator/pull/244
 
 ## [0.4.0] - 2022-06-30
 
