@@ -10,8 +10,8 @@
 # helm install minio \
 #     minio \
 #     --repo https://charts.bitnami.com/bitnami \
-#     --set auth.rootUser=minio-access-key \
-#     --set auth.rootPassword=minio-secret-key
+#     --set auth.rootUser=trino \
+#     --set auth.rootPassword=trinotrino
 ---
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
@@ -30,8 +30,8 @@ metadata:
   labels:
     secrets.stackable.tech/class: simple-trino-s3-secret-class
 stringData:
-  accessKey: minio-access-key
-  secretKey: minio-secret-key
+  accessKey: trino
+  secretKey: trinotrino
 ---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
@@ -39,14 +39,18 @@ metadata:
   name: simple-hive-derby
 spec:
   version: 2.3.9-stackable0.4.0
-  config:
-    s3:
-      inline:
-        host: minio
-        port: 9000
-        accessStyle: Path
-        credentials:
-          secretClass: simple-trino-s3-secret-class
+  s3:
+    inline:
+      host: minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: simple-trino-s3-secret-class
+#      tls:
+#        verification:
+#          server:
+#            caCert:
+#              secretClass: minio-tls-certificates
   metastore:
     roleGroups:
       default:
@@ -76,6 +80,11 @@ spec:
         accessStyle: Path
         credentials:
           secretClass: simple-trino-s3-secret-class
+#        tls:
+#          verification:
+#            server:
+#              caCert:
+#                secretClass: minio-tls-certificates
   coordinators:
     roleGroups:
       default:

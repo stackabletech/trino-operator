@@ -149,7 +149,7 @@ To access the CLI please execute:
 
 ==== Secure (https) for production:
 
-Create a secure single node Trino (v387) cluster. This will disable the UI access via http and requires username and password from the secret above. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster-authentication-opa-authorization.yaml` for a full example setting up Hive, OPA, Secrets and Trino):
+Create a secure single node Trino (v387) cluster. This will disable the UI access via http and requires username and password from the secret above. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster-authentication-opa-authorization-s3.yaml` for a full example setting up Hive, OPA, Secrets and Trino):
 
 [source,yaml]
 ----

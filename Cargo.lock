@@ -1764,6 +1764,7 @@ dependencies = [
  "built",
  "clap",
  "futures 0.3.21",
+ "indoc",
  "openssl",
  "pin-project",
  "semver",

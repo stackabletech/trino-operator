@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
 - Internal and client TLS now configurable instead of defaulting to "tls" secret class ([#244]).
 - S3 TLS properly supported ([#244]).
+- BREAKING: Introduced global `config` for `Authentication`, `S3` and `TLS` settings ([#244]).
 
 [#233]: https://github.com/stackabletech/trino-operator/pull/233
 [#234]: https://github.com/stackabletech/trino-operator/pull/234

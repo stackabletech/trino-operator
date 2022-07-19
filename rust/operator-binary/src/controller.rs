@@ -1,5 +1,6 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::command;
+use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
@@ -47,7 +48,8 @@ use stackable_trino_crd::{
     HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
-    S3_SSL_ENABLED, STACKABLE_TLS_CERTS_DIR, USER_PASSWORD_DATA_DIR_NAME,
+    S3_SSL_ENABLED, STACKABLE_TLS_CERTS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -357,7 +359,8 @@ fn build_rolegroup_config_map(
 
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
-    let mut jvm_config = "-server
+    let mut jvm_config = formatdoc!(
+        "-server
         -Xmx16G
         -XX:-UseBiasedLocking
         -XX:+UseG1GC
@@ -370,19 +373,11 @@ fn build_rolegroup_config_map(
         -XX:PerMethodRecompilationCutoff=10000
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
-        -Djdk.nio.maxCachedBufferSize=2000000"
-        .to_string();
-
-    if trino.tls_enabled() {
-        let _ = write!(
-            jvm_config,
-            "
-            -Djavax.net.ssl.trustStore={dir}/truststore.p12
-            -Djavax.net.ssl.trustStorePassword=changeit
-            -Djavax.net.ssl.trustStoreType=pkcs12",
-            dir = STACKABLE_TLS_CERTS_DIR
-        );
-    }
+        -Djdk.nio.maxCachedBufferSize=2000000
+        -Djavax.net.ssl.trustStore={STACKABLE_TLS_CERTS_DIR}/truststore.p12
+        -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
+        -Djavax.net.ssl.trustStoreType=pkcs12"
+    );
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -598,15 +593,20 @@ fn build_rolegroup_statefulset(
         env.push(internal_secret);
     };
 
-    // If tls is required, add volume for users and both client and internal communications
+    // We always create a mount for tls-certificates (mounted via SecretOperatorVolumeSourceBuilder if tls
+    // is enabled or simply as empty dir to create and copy the system trust store)
+    cb_prepare.add_volume_mount("tls-certificate", STACKABLE_TLS_CERTS_DIR);
+    cb_trino.add_volume_mount("tls-certificate", STACKABLE_TLS_CERTS_DIR);
+    // If tls or authentication are specified we need to provide mounts for certs and keys
     if trino.tls_enabled() {
-        // if tls or authentication are specified we need to provide mounts for certs and keys
-        cb_prepare.add_volume_mount("internal-tls-certificate", STACKABLE_TLS_CERTS_DIR);
-        cb_trino.add_volume_mount("internal-tls-certificate", STACKABLE_TLS_CERTS_DIR);
-        pod_builder.add_volume(create_tls_volume(
-            "internal-tls-certificate",
-            trino.get_tls(),
-        ));
+        pod_builder.add_volume(create_tls_volume("tls-certificate", trino.get_tls()));
+    // Or create an empty dir
+    } else {
+        pod_builder.add_volume(
+            VolumeBuilder::new("tls-certificate")
+                .with_empty_dir(Some(""), None)
+                .build(),
+        );
     }
 
     // If authentication is required (tls already activated) add volume mount for user pw database

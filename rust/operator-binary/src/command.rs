@@ -12,29 +12,37 @@ pub fn container_prepare_args(
     trino: &TrinoCluster,
     s3_spec: Option<&S3ConnectionSpec>,
 ) -> Vec<String> {
-    let mut args = vec![];
-
-    if trino.tls_enabled() {
+    let mut args = vec![
+        // Create certificates directory (required if e.g. no authentication or tls is enabled but required for S3 connection)
+        format!("mkdir -p {STACKABLE_TLS_CERTS_DIR}"),
         // Copy system truststore to stackable truststore
-        args.push(format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
-        // create TLS keystores
+        format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
+    ];
+
+    // Chown and mod the certificates dir (this will always be created even if no tls is required)
+    args.extend(chown_and_chmod(STACKABLE_TLS_CERTS_DIR));
+
+    // Create internal keystores
+    if trino.tls_enabled() {
         args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
+    }
 
-        if let Some(s3) = s3_spec {
-            if let Some(Tls {
-                verification:
-                    TlsVerification::Server(TlsServerVerification {
-                        ca_cert: CaCert::SecretClass(secret_class),
-                    }),
-            }) = &s3.tls
-            {
-                args.push(format!("keytool -importcert -file {STACKABLE_TLS_CERTS_DIR}/{s3_certs_dir}/ca.crt -alias stackable-{secret_class} -keystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt", s3_certs_dir = secret_class));
-            }
-        }
-
-        // chown and chmod keystores and user password data dirs
-        args.extend(chown_and_chmod(STACKABLE_TLS_CERTS_DIR));
+    // User password data
+    if trino.get_authentication().is_some() {
         args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
+    }
+
+    // Load S3 ca to truststore if S3 TLS enabled
+    if let Some(s3) = s3_spec {
+        if let Some(Tls {
+            verification:
+                TlsVerification::Server(TlsServerVerification {
+                    ca_cert: CaCert::SecretClass(secret_class),
+                }),
+        }) = &s3.tls
+        {
+            args.push(format!("keytool -importcert -file {STACKABLE_TLS_CERTS_DIR}/{s3_certs_dir}/ca.crt -alias stackable-{secret_class} -keystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt", s3_certs_dir = secret_class));
+        }
     }
 
     args.extend(chown_and_chmod(RW_CONFIG_DIR_NAME));
