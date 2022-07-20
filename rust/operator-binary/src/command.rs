@@ -20,9 +20,6 @@ pub fn container_prepare_args(
         format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ];
 
-    // Chown and mod the certificates dir (this will always be created even if no tls is required)
-    args.extend(chown_and_chmod(STACKABLE_TLS_CERTS_DIR));
-
     // User password data
     if trino.get_authentication().is_some() {
         args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
@@ -31,11 +28,16 @@ pub fn container_prepare_args(
         args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
     }
 
+    // Chown and mod the certificates dir (this will always be created even if no tls is required)
+    args.extend(chown_and_chmod(STACKABLE_TLS_CERTS_DIR));
+
     if trino.get_internal_tls().is_some() {
         args.extend(create_key_and_trust_store(STACKABLE_INTERNAL_TLS_CERTS_DIR));
         args.extend(chown_and_chmod(STACKABLE_INTERNAL_TLS_CERTS_DIR));
-        // add cert to global truststore
-        args.push(format!("keytool -importcert -file {STACKABLE_INTERNAL_TLS_CERTS_DIR}/ca.crt -alias stackable-internal-tls -keystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
+        // add internal cert to global truststore
+        //args.push(format!("keytool -importcert -file {STACKABLE_INTERNAL_TLS_CERTS_DIR}/ca.crt -alias stackable-internal-tls -keystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
+        // add cert to internal truststore
+        args.push(format!("keytool -importcert -file {STACKABLE_TLS_CERTS_DIR}/ca.crt -alias stackable-internal-tls -keystore {STACKABLE_INTERNAL_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
     }
 
     // Load S3 ca to truststore if S3 TLS enabled

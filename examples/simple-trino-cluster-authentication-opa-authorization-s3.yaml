@@ -101,7 +101,17 @@ metadata:
 spec:
   version: 2.3.9-stackable0.4.0
   s3:
-    reference: s3-connection-spec
+    inline:
+      host: minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: simple-trino-s3-secret-class
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: minio-tls-certificates
   metastore:
     roleGroups:
       default:
@@ -190,7 +200,7 @@ spec:
   config:
     tls:
       secretClass: simple-trino-client-tls
-    internal:
+    internalTls:
       secretClass: tls
   authentication:
     method:
@@ -199,7 +209,17 @@ spec:
           namespace: default
           name: simple-trino-users-secret
   s3:
-    reference: s3-connection-spec
+    inline:
+      host: minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: simple-trino-s3-secret-class
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: minio-tls-certificates
   coordinators:
     roleGroups:
       default:
