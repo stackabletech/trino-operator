@@ -144,7 +144,10 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
     /// Global Trino Config for settings like TLS, Authentication, S3 etc.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default = "global_config_default",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub config: Option<GlobalTrinoConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
@@ -166,14 +169,23 @@ pub struct GlobalTrinoConfig {
     /// This setting controls:
     /// - If TLS encryption is used at all
     /// - Which cert the servers should use to authenticate themselves against the client
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default = "tls_default", skip_serializing_if = "Option::is_none")]
     pub tls: Option<TlsSecretClass>,
     /// Only affects internal communication. Use mutual verification between Trino nodes
     /// This setting controls:
     /// - Which cert the servers should use to authenticate themselves against other servers
     /// - Which ca.crt to use when validating the other server
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub internal_tls: Option<TlsSecretClass>,
+}
+
+fn global_config_default() -> Option<GlobalTrinoConfig> {
+    Some(GlobalTrinoConfig {
+        tls: Some(TlsSecretClass {
+            secret_class: TLS_DEFAULT_SECRET_CLASS.to_string(),
+        }),
+        internal_tls: None,
+    })
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -182,12 +194,10 @@ pub struct TlsSecretClass {
     pub secret_class: String,
 }
 
-impl Default for TlsSecretClass {
-    fn default() -> Self {
-        Self {
-            secret_class: TLS_DEFAULT_SECRET_CLASS.to_string(),
-        }
-    }
+fn tls_default() -> Option<TlsSecretClass> {
+    Some(TlsSecretClass {
+        secret_class: TLS_DEFAULT_SECRET_CLASS.to_string(),
+    })
 }
 
 #[derive(
@@ -395,12 +405,35 @@ impl Configuration for TrinoConfig {
                             HTTP_SERVER_AUTHENTICATION_ALLOW_INSECURE_OVER_HTTP.to_string(),
                             Some("true".to_string()),
                         );
+                        // additionally we have to set the https keystores (only if no
+                        // authentication or client tls is required!
+                        result.insert(
+                            HTTP_SERVER_KEYSTORE_PATH.to_string(),
+                            Some(format!(
+                                "{}/{}",
+                                STACKABLE_INTERNAL_TLS_CERTS_DIR, "keystore.p12"
+                            )),
+                        );
+                        result.insert(
+                            HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
+                            Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
+                        );
+                        result.insert(
+                            HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
+                            Some(format!(
+                                "{}/{}",
+                                STACKABLE_INTERNAL_TLS_CERTS_DIR, "truststore.p12"
+                            )),
+                        );
+                        result.insert(
+                            HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
+                            Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
+                        );
                     }
-                    // TODO: do we need this if we already use tls?
-                    // result.insert(
-                    //     INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                    //     Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
-                    // );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
+                        Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
+                    );
                     result.insert(
                         INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
                         Some(format!("{}/keystore.p12", STACKABLE_INTERNAL_TLS_CERTS_DIR)),
@@ -570,26 +603,104 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: 387-stackable0.1.0
-          hiveConfigMapName: simple-hive-derby
-          opa:
-            configMapName: simple-opa
-            package: trino
+          version: abc
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
           config:
             tls:
               secretClass: simple-trino-client-tls
-            internal:
-              secretClass: tls
-          authentication:
-            method:
-              multiUser:
-                userCredentialsSecret:
-                  namespace: default
-                  name: simple-trino-users-secret
-          s3:
-            reference: s3-connection-spec
         "#;
-        let trino_cluster: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        println!("{:?}", trino_cluster)
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            "simple-trino-client-tls".to_string()
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            tls: null
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(trino.get_client_tls(), None);
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            internalTls:
+              secretClass: simple-trino-internal-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
+    }
+
+    #[test]
+    fn test_internal_tls() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(trino.get_internal_tls(), None);
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            internalTls:
+              secretClass: simple-trino-internal-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            "simple-trino-internal-tls".to_string()
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            tls:
+              secretClass: simple-trino-client-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(trino.get_internal_tls(), None);
     }
 }

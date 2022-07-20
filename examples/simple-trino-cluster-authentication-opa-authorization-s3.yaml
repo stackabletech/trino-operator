@@ -198,16 +198,16 @@ spec:
     configMapName: simple-opa
     package: trino
   config:
-    tls:
-      secretClass: simple-trino-client-tls
+    tls: null
+      #secretClass: simple-trino-client-tls
     internalTls:
       secretClass: tls
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          namespace: default
-          name: simple-trino-users-secret
+#  authentication:
+#    method:
+#      multiUser:
+#        userCredentialsSecret:
+#          namespace: default
+#          name: simple-trino-users-secret
   s3:
     inline:
       host: minio

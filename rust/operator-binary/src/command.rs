@@ -15,29 +15,40 @@ pub fn container_prepare_args(
 ) -> Vec<String> {
     let mut args = vec![
         // Create certificates directory (required if e.g. no authentication or tls is enabled but required for S3 connection)
-        format!("mkdir -p {STACKABLE_TLS_CERTS_DIR}"),
+        //format!("mkdir -p {STACKABLE_TLS_CERTS_DIR}"),
         // Copy system truststore to stackable truststore
         format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ];
 
     // User password data
     if trino.get_authentication().is_some() {
-        args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
+        args.extend(create_key_and_trust_store(
+            STACKABLE_TLS_CERTS_DIR,
+            "stackable-ca-cert",
+        ));
         args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
-    } else if trino.tls_enabled() {
-        args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
+    } else if trino.get_client_tls().is_some() {
+        args.extend(create_key_and_trust_store(
+            STACKABLE_TLS_CERTS_DIR,
+            "stackable-ca-cert",
+        ));
     }
 
-    // Chown and mod the certificates dir (this will always be created even if no tls is required)
+    // Chown and mod the certificates dir (this will always be created even if no TLS is required)
     args.extend(chown_and_chmod(STACKABLE_TLS_CERTS_DIR));
 
     if trino.get_internal_tls().is_some() {
-        args.extend(create_key_and_trust_store(STACKABLE_INTERNAL_TLS_CERTS_DIR));
+        args.extend(create_key_and_trust_store(
+            STACKABLE_INTERNAL_TLS_CERTS_DIR,
+            "stackable-internal-ca-cert",
+        ));
         args.extend(chown_and_chmod(STACKABLE_INTERNAL_TLS_CERTS_DIR));
         // add internal cert to global truststore
         //args.push(format!("keytool -importcert -file {STACKABLE_INTERNAL_TLS_CERTS_DIR}/ca.crt -alias stackable-internal-tls -keystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
         // add cert to internal truststore
-        args.push(format!("keytool -importcert -file {STACKABLE_TLS_CERTS_DIR}/ca.crt -alias stackable-internal-tls -keystore {STACKABLE_INTERNAL_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
+        if trino.tls_enabled() {
+            args.push(format!("keytool -importcert -file {STACKABLE_TLS_CERTS_DIR}/ca.crt -alias stackable-ca-cert -keystore {STACKABLE_INTERNAL_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
+        }
     }
 
     // Load S3 ca to truststore if S3 TLS enabled
@@ -135,11 +146,11 @@ pub fn container_trino_args(
 
 /// Generates the shell script to create key and truststores from the certificates provided
 /// by the secret operator.
-fn create_key_and_trust_store(directory: &str) -> Vec<String> {
+fn create_key_and_trust_store(directory: &str, alias_name: &str) -> Vec<String> {
     vec![
         format!("echo [{dir}] Creating truststore", dir = directory),
-        format!("keytool -importcert -file {dir}/ca.crt -keystore {dir}/truststore.p12 -storetype pkcs12 -noprompt -alias stackable_ca_cert -storepass {password}",
-                dir = directory, password = STACKABLE_TLS_STORE_PASSWORD),
+        format!("keytool -importcert -file {dir}/ca.crt -keystore {dir}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias} -storepass {password}",
+                dir = directory, alias = alias_name, password = STACKABLE_TLS_STORE_PASSWORD),
         format!("echo [{dir}] Creating certificate chain", dir = directory),
         format!("cat {dir}/ca.crt {dir}/tls.crt > {dir}/chain.crt", dir = directory),
         format!("echo [{dir}] Creating keystore", dir = directory),

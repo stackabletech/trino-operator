@@ -391,7 +391,7 @@ fn build_rolegroup_config_map(
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
                 // Trino requires https enabled if authentication is required
-                let protocol = if trino.tls_enabled() {
+                let protocol = if trino.get_internal_tls().is_some() {
                     TrinoDiscoveryProtocol::Https
                 } else {
                     TrinoDiscoveryProtocol::Http
