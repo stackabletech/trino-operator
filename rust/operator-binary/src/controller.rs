@@ -12,7 +12,7 @@ use stackable_operator::{
     commons::{
         opa::OpaApiVersion,
         s3::{S3AccessStyle, S3ConnectionDef, S3ConnectionSpec},
-        tls::{CaCert, Tls, TlsVerification},
+        tls::{CaCert, TlsVerification},
     },
     k8s_openapi::{
         api::{
@@ -42,14 +42,14 @@ use stackable_trino_crd::{
     authentication,
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationMethod},
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
+    TlsSecretClass, TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
     CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_S3_ACCESS_KEY,
     ENV_S3_SECRET_KEY, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME,
     HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
-    S3_SSL_ENABLED, STACKABLE_TLS_CERTS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-    USER_PASSWORD_DATA_DIR_NAME,
+    S3_SSL_ENABLED, STACKABLE_INTERNAL_TLS_CERTS_DIR, STACKABLE_TLS_CERTS_DIR,
+    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -164,11 +164,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let mut validated_config =
         validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
-    let s3_connection_def: Option<&S3ConnectionDef> = trino
-        .spec
-        .config
-        .as_ref()
-        .and_then(|config| config.s3.as_ref());
+    let s3_connection_def: Option<&S3ConnectionDef> = trino.spec.s3.as_ref();
     let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
         Some(
             s3.resolve(client, trino.namespace().as_deref())
@@ -599,7 +595,7 @@ fn build_rolegroup_statefulset(
     cb_trino.add_volume_mount("tls-certificate", STACKABLE_TLS_CERTS_DIR);
     // If tls or authentication are specified we need to provide mounts for certs and keys
     if trino.tls_enabled() {
-        pod_builder.add_volume(create_tls_volume("tls-certificate", trino.get_tls()));
+        pod_builder.add_volume(create_tls_volume("tls-certificate", trino.get_client_tls()));
     // Or create an empty dir
     } else {
         pod_builder.add_volume(
@@ -607,6 +603,15 @@ fn build_rolegroup_statefulset(
                 .with_empty_dir(Some(""), None)
                 .build(),
         );
+    }
+
+    if trino.get_internal_tls().is_some() {
+        cb_prepare.add_volume_mount("internal-tls-certificate", STACKABLE_INTERNAL_TLS_CERTS_DIR);
+        cb_trino.add_volume_mount("internal-tls-certificate", STACKABLE_INTERNAL_TLS_CERTS_DIR);
+        pod_builder.add_volume(create_tls_volume(
+            "internal-tls-certificate",
+            trino.get_internal_tls(),
+        ));
     }
 
     // If authentication is required (tls already activated) add volume mount for user pw database
@@ -1079,19 +1084,11 @@ fn liveness_probe(trino: &TrinoCluster) -> Probe {
     }
 }
 
-fn create_tls_volume(volume_name: &str, tls: Option<&Tls>) -> Volume {
+fn create_tls_volume(volume_name: &str, tls_secret_class: Option<&TlsSecretClass>) -> Volume {
     let mut secret_class_name = "tls";
 
-    if let Some(tls) = tls {
-        match &tls.verification {
-            TlsVerification::None {} => {}
-            TlsVerification::Server(server_verification) => match &server_verification.ca_cert {
-                CaCert::WebPki {} => {}
-                CaCert::SecretClass(secret_class) => {
-                    secret_class_name = secret_class;
-                }
-            },
-        }
+    if let Some(tls) = tls_secret_class {
+        secret_class_name = &tls.secret_class;
     }
 
     VolumeBuilder::new(volume_name)

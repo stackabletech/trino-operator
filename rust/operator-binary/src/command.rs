@@ -4,8 +4,9 @@ use stackable_trino_crd::authentication::TrinoAuthenticationConfig;
 use stackable_trino_crd::{
     TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME, ENV_S3_ACCESS_KEY, ENV_S3_SECRET_KEY,
     HIVE_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_SECRET_DIR_NAME, SECRET_KEY_S3_ACCESS_KEY,
-    SECRET_KEY_S3_SECRET_KEY, STACKABLE_TLS_CERTS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-    SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    SECRET_KEY_S3_SECRET_KEY, STACKABLE_INTERNAL_TLS_CERTS_DIR, STACKABLE_TLS_CERTS_DIR,
+    STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 
 pub fn container_prepare_args(
@@ -22,14 +23,19 @@ pub fn container_prepare_args(
     // Chown and mod the certificates dir (this will always be created even if no tls is required)
     args.extend(chown_and_chmod(STACKABLE_TLS_CERTS_DIR));
 
-    // Create internal keystores
-    if trino.tls_enabled() {
+    // User password data
+    if trino.get_authentication().is_some() {
+        args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
+        args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
+    } else if trino.tls_enabled() {
         args.extend(create_key_and_trust_store(STACKABLE_TLS_CERTS_DIR));
     }
 
-    // User password data
-    if trino.get_authentication().is_some() {
-        args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
+    if trino.get_internal_tls().is_some() {
+        args.extend(create_key_and_trust_store(STACKABLE_INTERNAL_TLS_CERTS_DIR));
+        args.extend(chown_and_chmod(STACKABLE_INTERNAL_TLS_CERTS_DIR));
+        // add cert to global truststore
+        args.push(format!("keytool -importcert -file {STACKABLE_INTERNAL_TLS_CERTS_DIR}/ca.crt -alias stackable-internal-tls -keystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
     }
 
     // Load S3 ca to truststore if S3 TLS enabled
