@@ -390,7 +390,7 @@ impl Configuration for TrinoConfig {
                     // These two properties may be set above for client TLS. We only need to set
                     // them here if client tls (and/or authentication) is not enabled.
                     // In the case of only internal TLS is activated (meaning no authentication
-                    // and client_tls is set, we have to activate HTTPS still and allow insecure
+                    // and client TLS is set, we have to activate HTTPS and allow insecure
                     // communications via HTTP
                     if !authentication_enabled && !client_tls_enabled {
                         result.insert(
@@ -406,7 +406,8 @@ impl Configuration for TrinoConfig {
                             Some("true".to_string()),
                         );
                         // additionally we have to set the https keystores (only if no
-                        // authentication or client tls is required!
+                        // authentication or client tls is required! Trino complains otherwise
+                        // about wrong HTTPS configuration
                         result.insert(
                             HTTP_SERVER_KEYSTORE_PATH.to_string(),
                             Some(format!(
