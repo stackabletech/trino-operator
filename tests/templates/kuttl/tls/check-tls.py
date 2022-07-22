@@ -65,8 +65,8 @@ def read_yaml(config_path):
     with open(config_path, 'r') as stream:
         try:
             config = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print("Could not load config yaml: " + str(exc))
+        except yaml.YAMLError as e:
+            print("Could not load " + str(config_path) + ": " + str(e))
             exit(-1)
     return config
 
@@ -109,4 +109,4 @@ if __name__ == '__main__':
         conn = get_https_connection(coordinator_host, "admin", untrusted_ca)
         test_query_failure(conn, query, "Could query coordinator with untrusted CA!")
 
-    print("All TLS tests finished sucessfully!")
+    print("All TLS tests finished successfully!")

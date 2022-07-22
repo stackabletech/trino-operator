@@ -387,12 +387,12 @@ impl Configuration for TrinoConfig {
 
                 // If internal TLS is enabled
                 if resource.get_internal_tls().is_some() {
-                    // These two properties may be set above for client TLS. We only need to set
-                    // them here if client tls (and/or authentication) is not enabled.
-                    // In the case of only internal TLS is activated (meaning no authentication
-                    // and client TLS is set, we have to activate HTTPS and allow insecure
-                    // communications via HTTP
                     if !authentication_enabled && !client_tls_enabled {
+                        // The first two properties (HTTPS_ENABLED, HTTPS_PORT) may be set above for client TLS. We only need to set
+                        // them here if client tls (and/or authentication) are not enabled.
+                        // In the case of only internal TLS is activated (meaning no authentication
+                        // and client TLS is set, we have to activate HTTPS and allow insecure
+                        // communications via HTTP
                         result.insert(
                             HTTP_SERVER_HTTPS_ENABLED.to_string(),
                             Some(true.to_string()),
