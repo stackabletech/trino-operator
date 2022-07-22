@@ -115,14 +115,13 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
-  config:
-    s3:
-      inline:
-        host: test-minio
-        port: 9000
-        accessStyle: Path
-        credentials:
-          secretClass: minio-credentials
+  s3:
+    inline:
+      host: test-minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: minio-credentials
   coordinators:
     roleGroups:
       default:
@@ -172,8 +171,8 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   config:
-   tls:
-     secretClass: trino-tls
+    tls:
+      secretClass: trino-tls
   authentication:
     method:
       multiUser:
@@ -202,8 +201,8 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   config:
-   tls:
-     secretClass: trino-tls
+    tls:
+      secretClass: trino-tls
 [..]
 ----
 
@@ -225,8 +224,8 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   config:
-   internalTls:
-     secretClass: trino-internal-tls
+    internalTls:
+      secretClass: trino-internal-tls
 [..]
 ----
 
@@ -288,7 +287,7 @@ metadata:
   labels:
     secrets.stackable.tech/class: minio-tls-certificates
 data:
-    ca.crt: <your base64-encoded-ca>
+    ca.crt: <your-base64-encoded-ca>
     tls.crt: <your base64-encoded-public-key>
     tls.key: <your-base64-encoded-private-key>
 ----
