@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Include chart name when installing with a custom release name ([#233], [#234]).
 - `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
+- Add support for Hive 3.1.3 ([#243])
 - Internal and client TLS now configurable instead of defaulting to "tls" secret class ([#244]).
 - S3 TLS properly supported ([#244]).
 - BREAKING: Introduced global `config` for `Authentication`, `S3` and `TLS` settings ([#244]).
@@ -15,6 +16,7 @@ All notable changes to this project will be documented in this file.
 [#233]: https://github.com/stackabletech/trino-operator/pull/233
 [#234]: https://github.com/stackabletech/trino-operator/pull/234
 [#235]: https://github.com/stackabletech/trino-operator/pull/235
+[#243]: https://github.com/stackabletech/trino-operator/pull/243
 [#244]: https://github.com/stackabletech/trino-operator/pull/244
 
 ## [0.4.0] - 2022-06-30
