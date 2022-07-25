@@ -52,6 +52,9 @@ spec:
                     - method
                   type: object
                 config:
+                  default:
+                    tls:
+                      secretClass: tls
                   description: "Global Trino Config for settings like TLS, Authentication, S3 etc."
                   nullable: true
                   properties:
@@ -65,6 +68,8 @@ spec:
                         - secretClass
                       type: object
                     tls:
+                      default:
+                        secretClass: tls
                       description: "Only affects client connections. This setting controls: - If TLS encryption is used at all - Which cert the servers should use to authenticate themselves against the client"
                       nullable: true
                       properties:
