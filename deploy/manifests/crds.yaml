@@ -56,7 +56,7 @@ spec:
                   default:
                     tls:
                       secretClass: tls
-                  description: "Global Trino Config for settings like TLS, Authentication, S3 etc."
+                  description: Global Trino Config for cluster settings like TLS
                   nullable: true
                   properties:
                     internalTls:
