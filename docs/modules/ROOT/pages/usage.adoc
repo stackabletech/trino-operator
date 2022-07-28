@@ -8,8 +8,9 @@ Trino works together with the Apache Hive metastore and S3 bucket.
 * Accessible S3 Bucket
     ** Endpoint, access-key and secret-key
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
-* Optional deployed Stackable https://github.com/stackabletech/secret-operator[Secret-Operator] for certificates when deploying for HTTPS
-* Optional for authorization: Deployed Stackable https://github.com/stackabletech/opa-operator[OPA-Operator]
+* Optional deployed Stackable xref:secret-operator::index.adoc[Secret Operator] for certificates when deploying for TLS
+* Optional deployed Stackable xref:commons-operator::index.adoc[Commons Operator] for certificates when deploying for TLS authentication
+* Optional for authorization: Deployed Stackable xref:opa-operator::index.adoc[OPA Operator][OPA-Operator]
 * Optional https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI] to test SQL queries
 
 == Installation
@@ -22,13 +23,13 @@ Please refer to the S3 provider.
 
 === Hive operator
 
-Please refer to the https://github.com/stackabletech/hive-operator[Hive] operator and https://docs.stackable.tech/hive/index.html[docs].
+Please refer to the xref:hive-operator::index.adoc[Hive Operator] and https://docs.stackable.tech/hive/index.html[docs].
 
 Both Hive and Trino need the same S3 authentication.
 
 === OPA operator
 
-Please refer to the https://github.com/stackabletech/opa-operator[OPA] operator and https://docs.stackable.tech/opa/index.html[docs].
+Please refer to the xref:opa-operator::index.adoc[OPA Operator] and https://docs.stackable.tech/opa/index.html[docs].
 
 === Authentication
 
@@ -150,17 +151,17 @@ To access the CLI please execute:
 
 There are multiple ways to secure a Trino cluster:
 
-1. Enable Authentication
+1. Enable authentication
 2. Enable TLS only to connect to the coordinator
-3. Enable internal TLS for communications between Coordinators and Workers
+3. Enable internal TLS for communications between coordinators and workers
 
 For testing purposes we use the https://trino.io/docs/current/installation/cli.html[Trino CLI].
 
-===== Via Authentication
+===== Via authentication
 
 If authentication is enabled, https://trino.io/docs/current/security/tls.html[TLS] for the coordinator as well as a shared secret for https://trino.io/docs/current/security/internal-communication.html[internal communications] (this is base64 and not TLS encrypted) must be configured.
 
-Securing the Trino cluster will disable all HTTP port and disable the UI on the HTTP port as well.
+Securing the Trino cluster will disable all HTTP ports and disable the web interface on the HTTP port as well.
 
 [source,yaml]
 ----
@@ -181,7 +182,7 @@ spec:
 [..]
 ----
 
-If no `config.tls.secretClass` is provided but authentication is enabled, it will default to `tls` provided by the https://github.com/stackabletech/secret-operator[Secret Operator].
+If no `config.tls.secretClass` is provided but authentication is enabled, it will default to `tls` provided by the xref:secret-operator::index.adoc[Secret Operator].
 
 [source]
 ----
