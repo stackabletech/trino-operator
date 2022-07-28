@@ -49,7 +49,7 @@ use stackable_trino_crd::{
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
     S3_SSL_ENABLED, STACKABLE_INTERNAL_TLS_CERTS_DIR, STACKABLE_TLS_CERTS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    STACKABLE_TLS_STORE_PASSWORD, TLS_DEFAULT_SECRET_CLASS, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -1067,11 +1067,11 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
 }
 
 fn liveness_probe(trino: &TrinoCluster) -> Probe {
-    let mut port_name = HTTP_PORT_NAME;
-
-    if trino.tls_enabled() {
-        port_name = HTTPS_PORT_NAME
-    }
+    let port_name = if trino.tls_enabled() {
+        HTTPS_PORT_NAME
+    } else {
+        HTTP_PORT_NAME
+    };
 
     Probe {
         initial_delay_seconds: Some(30),
@@ -1085,12 +1085,9 @@ fn liveness_probe(trino: &TrinoCluster) -> Probe {
 }
 
 fn create_tls_volume(volume_name: &str, tls_secret_class: Option<&TlsSecretClass>) -> Volume {
-    let mut secret_class_name = "tls";
-
-    if let Some(tls) = tls_secret_class {
-        secret_class_name = &tls.secret_class;
-    }
-
+    let secret_class_name = tls_secret_class
+        .map(|t| t.secret_class.as_str())
+        .unwrap_or(TLS_DEFAULT_SECRET_CLASS);
     VolumeBuilder::new(volume_name)
         .ephemeral(
             SecretOperatorVolumeSourceBuilder::new(secret_class_name)
