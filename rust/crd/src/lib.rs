@@ -611,6 +611,7 @@ mod tests {
             trino.get_client_tls().unwrap().secret_class,
             TLS_DEFAULT_SECRET_CLASS.to_string()
         );
+        assert_eq!(trino.get_internal_tls(), None);
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -628,6 +629,7 @@ mod tests {
             trino.get_client_tls().unwrap().secret_class,
             "simple-trino-client-tls".to_string()
         );
+        assert_eq!(trino.get_internal_tls(), None);
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -641,6 +643,7 @@ mod tests {
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_client_tls(), None);
+        assert_eq!(trino.get_internal_tls(), None);
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -658,6 +661,10 @@ mod tests {
             trino.get_client_tls().unwrap().secret_class,
             TLS_DEFAULT_SECRET_CLASS.to_string()
         );
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            "simple-trino-internal-tls"
+        );
     }
 
     #[test]
@@ -672,6 +679,10 @@ mod tests {
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -689,6 +700,10 @@ mod tests {
             trino.get_internal_tls().unwrap().secret_class,
             "simple-trino-internal-tls".to_string()
         );
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -703,5 +718,9 @@ mod tests {
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            "simple-trino-client-tls"
+        );
     }
 }
