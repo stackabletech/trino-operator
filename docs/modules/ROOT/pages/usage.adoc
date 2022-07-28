@@ -186,7 +186,13 @@ If no `config.tls.secretClass` is provided but authentication is enabled, it wil
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --password --truststore-path=truststore.p12 --truststore-password=changeit --keystore-path=keystore.p12 --keystore-password=changeit
+./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin  --keystore-path=keystore.p12 --keystore-password=changeit
+----
+or
+
+[source]
+----
+./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --insecure
 ----
 
 ===== Via TLS only
@@ -209,7 +215,7 @@ spec:
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --truststore-path=truststore.p12 --truststore-password=changeit --keystore-path=keystore.p12 --keystore-password=changeit
+./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --keystore-path=keystore.p12 --keystore-password=changeit
 ----
 
 ===== Via internal TLS
