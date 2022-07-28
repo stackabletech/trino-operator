@@ -1048,11 +1048,11 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
 }
 
 fn readiness_probe(trino: &TrinoCluster) -> Probe {
-    let mut port_name = HTTP_PORT_NAME;
-
-    if trino.tls_enabled() {
-        port_name = HTTPS_PORT_NAME
-    }
+    let port_name = if trino.tls_enabled() {
+        HTTPS_PORT_NAME
+    } else {
+        HTTP_PORT_NAME
+    };
 
     Probe {
         initial_delay_seconds: Some(10),

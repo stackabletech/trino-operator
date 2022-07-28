@@ -43,11 +43,6 @@ spec:
   accessStyle: Path
   credentials:
     secretClass: simple-trino-s3-secret-class
-#  tls:
-#    verification:
-#      server:
-#        caCert:
-#          secretClass: minio-tls-certificates
 ---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster

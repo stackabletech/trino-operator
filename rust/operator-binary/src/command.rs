@@ -14,8 +14,6 @@ pub fn container_prepare_args(
     s3_spec: Option<&S3ConnectionSpec>,
 ) -> Vec<String> {
     let mut args = vec![
-        // Create certificates directory (required if e.g. no authentication or tls is enabled but required for S3 connection)
-        //format!("mkdir -p {STACKABLE_TLS_CERTS_DIR}"),
         // Copy system truststore to stackable truststore
         format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ];
@@ -43,8 +41,6 @@ pub fn container_prepare_args(
             "stackable-internal-ca-cert",
         ));
         args.extend(chown_and_chmod(STACKABLE_INTERNAL_TLS_CERTS_DIR));
-        // add internal cert to global truststore
-        //args.push(format!("keytool -importcert -file {STACKABLE_INTERNAL_TLS_CERTS_DIR}/ca.crt -alias stackable-internal-tls -keystore {STACKABLE_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
         // add cert to internal truststore
         if trino.tls_enabled() {
             args.push(format!("keytool -importcert -file {STACKABLE_TLS_CERTS_DIR}/ca.crt -alias stackable-ca-cert -keystore {STACKABLE_INTERNAL_TLS_CERTS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));

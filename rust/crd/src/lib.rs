@@ -143,7 +143,7 @@ pub struct TrinoClusterSpec {
     /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
-    /// Global Trino Config for settings like TLS, Authentication, S3 etc.
+    /// Global Trino Config for cluster settings like TLS
     #[serde(
         default = "global_config_default",
         skip_serializing_if = "Option::is_none"
@@ -374,7 +374,7 @@ impl Configuration for TrinoConfig {
                         );
                         // For Authentication we have to differentiate several options here:
                         // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
-                        // - requires both internal and client TLS to be configured
+                        // - requires both internal secret and client TLS to be configured
                         if role_name == TrinoRole::Coordinator.to_string() {
                             // password ui login
                             result.insert(
@@ -391,7 +391,7 @@ impl Configuration for TrinoConfig {
                         // The first two properties (HTTPS_ENABLED, HTTPS_PORT) may be set above for client TLS. We only need to set
                         // them here if client tls (and/or authentication) are not enabled.
                         // In the case of only internal TLS is activated (meaning no authentication
-                        // and client TLS is set, we have to activate HTTPS and allow insecure
+                        // and client TLS is set) we have to activate HTTPS and allow insecure
                         // communications via HTTP
                         result.insert(
                             HTTP_SERVER_HTTPS_ENABLED.to_string(),
