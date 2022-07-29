@@ -134,7 +134,7 @@ pub struct TrinoClusterSpec {
     /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped: Option<bool>,
-    /// The provided image version in the form `x.x.x-stackableY.Y.Y` e.g. `1.5.0-stackable0.1.0`.
+    /// The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     /// The discovery ConfigMap name of the Hive cluster (usually the same as the Hive cluster name).
@@ -144,11 +144,8 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
     /// Global Trino Config for cluster settings like TLS
-    #[serde(
-        default = "global_config_default",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub config: Option<GlobalTrinoConfig>,
+    #[serde(default)]
+    pub config: GlobalTrinoConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
     /// A reference to a S3 bucket.
@@ -162,7 +159,7 @@ pub struct TrinoClusterSpec {
     pub workers: Option<Role<TrinoConfig>>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GlobalTrinoConfig {
     /// Only affects client connections.
@@ -179,13 +176,13 @@ pub struct GlobalTrinoConfig {
     pub internal_tls: Option<TlsSecretClass>,
 }
 
-fn global_config_default() -> Option<GlobalTrinoConfig> {
-    Some(GlobalTrinoConfig {
-        tls: Some(TlsSecretClass {
-            secret_class: TLS_DEFAULT_SECRET_CLASS.to_string(),
-        }),
-        internal_tls: None,
-    })
+impl Default for GlobalTrinoConfig {
+    fn default() -> Self {
+        GlobalTrinoConfig {
+            tls: tls_default(),
+            internal_tls: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -575,7 +572,7 @@ impl TrinoCluster {
     /// Return user provided client TLS settings
     pub fn get_client_tls(&self) -> Option<&TlsSecretClass> {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.config.as_ref().and_then(|config| config.tls.as_ref())
+        spec.config.tls.as_ref()
     }
 
     /// Return if client TLS should be set depending on settings for authentication and client TLS.
@@ -586,9 +583,7 @@ impl TrinoCluster {
     /// Return user provided internal TLS settings.
     pub fn get_internal_tls(&self) -> Option<&TlsSecretClass> {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.config
-            .as_ref()
-            .and_then(|config| config.internal_tls.as_ref())
+        spec.config.internal_tls.as_ref()
     }
 }
 
