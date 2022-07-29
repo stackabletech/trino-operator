@@ -54,7 +54,6 @@ spec:
                     tls:
                       secretClass: tls
                   description: Global Trino Config for cluster settings like TLS
-                  nullable: true
                   properties:
                     internalTls:
                       description: "Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server"
@@ -305,7 +304,7 @@ spec:
                   nullable: true
                   type: boolean
                 version:
-                  description: "The provided image version in the form `x.x.x-stackableY.Y.Y` e.g. `1.5.0-stackable0.1.0`."
+                  description: "The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`."
                   nullable: true
                   type: string
                 workers:
