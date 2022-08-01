@@ -1,0 +1,22 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-test-helper
+  labels:
+    app: trino-test-helper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trino-test-helper
+  template:
+    metadata:
+      labels:
+        app: trino-test-helper
+    spec:
+      containers:
+        - name: trino-test-helper
+          image: python:3.10-slim
+          stdin: true
+          tty: true

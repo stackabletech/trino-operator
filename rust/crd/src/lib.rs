@@ -5,9 +5,8 @@ use crate::{authentication::Authentication, discovery::TrinoPodRef};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
-use stackable_operator::commons::opa::OpaConfig;
-use stackable_operator::commons::s3::S3ConnectionDef;
 use stackable_operator::{
+    commons::{opa::OpaConfig, s3::S3ConnectionDef},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
     role_utils::{Role, RoleGroupRef},
@@ -37,28 +36,40 @@ pub const HIVE_PROPERTIES: &str = "hive.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
-pub const NODE_ID: &str = "node.id";
-pub const NODE_DATA_DIR: &str = "node.data-dir";
 // config.properties
 pub const COORDINATOR: &str = "coordinator";
+pub const DISCOVERY_URI: &str = "discovery.uri";
 pub const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
+pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
+pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
+// - client tls
 pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
 pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
 pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key";
 pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
+pub const HTTP_SERVER_HTTPS_TRUSTSTORE_KEY: &str = "http-server.https.truststore.key";
+pub const HTTP_SERVER_TRUSTSTORE_PATH: &str = "http-server.https.truststore.path";
+pub const HTTP_SERVER_AUTHENTICATION_ALLOW_INSECURE_OVER_HTTP: &str =
+    "http-server.authentication.allow-insecure-over-http";
+// - internal tls
+pub const INTERNAL_COMMUNICATION_SHARED_SECRET: &str = "internal-communication.shared-secret";
+pub const INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH: &str =
+    "internal-communication.https.keystore.path";
+pub const INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY: &str =
+    "internal-communication.https.keystore.key";
+pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH: &str =
+    "internal-communication.https.truststore.path";
+pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY: &str =
+    "internal-communication.https.truststore.key";
+pub const NODE_INTERNAL_ADDRESS_SOURCE: &str = "node.internal-address-source";
+pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
+// - authentication
 pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
-pub const INTERNAL_COMMUNICATION_SHARED_SECRET: &str = "internal-communication.shared-secret";
-pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
-pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
-pub const DISCOVERY_URI: &str = "discovery.uri";
 // password-authenticator.properties
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
 pub const FILE_PASSWORD_FILE: &str = "file.password-file";
-// file content keys
-pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
-pub const CERT_FILE_CONTENT_MAP_KEY: &str = "serverCertificate";
 // hive.properties
 pub const S3_ENDPOINT: &str = "hive.s3.endpoint";
 pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
@@ -73,13 +84,27 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
-pub const KEYSTORE_DIR_NAME: &str = "/stackable/keystore";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
+pub const STACKABLE_TLS_CERTS_DIR: &str = "/stackable/certificates";
+pub const STACKABLE_INTERNAL_TLS_CERTS_DIR: &str = "/stackable/certificates/internal";
+pub const SYSTEM_TRUST_STORE: &str = "/etc/pki/java/cacerts";
+// store pws
+pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
+pub const SYSTEM_TRUST_STORE_PASSWORD: &str = "changeit";
+// secret vars
+pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
+// S3 secrets
+pub const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
+pub const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
+pub const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
+pub const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
+// TLS
+pub const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("could not parse product version from image: [{image_version}]. Expected format e.g. [377-stackable0.1.0]"))]
+    #[snafu(display("could not parse product version from image: [{image_version}]. Expected format e.g. [387-stackable0.1.0]"))]
     TrinoProductVersion { image_version: String },
     #[snafu(display("object has no namespace associated"))]
     NoNamespace,
@@ -106,24 +131,70 @@ pub enum Error {
 #[kube(status = "TrinoClusterStatus")]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
-    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)
+    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped: Option<bool>,
+    /// The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
+    /// The discovery ConfigMap name of the Hive cluster (usually the same as the Hive cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hive_config_map_name: Option<String>,
+    /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
-    /// A reference to a secret containing username/password for defined users
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Global Trino Config for cluster settings like TLS
+    #[serde(default)]
+    pub config: GlobalTrinoConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// A reference to a S3 bucket.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3ConnectionDef>,
+    /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
+    /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfig>>,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalTrinoConfig {
+    /// Only affects client connections.
+    /// This setting controls:
+    /// - If TLS encryption is used at all
+    /// - Which cert the servers should use to authenticate themselves against the client
+    #[serde(default = "tls_default", skip_serializing_if = "Option::is_none")]
+    pub tls: Option<TlsSecretClass>,
+    /// Only affects internal communication. Use mutual verification between Trino nodes
+    /// This setting controls:
+    /// - Which cert the servers should use to authenticate themselves against other servers
+    /// - Which ca.crt to use when validating the other server
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub internal_tls: Option<TlsSecretClass>,
+}
+
+impl Default for GlobalTrinoConfig {
+    fn default() -> Self {
+        GlobalTrinoConfig {
+            tls: tls_default(),
+            internal_tls: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TlsSecretClass {
+    pub secret_class: String,
+}
+
+fn tls_default() -> Option<TlsSecretClass> {
+    Some(TlsSecretClass {
+        secret_class: TLS_DEFAULT_SECRET_CLASS.to_string(),
+    })
 }
 
 #[derive(
@@ -232,6 +303,8 @@ impl Configuration for TrinoConfig {
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
+        let authentication_enabled: bool = resource.get_authentication().is_some();
+        let client_tls_enabled: bool = resource.get_client_tls().is_some();
 
         match file {
             NODE_PROPERTIES => {
@@ -243,27 +316,28 @@ impl Configuration for TrinoConfig {
                 result.insert(NODE_ENVIRONMENT.to_string(), Some(node_env));
             }
             CONFIG_PROPERTIES => {
-                if role_name == TrinoRole::Coordinator.to_string() {
-                    result.insert(COORDINATOR.to_string(), Some("true".to_string()));
-                } else {
-                    result.insert(COORDINATOR.to_string(), Some("false".to_string()));
-                }
-
+                // coordinator or worker
+                result.insert(
+                    COORDINATOR.to_string(),
+                    Some((role_name == TrinoRole::Coordinator.to_string()).to_string()),
+                );
+                // TrinoConfig properties
                 if let Some(query_max_memory) = &self.query_max_memory {
                     result.insert(
                         QUERY_MAX_MEMORY.to_string(),
                         Some(query_max_memory.to_string()),
                     );
                 }
-
                 if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
                     result.insert(
                         QUERY_MAX_MEMORY_PER_NODE.to_string(),
                         Some(query_max_memory_per_node.to_string()),
                     );
                 }
-
-                if resource.spec.authentication.is_some() {
+                // If authentication is enabled
+                // - client TLS is required (default to "tls" if not provided)
+                // - internal shared secret must be set
+                if authentication_enabled || client_tls_enabled {
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
                         Some(true.to_string()),
@@ -274,25 +348,117 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", KEYSTORE_DIR_NAME, "keystore.p12")),
+                        Some(format!("{}/{}", STACKABLE_TLS_CERTS_DIR, "keystore.p12")),
                     );
-
                     result.insert(
                         HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
-                        Some("secret".to_string()),
+                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
+                    );
+                    result.insert(
+                        HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
+                        Some(format!("{}/{}", STACKABLE_TLS_CERTS_DIR, "truststore.p12")),
+                    );
+                    result.insert(
+                        HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
+                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
                     );
 
-                    // password ui login
-                    if role_name == TrinoRole::Coordinator.to_string() {
+                    if authentication_enabled {
+                        // Setting the internal secret is mandatory for authentication
                         result.insert(
-                            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                            Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                            INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
+                            Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
+                        );
+                        // For Authentication we have to differentiate several options here:
+                        // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
+                        // - requires both internal secret and client TLS to be configured
+                        if role_name == TrinoRole::Coordinator.to_string() {
+                            // password ui login
+                            result.insert(
+                                HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                                Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                            );
+                        }
+                    }
+                }
+
+                // If internal TLS is enabled
+                if resource.get_internal_tls().is_some() {
+                    if !authentication_enabled && !client_tls_enabled {
+                        // The first two properties (HTTPS_ENABLED, HTTPS_PORT) may be set above for client TLS. We only need to set
+                        // them here if client tls (and/or authentication) are not enabled.
+                        // In the case of only internal TLS is activated (meaning no authentication
+                        // and client TLS is set) we have to activate HTTPS and allow insecure
+                        // communications via HTTP
+                        result.insert(
+                            HTTP_SERVER_HTTPS_ENABLED.to_string(),
+                            Some(true.to_string()),
+                        );
+                        result.insert(
+                            HTTP_SERVER_HTTPS_PORT.to_string(),
+                            Some(HTTPS_PORT.to_string()),
+                        );
+                        result.insert(
+                            HTTP_SERVER_AUTHENTICATION_ALLOW_INSECURE_OVER_HTTP.to_string(),
+                            Some("true".to_string()),
+                        );
+                        // additionally we have to set the https keystores (only if no
+                        // authentication or client tls is required! Trino complains otherwise
+                        // about wrong HTTPS configuration
+                        result.insert(
+                            HTTP_SERVER_KEYSTORE_PATH.to_string(),
+                            Some(format!(
+                                "{}/{}",
+                                STACKABLE_INTERNAL_TLS_CERTS_DIR, "keystore.p12"
+                            )),
+                        );
+                        result.insert(
+                            HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
+                            Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
+                        );
+                        result.insert(
+                            HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
+                            Some(format!(
+                                "{}/{}",
+                                STACKABLE_INTERNAL_TLS_CERTS_DIR, "truststore.p12"
+                            )),
+                        );
+                        result.insert(
+                            HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
+                            Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
                         );
                     }
+                    result.insert(
+                        INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
+                        Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
+                        Some(format!("{}/keystore.p12", STACKABLE_INTERNAL_TLS_CERTS_DIR)),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY.to_string(),
+                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH.to_string(),
+                        Some(format!(
+                            "{}/truststore.p12",
+                            STACKABLE_INTERNAL_TLS_CERTS_DIR
+                        )),
+                    );
+                    result.insert(
+                        INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY.to_string(),
+                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
+                    );
+                    result.insert(
+                        NODE_INTERNAL_ADDRESS_SOURCE.to_string(),
+                        Some(NODE_INTERNAL_ADDRESS_SOURCE_FQDN.to_string()),
+                    );
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                if resource.spec.authentication.is_some() {
+                if authentication_enabled {
                     result.insert(
                         PASSWORD_AUTHENTICATOR_NAME.to_string(),
                         Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()),
@@ -395,5 +561,161 @@ impl TrinoCluster {
                 image_version: image_version.to_string(),
             })?;
         Ok(format!("{}.0.0", product_version))
+    }
+
+    /// Returns user provided authentication settings
+    pub fn get_authentication(&self) -> Option<&Authentication> {
+        let spec: &TrinoClusterSpec = &self.spec;
+        spec.authentication.as_ref()
+    }
+
+    /// Return user provided client TLS settings
+    pub fn get_client_tls(&self) -> Option<&TlsSecretClass> {
+        let spec: &TrinoClusterSpec = &self.spec;
+        spec.config.tls.as_ref()
+    }
+
+    /// Return if client TLS should be set depending on settings for authentication and client TLS.
+    pub fn tls_enabled(&self) -> bool {
+        self.get_authentication().is_some() || self.get_client_tls().is_some()
+    }
+
+    /// Return user provided internal TLS settings.
+    pub fn get_internal_tls(&self) -> Option<&TlsSecretClass> {
+        let spec: &TrinoClusterSpec = &self.spec;
+        spec.config.internal_tls.as_ref()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_client_tls() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
+        assert_eq!(trino.get_internal_tls(), None);
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            tls:
+              secretClass: simple-trino-client-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            "simple-trino-client-tls".to_string()
+        );
+        assert_eq!(trino.get_internal_tls(), None);
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            tls: null
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(trino.get_client_tls(), None);
+        assert_eq!(trino.get_internal_tls(), None);
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            internalTls:
+              secretClass: simple-trino-internal-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            "simple-trino-internal-tls"
+        );
+    }
+
+    #[test]
+    fn test_internal_tls() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            internalTls:
+              secretClass: simple-trino-internal-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            "simple-trino-internal-tls".to_string()
+        );
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          version: abc
+          config:
+            tls:
+              secretClass: simple-trino-client-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_client_tls().unwrap().secret_class,
+            "simple-trino-client-tls"
+        );
     }
 }

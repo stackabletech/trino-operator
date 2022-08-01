@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
-use snafu::ResultExt;
-use snafu::{OptionExt, Snafu};
-use stackable_operator::client::Client;
-use stackable_operator::k8s_openapi::api::core::v1::{Secret, SecretReference};
-use stackable_operator::kube::runtime::reflector::ObjectRef;
-use stackable_operator::schemars::{self, JsonSchema};
-use std::collections::BTreeMap;
-use std::string::FromUtf8Error;
+use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::{
+    client::Client,
+    k8s_openapi::api::core::v1::{Secret, SecretReference},
+    kube::runtime::reflector::ObjectRef,
+    schemars::{self, JsonSchema},
+};
+use std::{collections::BTreeMap, string::FromUtf8Error};
 
 const USER_CREDENTIALS: &str = "userCredentials";
 
@@ -110,6 +110,7 @@ pub enum TrinoAuthenticationConfig {
 }
 
 impl TrinoAuthenticationConfig {
+    /// Extracts the user and passwords provided in the `user_credentials`.
     pub fn to_trino_user_data(&self) -> String {
         match self {
             TrinoAuthenticationConfig::MultiUser { user_credentials } => user_credentials
