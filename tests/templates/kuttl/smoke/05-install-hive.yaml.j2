@@ -1,0 +1,54 @@
+---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: s3-credentials
+spec:
+  backend:
+    k8sSearch:
+      searchNamespace:
+        pod: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-credentials
+  labels:
+    secrets.stackable.tech/class: s3-credentials
+stringData:
+  accessKey: trino
+  secretKey: trinotrino
+---
+apiVersion: hive.stackable.tech/v1alpha1
+kind: HiveCluster
+metadata:
+  name: hive
+spec:
+  version: {{ test_scenario['values']['hive'] }}
+  s3:
+    inline:
+      host: minio
+      port: 9000
+      accessStyle: Path
+      credentials:
+        secretClass: s3-credentials
+{% if test_scenario['values']['s3-use-tls'] == 'true' %}
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: minio-tls-certificates
+{% endif %}
+  metastore:
+    roleGroups:
+      default:
+        selector:
+          matchLabels:
+            kubernetes.io/os: linux
+        replicas: 1
+        config:
+          database:
+            connString: jdbc:postgresql://hive-postgresql:5432/hive
+            user: hive
+            password: hive
+            dbType: postgres

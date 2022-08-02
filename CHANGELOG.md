@@ -4,15 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Include chart name when installing with a custom release name ([#233], [#234]).
+- `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
+- Add support for Hive 3.1.3 ([#243])
+
+[#233]: https://github.com/stackabletech/trino-operator/pull/233
+[#234]: https://github.com/stackabletech/trino-operator/pull/234
+[#235]: https://github.com/stackabletech/trino-operator/pull/235
+[#243]: https://github.com/stackabletech/trino-operator/pull/243
+
+## [0.4.0] - 2022-06-30
+
 ### Added
 
 - Reconciliation errors are now reported as Kubernetes events ([#149]).
 - Use cli argument `watch-namespace` / env var `WATCH_NAMESPACE` to specify
   a single namespace to watch ([#157]).
+- Moved tests from integration tests repo to operator repo ([#211]).
+- Added `internal-communication.shared-secret` property which is read from (operator created secret). Must be set from Trino version 378 ([#224]).
 
 ### Changed
 
-- `operator-rs` `0.10.0` -> `0.21.0` ([#149], [#157], [#183], [#193]).
+- `operator-rs` `0.10.0` -> `0.21.1` ([#149], [#157], [#183], [#193], [#206]).
 - BREAKING: The operator now writes a `ConfigMap` for Rego rules instead of
   the custom resource for the obsolete regorule-operator. This means that
   the rego rule operator is not required anymore for authorization and
@@ -21,6 +36,7 @@ All notable changes to this project will be documented in this file.
 - Trino version to 377 ([#193]).
 - Opa rego example adapted to the new `trino-opa-authorizer` ([#193]).
 - BREAKING: Configuration of S3 adapted to ADR016 ([#200]).
+- BREAKING: Specifying the product version has been changed to adhere to [ADR018](https://docs.stackable.tech/home/contributor/adr/ADR018-product_image_versioning.html) instead of just specifying the product version you will now have to add the Stackable image version as well, so version: 3.1.0 becomes (for example) version: 3.1.0-stackable0 ([#211])
 
 ### Removed
 
@@ -35,6 +51,9 @@ All notable changes to this project will be documented in this file.
 [#186]: https://github.com/stackabletech/trino-operator/pull/186
 [#193]: https://github.com/stackabletech/trino-operator/pull/193
 [#200]: https://github.com/stackabletech/trino-operator/pull/200
+[#206]: https://github.com/stackabletech/trino-operator/pull/206
+[#211]: https://github.com/stackabletech/trino-operator/pull/211
+[#224]: https://github.com/stackabletech/trino-operator/pull/224
 
 ## [0.3.1] - 2022-02-17
 
@@ -87,6 +106,7 @@ which only accept a String ([#131]).
 ## [0.1.0] - 2021-10-28
 
 ### Changed
+
 - Switched to operator-rs tag 0.3.0 ([#21])
 
 [#21]: https://github.com/stackabletech/hdfs-operator/pull/21

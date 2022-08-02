@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: >-
+      kubectl --namespace $NAMESPACE
+      patch trinoclusters.trino.stackable.tech trino
+      --type=merge --patch '{"spec":{"workers": {"roleGroups": {"default": {"replicas": 2}}}}}'

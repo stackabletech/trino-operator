@@ -38,7 +38,7 @@ kind: HiveCluster
 metadata:
   name: simple-hive-derby
 spec:
-  version: 2.3.9
+  version: 2.3.9-stackable0.4.0
   s3:
     inline:
       host: minio
@@ -65,7 +65,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: "0.0.377"
+  version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
   s3:
     inline:

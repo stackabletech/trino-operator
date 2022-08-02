@@ -49,6 +49,7 @@ pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key
 pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
+pub const INTERNAL_COMMUNICATION_SHARED_SECRET: &str = "internal-communication.shared-secret";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
 pub const DISCOVERY_URI: &str = "discovery.uri";
@@ -79,8 +80,12 @@ pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
+    #[snafu(display("could not parse product version from image: [{image_version}]. Expected format e.g. [377-stackable0.1.0]"))]
+    TrinoProductVersion { image_version: String },
     #[snafu(display("object has no namespace associated"))]
     NoNamespace,
+    #[snafu(display("object defines no version"))]
+    ObjectHasNoVersion,
     #[snafu(display("Unknown Trino role found {role}. Should be one of {roles:?}"))]
     UnknownTrinoRole { role: String, roles: Vec<String> },
 }
@@ -369,5 +374,27 @@ impl TrinoCluster {
                     pod_name: format!("{}-{}", rolegroup_ref.object_name(), i),
                 })
             }))
+    }
+
+    /// Returns the provided docker image e.g. 377-stackable0
+    pub fn image_version(&self) -> Result<&str, Error> {
+        self.spec
+            .version
+            .as_deref()
+            .context(ObjectHasNoVersionSnafu)
+    }
+
+    /// Returns our semver representation for product config e.g. 377.0.0
+    pub fn product_version(&self) -> Result<String, Error> {
+        let image_version = self.image_version()?;
+        let product_version = image_version
+            .split('-')
+            .collect::<Vec<_>>()
+            .first()
+            .cloned()
+            .with_context(|| TrinoProductVersionSnafu {
+                image_version: image_version.to_string(),
+            })?;
+        Ok(format!("{}.0.0", product_version))
     }
 }
