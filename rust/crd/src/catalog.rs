@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
+    commons::s3::S3ConnectionDef,
     kube::CustomResource,
     schemars::{self, JsonSchema},
 };
@@ -21,8 +22,7 @@ use stackable_operator::{
 )]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoCatalogSpec {
-    #[serde(default)]
-    pub connector: Option<TrinoCatalogConnector>,
+    pub connector: TrinoCatalogConnector,
     #[serde(default)]
     pub config_overrides: HashMap<String, String>,
 }
@@ -33,8 +33,38 @@ pub enum TrinoCatalogConnector {
     Hive(HiveConnector),
 }
 
+impl TrinoCatalogConnector {
+    pub fn name(&self) -> String {
+        match self {
+            TrinoCatalogConnector::Hive(_) => "hive".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HiveConnector {
-    pub metastore_config_map: Option<String>,
+    /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata
+    pub metastore: MetastoreConnection, // We are using this nested struct to support HMS caching later on
+    /// Connection to an S3 store
+    pub s3: Option<S3ConnectionDef>,
+    // /// Connection to an HDFS
+    // pub hdfs: Option<HdfsConnection>,
 }
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MetastoreConnection {
+    /// Name of the discovery-configmap providing information about the Hive metastore
+    pub config_map: String,
+}
+
+// #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct HdfsConnection {
+//     /// Name of the discovery-configmap providing information about the HDFS
+//     pub config_map: String,
+//     /// Wether Trino should impersonate the users when accessing HDFS
+//     #[serde(default)]
+//     impersonation: bool,
+// }

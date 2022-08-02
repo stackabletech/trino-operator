@@ -18,24 +18,11 @@ metadata:
   name: trino
 spec:
   version: {{ test_scenario['values']['trino'] }}
-  hiveConfigMapName: hive
+  catalogLabelSelector:
+    trino: simple-trino
   opa:
     configMapName: opa
     package: trino
-  s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: s3-credentials
-{% if test_scenario['values']['s3-use-tls'] == 'true' %}
-      tls:
-        verification:
-          server:
-            caCert:
-              secretClass: minio-tls-certificates
-{% endif %}
   authentication:
     method:
       multiUser:
@@ -44,16 +31,36 @@ spec:
   coordinators:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
         config: {}
   workers:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
         config: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: minio
+  labels:
+    trino: trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: hive
+      s3:
+        inline:
+          host: minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: s3-credentials
+{% if test_scenario['values']['s3-use-tls'] == 'true' %}
+          tls:
+            verification:
+              server:
+                caCert:
+                  secretClass: minio-tls-certificates
+{% endif %}

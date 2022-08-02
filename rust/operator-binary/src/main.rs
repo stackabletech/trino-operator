@@ -6,6 +6,7 @@ use futures::stream::StreamExt;
 
 use stackable_operator::{
     cli::{Command, ProductOperatorRun},
+    error::Error,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service},
@@ -13,7 +14,7 @@ use stackable_operator::{
     kube::{
         api::ListParams,
         runtime::{reflector::ObjectRef, Controller},
-        CustomResourceExt,
+        CustomResourceExt, ResourceExt,
     },
     logging::controller::report_controller_reconciled,
 };
@@ -33,7 +34,7 @@ struct Opts {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Error> {
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => println!(
@@ -89,11 +90,13 @@ async fn main() -> anyhow::Result<()> {
                 .watches(
                     watch_namespace.get_api::<TrinoCatalog>(&client),
                     ListParams::default(),
-                    move |_catalog| {
-                        // TODO: Filter clusters?
+                    move |catalog| {
+                        // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles
                         cluster_store
                             .state()
                             .into_iter()
+                            // Catalogs can only be referenced within namespaces
+                            .filter(move |cluster| cluster.namespace() == catalog.namespace())
                             .map(|cluster| ObjectRef::from_obj(&*cluster))
                     },
                 )
