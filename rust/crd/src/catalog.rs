@@ -12,7 +12,6 @@ use stackable_operator::{
     version = "v1alpha1",
     kind = "TrinoCatalog",
     plural = "trinocatalogs",
-    shortname = "trinocat",
     namespaced,
     crates(
         kube_core = "stackable_operator::kube::core",

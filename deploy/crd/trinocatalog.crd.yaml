@@ -9,8 +9,7 @@ spec:
     categories: []
     kind: TrinoCatalog
     plural: trinocatalogs
-    shortNames:
-      - trinocat
+    shortNames: []
     singular: trinocatalog
   scope: Namespaced
   versions:
