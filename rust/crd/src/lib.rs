@@ -1,4 +1,5 @@
 pub mod authentication;
+pub mod catalog;
 pub mod discovery;
 
 use crate::{authentication::Authentication, discovery::TrinoPodRef};
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::commons::opa::OpaConfig;
 use stackable_operator::commons::s3::S3ConnectionDef;
+use stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -17,7 +19,6 @@ use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
-pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 // ports
 pub const HTTP_PORT: u16 = 8080;
 pub const HTTPS_PORT: u16 = 8443;
@@ -33,7 +34,6 @@ pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
 pub const PASSWORD_DB: &str = "password.db";
-pub const HIVE_PROPERTIES: &str = "hive.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
@@ -59,12 +59,6 @@ pub const FILE_PASSWORD_FILE: &str = "file.password-file";
 // file content keys
 pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
 pub const CERT_FILE_CONTENT_MAP_KEY: &str = "serverCertificate";
-// hive.properties
-pub const S3_ENDPOINT: &str = "hive.s3.endpoint";
-pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
-pub const S3_SECRET_KEY: &str = "hive.s3.aws-secret-key";
-pub const S3_SSL_ENABLED: &str = "hive.s3.ssl.enabled";
-pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -112,14 +106,14 @@ pub struct TrinoClusterSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hive_config_map_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
     /// A reference to a secret containing username/password for defined users
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3ConnectionDef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catalog_label_selector: Option<LabelSelector>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
