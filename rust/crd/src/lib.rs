@@ -34,7 +34,6 @@ pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
 pub const PASSWORD_DB: &str = "password.db";
-pub const HIVE_PROPERTIES: &str = "hive.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
@@ -60,12 +59,6 @@ pub const FILE_PASSWORD_FILE: &str = "file.password-file";
 // file content keys
 pub const PW_FILE_CONTENT_MAP_KEY: &str = "pwFileContent";
 pub const CERT_FILE_CONTENT_MAP_KEY: &str = "serverCertificate";
-// hive.properties
-pub const S3_ENDPOINT: &str = "hive.s3.endpoint";
-pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
-pub const S3_SECRET_KEY: &str = "hive.s3.aws-secret-key";
-pub const S3_SSL_ENABLED: &str = "hive.s3.ssl.enabled";
-pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config

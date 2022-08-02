@@ -6,10 +6,7 @@ use stackable_operator::{
         PodSecurityContextBuilder, VolumeBuilder,
     },
     client::Client,
-    commons::{
-        opa::OpaApiVersion,
-        s3::{S3AccessStyle, S3ConnectionDef, S3ConnectionSpec},
-    },
+    commons::opa::OpaApiVersion,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -45,11 +42,10 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME,
-    HTTP_PORT, HTTP_PORT_NAME, INTERNAL_COMMUNICATION_SHARED_SECRET, JVM_CONFIG, KEYSTORE_DIR_NAME,
+    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT,
+    HTTP_PORT_NAME, INTERNAL_COMMUNICATION_SHARED_SECRET, JVM_CONFIG, KEYSTORE_DIR_NAME,
     LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_ACCESS_KEY, S3_ENDPOINT,
-    S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY, S3_SSL_ENABLED,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::borrow::Cow;
@@ -164,10 +160,6 @@ impl ReconcilerError for Error {
     }
 }
 
-const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
-const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
-const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
-const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
 const INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 
 pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<Action> {
@@ -178,7 +170,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .product_version()
         .context(TrinoProductVersionParseFailureSnafu)?;
 
-    let catalogs = client
+    let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
             trino.metadata.namespace.as_deref(),
             &trino
@@ -188,73 +180,21 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 .map_or_else(Cow::default, Cow::Borrowed),
         )
         .await
-        .context(GetCatalogsSnafu)?
-        .into_iter()
-        .map(|catalog| {
-            let catalog_ref = ObjectRef::from_obj(&catalog);
-            CatalogConfig::try_from(catalog).context(ParseCatalogSnafu {
-                catalog: catalog_ref,
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    let mut validated_config =
-        validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
-
-    let s3_connection_def: &Option<S3ConnectionDef> = &trino.spec.s3;
-    let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
-        Some(
-            s3.resolve(client, trino.namespace().as_deref())
+        .context(GetCatalogsSnafu)?;
+    let mut catalogs = vec![];
+    for catalog in catalog_definitions {
+        let catalog_ref = ObjectRef::from_obj(&catalog);
+        let catalog_config =
+            CatalogConfig::from_catalog(catalog, client)
                 .await
-                .context(ResolveS3ConnectionSnafu)?,
-        )
-    } else {
-        None
-    };
-
-    match &s3_connection_spec {
-        Some(
-            s3_connection_spec @ S3ConnectionSpec {
-                host: Some(_),
-                access_style,
-                credentials: secret_class,
-                tls,
-                ..
-            },
-        ) => {
-            for role_config in &mut validated_config.values_mut() {
-                for config in role_config.values_mut() {
-                    let hive_properties = config
-                        .entry(PropertyNameKind::File(HIVE_PROPERTIES.to_string()))
-                        .or_default();
-                    hive_properties.insert(
-                        S3_ENDPOINT.to_string(),
-                        s3_connection_spec.endpoint().unwrap(),
-                    );
-                    if secret_class.is_some() {
-                        hive_properties.insert(
-                            S3_ACCESS_KEY.to_string(),
-                            format!("${{ENV:{ENV_S3_ACCESS_KEY}}}"),
-                        );
-                        hive_properties.insert(
-                            S3_SECRET_KEY.to_string(),
-                            format!("${{ENV:{ENV_S3_SECRET_KEY}}}"),
-                        );
-                    }
-                    hive_properties.insert(S3_SSL_ENABLED.to_string(), tls.is_some().to_string());
-                    hive_properties.insert(
-                        S3_PATH_STYLE_ACCESS.to_string(),
-                        (access_style == &Some(S3AccessStyle::Path)).to_string(),
-                    );
-                }
-            }
-        }
-        Some(S3ConnectionSpec { host: None, .. }) => InvalidS3ConnectionSnafu {
-            reason: "host is missing",
-        }
-        .fail()?,
-        None => (),
+                .context(ParseCatalogSnafu {
+                    catalog: catalog_ref,
+                })?;
+        catalogs.push(catalog_config);
     }
+
+    let validated_config =
+        validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
     let authentication_config = user_authentication(&trino, client).await?;
 
@@ -308,7 +248,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &rolegroup,
                 &config,
                 authentication_config.to_owned(),
-                s3_connection_spec.as_ref(),
                 &catalogs,
             )?;
 
@@ -578,7 +517,6 @@ fn build_rolegroup_statefulset(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<TrinoAuthenticationConfig>,
-    s3_connection: Option<&S3ConnectionSpec>,
     catalogs: &[CatalogConfig],
 ) -> Result<StatefulSet> {
     let mut container_builder = ContainerBuilder::new(APP_NAME);
@@ -595,43 +533,6 @@ fn build_rolegroup_statefulset(
         .image_version()
         .context(TrinoProductVersionParseFailureSnafu)?;
 
-    let mut env = config
-        .get(&PropertyNameKind::Env)
-        .iter()
-        .flat_map(|env_vars| env_vars.iter())
-        .map(|(k, v)| EnvVar {
-            name: k.clone(),
-            value: Some(v.clone()),
-            ..EnvVar::default()
-        })
-        .collect::<Vec<_>>();
-    env.extend(
-        catalogs
-            .iter()
-            .flat_map(|catalog| &catalog.env_bindings)
-            .cloned(),
-    );
-    env.push(EnvVar {
-        name: "HADOOP_OPTIONAL_TOOLS".to_string(),
-        value: Some("hadoop-azure-datalake".to_string()),
-        value_from: None,
-    });
-
-    let secret_name = build_shared_internal_secret_name(trino);
-    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), INTERNAL_SECRET) {
-        env.push(internal_secret);
-    };
-
-    // Add volume and volume mounts for s3 credentials
-    if let Some(S3ConnectionSpec {
-        credentials: Some(credentials),
-        ..
-    }) = s3_connection
-    {
-        pod_builder.add_volume(credentials.to_volume("s3-credentials"));
-        container_builder.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
-    }
-
     let mut container_prepare = ContainerBuilder::new("prepare")
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
@@ -647,13 +548,56 @@ fn build_rolegroup_statefulset(
         .get_or_insert_with(SecurityContext::default)
         .run_as_user = Some(0);
 
+    let mut env = config
+        .get(&PropertyNameKind::Env)
+        .iter()
+        .flat_map(|env_vars| env_vars.iter())
+        .map(|(k, v)| EnvVar {
+            name: k.clone(),
+            value: Some(v.clone()),
+            ..EnvVar::default()
+        })
+        .collect::<Vec<_>>();
+    env.push(EnvVar {
+        name: "HADOOP_OPTIONAL_TOOLS".to_string(),
+        value: Some("hadoop-azure-datalake".to_string()),
+        value_from: None,
+    });
+
+    // Add the needed stuff for catalogs
+    env.extend(
+        catalogs
+            .iter()
+            .flat_map(|catalog| &catalog.env_bindings)
+            .cloned(),
+    );
+    pod_builder.add_volumes(
+        catalogs
+            .iter()
+            .flat_map(|catalog| &catalog.volumes)
+            .cloned()
+            .collect(),
+    );
+    container_builder.add_volume_mounts(
+        catalogs
+            .iter()
+            .flat_map(|catalog| &catalog.volume_mounts)
+            .cloned(),
+    );
+
+    // Add internal shared secret
+    let secret_name = build_shared_internal_secret_name(trino);
+    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), INTERNAL_SECRET) {
+        env.push(internal_secret);
+    };
+
     let container_trino = container_builder
         .image(format!(
             "docker.stackable.tech/stackable/trino:{}",
             trino_image_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(container_trino_args(authentication_config, s3_connection))
+        .args(container_trino_args(authentication_config, catalogs))
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("config", CONFIG_DIR_NAME)
@@ -873,7 +817,7 @@ fn container_prepare_args() -> Vec<String> {
 
 fn container_trino_args(
     user_authentication: Option<TrinoAuthenticationConfig>,
-    s3_connection_spec: Option<&S3ConnectionSpec>,
+    catalogs: &[CatalogConfig],
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder
@@ -889,29 +833,11 @@ fn container_trino_args(
         ),
     ];
 
-    // We need to read the provided s3 credentials from the secret operator / secret class folder
-    // and export it to the required env variables in order for trino to pick them up
-    // out of the config via e.g. ${ENV:S3_ACCESS_KEY}.
-    if let Some(S3ConnectionSpec {
-        credentials: Some(_),
-        ..
-    }) = s3_connection_spec
-    {
-        args.extend(vec![
-            format!(
-                "export {env_var}=$(cat {secret_dir}/{file_name})",
-                env_var = ENV_S3_ACCESS_KEY,
-                secret_dir = S3_SECRET_DIR_NAME,
-                file_name = SECRET_KEY_S3_ACCESS_KEY
-            ),
-            format!(
-                "export {env_var}=$(cat {secret_dir}/{file_name})",
-                env_var = ENV_S3_SECRET_KEY,
-                secret_dir = S3_SECRET_DIR_NAME,
-                file_name = SECRET_KEY_S3_SECRET_KEY
-            ),
-        ]);
-    }
+    catalogs.iter().for_each(|catalog| {
+        for (env_name, file) in &catalog.load_env_from_files {
+            args.push(format!("export {env_name}=$(cat {file})"));
+        }
+    });
 
     if let Some(auth) = user_authentication {
         let user_data = auth.to_trino_user_data();
@@ -973,7 +899,6 @@ fn validated_product_config(
 
     let config_files = vec![
         PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-        PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),

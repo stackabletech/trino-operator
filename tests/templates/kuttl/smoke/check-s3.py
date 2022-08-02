@@ -43,9 +43,9 @@ if __name__ == '__main__':
     print("Starting S3 tests...")
     connection = get_connection("admin", "admin", namespace)
 
-    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.taxi WITH (location = 's3a://trino/')")[0][0] is True
+    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS minio.taxi WITH (location = 's3a://trino/')")[0][0] is True
     assert run_query(connection, """
-CREATE TABLE IF NOT EXISTS hive.taxi.taxi_data (
+CREATE TABLE IF NOT EXISTS minio.taxi.taxi_data (
     vendor_id VARCHAR,
     tpep_pickup_datetime VARCHAR,
     tpep_dropoff_datetime VARCHAR,
@@ -58,13 +58,13 @@ CREATE TABLE IF NOT EXISTS hive.taxi.taxi_data (
     skip_header_line_count = 1
 )
     """)[0][0] is True
-    assert run_query(connection, "SELECT COUNT(*) FROM hive.taxi.taxi_data")[0][0] == 5000
-    rows_written = run_query(connection, "CREATE TABLE IF NOT EXISTS hive.taxi.taxi_data_copy AS SELECT * FROM hive.taxi.taxi_data")[0][0]
+    assert run_query(connection, "SELECT COUNT(*) FROM minio.taxi.taxi_data")[0][0] == 5000
+    rows_written = run_query(connection, "CREATE TABLE IF NOT EXISTS minio.taxi.taxi_data_copy AS SELECT * FROM minio.taxi.taxi_data")[0][0]
     assert rows_written == 0 or rows_written == 5000
-    assert run_query(connection, "SELECT COUNT(*) FROM hive.taxi.taxi_data_copy")[0][0] == 5000
+    assert run_query(connection, "SELECT COUNT(*) FROM minio.taxi.taxi_data_copy")[0][0] == 5000
 
     rows_written = run_query(connection, """
-CREATE TABLE IF NOT EXISTS hive.taxi.taxi_data_tranformed AS
+CREATE TABLE IF NOT EXISTS minio.taxi.taxi_data_tranformed AS
 SELECT
     CAST(vendor_id as BIGINT) as vendor_id,
     tpep_pickup_datetime,
@@ -72,9 +72,9 @@ SELECT
     CAST(passenger_count as BIGINT) as passenger_count,
     CAST(trip_distance as DOUBLE) as trip_distance,
     CAST(ratecode_id as BIGINT) as ratecode_id
-FROM hive.taxi.taxi_data
+FROM minio.taxi.taxi_data
 """)[0][0]
     assert rows_written == 0 or rows_written == 5000
-    assert run_query(connection, "SELECT COUNT(*) FROM hive.taxi.taxi_data_tranformed")[0][0] == 5000
+    assert run_query(connection, "SELECT COUNT(*) FROM minio.taxi.taxi_data_tranformed")[0][0] == 5000
 
     print("[SUCCESS] All tests in check-s3.py succeeded!")
