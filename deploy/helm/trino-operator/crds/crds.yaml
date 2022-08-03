@@ -2,8 +2,6 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: trinoclusters.trino.stackable.tech
-  annotations:
-    helm.sh/resource-policy: keep
 spec:
   group: trino.stackable.tech
   names:
@@ -58,16 +56,16 @@ spec:
                     matchExpressions:
                       description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
                       items:
-                        description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
+                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
                         properties:
                           key:
                             description: key is the label key that the selector applies to.
                             type: string
                           operator:
-                            description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
+                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
                             type: string
                           values:
-                            description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
+                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
                             items:
                               type: string
                             type: array
@@ -79,7 +77,7 @@ spec:
                     matchLabels:
                       additionalProperties:
                         type: string
-                      description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
+                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                       type: object
                   type: object
                 coordinators:
@@ -425,7 +423,6 @@ spec:
       storage: true
       subresources:
         status: {}
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -446,7 +443,7 @@ spec:
       name: v1alpha1
       schema:
         openAPIV3Schema:
-          description: "Auto-generated derived type for TrinoCatalogSpec via `CustomResource`"
+          description: Auto-generated derived type for TrinoCatalogSpec via `CustomResource`
           properties:
             spec:
               properties:
@@ -472,7 +469,7 @@ spec:
                             - configMap
                           type: object
                         metastore:
-                          description: "Mandatory connection to a Hive Metastore, which will be used as a storage for metadata"
+                          description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata
                           properties:
                             configMap:
                               description: Name of the discovery-configmap providing information about the Hive metastore
@@ -493,18 +490,18 @@ spec:
                               description: S3 connection definition as CRD.
                               properties:
                                 accessStyle:
-                                  description: "Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>"
+                                  description: Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>
                                   enum:
                                     - Path
                                     - VirtualHosted
                                   nullable: true
                                   type: string
                                 credentials:
-                                  description: "If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient."
+                                  description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient.
                                   nullable: true
                                   properties:
                                     scope:
-                                      description: "[Scope](https://docs.stackable.tech/secret-operator/scope.html) of the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)"
+                                      description: '[Scope](https://docs.stackable.tech/secret-operator/scope.html) of the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)'
                                       nullable: true
                                       properties:
                                         node:
@@ -520,7 +517,7 @@ spec:
                                           type: array
                                       type: object
                                     secretClass:
-                                      description: "[SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) containing the LDAP bind credentials"
+                                      description: '[SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) containing the LDAP bind credentials'
                                       type: string
                                   required:
                                     - secretClass
@@ -548,7 +545,7 @@ spec:
                                             - server
                                       properties:
                                         none:
-                                          description: "Use TLS but don't verify certificates"
+                                          description: Use TLS but don't verify certificates
                                           type: object
                                         server:
                                           description: Use TLS and ca certificate to verify the server
@@ -562,7 +559,7 @@ spec:
                                                     - secretClass
                                               properties:
                                                 secretClass:
-                                                  description: "Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method."
+                                                  description: Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method.
                                                   type: string
                                                 webPki:
                                                   description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
