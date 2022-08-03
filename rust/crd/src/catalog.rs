@@ -52,14 +52,14 @@ pub struct HiveConnector {
     pub hdfs: Option<HdfsConnection>,
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetastoreConnection {
     /// Name of the discovery-configmap providing information about the Hive metastore
     pub config_map: String,
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HdfsConnection {
     /// Name of the discovery-configmap providing information about the HDFS
