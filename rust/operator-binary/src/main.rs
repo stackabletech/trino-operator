@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => println!(
-            "{}{}",
+            "{}---\n{}",
             serde_yaml::to_string(&TrinoCluster::crd())?,
             serde_yaml::to_string(&TrinoCatalog::crd())?
         ),
