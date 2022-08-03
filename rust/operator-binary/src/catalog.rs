@@ -152,7 +152,9 @@ impl CatalogConfig {
                 if let Some(hdfs) = &hive.hdfs {
                     config.add_property(
                         "hive.config.resources",
-                        format!("{RW_CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config/hdfs-site.xml"),
+                        format!(
+                            "{RW_CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config/hdfs-site.xml"
+                        ),
                     );
 
                     let volume_name = format!("{catalog_name}-hdfs");
@@ -161,9 +163,13 @@ impl CatalogConfig {
                             .with_config_map(&hdfs.config_map)
                             .build(),
                     );
-                    config
-                        .volume_mounts
-                        .push(VolumeMountBuilder::new(&volume_name, format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config")).build());
+                    config.volume_mounts.push(
+                        VolumeMountBuilder::new(
+                            &volume_name,
+                            format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config"),
+                        )
+                        .build(),
+                    );
                 }
             }
         }
