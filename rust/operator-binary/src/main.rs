@@ -6,7 +6,6 @@ use futures::stream::StreamExt;
 
 use stackable_operator::{
     cli::{Command, ProductOperatorRun},
-    error::Error,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service},
@@ -34,7 +33,7 @@ struct Opts {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => println!(
