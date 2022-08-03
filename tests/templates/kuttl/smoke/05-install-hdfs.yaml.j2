@@ -1,0 +1,29 @@
+---
+apiVersion: hdfs.stackable.tech/v1alpha1
+kind: HdfsCluster
+metadata:
+  name: hdfs
+spec:
+  version: {{ test_scenario['values']['hdfs'] }}
+  zookeeperConfigMapName: zookeeper-hdfs-znode
+  dfsReplication: 1
+  nameNodes:
+    roleGroups:
+      default:
+        replicas: 2
+  dataNodes:
+    roleGroups:
+      default:
+        replicas: 1
+  journalNodes:
+    roleGroups:
+      default:
+        replicas: 1
+---
+apiVersion: zookeeper.stackable.tech/v1alpha1
+kind: ZookeeperZnode
+metadata:
+  name:  zookeeper-hdfs-znode
+spec:
+  clusterRef:
+    name: zookeeper

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap};
+use std::collections::BTreeMap;
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
@@ -8,7 +8,10 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, Volume, VolumeMount},
     kube::ResourceExt,
 };
-use stackable_trino_crd::{catalog::TrinoCatalog, S3_SECRET_DIR_NAME};
+use stackable_trino_crd::{
+    CONFIG_DIR_NAME, RW_CONFIG_DIR_NAME,
+    {catalog::TrinoCatalog, S3_SECRET_DIR_NAME},
+};
 
 use self::from_trino_catalog_error::ResolveS3ConnectionDefSnafu;
 
@@ -87,8 +90,9 @@ impl CatalogConfig {
         catalog: TrinoCatalog,
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
+        let catalog_name = catalog.name();
         let mut config = CatalogConfig {
-            name: catalog.name(),
+            name: catalog_name.to_string(),
             properties: BTreeMap::new(),
             env_bindings: Vec::new(),
             load_env_from_files: BTreeMap::new(),
@@ -143,6 +147,23 @@ impl CatalogConfig {
                     }
 
                     // TODO: Handle TLS settings (related to https://github.com/stackabletech/trino-operator/pull/244)
+                }
+
+                if let Some(hdfs) = &hive.hdfs {
+                    config.add_property(
+                        "hive.config.resources",
+                        format!("{RW_CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config/hdfs-site.xml"),
+                    );
+
+                    let volume_name = format!("{catalog_name}-hdfs");
+                    config.volumes.push(
+                        VolumeBuilder::new(&volume_name)
+                            .with_config_map(&hdfs.config_map)
+                            .build(),
+                    );
+                    config
+                        .volume_mounts
+                        .push(VolumeMountBuilder::new(&volume_name, format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config")).build());
                 }
             }
         }

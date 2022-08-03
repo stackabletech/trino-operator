@@ -49,7 +49,7 @@ pub struct HiveConnector {
     /// Connection to an S3 store
     pub s3: Option<S3ConnectionDef>,
     // /// Connection to an HDFS
-    // pub hdfs: Option<HdfsConnection>,
+    pub hdfs: Option<HdfsConnection>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -59,12 +59,9 @@ pub struct MetastoreConnection {
     pub config_map: String,
 }
 
-// #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct HdfsConnection {
-//     /// Name of the discovery-configmap providing information about the HDFS
-//     pub config_map: String,
-//     /// Wether Trino should impersonate the users when accessing HDFS
-//     #[serde(default)]
-//     impersonation: bool,
-// }
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HdfsConnection {
+    /// Name of the discovery-configmap providing information about the HDFS
+    pub config_map: String,
+}

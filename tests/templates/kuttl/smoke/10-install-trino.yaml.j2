@@ -42,7 +42,7 @@ spec:
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  name: minio
+  name: hive
   labels:
     trino: trino
 spec:
@@ -64,3 +64,5 @@ spec:
                 caCert:
                   secretClass: minio-tls-certificates
 {% endif %}
+      hdfs:
+        configMap: hdfs

@@ -464,6 +464,15 @@ spec:
                   properties:
                     hive:
                       properties:
+                        hdfs:
+                          nullable: true
+                          properties:
+                            configMap:
+                              description: Name of the discovery-configmap providing information about the HDFS
+                              type: string
+                          required:
+                            - configMap
+                          type: object
                         metastore:
                           description: "Mandatory connection to a Hive Metastore, which will be used as a storage for metadata"
                           properties:
