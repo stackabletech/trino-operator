@@ -48,7 +48,7 @@ use stackable_trino_crd::{
     HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
-    S3_SSL_ENABLED, STACKABLE_INTERNAL_TLS_CERTS_DIR, STACKABLE_TLS_CERTS_DIR,
+    S3_SSL_ENABLED, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
     STACKABLE_TLS_STORE_PASSWORD, TLS_DEFAULT_SECRET_CLASS, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
@@ -370,7 +370,7 @@ fn build_rolegroup_config_map(
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
         -Djdk.nio.maxCachedBufferSize=2000000
-        -Djavax.net.ssl.trustStore={STACKABLE_TLS_CERTS_DIR}/truststore.p12
+        -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
         -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
         -Djavax.net.ssl.trustStoreType=pkcs12"
     );
@@ -591,8 +591,8 @@ fn build_rolegroup_statefulset(
 
     // We always create a mount for tls-certificates (mounted via SecretOperatorVolumeSourceBuilder if tls
     // is enabled or simply as empty dir to create and copy the system trust store)
-    cb_prepare.add_volume_mount("tls-certificate", STACKABLE_TLS_CERTS_DIR);
-    cb_trino.add_volume_mount("tls-certificate", STACKABLE_TLS_CERTS_DIR);
+    cb_prepare.add_volume_mount("tls-certificate", STACKABLE_CLIENT_TLS_DIR);
+    cb_trino.add_volume_mount("tls-certificate", STACKABLE_CLIENT_TLS_DIR);
     // If tls or authentication are specified we need to provide mounts for certs and keys
     if trino.tls_enabled() {
         pod_builder.add_volume(create_tls_volume("tls-certificate", trino.get_client_tls()));
@@ -606,8 +606,8 @@ fn build_rolegroup_statefulset(
     }
 
     if trino.get_internal_tls().is_some() {
-        cb_prepare.add_volume_mount("internal-tls-certificate", STACKABLE_INTERNAL_TLS_CERTS_DIR);
-        cb_trino.add_volume_mount("internal-tls-certificate", STACKABLE_INTERNAL_TLS_CERTS_DIR);
+        cb_prepare.add_volume_mount("internal-tls-certificate", STACKABLE_INTERNAL_TLS_DIR);
+        cb_trino.add_volume_mount("internal-tls-certificate", STACKABLE_INTERNAL_TLS_DIR);
         pod_builder.add_volume(create_tls_volume(
             "internal-tls-certificate",
             trino.get_internal_tls(),
@@ -649,7 +649,7 @@ fn build_rolegroup_statefulset(
                                 )
                                 .build();
                             let secret_certs_dir =
-                                format!("{STACKABLE_TLS_CERTS_DIR}/{secret_class}");
+                                format!("{STACKABLE_CLIENT_TLS_DIR}/{secret_class}");
                             pod_builder.add_volume(volume);
                             cb_prepare.add_volume_mount(secret_class, &secret_certs_dir);
                             cb_trino.add_volume_mount(secret_class, &secret_certs_dir);

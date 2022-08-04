@@ -86,8 +86,8 @@ pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
-pub const STACKABLE_TLS_CERTS_DIR: &str = "/stackable/certificates";
-pub const STACKABLE_INTERNAL_TLS_CERTS_DIR: &str = "/stackable/certificates/internal";
+pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
+pub const STACKABLE_INTERNAL_TLS_DIR: &str = "/stackable/internal_tls";
 pub const SYSTEM_TRUST_STORE: &str = "/etc/pki/java/cacerts";
 // store pws
 pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
@@ -348,7 +348,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", STACKABLE_TLS_CERTS_DIR, "keystore.p12")),
+                        Some(format!("{}/{}", STACKABLE_CLIENT_TLS_DIR, "keystore.p12")),
                     );
                     result.insert(
                         HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
@@ -356,7 +356,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", STACKABLE_TLS_CERTS_DIR, "truststore.p12")),
+                        Some(format!("{}/{}", STACKABLE_CLIENT_TLS_DIR, "truststore.p12")),
                     );
                     result.insert(
                         HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
@@ -407,10 +407,7 @@ impl Configuration for TrinoConfig {
                         // about wrong HTTPS configuration
                         result.insert(
                             HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                            Some(format!(
-                                "{}/{}",
-                                STACKABLE_INTERNAL_TLS_CERTS_DIR, "keystore.p12"
-                            )),
+                            Some(format!("{}/{}", STACKABLE_INTERNAL_TLS_DIR, "keystore.p12")),
                         );
                         result.insert(
                             HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
@@ -420,7 +417,7 @@ impl Configuration for TrinoConfig {
                             HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
                             Some(format!(
                                 "{}/{}",
-                                STACKABLE_INTERNAL_TLS_CERTS_DIR, "truststore.p12"
+                                STACKABLE_INTERNAL_TLS_DIR, "truststore.p12"
                             )),
                         );
                         result.insert(
@@ -434,7 +431,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/keystore.p12", STACKABLE_INTERNAL_TLS_CERTS_DIR)),
+                        Some(format!("{}/keystore.p12", STACKABLE_INTERNAL_TLS_DIR)),
                     );
                     result.insert(
                         INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY.to_string(),
@@ -442,10 +439,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH.to_string(),
-                        Some(format!(
-                            "{}/truststore.p12",
-                            STACKABLE_INTERNAL_TLS_CERTS_DIR
-                        )),
+                        Some(format!("{}/truststore.p12", STACKABLE_INTERNAL_TLS_DIR)),
                     );
                     result.insert(
                         INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY.to_string(),
