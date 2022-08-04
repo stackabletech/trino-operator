@@ -55,9 +55,13 @@ spec:
                   default:
                     tls:
                       secretClass: tls
+                    internalTls:
+                      secretClass: tls
                   description: Global Trino Config for cluster settings like TLS
                   properties:
                     internalTls:
+                      default:
+                        secretClass: tls
                       description: "Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server"
                       nullable: true
                       properties:

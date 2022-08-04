@@ -172,7 +172,7 @@ pub struct GlobalTrinoConfig {
     /// This setting controls:
     /// - Which cert the servers should use to authenticate themselves against other servers
     /// - Which ca.crt to use when validating the other server
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default = "tls_default", skip_serializing_if = "Option::is_none")]
     pub internal_tls: Option<TlsSecretClass>,
 }
 
@@ -180,7 +180,7 @@ impl Default for GlobalTrinoConfig {
     fn default() -> Self {
         GlobalTrinoConfig {
             tls: tls_default(),
-            internal_tls: None,
+            internal_tls: tls_default(),
         }
     }
 }
@@ -606,7 +606,10 @@ mod tests {
             trino.get_client_tls().unwrap().secret_class,
             TLS_DEFAULT_SECRET_CLASS.to_string()
         );
-        assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -624,7 +627,10 @@ mod tests {
             trino.get_client_tls().unwrap().secret_class,
             "simple-trino-client-tls".to_string()
         );
-        assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -638,7 +644,10 @@ mod tests {
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_client_tls(), None);
-        assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -673,7 +682,10 @@ mod tests {
           version: abc
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(
+            trino.get_internal_tls().unwrap().secret_class,
+            TLS_DEFAULT_SECRET_CLASS.to_string()
+        );
         assert_eq!(
             trino.get_client_tls().unwrap().secret_class,
             TLS_DEFAULT_SECRET_CLASS
@@ -710,6 +722,7 @@ mod tests {
           config:
             tls:
               secretClass: simple-trino-client-tls
+            internalTls: null
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_internal_tls(), None);
