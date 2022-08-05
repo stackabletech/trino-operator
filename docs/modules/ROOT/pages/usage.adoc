@@ -149,7 +149,7 @@ To access the CLI please execute:
 
 ==== Secure for production:
 
-There are multiple ways to secure a Trino cluster:
+There are multiple steps that must be taken to secure a Trino cluster:
 
 1. Enable authentication
 2. Enable TLS only to connect to the coordinator
