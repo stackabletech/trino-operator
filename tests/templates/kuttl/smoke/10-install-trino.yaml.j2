@@ -1,17 +1,4 @@
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: trino-users
-type: kubernetes.io/opaque
-stringData:
-  # admin:admin
-  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
-  # alice:alice
-  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-  # bob:bob
-  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
----
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
@@ -39,6 +26,20 @@ spec:
         replicas: 1
         config: {}
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-users
+type: kubernetes.io/opaque
+stringData:
+  # admin:admin
+  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
+  # alice:alice
+  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
+  # bob:bob
+  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+
+---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
@@ -51,18 +52,6 @@ spec:
       metastore:
         configMap: hive
       s3:
-        inline:
-          host: minio
-          port: 9000
-          accessStyle: Path
-          credentials:
-            secretClass: s3-credentials
-{% if test_scenario['values']['s3-use-tls'] == 'true' %}
-          tls:
-            verification:
-              server:
-                caCert:
-                  secretClass: minio-tls-certificates
-{% endif %}
+        reference: minio
       hdfs:
         configMap: hdfs
