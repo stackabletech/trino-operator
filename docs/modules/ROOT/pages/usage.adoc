@@ -152,7 +152,7 @@ To access the CLI please execute:
 There are multiple steps that must be taken to secure a Trino cluster:
 
 1. Enable authentication
-2. Enable TLS only to connect to the coordinator
+2. Enable TLS between the clients and coordinator
 3. Enable internal TLS for communications between coordinators and workers
 
 For testing purposes we use the https://trino.io/docs/current/installation/cli.html[Trino CLI].
