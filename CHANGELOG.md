@@ -6,10 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: TrinoCatalogs now have their own CRD object and get referenced by the TrinoCluster. See [ADR19](https://docs.stackable.tech/home/contributor/adr/ADR019-trino_catalog_definitions.html) and [ADR20](https://docs.stackable.tech/home/contributor/adr/ADR020-trino_catalog_usage.html) ([#209])
+- BREAKING: TrinoCatalogs now have their own CRD object and get referenced by the TrinoCluster. See [ADR19](https://docs.stackable.tech/home/contributor/adr/ADR019-trino_catalog_definitions.html) and [ADR20](https://docs.stackable.tech/home/contributor/adr/ADR020-trino_catalog_usage.html) ([#209]).
 - Include chart name when installing with a custom release name ([#233], [#234]).
 - `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
-- Add support for Hive 3.1.3 ([#243])
+- Add support for Hive 3.1.3 ([#243]).
+
+### Fixed
+
+- Add missing role to read S3Connection objects ([#209]).
 
 [#209]: https://github.com/stackabletech/trino-operator/pull/209
 [#233]: https://github.com/stackabletech/trino-operator/pull/233

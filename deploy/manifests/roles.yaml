@@ -101,3 +101,11 @@ rules:
       - trinoclusters/status
     verbs:
       - patch
+  - apiGroups:
+      - s3.stackable.tech
+    resources:
+      - s3connections
+    verbs:
+      - get
+      - list
+      - watch
