@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for connecting to HDFS ([#209]).
+
 ### Changed
 
 - BREAKING: TrinoCatalogs now have their own CRD object and get referenced by the TrinoCluster. See [ADR19](https://docs.stackable.tech/home/contributor/adr/ADR019-trino_catalog_definitions.html) and [ADR20](https://docs.stackable.tech/home/contributor/adr/ADR020-trino_catalog_usage.html) ([#209]).
@@ -14,6 +18,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Add missing role to read S3Connection objects ([#209]).
+- Disable Hive connector setting that disallow dropping tables. This check is now done by normal Trino authorization (e.g. OPA) ([#209]).
 
 [#209]: https://github.com/stackabletech/trino-operator/pull/209
 [#233]: https://github.com/stackabletech/trino-operator/pull/233

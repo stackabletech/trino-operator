@@ -80,7 +80,7 @@ impl CatalogConfig {
 }
 
 fn calculate_env_name(catalog: impl Into<String>, property: impl Into<String>) -> String {
-    let catalog = catalog.into();
+    let catalog = catalog.into().replace('.', "_").replace('-', "_");
     let property = property.into().replace('.', "_").replace('-', "_");
     format!("CATALOG_{catalog}_{property}").to_uppercase()
 }
@@ -109,6 +109,12 @@ impl CatalogConfig {
                     hive.metastore.config_map.clone(),
                     "HIVE",
                 );
+                // No authorization checks are enforced at the catalog level.
+                // We don't want the hive connector to prevent users from dropping tables.
+                // We also don't want that the hive connector makes decisions on which user is allowed to do what.
+                // This decision should be done globally (for all catalogs) by OPA.
+                // See https://trino.io/docs/current/connector/hive-security.html
+                config.add_property("hive.security", "allow-all");
 
                 if let Some(s3_connection_def) = &hive.s3 {
                     let s3 = s3_connection_def
