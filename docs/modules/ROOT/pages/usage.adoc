@@ -159,7 +159,7 @@ For testing purposes we use the https://trino.io/docs/current/installation/cli.h
 
 ===== Via authentication
 
-If authentication is enabled, https://trino.io/docs/current/security/tls.html[TLS] for the coordinator as well as a shared secret for https://trino.io/docs/current/security/internal-communication.html[internal communications] (this is base64 and not TLS encrypted) must be configured.
+If authentication is enabled, https://trino.io/docs/current/security/tls.html[TLS] for the coordinator as well as a shared secret for https://trino.io/docs/current/security/internal-communication.html[internal communications] (this is base64 and not encrypted) must be configured.
 
 Securing the Trino cluster will disable all HTTP ports and disable the web interface on the HTTP port as well.
 
