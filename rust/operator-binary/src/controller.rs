@@ -590,87 +590,14 @@ fn build_rolegroup_statefulset(
         env.push(internal_secret);
     };
 
-    // We always create a mount for tls-certificates (mounted via SecretOperatorVolumeSourceBuilder if tls
-    // is enabled or simply as empty dir to create and copy the system trust store)
-    cb_prepare.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
-    cb_trino.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
-
-    cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    pod_builder.add_volume(
-        VolumeBuilder::new("client-tls")
-            .with_empty_dir(Some(""), None)
-            .build(),
-    );
-    // If tls or authentication are specified we need to provide mounts for certs and keys
-    if trino.tls_enabled() {
-        pod_builder.add_volume(create_tls_volume(
-            "client-tls-mount",
-            trino.get_client_tls(),
-        ));
-    }
-
-    if trino.get_internal_tls().is_some() {
-        cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
-        cb_trino.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume(
-            "internal-tls-mount",
-            trino.get_internal_tls(),
-        ));
-        cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
-        cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
-        pod_builder.add_volume(
-            VolumeBuilder::new("internal-tls")
-                .with_empty_dir(Some(""), None)
-                .build(),
-        );
-    }
-
-    // If authentication is required (tls already activated) add volume mount for user pw database
-    if let Some(auth) = trino.get_authentication() {
-        match auth.method {
-            TrinoAuthenticationMethod::MultiUser { .. } => {
-                cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-                cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-                pod_builder.add_volume(
-                    VolumeBuilder::new("users")
-                        .with_empty_dir(Some(""), None)
-                        .build(),
-                );
-            }
-        }
-    }
-
-    if let Some(s3_conn) = s3_connection {
-        // Add volume and volume mounts for S3 credentials
-        if let Some(credentials) = &s3_conn.credentials {
-            pod_builder.add_volume(credentials.to_volume("s3-credentials"));
-            cb_trino.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
-        }
-        // Handle S3 TLS
-        if let Some(tls) = &s3_conn.tls {
-            match &tls.verification {
-                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
-                TlsVerification::Server(server_verification) => {
-                    match &server_verification.ca_cert {
-                        CaCert::WebPki {} => {}
-                        CaCert::SecretClass(secret_class) => {
-                            let volume = VolumeBuilder::new(secret_class)
-                                .ephemeral(
-                                    SecretOperatorVolumeSourceBuilder::new(secret_class).build(),
-                                )
-                                .build();
-                            let secret_certs_dir =
-                                format!("{STACKABLE_CLIENT_TLS_DIR}/{secret_class}");
-                            pod_builder.add_volume(volume);
-                            cb_prepare.add_volume_mount(secret_class, &secret_certs_dir);
-                            cb_trino.add_volume_mount(secret_class, &secret_certs_dir);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // add volume mounts depending on the client tls, internal tls, authentication and s3 settings
+    tls_volume_mounts(
+        trino,
+        &mut pod_builder,
+        &mut cb_prepare,
+        &mut cb_trino,
+        s3_connection,
+    )?;
 
     let container_prepare = cb_prepare
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
@@ -1108,4 +1035,96 @@ fn create_tls_volume(volume_name: &str, tls_secret_class: Option<&TlsSecretClass
                 .build(),
         )
         .build()
+}
+
+fn tls_volume_mounts(
+    trino: &TrinoCluster,
+    pod_builder: &mut PodBuilder,
+    cb_prepare: &mut ContainerBuilder,
+    cb_trino: &mut ContainerBuilder,
+    s3_connection: Option<&S3ConnectionSpec>,
+) -> Result<()> {
+    // We always create a mount for tls-certificates (mounted via SecretOperatorVolumeSourceBuilder if tls
+    // is enabled or simply as empty dir to create and copy the system trust store)
+    cb_prepare.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
+    cb_trino.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
+
+    cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+    cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+    pod_builder.add_volume(
+        VolumeBuilder::new("client-tls")
+            .with_empty_dir(Some(""), None)
+            .build(),
+    );
+    // If tls or authentication are specified we need to provide mounts for certs and keys
+    if trino.tls_enabled() {
+        pod_builder.add_volume(create_tls_volume(
+            "client-tls-mount",
+            trino.get_client_tls(),
+        ));
+    }
+
+    if trino.get_internal_tls().is_some() {
+        cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
+        cb_trino.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
+        pod_builder.add_volume(create_tls_volume(
+            "internal-tls-mount",
+            trino.get_internal_tls(),
+        ));
+        cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
+        cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
+        pod_builder.add_volume(
+            VolumeBuilder::new("internal-tls")
+                .with_empty_dir(Some(""), None)
+                .build(),
+        );
+    }
+
+    // If authentication is required (tls already activated) add volume mount for user pw database
+    if let Some(auth) = trino.get_authentication() {
+        match auth.method {
+            TrinoAuthenticationMethod::MultiUser { .. } => {
+                cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
+                cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
+                pod_builder.add_volume(
+                    VolumeBuilder::new("users")
+                        .with_empty_dir(Some(""), None)
+                        .build(),
+                );
+            }
+        }
+    }
+
+    if let Some(s3_conn) = s3_connection {
+        // Add volume and volume mounts for S3 credentials
+        if let Some(credentials) = &s3_conn.credentials {
+            pod_builder.add_volume(credentials.to_volume("s3-credentials"));
+            cb_trino.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
+        }
+        // Handle S3 TLS
+        if let Some(tls) = &s3_conn.tls {
+            match &tls.verification {
+                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
+                TlsVerification::Server(server_verification) => {
+                    match &server_verification.ca_cert {
+                        CaCert::WebPki {} => {}
+                        CaCert::SecretClass(secret_class) => {
+                            let volume = VolumeBuilder::new(secret_class)
+                                .ephemeral(
+                                    SecretOperatorVolumeSourceBuilder::new(secret_class).build(),
+                                )
+                                .build();
+                            let secret_certs_dir =
+                                format!("{STACKABLE_CLIENT_TLS_DIR}/{secret_class}");
+                            pod_builder.add_volume(volume);
+                            cb_prepare.add_volume_mount(secret_class, &secret_certs_dir);
+                            cb_trino.add_volume_mount(secret_class, &secret_certs_dir);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
