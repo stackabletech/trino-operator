@@ -336,9 +336,19 @@ impl Configuration for TrinoConfig {
                         Some(query_max_memory_per_node.to_string()),
                     );
                 }
+
+                // If authentication is enabled and client tls is explicitly deactivated we error out
+                if authentication_enabled && !client_tls_enabled {
+                    return Err(ConfigError::InvalidConfiguration {
+                        reason:
+                            "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. Please set 'tls.secretClass' or use the provided default value."
+                                .to_string(),
+                    });
+                }
+
                 // If authentication is enabled
                 // - client TLS is required (default to "tls" if not provided)
-                // - internal shared secret must be set
+                // - internal shared secret must be set (if authentication is required)
                 if authentication_enabled || client_tls_enabled {
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
@@ -390,8 +400,8 @@ impl Configuration for TrinoConfig {
                         // The first two properties (HTTPS_ENABLED, HTTPS_PORT) may be set above for client TLS. We only need to set
                         // them here if client tls (and/or authentication) are not enabled.
                         // In the case of only internal TLS is activated (meaning no authentication
-                        // and client TLS is set) we have to activate HTTPS and allow insecure
-                        // communications via HTTP
+                        // and client TLS is set) we have to activate HTTPS (internal) and allow insecure
+                        // communications via HTTP (for clients).
                         result.insert(
                             HTTP_SERVER_HTTPS_ENABLED.to_string(),
                             Some(true.to_string()),
