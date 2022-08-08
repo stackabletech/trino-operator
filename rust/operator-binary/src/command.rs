@@ -5,8 +5,8 @@ use stackable_trino_crd::{
     TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME, ENV_S3_ACCESS_KEY, ENV_S3_SECRET_KEY,
     HIVE_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_SECRET_DIR_NAME, SECRET_KEY_S3_ACCESS_KEY,
     SECRET_KEY_S3_SECRET_KEY, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
-    USER_PASSWORD_DATA_DIR_NAME,
+    STACKABLE_MOUNT_CLIENT_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 
 pub fn container_prepare_args(
@@ -14,21 +14,23 @@ pub fn container_prepare_args(
     s3_spec: Option<&S3ConnectionSpec>,
 ) -> Vec<String> {
     let mut args = vec![
-        // Copy system truststore to stackable truststore
+        // Copy system truststore to stackable client tls dir
         format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {STACKABLE_CLIENT_TLS_DIR}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ];
 
     // User password data
     if trino.get_authentication().is_some() {
         args.extend(create_key_and_trust_store(
+            STACKABLE_MOUNT_CLIENT_TLS_DIR,
             STACKABLE_CLIENT_TLS_DIR,
-            "stackable-ca-cert",
+            "stackable-client-ca-cert",
         ));
         args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
     } else if trino.get_client_tls().is_some() {
         args.extend(create_key_and_trust_store(
+            STACKABLE_MOUNT_CLIENT_TLS_DIR,
             STACKABLE_CLIENT_TLS_DIR,
-            "stackable-ca-cert",
+            "stackable-client-ca-cert",
         ));
     }
 
@@ -37,13 +39,14 @@ pub fn container_prepare_args(
 
     if trino.get_internal_tls().is_some() {
         args.extend(create_key_and_trust_store(
+            STACKABLE_MOUNT_INTERNAL_TLS_DIR,
             STACKABLE_INTERNAL_TLS_DIR,
             "stackable-internal-ca-cert",
         ));
         args.extend(chown_and_chmod(STACKABLE_INTERNAL_TLS_DIR));
         // add cert to internal truststore
         if trino.tls_enabled() {
-            args.push(format!("keytool -importcert -file {STACKABLE_CLIENT_TLS_DIR}/ca.crt -alias stackable-ca-cert -keystore {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
+            args.push(format!("keytool -importcert -file {STACKABLE_MOUNT_CLIENT_TLS_DIR}/ca.crt -alias stackable-ca-cert -keystore {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12 -storepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"));
         }
     }
 
@@ -142,16 +145,18 @@ pub fn container_trino_args(
 
 /// Generates the shell script to create key and truststores from the certificates provided
 /// by the secret operator.
-fn create_key_and_trust_store(directory: &str, alias_name: &str) -> Vec<String> {
+fn create_key_and_trust_store(
+    cert_directory: &str,
+    stackable_cert_directory: &str,
+    alias_name: &str,
+) -> Vec<String> {
     vec![
-        format!("echo [{dir}] Creating truststore", dir = directory),
-        format!("keytool -importcert -file {dir}/ca.crt -keystore {dir}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias} -storepass {password}",
-                dir = directory, alias = alias_name, password = STACKABLE_TLS_STORE_PASSWORD),
-        format!("echo [{dir}] Creating certificate chain", dir = directory),
-        format!("cat {dir}/ca.crt {dir}/tls.crt > {dir}/chain.crt", dir = directory),
-        format!("echo [{dir}] Creating keystore", dir = directory),
-        format!("openssl pkcs12 -export -in {dir}/chain.crt -inkey {dir}/tls.key -out {dir}/keystore.p12 --passout pass:{password}",
-                dir = directory, password = STACKABLE_TLS_STORE_PASSWORD),
+        format!("echo [{stackable_cert_directory}] Creating truststore"),
+        format!("keytool -importcert -file {cert_directory}/ca.crt -keystore {stackable_cert_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias_name} -storepass {STACKABLE_TLS_STORE_PASSWORD}"),
+        format!("echo [{stackable_cert_directory}] Creating certificate chain"),
+        format!("cat {cert_directory}/ca.crt {cert_directory}/tls.crt > {stackable_cert_directory}/chain.crt"),
+        format!("echo [{stackable_cert_directory}] Creating keystore"),
+        format!("openssl pkcs12 -export -in {stackable_cert_directory}/chain.crt -inkey {cert_directory}/tls.key -out {stackable_cert_directory}/keystore.p12 --passout pass:{STACKABLE_TLS_STORE_PASSWORD}")
     ]
 }
 

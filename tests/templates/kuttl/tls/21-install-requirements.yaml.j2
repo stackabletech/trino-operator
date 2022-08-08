@@ -6,7 +6,7 @@ commands:
   - script: kubectl cp -n $NAMESPACE ./test-config.yaml  trino-test-helper-0:/tmp
   - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- pip install -q trino pyyaml
 {% if test_scenario['values']['use-authentication'] == 'true' or test_scenario['values']['use-tls'] == 'true' %}
-  - script: kubectl cp -n $NAMESPACE trino-coordinator-default-0:/stackable/client_tls/ca.crt /tmp/ca.crt
+  - script: kubectl cp -n $NAMESPACE trino-coordinator-default-0:/stackable/mount_client_tls/ca.crt /tmp/ca.crt
   - script: kubectl cp -n $NAMESPACE /tmp/ca.crt trino-test-helper-0:/tmp/ca.crt
   - script: kubectl cp -n $NAMESPACE ./untrusted-ca.crt trino-test-helper-0:/tmp/untrusted-ca.crt
 {% endif %}
