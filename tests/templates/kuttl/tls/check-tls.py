@@ -1,13 +1,7 @@
 #!/usr/bin/env python
 import trino
 import argparse
-import sys
 import yaml
-
-
-if not sys.warnoptions:
-    import warnings
-warnings.simplefilter("ignore")
 
 
 def get_http_connection(host, user):
