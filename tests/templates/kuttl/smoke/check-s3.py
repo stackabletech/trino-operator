@@ -87,10 +87,9 @@ FROM hive.minio.taxi_data
     assert rows_written == 5000 or rows_written == 0
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
 
-    # Fail with trino.exceptions.TrinoUserError: TrinoUserError(type=USER_ERROR, name=PERMISSION_DENIED, message="Access Denied: Cannot drop table taxi.taxi_data", query_id=20220803_120544_00064_am9r9)
-    # assert run_query(connection, "DROP TABLE hive.minio.taxi_data")[0][0] is True
-    # assert run_query(connection, "DROP TABLE hive.minio.taxi_data_copy")[0][0] is True
-    # assert run_query(connection, "DROP TABLE hive.minio.taxi_data_transformed")[0][0] is True
-    # assert run_query(connection, "DROP TABLE hive.hdfs.taxi_data_copy")[0][0] is True
+    assert run_query(connection, "DROP TABLE hive.minio.taxi_data")[0][0] is True
+    assert run_query(connection, "DROP TABLE hive.minio.taxi_data_copy")[0][0] is True
+    assert run_query(connection, "DROP TABLE hive.minio.taxi_data_transformed")[0][0] is True
+    assert run_query(connection, "DROP TABLE hive.hdfs.taxi_data_copy")[0][0] is True
 
     print("[SUCCESS] All tests in check-s3.py succeeded!")
