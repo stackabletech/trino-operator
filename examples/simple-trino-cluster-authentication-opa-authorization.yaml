@@ -12,7 +12,6 @@ spec:
     method:
       multiUser:
         userCredentialsSecret:
-#          namespace: default # If not specified secret from same Namespace is used
           name: simple-trino-users-secret
   catalogLabelSelector:
     trino: simple-trino
