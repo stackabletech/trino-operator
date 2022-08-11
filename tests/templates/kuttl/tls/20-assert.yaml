@@ -1,8 +1,6 @@
 ---
 apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
-metadata:
-  name: trino-test-helper
 timeout: 300
 ---
 apiVersion: apps/v1
