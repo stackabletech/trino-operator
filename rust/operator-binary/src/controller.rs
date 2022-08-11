@@ -141,7 +141,7 @@ pub enum Error {
     #[snafu(display("failed to parse trino product version"))]
     TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
     #[snafu(display(
-        "trino does not support skipping the verification of the tls enabled S3 server"
+        "trino does not support disabling the TLS verification of S3 servers"
     ))]
     S3TlsNoVerificationNotSupported,
 }
