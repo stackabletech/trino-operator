@@ -140,9 +140,7 @@ pub enum Error {
     InvalidS3Connection { reason: String },
     #[snafu(display("failed to parse trino product version"))]
     TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
-    #[snafu(display(
-        "trino does not support disabling the TLS verification of S3 servers"
-    ))]
+    #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
 }
 
@@ -391,7 +389,6 @@ fn build_rolegroup_config_map(
 
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
-                // Trino requires https enabled if authentication is required
                 let protocol = if trino.get_internal_tls().is_some() {
                     TrinoDiscoveryProtocol::Https
                 } else {
@@ -1046,8 +1043,15 @@ fn tls_volume_mounts(
 ) -> Result<()> {
     // We always create a mount for tls-certificates (mounted via SecretOperatorVolumeSourceBuilder if tls
     // is enabled or simply as empty dir to create and copy the system trust store)
-    cb_prepare.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
-    cb_trino.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
+    // If tls or authentication are specified we need to provide mounts for certs and keys
+    if trino.tls_enabled() {
+        cb_prepare.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
+        cb_trino.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
+        pod_builder.add_volume(create_tls_volume(
+            "client-tls-mount",
+            trino.get_client_tls(),
+        ));
+    }
 
     cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
     cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
@@ -1056,13 +1060,6 @@ fn tls_volume_mounts(
             .with_empty_dir(Some(""), None)
             .build(),
     );
-    // If tls or authentication are specified we need to provide mounts for certs and keys
-    if trino.tls_enabled() {
-        pod_builder.add_volume(create_tls_volume(
-            "client-tls-mount",
-            trino.get_client_tls(),
-        ));
-    }
 
     if trino.get_internal_tls().is_some() {
         cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
