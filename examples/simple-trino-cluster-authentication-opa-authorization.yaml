@@ -85,7 +85,7 @@ data:
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  name: simple-hive
+  name: hive
   labels:
     trino: simple-trino
 spec:
