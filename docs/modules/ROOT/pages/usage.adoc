@@ -115,29 +115,35 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
-  s3:
-    inline:
-      host: test-minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: minio-credentials
+  catalogLabelSelector:
+    trino: simple-trino
   coordinators:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
-        config: {}
   workers:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
-        config: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: hive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
 ----
 
 To access the CLI please execute:
@@ -158,17 +164,11 @@ metadata:
   name: simple-trino
 spec:
   version: 387-stackable0.1.0
-  hiveConfigMapName: simple-hive-derby
+  catalogLabelSelector:
+    trino: simple-trino
   opa:
     configMapName: simple-opa
     package: trino
-  s3:
-    inline:
-      host: test-minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: minio-credentials
   authentication:
     method:
       multiUser:
@@ -178,19 +178,30 @@ spec:
   coordinators:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
-        config: {}
   workers:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
-        config: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: hive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
 ----
 
 To access the CLI please download the https://repo1.maven.org/maven2/io/trino/trino-cli/387/trino-cli-387-executable.jar[Trino CLI] and execute:
