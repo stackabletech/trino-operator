@@ -77,7 +77,7 @@ if __name__ == '__main__':
     conf = read_yaml("/tmp/test-config.yaml")  # config file to indicate our test script if auth / tls is used or not
     coordinator_host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
     trusted_ca = "/tmp/ca.crt"  # will be copied via kubectl from the coordinator pod
-    untrusted_ca = "/tmp/untrusted-ca.crt"  # some random CA
+    untrusted_ca = "/tmp/untrusted-cert.crt"  # some random CA
     query = "SHOW CATALOGS"
 
     # We expect these to work

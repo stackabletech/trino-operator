@@ -9,5 +9,5 @@ commands:
 {% if test_scenario['values']['use-authentication'] == 'true' or test_scenario['values']['use-tls'] == 'true' %}
   - script: kubectl cp -n $NAMESPACE trino-coordinator-default-0:/stackable/mount_client_tls/ca.crt /tmp/ca.crt
   - script: kubectl cp -n $NAMESPACE /tmp/ca.crt trino-test-helper-0:/tmp/ca.crt
-  - script: kubectl cp -n $NAMESPACE ./untrusted-ca.crt trino-test-helper-0:/tmp/untrusted-ca.crt
+  - script: kubectl cp -n $NAMESPACE ./untrusted-cert.crt trino-test-helper-0:/tmp/untrusted-cert.crt
 {% endif %}
