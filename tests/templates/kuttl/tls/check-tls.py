@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import trino
 import argparse
-import yaml
+import json
 
 
 def get_http_connection(host, user):
@@ -55,11 +55,11 @@ def test_query_failure(conn, query, failure_message):
         print("[SUCCESS] Received expected exception: " + str(e))
 
 
-def read_yaml(config_path):
+def read_json(config_path):
     with open(config_path, 'r') as stream:
         try:
-            config = yaml.safe_load(stream)
-        except yaml.YAMLError as e:
+            config = json.load(stream)
+        except Exception as e:
             print("Could not load " + str(config_path) + ": " + str(e))
             exit(-1)
     return config
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     args = vars(all_args.parse_args())
     namespace = args["namespace"]
 
-    conf = read_yaml("/tmp/test-config.yaml")  # config file to indicate our test script if auth / tls is used or not
+    conf = read_json("/tmp/test-config.json")  # config file to indicate our test script if auth / tls is used or not
     coordinator_host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
     trusted_ca = "/tmp/ca.crt"  # will be copied via kubectl from the coordinator pod
     untrusted_ca = "/tmp/untrusted-cert.crt"  # some random CA

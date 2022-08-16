@@ -45,11 +45,13 @@ use stackable_trino_crd::{
     TlsSecretClass, TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
     CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_S3_ACCESS_KEY,
     ENV_S3_SECRET_KEY, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME,
-    HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
+    HTTP_PORT, HTTP_PORT_NAME, JAVAX_NET_SSL_TRUSTSTORE, JAVAX_NET_SSL_TRUSTSTORE_PASSWORD,
+    JAVAX_NET_SSL_TRUSTSTORE_TYPE, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
     S3_SSL_ENABLED, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_CLIENT_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    STACKABLE_MOUNT_CLIENT_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
     TLS_DEFAULT_SECRET_CLASS, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
@@ -260,6 +262,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &rolegroup,
                 &config,
                 opa_connect_string.as_deref(),
+                s3_connection_spec.as_ref(),
             )?;
             let rg_catalog_configmap =
                 build_rolegroup_catalog_config_map(&trino, &rolegroup, &config)?;
@@ -349,6 +352,7 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     opa_connect_string: Option<&str>,
+    s3_connection: Option<&S3ConnectionSpec>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -368,11 +372,20 @@ fn build_rolegroup_config_map(
         -XX:PerMethodRecompilationCutoff=10000
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
-        -Djdk.nio.maxCachedBufferSize=2000000
-        -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
-        -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
-        -Djavax.net.ssl.trustStoreType=pkcs12"
+        -Djdk.nio.maxCachedBufferSize=2000000"
     );
+
+    if s3_connection.is_some() {
+        let _ = write!(
+            jvm_config,
+            "{}",
+            formatdoc!(
+                "\n-D{JAVAX_NET_SSL_TRUSTSTORE}={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
+                 -D{JAVAX_NET_SSL_TRUSTSTORE_PASSWORD}={STACKABLE_TLS_STORE_PASSWORD}
+                 -D{JAVAX_NET_SSL_TRUSTSTORE_TYPE}=pkcs12"
+            )
+        );
+    }
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -833,19 +846,14 @@ fn validated_product_config(
 ) -> Result<ValidatedRoleConfigByPropertyKind, Error> {
     let mut roles = HashMap::new();
 
-    let mut config_files = vec![
+    let config_files = vec![
         PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
         PropertyNameKind::File(HIVE_PROPERTIES.to_string()),
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+        PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
     ];
-
-    if trino.get_authentication().is_some() {
-        config_files.push(PropertyNameKind::File(
-            PASSWORD_AUTHENTICATOR_PROPERTIES.to_string(),
-        ))
-    }
 
     roles.insert(
         TrinoRole::Coordinator.to_string(),
@@ -1041,22 +1049,19 @@ fn tls_volume_mounts(
     cb_trino: &mut ContainerBuilder,
     s3_connection: Option<&S3ConnectionSpec>,
 ) -> Result<()> {
-    // We always create a mount for tls-certificates (mounted via SecretOperatorVolumeSourceBuilder if tls
-    // is enabled or simply as empty dir to create and copy the system trust store)
-    // If tls or authentication are specified we need to provide mounts for certs and keys
     if trino.tls_enabled() {
-        cb_prepare.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
-        cb_trino.add_volume_mount("client-tls-mount", STACKABLE_MOUNT_CLIENT_TLS_DIR);
+        cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
+        cb_trino.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
         pod_builder.add_volume(create_tls_volume(
-            "client-tls-mount",
+            "server-tls-mount",
             trino.get_client_tls(),
         ));
     }
 
-    cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+    cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
+    cb_trino.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
     pod_builder.add_volume(
-        VolumeBuilder::new("client-tls")
+        VolumeBuilder::new("server-tls")
             .with_empty_dir(Some(""), None)
             .build(),
     );
@@ -1111,11 +1116,19 @@ fn tls_volume_mounts(
                                     SecretOperatorVolumeSourceBuilder::new(secret_class).build(),
                                 )
                                 .build();
-                            let secret_certs_dir =
-                                format!("{STACKABLE_CLIENT_TLS_DIR}/{secret_class}");
+
+                            cb_prepare
+                                .add_volume_mount(secret_class, STACKABLE_MOUNT_CLIENT_TLS_DIR);
+                            cb_trino.add_volume_mount(secret_class, STACKABLE_MOUNT_CLIENT_TLS_DIR);
                             pod_builder.add_volume(volume);
-                            cb_prepare.add_volume_mount(secret_class, &secret_certs_dir);
-                            cb_trino.add_volume_mount(secret_class, &secret_certs_dir);
+
+                            cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+                            cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+                            pod_builder.add_volume(
+                                VolumeBuilder::new("client-tls")
+                                    .with_empty_dir(Some(""), None)
+                                    .build(),
+                            );
                         }
                     }
                 }

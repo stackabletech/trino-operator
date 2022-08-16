@@ -42,7 +42,7 @@ pub const DISCOVERY_URI: &str = "discovery.uri";
 pub const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
 pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
 pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
-// - client tls
+// - server tls
 pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
 pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
 pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key";
@@ -80,14 +80,20 @@ pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
+// client tls
+pub const JAVAX_NET_SSL_TRUSTSTORE: &str = "javax.net.ssl.trustStore";
+pub const JAVAX_NET_SSL_TRUSTSTORE_PASSWORD: &str = "javax.net.ssl.trustStorePassword";
+pub const JAVAX_NET_SSL_TRUSTSTORE_TYPE: &str = "javax.net.ssl.trustStoreType";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
+pub const STACKABLE_SERVER_TLS_DIR: &str = "/stackable/server_tls";
 pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
 pub const STACKABLE_INTERNAL_TLS_DIR: &str = "/stackable/internal_tls";
+pub const STACKABLE_MOUNT_SERVER_TLS_DIR: &str = "/stackable/mount_server_tls";
 pub const STACKABLE_MOUNT_CLIENT_TLS_DIR: &str = "/stackable/mount_client_tls";
 pub const STACKABLE_MOUNT_INTERNAL_TLS_DIR: &str = "/stackable/mount_internal_tls";
 pub const SYSTEM_TRUST_STORE: &str = "/etc/pki/java/cacerts";
@@ -161,7 +167,7 @@ pub struct TrinoClusterSpec {
     pub workers: Option<Role<TrinoConfig>>,
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GlobalTrinoConfig {
     /// Only affects client connections.
@@ -187,7 +193,7 @@ impl Default for GlobalTrinoConfig {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TlsSecretClass {
     pub secret_class: String,
@@ -360,7 +366,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", STACKABLE_CLIENT_TLS_DIR, "keystore.p12")),
+                        Some(format!("{}/{}", STACKABLE_SERVER_TLS_DIR, "keystore.p12")),
                     );
                     result.insert(
                         HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
@@ -368,7 +374,7 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", STACKABLE_CLIENT_TLS_DIR, "truststore.p12")),
+                        Some(format!("{}/{}", STACKABLE_SERVER_TLS_DIR, "truststore.p12")),
                     );
                     result.insert(
                         HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
