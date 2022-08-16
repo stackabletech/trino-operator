@@ -102,7 +102,7 @@ impl TrinoAuthenticationMethod {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TrinoAuthenticationConfig {
     MultiUser {
         user_credentials: BTreeMap<String, String>,
