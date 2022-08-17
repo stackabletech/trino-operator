@@ -40,15 +40,11 @@ def test_query(conn, query):
     cursor.execute(query)
 
 
-def test_query_failure(conn, query):
+def test_query_failure(conn, query, error):
     cursor = conn.cursor()
     try:
         cursor.execute(query)
-    # We expect SSLError due to wrong certificates
-    except requests.exceptions.SSLError:
-        pass
-    # We expect HttpError due to wrong credentials
-    except trino.exceptions.HttpError:
+    except error:
         pass
 
 
@@ -87,13 +83,13 @@ if __name__ == '__main__':
     # We expect these to fail
     if conf["useAuthentication"]:
         conn = get_authenticated_https_connection(coordinator_host, "admin", "admin", untrusted_ca)
-        test_query_failure(conn, query)
+        test_query_failure(conn, query, requests.exceptions.SSLError)
         conn = get_authenticated_https_connection(coordinator_host, "admin", "wrong_password", trusted_ca)
-        test_query_failure(conn, query)
+        test_query_failure(conn, query, trino.exceptions.HttpError)
         conn = get_authenticated_https_connection(coordinator_host, "wrong_user", "wrong_password", trusted_ca)
-        test_query_failure(conn, query)
+        test_query_failure(conn, query, trino.exceptions.HttpError)
     elif conf["useTls"]:
         conn = get_https_connection(coordinator_host, "admin", untrusted_ca)
-        test_query_failure(conn, query)
+        test_query_failure(conn, query, requests.exceptions.SSLError)
 
     print("All TLS tests finished successfully!")
