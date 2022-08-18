@@ -52,7 +52,7 @@ use stackable_trino_crd::{
     S3_SSL_ENABLED, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_CLIENT_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-    TLS_DEFAULT_SECRET_CLASS, USER_PASSWORD_DATA_DIR_NAME,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -979,7 +979,6 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
         })
     }
 
-    // We expose the HTTPS port if either authentication or client tls are enabled
     if trino.https_port_enabled() {
         ports.push(ContainerPort {
             name: Some(HTTPS_PORT_NAME.to_string()),
@@ -1029,13 +1028,10 @@ fn liveness_probe(trino: &TrinoCluster) -> Probe {
     }
 }
 
-fn create_tls_volume(volume_name: &str, tls_secret_class: Option<&TlsSecretClass>) -> Volume {
-    let secret_class_name = tls_secret_class
-        .map(|t| t.secret_class.as_str())
-        .unwrap_or(TLS_DEFAULT_SECRET_CLASS);
+fn create_tls_volume(volume_name: &str, tls_secret_class: &TlsSecretClass) -> Volume {
     VolumeBuilder::new(volume_name)
         .ephemeral(
-            SecretOperatorVolumeSourceBuilder::new(secret_class_name)
+            SecretOperatorVolumeSourceBuilder::new(&tls_secret_class.secret_class)
                 .with_pod_scope()
                 .with_node_scope()
                 .build(),
@@ -1050,13 +1046,10 @@ fn tls_volume_mounts(
     cb_trino: &mut ContainerBuilder,
     s3_connection: Option<&S3ConnectionSpec>,
 ) -> Result<()> {
-    if trino.tls_enabled() {
+    if let Some(client_tls) = trino.get_client_tls() {
         cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
         cb_trino.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume(
-            "server-tls-mount",
-            trino.get_client_tls(),
-        ));
+        pod_builder.add_volume(create_tls_volume("server-tls-mount", client_tls));
     }
 
     cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
@@ -1067,13 +1060,11 @@ fn tls_volume_mounts(
             .build(),
     );
 
-    if trino.get_internal_tls().is_some() {
+    if let Some(internal_tls) = trino.get_internal_tls() {
         cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
         cb_trino.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume(
-            "internal-tls-mount",
-            trino.get_internal_tls(),
-        ));
+        pod_builder.add_volume(create_tls_volume("internal-tls-mount", internal_tls));
+
         cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
         cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
         pod_builder.add_volume(
