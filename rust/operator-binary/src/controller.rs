@@ -934,23 +934,23 @@ fn get_random_base64() -> String {
 }
 
 fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
-    let mut ports = vec![
-        ServicePort {
+    let mut ports = vec![ServicePort {
+        name: Some(METRICS_PORT_NAME.to_string()),
+        port: METRICS_PORT.into(),
+        protocol: Some("TCP".to_string()),
+        ..ServicePort::default()
+    }];
+
+    if trino.http_port_enabled() {
+        ports.push(ServicePort {
             name: Some(HTTP_PORT_NAME.to_string()),
             port: HTTP_PORT.into(),
             protocol: Some("TCP".to_string()),
             ..ServicePort::default()
-        },
-        ServicePort {
-            name: Some(METRICS_PORT_NAME.to_string()),
-            port: METRICS_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ServicePort::default()
-        },
-    ];
+        });
+    }
 
-    // We expose the HTTPS port if either authentication or client tls are enabled
-    if trino.tls_enabled() {
+    if trino.https_port_enabled() {
         ports.push(ServicePort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             port: HTTPS_PORT.into(),
@@ -963,23 +963,24 @@ fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
 }
 
 fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
-    let mut ports = vec![
-        ContainerPort {
+    let mut ports = vec![ContainerPort {
+        name: Some(METRICS_PORT_NAME.to_string()),
+        container_port: METRICS_PORT.into(),
+        protocol: Some("TCP".to_string()),
+        ..ContainerPort::default()
+    }];
+
+    if trino.http_port_enabled() {
+        ports.push(ContainerPort {
             name: Some(HTTP_PORT_NAME.to_string()),
             container_port: HTTP_PORT.into(),
             protocol: Some("TCP".to_string()),
             ..ContainerPort::default()
-        },
-        ContainerPort {
-            name: Some(METRICS_PORT_NAME.to_string()),
-            container_port: METRICS_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ContainerPort::default()
-        },
-    ];
+        })
+    }
 
     // We expose the HTTPS port if either authentication or client tls are enabled
-    if trino.tls_enabled() {
+    if trino.https_port_enabled() {
         ports.push(ContainerPort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             container_port: HTTPS_PORT.into(),
@@ -992,7 +993,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
 }
 
 fn readiness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = if trino.tls_enabled() {
+    let port_name = if trino.https_port_enabled() {
         HTTPS_PORT_NAME
     } else {
         HTTP_PORT_NAME
@@ -1011,7 +1012,7 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
 }
 
 fn liveness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = if trino.tls_enabled() {
+    let port_name = if trino.https_port_enabled() {
         HTTPS_PORT_NAME
     } else {
         HTTP_PORT_NAME

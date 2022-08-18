@@ -313,6 +313,7 @@ impl Configuration for TrinoConfig {
         let mut result = BTreeMap::new();
         let authentication_enabled: bool = resource.get_authentication().is_some();
         let client_tls_enabled: bool = resource.get_client_tls().is_some();
+        let internal_tls_enabled: bool = resource.get_internal_tls().is_some();
 
         match file {
             NODE_PROPERTIES => {
@@ -342,31 +343,68 @@ impl Configuration for TrinoConfig {
                         Some(query_max_memory_per_node.to_string()),
                     );
                 }
+                // Always use the internal secret (base64)
+                result.insert(
+                    INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
+                    Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
+                );
 
                 // If authentication is enabled and client tls is explicitly deactivated we error out
+                // Therefore from here on we can use resource.get_client_tls() as the only source
+                // of truth when enabling client TLS.
                 if authentication_enabled && !client_tls_enabled {
                     return Err(ConfigError::InvalidConfiguration {
                         reason:
-                            "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. Please set 'tls.secretClass' or use the provided default value."
-                                .to_string(),
+                            "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
+                             Please set 'spec.config.tls.secretClass' or use the provided default value.".to_string(),
                     });
                 }
 
-                // If authentication is enabled
-                // - client TLS is required (default to "tls" if not provided)
-                // - internal shared secret must be set (if authentication is required)
-                if authentication_enabled || client_tls_enabled {
+                if authentication_enabled {
+                    // For Authentication we have to differentiate several options here:
+                    // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
+                    // - requires both internal secret and client TLS to be configured
+                    if role_name == TrinoRole::Coordinator.to_string() {
+                        // password ui login
+                        result.insert(
+                            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                            Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                        );
+                    }
+                }
+
+                if client_tls_enabled || internal_tls_enabled {
+                    // enable TLS
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
                         Some(true.to_string()),
                     );
+                    // via https port
                     result.insert(
                         HTTP_SERVER_HTTPS_PORT.to_string(),
                         Some(HTTPS_PORT.to_string()),
                     );
+
+                    let tls_store_dir = if client_tls_enabled {
+                        STACKABLE_SERVER_TLS_DIR
+                    } else {
+                        // allow insecure communication
+                        result.insert(
+                            HTTP_SERVER_AUTHENTICATION_ALLOW_INSECURE_OVER_HTTP.to_string(),
+                            Some("true".to_string()),
+                        );
+                        // via the http port
+                        result.insert(
+                            HTTP_SERVER_HTTP_PORT.to_string(),
+                            Some(HTTP_PORT.to_string()),
+                        );
+
+                        STACKABLE_INTERNAL_TLS_DIR
+                    };
+
                     result.insert(
                         HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", STACKABLE_SERVER_TLS_DIR, "keystore.p12")),
+                        Some(format!("{}/{}", tls_store_dir, "keystore.p12")),
                     );
                     result.insert(
                         HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
@@ -374,79 +412,15 @@ impl Configuration for TrinoConfig {
                     );
                     result.insert(
                         HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", STACKABLE_SERVER_TLS_DIR, "truststore.p12")),
+                        Some(format!("{}/{}", tls_store_dir, "truststore.p12")),
                     );
                     result.insert(
                         HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
                         Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
                     );
-
-                    if authentication_enabled {
-                        // Setting the internal secret is mandatory for authentication
-                        result.insert(
-                            INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                            Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
-                        );
-                        // For Authentication we have to differentiate several options here:
-                        // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
-                        // - requires both internal secret and client TLS to be configured
-                        if role_name == TrinoRole::Coordinator.to_string() {
-                            // password ui login
-                            result.insert(
-                                HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                                Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                            );
-                        }
-                    }
                 }
 
-                // If internal TLS is enabled
-                if resource.get_internal_tls().is_some() {
-                    if !authentication_enabled && !client_tls_enabled {
-                        // The first two properties (HTTPS_ENABLED, HTTPS_PORT) may be set above for client TLS. We only need to set
-                        // them here if client tls (and/or authentication) are not enabled.
-                        // In the case of only internal TLS is activated (meaning no authentication
-                        // and client TLS is set) we have to activate HTTPS (internal) and allow insecure
-                        // communications via HTTP (for clients).
-                        result.insert(
-                            HTTP_SERVER_HTTPS_ENABLED.to_string(),
-                            Some(true.to_string()),
-                        );
-                        result.insert(
-                            HTTP_SERVER_HTTPS_PORT.to_string(),
-                            Some(HTTPS_PORT.to_string()),
-                        );
-                        result.insert(
-                            HTTP_SERVER_AUTHENTICATION_ALLOW_INSECURE_OVER_HTTP.to_string(),
-                            Some("true".to_string()),
-                        );
-                        // additionally we have to set the https keystores (only if no
-                        // authentication or client tls is required! Trino complains otherwise
-                        // about wrong HTTPS configuration
-                        result.insert(
-                            HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                            Some(format!("{}/{}", STACKABLE_INTERNAL_TLS_DIR, "keystore.p12")),
-                        );
-                        result.insert(
-                            HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
-                            Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
-                        );
-                        result.insert(
-                            HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
-                            Some(format!(
-                                "{}/{}",
-                                STACKABLE_INTERNAL_TLS_DIR, "truststore.p12"
-                            )),
-                        );
-                        result.insert(
-                            HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
-                            Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
-                        );
-                    }
-                    result.insert(
-                        INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                        Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
-                    );
+                if internal_tls_enabled {
                     result.insert(
                         INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
                         Some(format!("{}/keystore.p12", STACKABLE_INTERNAL_TLS_DIR)),
@@ -596,6 +570,16 @@ impl TrinoCluster {
     pub fn get_internal_tls(&self) -> Option<&TlsSecretClass> {
         let spec: &TrinoClusterSpec = &self.spec;
         spec.config.internal_tls.as_ref()
+    }
+
+    /// Returns if the HTTP port should be enabled
+    pub fn http_port_enabled(&self) -> bool {
+        self.get_client_tls().is_none() && self.get_internal_tls().is_none()
+    }
+
+    /// Returns if the HTTPS port should be enabled
+    pub fn https_port_enabled(&self) -> bool {
+        self.get_client_tls().is_some() || self.get_internal_tls().is_some()
     }
 }
 
