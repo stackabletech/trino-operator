@@ -40,12 +40,15 @@ def test_query(conn, query):
     cursor.execute(query)
 
 
-def test_query_failure(conn, query, error):
+def test_query_failure(conn, query, expected_error, failure_message):
     cursor = conn.cursor()
     try:
         cursor.execute(query)
-    except error:
+    except expected_error:
         pass
+        return
+
+    raise Exception(failure_message)
 
 
 def read_json(config_path):
@@ -83,13 +86,13 @@ if __name__ == '__main__':
     # We expect these to fail
     if conf["useAuthentication"]:
         conn = get_authenticated_https_connection(coordinator_host, "admin", "admin", untrusted_ca)
-        test_query_failure(conn, query, requests.exceptions.SSLError)
+        test_query_failure(conn, query, requests.exceptions.SSLError, "Could connect with wrong certificate")
         conn = get_authenticated_https_connection(coordinator_host, "admin", "wrong_password", trusted_ca)
-        test_query_failure(conn, query, trino.exceptions.HttpError)
+        test_query_failure(conn, query, trino.exceptions.HttpError, "Could connect with wrong password")
         conn = get_authenticated_https_connection(coordinator_host, "wrong_user", "wrong_password", trusted_ca)
-        test_query_failure(conn, query, trino.exceptions.HttpError)
+        test_query_failure(conn, query, trino.exceptions.HttpError, "Could connect with wrong user and password")
     elif conf["useTls"]:
         conn = get_https_connection(coordinator_host, "admin", untrusted_ca)
-        test_query_failure(conn, query, requests.exceptions.SSLError)
+        test_query_failure(conn, query, requests.exceptions.SSLError, "Could connect with wrong certificate")
 
     print("All TLS tests finished successfully!")
