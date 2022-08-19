@@ -44,11 +44,9 @@ def test_query_failure(conn, query, expected_error, failure_message):
     cursor = conn.cursor()
     try:
         cursor.execute(query)
+        raise Exception(failure_message)
     except expected_error:
         pass
-        return
-
-    raise Exception(failure_message)
 
 
 def read_json(config_path):
