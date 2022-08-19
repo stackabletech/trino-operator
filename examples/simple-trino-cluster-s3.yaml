@@ -10,13 +10,13 @@
 # helm install minio \
 #     minio \
 #     --repo https://charts.bitnami.com/bitnami \
-#     --set auth.rootUser=minio-access-key \
-#     --set auth.rootPassword=minio-secret-key
+#     --set auth.rootUser=trino \
+#     --set auth.rootPassword=trinotrino
 ---
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: simple-s3-credentials-secret-class
+  name: simple-trino-s3-secret-class
 spec:
   backend:
     k8sSearch:
@@ -26,12 +26,23 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: simple-s3-credentials-secret
+  name: simple-trino-s3-secret
   labels:
-    secrets.stackable.tech/class: simple-s3-credentials-secret-class
+    secrets.stackable.tech/class: simple-trino-s3-secret-class
 stringData:
-  accessKey: minio-access-key
-  secretKey: minio-secret-key
+  accessKey: trino
+  secretKey: trinotrino
+---
+apiVersion: s3.stackable.tech/v1alpha1
+kind: S3Connection
+metadata:
+  name: s3-connection-spec
+spec:
+  host: minio
+  port: 9000
+  accessStyle: Path
+  credentials:
+    secretClass: simple-trino-s3-secret-class
 ---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
@@ -40,12 +51,7 @@ metadata:
 spec:
   version: 2.3.9-stackable0.4.0
   s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: simple-s3-credentials-secret-class
+    reference: s3-connection-spec
   metastore:
     roleGroups:
       default:
@@ -67,13 +73,9 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
-  s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: simple-s3-credentials-secret-class
+  config:
+    s3:
+      reference: s3-connection-spec
   coordinators:
     roleGroups:
       default:

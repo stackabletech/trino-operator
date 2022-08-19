@@ -31,7 +31,7 @@ impl TrinoDiscovery {
         }
     }
 
-    pub fn connection_string(&self) -> String {
+    pub fn discovery_uri(&self) -> String {
         format!(
             "{}://{}:{}",
             self.protocol,
@@ -55,11 +55,5 @@ impl TrinoDiscoveryProtocol {
             TrinoDiscoveryProtocol::Http => HTTP_PORT,
             TrinoDiscoveryProtocol::Https => HTTPS_PORT,
         }
-    }
-}
-
-impl Default for TrinoDiscoveryProtocol {
-    fn default() -> Self {
-        Self::Https
     }
 }

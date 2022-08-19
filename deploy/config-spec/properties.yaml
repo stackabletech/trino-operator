@@ -87,9 +87,9 @@ properties:
           value: "8080"
       roles:
         - name: "coordinator"
-          required: true
+          required: false
         - name: "worker"
-          required: true
+          required: false
       asOfVersion: "0.0.0"
 
   - property: &httpServerHttpsPort
@@ -107,6 +107,8 @@ properties:
           value: "8443"
       roles:
         - name: "coordinator"
+          required: false
+        - name: "worker"
           required: false
       asOfVersion: "0.0.0"
 
@@ -217,7 +219,7 @@ properties:
         - "INFO"
         - "DEBUG"
         - "WARN"
-        - "ERROR"          
+        - "ERROR"
       roles:
         - name: "coordinator"
           required: true
