@@ -1,0 +1,10 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+commands:
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-tls.py -n $NAMESPACE
+{% if test_scenario['values']['use-internal-tls'] == 'true' %}
+  - script: kubectl get -n $NAMESPACE configmap trino-coordinator-default -o yaml | grep "internal-communication.shared-secret"
+  - script: kubectl get -n $NAMESPACE configmap trino-coordinator-default -o yaml | grep "internal-communication.https.truststore.path"
+  - script: kubectl get -n $NAMESPACE configmap trino-coordinator-default -o yaml | grep "internal-communication.https.truststore.key"
+{% endif %}

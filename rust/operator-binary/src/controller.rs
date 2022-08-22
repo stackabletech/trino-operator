@@ -1,23 +1,27 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
+use crate::command;
+use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
-        PodSecurityContextBuilder, VolumeBuilder,
+        PodSecurityContextBuilder, SecretOperatorVolumeSourceBuilder, SecurityContextBuilder,
+        VolumeBuilder,
     },
     client::Client,
     commons::{
         opa::OpaApiVersion,
         s3::{S3AccessStyle, S3ConnectionDef, S3ConnectionSpec},
+        tls::{CaCert, TlsVerification},
     },
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                CSIVolumeSource, ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource,
-                ContainerPort, EnvVar, EnvVarSource, PersistentVolumeClaim,
-                PersistentVolumeClaimSpec, Probe, ResourceRequirements, Secret, SecretKeySelector,
-                SecurityContext, Service, ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource, ContainerPort, EnvVar,
+                EnvVarSource, PersistentVolumeClaim, PersistentVolumeClaimSpec, Probe,
+                ResourceRequirements, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
+                TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
@@ -27,8 +31,7 @@ use stackable_operator::{
     kube::{api::ObjectMeta, runtime::controller::Action, ResourceExt},
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
-    product_config,
-    product_config::{types::PropertyNameKind, ProductConfigManager},
+    product_config::{self, types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{
         transform_all_roles_to_config, validate_all_roles_and_groups_config,
         ValidatedRoleConfigByPropertyKind,
@@ -37,15 +40,19 @@ use stackable_operator::{
 };
 use stackable_trino_crd::{
     authentication,
-    authentication::TrinoAuthenticationConfig,
+    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationMethod},
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES,
-    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, INTERNAL_COMMUNICATION_SHARED_SECRET,
-    JVM_CONFIG, KEYSTORE_DIR_NAME, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
+    TlsSecretClass, TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
+    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_S3_ACCESS_KEY,
+    ENV_S3_SECRET_KEY, FIELD_MANAGER_SCOPE, HIVE_PROPERTIES, HTTPS_PORT, HTTPS_PORT_NAME,
+    HTTP_PORT, HTTP_PORT_NAME, JAVAX_NET_SSL_TRUSTSTORE, JAVAX_NET_SSL_TRUSTSTORE_PASSWORD,
+    JAVAX_NET_SSL_TRUSTSTORE_TYPE, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
     NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME,
     S3_ACCESS_KEY, S3_ENDPOINT, S3_PATH_STYLE_ACCESS, S3_SECRET_DIR_NAME, S3_SECRET_KEY,
-    S3_SSL_ENABLED, USER_PASSWORD_DATA_DIR_NAME,
+    S3_SSL_ENABLED, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_CLIENT_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -135,6 +142,8 @@ pub enum Error {
     InvalidS3Connection { reason: String },
     #[snafu(display("failed to parse trino product version"))]
     TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
+    #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
+    S3TlsNoVerificationNotSupported,
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -144,12 +153,6 @@ impl ReconcilerError for Error {
         ErrorDiscriminants::from(self).into()
     }
 }
-
-const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
-const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
-const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
-const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
-const INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 
 pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<Action> {
     tracing::info!("Starting reconcile");
@@ -162,7 +165,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let mut validated_config =
         validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
-    let s3_connection_def: &Option<S3ConnectionDef> = &trino.spec.s3;
+    let s3_connection_def: Option<&S3ConnectionDef> = trino.spec.s3.as_ref();
     let s3_connection_spec: Option<S3ConnectionSpec> = if let Some(s3) = s3_connection_def {
         Some(
             s3.resolve(client, trino.namespace().as_deref())
@@ -259,6 +262,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &rolegroup,
                 &config,
                 opa_connect_string.as_deref(),
+                s3_connection_spec.as_ref(),
             )?;
             let rg_catalog_configmap =
                 build_rolegroup_catalog_config_map(&trino, &rolegroup, &config)?;
@@ -348,12 +352,14 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     opa_connect_string: Option<&str>,
+    s3_connection: Option<&S3ConnectionSpec>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
-    let mut jvm_config = "-server
+    let mut jvm_config = formatdoc!(
+        "-server
         -Xmx16G
         -XX:-UseBiasedLocking
         -XX:+UseG1GC
@@ -367,7 +373,19 @@ fn build_rolegroup_config_map(
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
         -Djdk.nio.maxCachedBufferSize=2000000"
-        .to_string();
+    );
+
+    if s3_connection.is_some() {
+        let _ = write!(
+            jvm_config,
+            "{}",
+            formatdoc!(
+                "\n-D{JAVAX_NET_SSL_TRUSTSTORE}={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
+                 -D{JAVAX_NET_SSL_TRUSTSTORE_PASSWORD}={STACKABLE_TLS_STORE_PASSWORD}
+                 -D{JAVAX_NET_SSL_TRUSTSTORE_TYPE}=pkcs12"
+            )
+        );
+    }
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -384,18 +402,15 @@ fn build_rolegroup_config_map(
 
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
-                // TODO: make http / https configurable
-                let discovery = TrinoDiscovery::new(&coordinator_ref, TrinoDiscoveryProtocol::Http);
-                transformed_config.insert(
-                    DISCOVERY_URI.to_string(),
-                    Some(discovery.connection_string()),
-                );
+                let protocol = if trino.get_internal_tls().is_some() {
+                    TrinoDiscoveryProtocol::Https
+                } else {
+                    TrinoDiscoveryProtocol::Http
+                };
 
-                // Required from Trino 378 (accepted in 377)
-                transformed_config.insert(
-                    INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                    Some(format!("${{ENV:{secret}}}", secret = INTERNAL_SECRET)),
-                );
+                let discovery = TrinoDiscovery::new(&coordinator_ref, protocol);
+                transformed_config
+                    .insert(DISCOVERY_URI.to_string(), Some(discovery.discovery_uri()));
 
                 let config_properties =
                     product_config::writer::to_java_properties_string(transformed_config.iter())
@@ -549,7 +564,8 @@ fn build_rolegroup_statefulset(
     authentication_config: Option<TrinoAuthenticationConfig>,
     s3_connection: Option<&S3ConnectionSpec>,
 ) -> Result<StatefulSet> {
-    let mut container_builder = ContainerBuilder::new(APP_NAME);
+    let mut cb_trino = ContainerBuilder::new(APP_NAME);
+    let mut cb_prepare = ContainerBuilder::new("prepare");
     let mut pod_builder = PodBuilder::new();
 
     let rolegroup = role
@@ -580,57 +596,84 @@ fn build_rolegroup_statefulset(
     };
 
     let secret_name = build_shared_internal_secret_name(trino);
-    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), INTERNAL_SECRET) {
+    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), ENV_INTERNAL_SECRET) {
         env.push(internal_secret);
     };
 
-    // Add volume and volume mounts for s3 credentials
-    if let Some(S3ConnectionSpec {
-        credentials: Some(credentials),
-        ..
-    }) = s3_connection
-    {
-        pod_builder.add_volume(credentials.to_volume("s3-credentials"));
-        container_builder.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
-    }
+    // add volume mounts depending on the client tls, internal tls, authentication and s3 settings
+    tls_volume_mounts(
+        trino,
+        &mut pod_builder,
+        &mut cb_prepare,
+        &mut cb_trino,
+        s3_connection,
+    )?;
 
-    let mut container_prepare = ContainerBuilder::new("prepare")
+    let container_prepare = cb_prepare
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(container_prepare_args())
+        .args(command::container_prepare_args(trino, s3_connection))
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
-        .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
-        .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
+        .security_context(SecurityContextBuilder::run_as_root())
         .build();
 
-    container_prepare
-        .security_context
-        .get_or_insert_with(SecurityContext::default)
-        .run_as_user = Some(0);
-
-    let container_trino = container_builder
+    let container_trino = cb_trino
         .image(format!(
             "docker.stackable.tech/stackable/trino:{}",
             trino_image_version
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(container_trino_args(
+        .args(command::container_trino_args(
             trino,
-            authentication_config,
+            authentication_config.as_ref(),
             s3_connection,
         ))
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("config", CONFIG_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
-        .add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME)
-        .add_volume_mount("keystore", KEYSTORE_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
         .add_container_ports(container_ports(trino))
         .readiness_probe(readiness_probe(trino))
         .liveness_probe(liveness_probe(trino))
         .build();
+
+    pod_builder
+        .metadata_builder(|m| {
+            m.with_recommended_labels(
+                trino,
+                APP_NAME,
+                trino_image_version,
+                &rolegroup_ref.role,
+                &rolegroup_ref.role_group,
+            )
+        })
+        .add_init_container(container_prepare)
+        .add_container(container_trino)
+        .add_volume(Volume {
+            name: "config".to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: Some(rolegroup_ref.object_name()),
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        })
+        .add_volume(
+            VolumeBuilder::new("rwconfig")
+                .with_empty_dir(Some(""), None)
+                .build(),
+        )
+        .add_volume(Volume {
+            name: "catalog".to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: Some(format!("{}-catalog", rolegroup_ref.object_name())),
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        })
+        .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
+
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
@@ -662,55 +705,7 @@ fn build_rolegroup_statefulset(
                 ..LabelSelector::default()
             },
             service_name: rolegroup_ref.object_name(),
-            template: pod_builder
-                .metadata_builder(|m| {
-                    m.with_recommended_labels(
-                        trino,
-                        APP_NAME,
-                        trino_image_version,
-                        &rolegroup_ref.role,
-                        &rolegroup_ref.role_group,
-                    )
-                })
-                .add_init_container(container_prepare)
-                .add_container(container_trino)
-                .add_volume(Volume {
-                    name: "config".to_string(),
-                    config_map: Some(ConfigMapVolumeSource {
-                        name: Some(rolegroup_ref.object_name()),
-                        ..ConfigMapVolumeSource::default()
-                    }),
-                    ..Volume::default()
-                })
-                .add_volume(
-                    VolumeBuilder::new("rwconfig")
-                        .with_empty_dir(Some(""), None)
-                        .build(),
-                )
-                .add_volume(
-                    VolumeBuilder::new("users")
-                        .with_empty_dir(Some(""), None)
-                        .build(),
-                )
-                .add_volume(Volume {
-                    name: "catalog".to_string(),
-                    config_map: Some(ConfigMapVolumeSource {
-                        name: Some(format!("{}-catalog", rolegroup_ref.object_name())),
-                        ..ConfigMapVolumeSource::default()
-                    }),
-                    ..Volume::default()
-                })
-                .add_volume(Volume {
-                    name: "keystore".to_string(),
-                    csi: Some(CSIVolumeSource {
-                        driver: "secrets.stackable.tech".to_string(),
-                        volume_attributes: Some(get_stackable_secret_volume_attributes()),
-                        ..CSIVolumeSource::default()
-                    }),
-                    ..Volume::default()
-                })
-                .security_context(PodSecurityContextBuilder::new().fs_group(1000).build())
-                .build_template(),
+            template: pod_builder.build_template(),
             volume_claim_templates: Some(vec![PersistentVolumeClaim {
                 metadata: ObjectMeta {
                     name: Some("data".to_string()),
@@ -784,7 +779,7 @@ async fn user_authentication(
     trino: &TrinoCluster,
     client: &Client,
 ) -> Result<Option<TrinoAuthenticationConfig>> {
-    Ok(match &trino.spec.authentication {
+    Ok(match &trino.get_authentication() {
         Some(authentication) => Some(
             authentication
                 .method
@@ -800,121 +795,6 @@ async fn user_authentication(
         ),
         _ => None,
     })
-}
-
-fn container_prepare_args() -> Vec<String> {
-    vec![[
-        "echo Storing password",
-        &format!("echo secret > {keystore_directory}/password", keystore_directory = KEYSTORE_DIR_NAME),
-        "echo Cleaning up truststore - just in case",
-        &format!("rm -f {keystore_directory}/truststore.p12", keystore_directory = KEYSTORE_DIR_NAME),
-        "echo Creating truststore",
-        &format!("keytool -importcert -file {keystore_directory}/ca.crt -keystore {keystore_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias ca_cert -storepass secret",
-                 keystore_directory = KEYSTORE_DIR_NAME),
-        "echo Creating certificate chain",
-        &format!("cat {keystore_directory}/ca.crt {keystore_directory}/tls.crt > {keystore_directory}/chain.crt", keystore_directory = KEYSTORE_DIR_NAME),
-        "echo Creating keystore",
-        &format!("openssl pkcs12 -export -in {keystore_directory}/chain.crt -inkey {keystore_directory}/tls.key -out {keystore_directory}/keystore.p12 --passout file:{keystore_directory}/password",
-                 keystore_directory = KEYSTORE_DIR_NAME),
-        "echo Cleaning up password",
-        &format!("rm -f {keystore_directory}/password", keystore_directory = KEYSTORE_DIR_NAME),
-        "echo chowning keystore directory",
-        &format!("chown -R stackable:stackable {keystore_directory}", keystore_directory = KEYSTORE_DIR_NAME),
-        "echo chmodding keystore directory",
-        &format!("chmod -R a=,u=rwX {keystore_directory}", keystore_directory = KEYSTORE_DIR_NAME),
-        "echo chowning data directory",
-        &format!("chown -R stackable:stackable {data_directory}", data_directory = DATA_DIR_NAME),
-        "echo chmodding data directory",
-        &format!("chmod -R a=,u=rwX {data_directory}", data_directory = DATA_DIR_NAME),
-        "echo chowning rwconf directory",
-        &format!("chown -R stackable:stackable {rwconf_directory}", rwconf_directory = RW_CONFIG_DIR_NAME),
-        "echo chmodding rwconf directory",
-        &format!("chmod -R a=,u=rwX {rwconf_directory}", rwconf_directory = RW_CONFIG_DIR_NAME),
-        "echo chowning users directory",
-        &format!("chown -R stackable:stackable {users_directory}", users_directory = USER_PASSWORD_DATA_DIR_NAME),
-        "echo chmodding users directory",
-        &format!("chmod -R a=,u=rwX {users_directory}", users_directory = USER_PASSWORD_DATA_DIR_NAME),
-    ].join(" && ")]
-}
-
-fn container_trino_args(
-    trino: &TrinoCluster,
-    user_authentication: Option<TrinoAuthenticationConfig>,
-    s3_connection_spec: Option<&S3ConnectionSpec>,
-) -> Vec<String> {
-    let mut args = vec![
-        // copy config files to a writeable empty folder
-        format!(
-            "echo copying {conf} to {rw_conf}",
-            conf = CONFIG_DIR_NAME,
-            rw_conf = RW_CONFIG_DIR_NAME
-        ),
-        format!(
-            "cp -RL {conf}/* {rw_conf}",
-            conf = CONFIG_DIR_NAME,
-            rw_conf = RW_CONFIG_DIR_NAME
-        ),
-    ];
-
-    // We need to read the provided s3 credentials from the secret operator / secret class folder
-    // and export it to the required env variables in order for trino to pick them up
-    // out of the config via e.g. ${ENV:S3_ACCESS_KEY}.
-    if let Some(S3ConnectionSpec {
-        credentials: Some(_),
-        ..
-    }) = s3_connection_spec
-    {
-        args.extend(vec![
-            format!(
-                "export {env_var}=$(cat {secret_dir}/{file_name})",
-                env_var = ENV_S3_ACCESS_KEY,
-                secret_dir = S3_SECRET_DIR_NAME,
-                file_name = SECRET_KEY_S3_ACCESS_KEY
-            ),
-            format!(
-                "export {env_var}=$(cat {secret_dir}/{file_name})",
-                env_var = ENV_S3_SECRET_KEY,
-                secret_dir = S3_SECRET_DIR_NAME,
-                file_name = SECRET_KEY_S3_SECRET_KEY
-            ),
-        ]);
-    }
-
-    if let Some(auth) = user_authentication {
-        let user_data = auth.to_trino_user_data();
-        args.extend(vec![
-            format!(
-                "echo Writing user data to {path}/{db}",
-                path = USER_PASSWORD_DATA_DIR_NAME,
-                db = PASSWORD_DB
-            ),
-            format!(
-                "echo '{data}' > {path}/{db} ",
-                data = user_data,
-                path = USER_PASSWORD_DATA_DIR_NAME,
-                db = PASSWORD_DB
-            ),
-        ])
-    }
-    // hive required?
-    if trino.spec.hive_config_map_name.is_some() {
-        args.extend(vec![
-            format!( "echo Writing HIVE connect string \"hive.metastore.uri=${{HIVE}}\" to {rw_conf}/catalog/{hive_properties}",
-                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
-            ),
-            format!( "echo \"hive.metastore.uri=${{HIVE}}\" >> {rw_conf}/catalog/{hive_properties}",
-                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
-            )])
-    }
-
-    // start command
-    args.push(format!(
-        "bin/launcher run --etc-dir={conf} --data-dir={data}",
-        conf = RW_CONFIG_DIR_NAME,
-        data = DATA_DIR_NAME
-    ));
-
-    vec![args.join(" && ")]
 }
 
 fn env_var_from_discovery_config_map(
@@ -960,7 +840,7 @@ fn env_var_from_secret(secret_name: &Option<String>, env_var: &str) -> Option<En
 /// * `product_config`  - The product config to validate and complement the user config.
 ///
 fn validated_product_config(
-    resource: &TrinoCluster,
+    trino: &TrinoCluster,
     version: &str,
     product_config: &ProductConfigManager,
 ) -> Result<ValidatedRoleConfigByPropertyKind, Error> {
@@ -972,19 +852,14 @@ fn validated_product_config(
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+        PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
     ];
 
     roles.insert(
         TrinoRole::Coordinator.to_string(),
         (
-            [
-                config_files.clone(),
-                vec![PropertyNameKind::File(
-                    PASSWORD_AUTHENTICATOR_PROPERTIES.to_string(),
-                )],
-            ]
-            .concat(),
-            resource
+            config_files.clone(),
+            trino
                 .spec
                 .coordinators
                 .clone()
@@ -998,7 +873,7 @@ fn validated_product_config(
         TrinoRole::Worker.to_string(),
         (
             config_files,
-            resource
+            trino
                 .spec
                 .workers
                 .clone()
@@ -1009,7 +884,7 @@ fn validated_product_config(
     );
 
     let role_config =
-        transform_all_roles_to_config(resource, roles).context(ProductConfigTransformSnafu)?;
+        transform_all_roles_to_config(trino, roles).context(ProductConfigTransformSnafu)?;
 
     validate_all_roles_and_groups_config(version, &role_config, product_config, false, false)
         .context(InvalidProductConfigSnafu)
@@ -1033,7 +908,7 @@ async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) ->
 
 fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
     let mut internal_secret = BTreeMap::new();
-    internal_secret.insert(INTERNAL_SECRET.to_string(), get_random_base64());
+    internal_secret.insert(ENV_INTERNAL_SECRET.to_string(), get_random_base64());
 
     Ok(Secret {
         immutable: Some(true),
@@ -1059,22 +934,23 @@ fn get_random_base64() -> String {
 }
 
 fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
-    let mut ports = vec![
-        ServicePort {
+    let mut ports = vec![ServicePort {
+        name: Some(METRICS_PORT_NAME.to_string()),
+        port: METRICS_PORT.into(),
+        protocol: Some("TCP".to_string()),
+        ..ServicePort::default()
+    }];
+
+    if trino.http_port_enabled() {
+        ports.push(ServicePort {
             name: Some(HTTP_PORT_NAME.to_string()),
             port: HTTP_PORT.into(),
             protocol: Some("TCP".to_string()),
             ..ServicePort::default()
-        },
-        ServicePort {
-            name: Some(METRICS_PORT_NAME.to_string()),
-            port: METRICS_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ServicePort::default()
-        },
-    ];
+        });
+    }
 
-    if trino.spec.authentication.is_some() {
+    if trino.https_port_enabled() {
         ports.push(ServicePort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             port: HTTPS_PORT.into(),
@@ -1087,22 +963,23 @@ fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
 }
 
 fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
-    let mut ports = vec![
-        ContainerPort {
+    let mut ports = vec![ContainerPort {
+        name: Some(METRICS_PORT_NAME.to_string()),
+        container_port: METRICS_PORT.into(),
+        protocol: Some("TCP".to_string()),
+        ..ContainerPort::default()
+    }];
+
+    if trino.http_port_enabled() {
+        ports.push(ContainerPort {
             name: Some(HTTP_PORT_NAME.to_string()),
             container_port: HTTP_PORT.into(),
             protocol: Some("TCP".to_string()),
             ..ContainerPort::default()
-        },
-        ContainerPort {
-            name: Some(METRICS_PORT_NAME.to_string()),
-            container_port: METRICS_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ContainerPort::default()
-        },
-    ];
+        })
+    }
 
-    if trino.spec.authentication.is_some() {
+    if trino.https_port_enabled() {
         ports.push(ContainerPort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             container_port: HTTPS_PORT.into(),
@@ -1114,23 +991,11 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
     ports
 }
 
-fn get_stackable_secret_volume_attributes() -> BTreeMap<String, String> {
-    let mut result = BTreeMap::new();
-    result.insert(
-        "secrets.stackable.tech/class".to_string(),
-        "tls".to_string(),
-    );
-    result.insert(
-        "secrets.stackable.tech/scope".to_string(),
-        "node,pod".to_string(),
-    );
-    result
-}
-
 fn readiness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = match trino.spec.authentication {
-        Some(_) => HTTPS_PORT_NAME,
-        _ => HTTP_PORT_NAME,
+    let port_name = if trino.https_port_enabled() {
+        HTTPS_PORT_NAME
+    } else {
+        HTTP_PORT_NAME
     };
 
     Probe {
@@ -1146,9 +1011,10 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
 }
 
 fn liveness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = match trino.spec.authentication {
-        Some(_) => HTTPS_PORT_NAME,
-        _ => HTTP_PORT_NAME,
+    let port_name = if trino.https_port_enabled() {
+        HTTPS_PORT_NAME
+    } else {
+        HTTP_PORT_NAME
     };
 
     Probe {
@@ -1160,4 +1026,107 @@ fn liveness_probe(trino: &TrinoCluster) -> Probe {
         }),
         ..Probe::default()
     }
+}
+
+fn create_tls_volume(volume_name: &str, tls_secret_class: &TlsSecretClass) -> Volume {
+    VolumeBuilder::new(volume_name)
+        .ephemeral(
+            SecretOperatorVolumeSourceBuilder::new(&tls_secret_class.secret_class)
+                .with_pod_scope()
+                .with_node_scope()
+                .build(),
+        )
+        .build()
+}
+
+fn tls_volume_mounts(
+    trino: &TrinoCluster,
+    pod_builder: &mut PodBuilder,
+    cb_prepare: &mut ContainerBuilder,
+    cb_trino: &mut ContainerBuilder,
+    s3_connection: Option<&S3ConnectionSpec>,
+) -> Result<()> {
+    if let Some(client_tls) = trino.get_client_tls() {
+        cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
+        cb_trino.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
+        pod_builder.add_volume(create_tls_volume("server-tls-mount", client_tls));
+    }
+
+    cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
+    cb_trino.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
+    pod_builder.add_volume(
+        VolumeBuilder::new("server-tls")
+            .with_empty_dir(Some(""), None)
+            .build(),
+    );
+
+    if let Some(internal_tls) = trino.get_internal_tls() {
+        cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
+        cb_trino.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
+        pod_builder.add_volume(create_tls_volume("internal-tls-mount", internal_tls));
+
+        cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
+        cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
+        pod_builder.add_volume(
+            VolumeBuilder::new("internal-tls")
+                .with_empty_dir(Some(""), None)
+                .build(),
+        );
+    }
+
+    // If authentication is required (tls already activated) add volume mount for user pw database
+    if let Some(auth) = trino.get_authentication() {
+        match auth.method {
+            TrinoAuthenticationMethod::MultiUser { .. } => {
+                cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
+                cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
+                pod_builder.add_volume(
+                    VolumeBuilder::new("users")
+                        .with_empty_dir(Some(""), None)
+                        .build(),
+                );
+            }
+        }
+    }
+
+    if let Some(s3_conn) = s3_connection {
+        // Add volume and volume mounts for S3 credentials
+        if let Some(credentials) = &s3_conn.credentials {
+            pod_builder.add_volume(credentials.to_volume("s3-credentials"));
+            cb_trino.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
+        }
+        // Handle S3 TLS
+        if let Some(tls) = &s3_conn.tls {
+            match &tls.verification {
+                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
+                TlsVerification::Server(server_verification) => {
+                    match &server_verification.ca_cert {
+                        CaCert::WebPki {} => {}
+                        CaCert::SecretClass(secret_class) => {
+                            let volume = VolumeBuilder::new(secret_class)
+                                .ephemeral(
+                                    SecretOperatorVolumeSourceBuilder::new(secret_class).build(),
+                                )
+                                .build();
+
+                            cb_prepare
+                                .add_volume_mount(secret_class, STACKABLE_MOUNT_CLIENT_TLS_DIR);
+                            cb_trino.add_volume_mount(secret_class, STACKABLE_MOUNT_CLIENT_TLS_DIR);
+                            pod_builder.add_volume(volume);
+
+                            cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+                            cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+                            pod_builder.add_volume(
+                                VolumeBuilder::new("client-tls")
+                                    .with_empty_dir(Some(""), None)
+                                    .build(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
 }

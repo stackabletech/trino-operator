@@ -1,7 +1,235 @@
 ---
 apiVersion: v1
 data:
-  properties.yaml: "version: 0.1.0\nspec:\n  units:\n    - unit: &unitNodeEnvironment\n        name: \"node_environment\"\n        regex: \"^[a-z][a-z0-9_]*[a-z0-9]$\"\n        examples:\n          - \"a1_2_3b\"\n    - unit: &unitMemory\n        name: \"memory\"\n        regex: \"(^\\\\p{N}+)(?:\\\\s*)((?:b|k|m|g|t|p|kb|mb|gb|tb|pb|B|K|M|G|T|P|KB|MB|GB|TB|PB)\\\\b$)\"\n        examples:\n          - \"1024b\"\n          - \"1024kb\"\n          - \"500m\"\n          - \"1g\"\n\n###################################################################################################\n# node.properties\n###################################################################################################\nproperties:\n  - property: &nodeEnvironment\n      propertyNames:\n        - name: \"node.environment\"\n          kind:\n            type: \"file\"\n            file: \"node.properties\"\n      datatype:\n        type: \"string\"\n        unit: *unitNodeEnvironment\n      roles:\n        - name: \"coordinator\"\n          required: true\n        - name: \"worker\"\n          required: true\n      asOfVersion: \"0.0.0\"\n\n###################################################################################################\n# config.properties\n###################################################################################################\n  - property: &coordinator\n      propertyNames:\n        - name: \"coordinator\"\n          kind:\n            type: \"file\"\n            file: \"config.properties\"\n      datatype:\n        type: \"bool\"\n      defaultValues:\n        - fromVersion: \"0.0.0\"\n          value: \"false\"\n      roles:\n        - name: \"coordinator\"\n          required: true\n        - name: \"worker\"\n          required: true\n      asOfVersion: \"0.0.0\"\n\n  - property: &nodeSchedulerIncludeCoordinator\n      propertyNames:\n        - name: \"node-scheduler.include-coordinator\"\n          kind:\n            type: \"file\"\n            file: \"config.properties\"\n      datatype:\n        type: \"bool\"\n      defaultValues:\n        - fromVersion: \"0.0.0\"\n          value: \"false\"\n      roles:\n        - name: \"coordinator\"\n          required: true\n      asOfVersion: \"0.0.0\"\n\n  - property: &httpServerHttpPort\n      propertyNames:\n        - name: \"http-server.http.port\"\n          kind:\n            type: \"file\"\n            file: \"config.properties\"\n      datatype:\n        type: \"integer\"\n        min: \"1024\"\n        max: \"65535\"\n      defaultValues:\n        - fromVersion: \"0.0.0\"\n          value: \"8080\"\n      roles:\n        - name: \"coordinator\"\n          required: true\n        - name: \"worker\"\n          required: true\n      asOfVersion: \"0.0.0\"\n\n  - property: &httpServerHttpsPort\n      propertyNames:\n        - name: \"http-server.https.port\"\n          kind:\n            type: \"file\"\n            file: \"config.properties\"\n      datatype:\n        type: \"integer\"\n        min: \"1024\"\n        max: \"65535\"\n      defaultValues:\n        - fromVersion: \"0.0.0\"\n          value: \"8443\"\n      roles:\n        - name: \"coordinator\"\n          required: false\n      asOfVersion: \"0.0.0\"\n\n  - property: &queryMaxMemory\n      propertyNames:\n        - name: \"query.max-memory\"\n          kind:\n            type: \"file\"\n            file: \"config.properties\"\n      datatype:\n        type: \"string\"\n        unit: *unitMemory\n      defaultValues:\n        - fromVersion: \"0.0.0\"\n          value: \"50GB\"\n      roles:\n        - name: \"coordinator\"\n          required: true\n        - name: \"worker\"\n          required: true\n      asOfVersion: \"0.0.0\"\n\n  - property: &queryMaxMemoryPerNode\n      propertyNames:\n        - name: \"query.max-memory-per-node\"\n          kind:\n            type: \"file\"\n            file: \"config.properties\"\n      datatype:\n        type: \"string\"\n        unit: *unitMemory\n      defaultValues:\n        - fromVersion: \"0.0.0\"\n          value: \"1GB\"\n      roles:\n        - name: \"coordinator\"\n          required: true\n        - name: \"worker\"\n          required: true\n      asOfVersion: \"0.0.0\"\n\n  - property: &httpServerAuthenticationType\n      propertyNames:\n        - name: \"http-server.authentication.type\"\n          kind:\n            type: \"file\"\n            file: \"config.properties\"\n      datatype:\n        type: \"string\"\n      roles:\n        - name: \"coordinator\"\n          required: false\n      asOfVersion: \"0.0.0\"\n\n###################################################################################################\n# password-authenticator.properties\n###################################################################################################\n\n  - property: &passwordAuthenticatorName\n      propertyNames:\n        - name: \"password-authenticator.name\"\n          kind:\n            type: \"file\"\n            file: \"password-authenticator.properties\"\n      datatype:\n        type: \"string\"\n      allowedValues:\n        - \"file\"\n      roles:\n        - name: \"coordinator\"\n          required: false\n      asOfVersion: \"0.0.0\"\n\n  - property: &passwordAuthenticatorName\n      propertyNames:\n        - name: \"file.password-file\"\n          kind:\n            type: \"file\"\n            file: \"password-authenticator.properties\"\n      datatype:\n        type: \"string\"\n      roles:\n        - name: \"coordinator\"\n          required: false\n      asOfVersion: \"0.0.0\"\n\n\n###################################################################################################\n# jvm.config\n###################################################################################################\n\n###################################################################################################\n# log.properties\n###################################################################################################\n\n  - property: &ioTrino\n      propertyNames:\n        - name: \"io.trino\"\n          kind:\n            type: \"file\"\n            file: \"log.properties\"\n      datatype:\n        type: \"string\"\n      defaultValues:\n        - fromVersion: \"0.0.0\"\n          value: \"INFO\"\n      allowedValues:\n        - \"INFO\"\n        - \"DEBUG\"\n        - \"WARN\"\n        - \"ERROR\"          \n      roles:\n        - name: \"coordinator\"\n          required: true\n        - name: \"worker\"\n          required: true\n      asOfVersion: \"0.0.0\"\n"
+  properties.yaml: |
+    version: 0.1.0
+    spec:
+      units:
+        - unit: &unitNodeEnvironment
+            name: "node_environment"
+            regex: "^[a-z][a-z0-9_]*[a-z0-9]$"
+            examples:
+              - "a1_2_3b"
+        - unit: &unitMemory
+            name: "memory"
+            regex: "(^\\p{N}+)(?:\\s*)((?:b|k|m|g|t|p|kb|mb|gb|tb|pb|B|K|M|G|T|P|KB|MB|GB|TB|PB)\\b$)"
+            examples:
+              - "1024b"
+              - "1024kb"
+              - "500m"
+              - "1g"
+
+    ###################################################################################################
+    # node.properties
+    ###################################################################################################
+    properties:
+      - property: &nodeEnvironment
+          propertyNames:
+            - name: "node.environment"
+              kind:
+                type: "file"
+                file: "node.properties"
+          datatype:
+            type: "string"
+            unit: *unitNodeEnvironment
+          roles:
+            - name: "coordinator"
+              required: true
+            - name: "worker"
+              required: true
+          asOfVersion: "0.0.0"
+
+    ###################################################################################################
+    # config.properties
+    ###################################################################################################
+      - property: &coordinator
+          propertyNames:
+            - name: "coordinator"
+              kind:
+                type: "file"
+                file: "config.properties"
+          datatype:
+            type: "bool"
+          defaultValues:
+            - fromVersion: "0.0.0"
+              value: "false"
+          roles:
+            - name: "coordinator"
+              required: true
+            - name: "worker"
+              required: true
+          asOfVersion: "0.0.0"
+
+      - property: &nodeSchedulerIncludeCoordinator
+          propertyNames:
+            - name: "node-scheduler.include-coordinator"
+              kind:
+                type: "file"
+                file: "config.properties"
+          datatype:
+            type: "bool"
+          defaultValues:
+            - fromVersion: "0.0.0"
+              value: "false"
+          roles:
+            - name: "coordinator"
+              required: true
+          asOfVersion: "0.0.0"
+
+      - property: &httpServerHttpPort
+          propertyNames:
+            - name: "http-server.http.port"
+              kind:
+                type: "file"
+                file: "config.properties"
+          datatype:
+            type: "integer"
+            min: "1024"
+            max: "65535"
+          defaultValues:
+            - fromVersion: "0.0.0"
+              value: "8080"
+          roles:
+            - name: "coordinator"
+              required: false
+            - name: "worker"
+              required: false
+          asOfVersion: "0.0.0"
+
+      - property: &httpServerHttpsPort
+          propertyNames:
+            - name: "http-server.https.port"
+              kind:
+                type: "file"
+                file: "config.properties"
+          datatype:
+            type: "integer"
+            min: "1024"
+            max: "65535"
+          defaultValues:
+            - fromVersion: "0.0.0"
+              value: "8443"
+          roles:
+            - name: "coordinator"
+              required: false
+            - name: "worker"
+              required: false
+          asOfVersion: "0.0.0"
+
+      - property: &queryMaxMemory
+          propertyNames:
+            - name: "query.max-memory"
+              kind:
+                type: "file"
+                file: "config.properties"
+          datatype:
+            type: "string"
+            unit: *unitMemory
+          defaultValues:
+            - fromVersion: "0.0.0"
+              value: "50GB"
+          roles:
+            - name: "coordinator"
+              required: true
+            - name: "worker"
+              required: true
+          asOfVersion: "0.0.0"
+
+      - property: &queryMaxMemoryPerNode
+          propertyNames:
+            - name: "query.max-memory-per-node"
+              kind:
+                type: "file"
+                file: "config.properties"
+          datatype:
+            type: "string"
+            unit: *unitMemory
+          defaultValues:
+            - fromVersion: "0.0.0"
+              value: "1GB"
+          roles:
+            - name: "coordinator"
+              required: true
+            - name: "worker"
+              required: true
+          asOfVersion: "0.0.0"
+
+      - property: &httpServerAuthenticationType
+          propertyNames:
+            - name: "http-server.authentication.type"
+              kind:
+                type: "file"
+                file: "config.properties"
+          datatype:
+            type: "string"
+          roles:
+            - name: "coordinator"
+              required: false
+          asOfVersion: "0.0.0"
+
+    ###################################################################################################
+    # password-authenticator.properties
+    ###################################################################################################
+
+      - property: &passwordAuthenticatorName
+          propertyNames:
+            - name: "password-authenticator.name"
+              kind:
+                type: "file"
+                file: "password-authenticator.properties"
+          datatype:
+            type: "string"
+          allowedValues:
+            - "file"
+          roles:
+            - name: "coordinator"
+              required: false
+          asOfVersion: "0.0.0"
+
+      - property: &passwordAuthenticatorName
+          propertyNames:
+            - name: "file.password-file"
+              kind:
+                type: "file"
+                file: "password-authenticator.properties"
+          datatype:
+            type: "string"
+          roles:
+            - name: "coordinator"
+              required: false
+          asOfVersion: "0.0.0"
+
+
+    ###################################################################################################
+    # jvm.config
+    ###################################################################################################
+
+    ###################################################################################################
+    # log.properties
+    ###################################################################################################
+
+      - property: &ioTrino
+          propertyNames:
+            - name: "io.trino"
+              kind:
+                type: "file"
+                file: "log.properties"
+          datatype:
+            type: "string"
+          defaultValues:
+            - fromVersion: "0.0.0"
+              value: "INFO"
+          allowedValues:
+            - "INFO"
+            - "DEBUG"
+            - "WARN"
+            - "ERROR"
+          roles:
+            - name: "coordinator"
+              required: true
+            - name: "worker"
+              required: true
+          asOfVersion: "0.0.0"
 kind: ConfigMap
 metadata:
   name: trino-operator-configmap

@@ -6,7 +6,6 @@ dimensions:
       - 387-stackable0.1.0
   - name: hive
     values:
-      - 2.3.9-stackable0.4.0
       - 2.3.9-stackable0.5.0
       - 3.1.3-stackable0.1.0
   - name: opa
@@ -15,7 +14,19 @@ dimensions:
       - 0.41.0-stackable0.1.0
   - name: s3-use-tls
     values:
-      # - "true" Not supported yet
+      - "true"
+      - "false"
+  - name: use-authentication
+    values:
+      - "true"
+      - "false"
+  - name: use-tls
+    values:
+      - "true"
+      - "false"
+  - name: use-internal-tls
+    values:
+      - "true"
       - "false"
 tests:
   - name: smoke
@@ -24,3 +35,9 @@ tests:
       - hive
       - opa
       - s3-use-tls
+  - name: tls
+    dimensions:
+      - trino
+      - use-authentication
+      - use-tls
+      - use-internal-tls
