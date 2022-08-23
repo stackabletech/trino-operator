@@ -59,3 +59,54 @@ kubectl rollout status --watch statefulset/simple-trino-worker-default
 # end::watch-trino-rollout[]
 
 sleep 5
+
+echo "Starting port-forwarding of coordinator port 8443"
+# tag::port-forwarding[]
+kubectl port-forward svc/simple-trino-coordinator 8443 2>&1 >/dev/null &
+# end::port-forwarding[]
+PORT_FORWARD_PID=$!
+trap "kill $PORT_FORWARD_PID" EXIT
+
+sleep 5
+
+echo "Start testing Trino"
+echo "Downloading Trino CLI tool as trino.jar"
+# tag::download-trino-cli[]
+curl -k --output trino.jar https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-387-executable.jar
+# end::download-trino-cli[]
+
+echo "Run chmod +x for trino.jar"
+# tag::chmod-trino-cli[]
+chmod +x trino.jar
+# end::chmod-trino-cli[]
+
+echo "Retrieve catalogs"
+# tag::retrieve-trino-catalogs[]
+./trino.jar --insecure --output-format=CSV_UNQUOTED --server https://localhost:8443 --user admin --execute "SHOW CATALOGS"
+# end::retrieve-trino-catalogs[]
+
+# for testing
+catalogs=$(./trino.jar --insecure --output-format=CSV_UNQUOTED --server https://localhost:8443 --user admin --execute "SHOW CATALOGS" 2>/dev/null)
+if [ "$catalogs" != "system" ]; then
+  echo "Received $catalogs as catalogs. Expected 'system'"
+  exit 1
+fi
+
+echo "Retrieve amount of worker(s)"
+# tag::retrieve-trino-workers[]
+./trino.jar --insecure --output-format=CSV_UNQUOTED --server https://localhost:8443 --user admin --execute "SELECT COUNT(*) as nodes FROM system.runtime.nodes WHERE coordinator=false AND state='active'"
+# end::retrieve-trino-workers[]
+
+# for testing
+nodes=$(./trino.jar --insecure --output-format=CSV_UNQUOTED --server https://localhost:8443 --user admin --execute "SELECT COUNT(*) as nodes FROM system.runtime.nodes WHERE coordinator=false AND state='active'" 2>/dev/null)
+if [ "$nodes" != "1" ]; then
+  echo "Received $nodes workers(s). Expected 1."
+  exit 1
+fi
+
+# cleanup
+# tag::cleanup-trino-cli[]
+rm trino.jar
+# end::cleanup-trino-cli[]
+
+echo "All tests finished successfully!"
