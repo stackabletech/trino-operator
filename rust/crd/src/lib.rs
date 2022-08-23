@@ -74,10 +74,6 @@ pub const FILE_PASSWORD_FILE: &str = "file.password-file";
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
 pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
-// client tls
-pub const JAVAX_NET_SSL_TRUSTSTORE: &str = "javax.net.ssl.trustStore";
-pub const JAVAX_NET_SSL_TRUSTSTORE_PASSWORD: &str = "javax.net.ssl.trustStorePassword";
-pub const JAVAX_NET_SSL_TRUSTSTORE_TYPE: &str = "javax.net.ssl.trustStoreType";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";

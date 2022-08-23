@@ -4,16 +4,23 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::{SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder},
     client::Client,
-    commons::s3::S3AccessStyle,
+    commons::{
+        s3::S3AccessStyle,
+        tls::{CaCert, TlsServerVerification, TlsVerification},
+    },
     k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, Volume, VolumeMount},
     kube::ResourceExt,
 };
 use stackable_trino_crd::{
-    CONFIG_DIR_NAME, RW_CONFIG_DIR_NAME,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_MOUNT_CLIENT_TLS_DIR,
     {catalog::TrinoCatalog, S3_SECRET_DIR_NAME},
 };
 
-use self::from_trino_catalog_error::ResolveS3ConnectionDefSnafu;
+use crate::command;
+
+use self::from_trino_catalog_error::{
+    ResolveS3ConnectionDefSnafu, S3TlsNoVerificationNotSupportedSnafu,
+};
 
 pub struct CatalogConfig {
     /// Name of the catalog
@@ -26,6 +33,8 @@ pub struct CatalogConfig {
     /// The value will be read from the file specified.
     /// You can think of it like `export <key>=$(cat <value>)`
     pub load_env_from_files: BTreeMap<String, String>,
+    // Additional commands that needs to be executed before starting Trino
+    pub init_container_extra_start_commands: Vec<String>,
     /// Volumes that need to be added to the pod (e.g. for S3 credentials)
     pub volumes: Vec<Volume>,
     /// Volume mounts that need to be added to the Trino container (e.g. for S3 credentials)
@@ -96,6 +105,7 @@ impl CatalogConfig {
             properties: BTreeMap::new(),
             env_bindings: Vec::new(),
             load_env_from_files: BTreeMap::new(),
+            init_container_extra_start_commands: Vec::new(),
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
         };
@@ -124,10 +134,10 @@ impl CatalogConfig {
                     if let Some(endpoint) = s3.endpoint() {
                         config.add_property("hive.s3.endpoint", endpoint)
                     }
-                    config.add_property("hive.s3.ssl.enabled", s3.tls.is_some().to_string());
                     if let Some(S3AccessStyle::Path) = s3.access_style {
                         config.add_property("hive.s3.path-style-access", true.to_string())
                     }
+
                     if let Some(credentials) = s3.credentials {
                         let secret_class = credentials.secret_class;
                         let secret_folder = format!("{S3_SECRET_DIR_NAME}/{secret_class}");
@@ -152,15 +162,55 @@ impl CatalogConfig {
                         );
                     }
 
-                    // TODO: Handle TLS settings (related to https://github.com/stackabletech/trino-operator/pull/244)
+                    config.add_property("hive.s3.ssl.enabled", s3.tls.is_some().to_string());
+                    if let Some(tls) = s3.tls {
+                        match &tls.verification {
+                            TlsVerification::None {} => {
+                                return S3TlsNoVerificationNotSupportedSnafu.fail()
+                            }
+                            TlsVerification::Server(TlsServerVerification {
+                                ca_cert: CaCert::WebPki {},
+                            }) => {}
+                            TlsVerification::Server(TlsServerVerification {
+                                ca_cert: CaCert::SecretClass(secret_class),
+                            }) => {
+                                // Add needed ca-cert secretclass mount
+                                let volume_name = format!("{secret_class}-ca-cert");
+                                config.volumes.push(
+                                    VolumeBuilder::new(&volume_name)
+                                        .ephemeral(
+                                            SecretOperatorVolumeSourceBuilder::new(secret_class)
+                                                .build(),
+                                        )
+                                        .build(),
+                                );
+                                config.volume_mounts.push(
+                                    VolumeMountBuilder::new(
+                                        &volume_name,
+                                        STACKABLE_MOUNT_CLIENT_TLS_DIR,
+                                    )
+                                    .build(),
+                                );
+
+                                // Copy the ca.crt from the ca-cert secretclass into truststore for external services
+                                config.init_container_extra_start_commands.extend(
+                                    command::add_cert_to_stackable_truststore(
+                                        format!("{STACKABLE_MOUNT_CLIENT_TLS_DIR}/ca.crt").as_str(),
+                                        STACKABLE_CLIENT_TLS_DIR,
+                                        &volume_name,
+                                    ),
+                                );
+                            }
+                        }
+                    }
                 }
 
                 if let Some(hdfs) = &hive.hdfs {
+                    let hdfs_site_dir =
+                        format!("{RW_CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
                     config.add_property(
                         "hive.config.resources",
-                        format!(
-                            "{RW_CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config/hdfs-site.xml"
-                        ),
+                        format!("{hdfs_site_dir}/hdfs-site.xml"),
                     );
 
                     let volume_name = format!("{catalog_name}-hdfs");
@@ -169,13 +219,9 @@ impl CatalogConfig {
                             .with_config_map(&hdfs.config_map)
                             .build(),
                     );
-                    config.volume_mounts.push(
-                        VolumeMountBuilder::new(
-                            &volume_name,
-                            format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config"),
-                        )
-                        .build(),
-                    );
+                    config
+                        .volume_mounts
+                        .push(VolumeMountBuilder::new(&volume_name, &hdfs_site_dir).build());
                 }
             }
         }
@@ -192,4 +238,6 @@ pub enum FromTrinoCatalogError {
     ResolveS3ConnectionDef {
         source: stackable_operator::error::Error,
     },
+    #[snafu(display("Trino does not support disabling the TLS verification of S3 servers"))]
+    S3TlsNoVerificationNotSupported,
 }

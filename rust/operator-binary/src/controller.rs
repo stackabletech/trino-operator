@@ -17,10 +17,10 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapKeySelector, ConfigMapVolumeSource, ContainerPort, EnvVar,
-                EnvVarSource, PersistentVolumeClaim, PersistentVolumeClaimSpec, Probe,
-                ResourceRequirements, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
-                TCPSocketAction, Volume,
+                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource,
+                PersistentVolumeClaim, PersistentVolumeClaimSpec, Probe, ResourceRequirements,
+                Secret, SecretKeySelector, Service, ServicePort, ServiceSpec, TCPSocketAction,
+                Volume,
             },
         },
         apimachinery::pkg::{
@@ -47,12 +47,10 @@ use stackable_trino_crd::{
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TlsSecretClass, TrinoCluster, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
-    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_S3_ACCESS_KEY,
-    ENV_S3_SECRET_KEY, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
-    JAVAX_NET_SSL_TRUSTSTORE, JAVAX_NET_SSL_TRUSTSTORE_PASSWORD, JAVAX_NET_SSL_TRUSTSTORE_TYPE,
-    JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_SECRET_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_CLIENT_TLS_DIR,
+    CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT,
+    HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, LOG_PROPERTIES, METRICS_PORT,
+    METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
     STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
@@ -147,8 +145,6 @@ pub enum Error {
     InvalidS3Connection { reason: String },
     #[snafu(display("failed to parse trino product version"))]
     TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
-    #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
-    S3TlsNoVerificationNotSupported,
     #[snafu(display("failed to get associated TrinoCatalogs"))]
     GetCatalogs {
         source: stackable_operator::error::Error,
@@ -353,20 +349,12 @@ fn build_rolegroup_config_map(
         -XX:PerMethodRecompilationCutoff=10000
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
-        -Djdk.nio.maxCachedBufferSize=2000000"
+        -Djdk.nio.maxCachedBufferSize=2000000
+        -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
+        -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
+        -Djavax.net.ssl.trustStoreType=pkcs12
+        "
     );
-
-    // if s3_connection.is_some() {
-    //     let _ = write!(
-    //         jvm_config,
-    //         "{}",
-    //         formatdoc!(
-    //             "\n-D{JAVAX_NET_SSL_TRUSTSTORE}={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
-    //              -D{JAVAX_NET_SSL_TRUSTSTORE_PASSWORD}={STACKABLE_TLS_STORE_PASSWORD}
-    //              -D{JAVAX_NET_SSL_TRUSTSTORE_TYPE}=pkcs12"
-    //         )
-    //     );
-    // }
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -425,7 +413,7 @@ fn build_rolegroup_config_map(
                 cm_conf_data.insert(file_name.to_string(), "".to_string());
             }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
-                let _ = write!(jvm_config, "\n-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
+                let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
             }
             _ => {}
         }
@@ -561,11 +549,6 @@ fn build_rolegroup_statefulset(
         })
         .collect::<Vec<_>>();
 
-    // if let Some(hive) = env_var_from_discovery_config_map(&trino.spec.hive_config_map_name, "HIVE")
-    // {
-    //     env.push(hive);
-    // };
-
     let secret_name = build_shared_internal_secret_name(trino);
     if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), ENV_INTERNAL_SECRET) {
         env.push(internal_secret);
@@ -591,6 +574,12 @@ fn build_rolegroup_statefulset(
             .flat_map(|catalog| &catalog.volume_mounts)
             .cloned(),
     );
+    cb_prepare.add_volume_mounts(
+        catalogs
+            .iter()
+            .flat_map(|catalog| &catalog.volume_mounts)
+            .cloned(),
+    );
 
     // add volume mounts depending on the client tls, internal tls and authentication
     tls_volume_mounts(trino, &mut pod_builder, &mut cb_prepare, &mut cb_trino)?;
@@ -598,7 +587,7 @@ fn build_rolegroup_statefulset(
     let container_prepare = cb_prepare
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(command::container_prepare_args(trino))
+        .args(command::container_prepare_args(trino, catalogs))
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .security_context(SecurityContextBuilder::run_as_root())
@@ -779,24 +768,6 @@ async fn user_authentication(
                 .context(FailedProcessingAuthenticationSnafu)?,
         ),
         _ => None,
-    })
-}
-
-fn env_var_from_discovery_config_map(
-    config_map_name: &Option<String>,
-    env_var: &str,
-) -> Option<EnvVar> {
-    config_map_name.as_ref().map(|cm_name| EnvVar {
-        name: env_var.to_string(),
-        value_from: Some(EnvVarSource {
-            config_map_key_ref: Some(ConfigMapKeySelector {
-                name: Some(cm_name.to_string()),
-                key: env_var.to_string(),
-                ..ConfigMapKeySelector::default()
-            }),
-            ..EnvVarSource::default()
-        }),
-        ..EnvVar::default()
     })
 }
 
@@ -1043,6 +1014,14 @@ fn tls_volume_mounts(
             .build(),
     );
 
+    cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+    cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
+    pod_builder.add_volume(
+        VolumeBuilder::new("client-tls")
+            .with_empty_dir(Some(""), None)
+            .build(),
+    );
+
     if let Some(internal_tls) = trino.get_internal_tls() {
         cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
         cb_trino.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
@@ -1071,45 +1050,6 @@ fn tls_volume_mounts(
             }
         }
     }
-
-    // if let Some(s3_conn) = s3_connection {
-    //     // Add volume and volume mounts for S3 credentials
-    //     if let Some(credentials) = &s3_conn.credentials {
-    //         pod_builder.add_volume(credentials.to_volume("s3-credentials"));
-    //         cb_trino.add_volume_mount("s3-credentials", S3_SECRET_DIR_NAME);
-    //     }
-    //     // Handle S3 TLS
-    //     if let Some(tls) = &s3_conn.tls {
-    //         match &tls.verification {
-    //             TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
-    //             TlsVerification::Server(server_verification) => {
-    //                 match &server_verification.ca_cert {
-    //                     CaCert::WebPki {} => {}
-    //                     CaCert::SecretClass(secret_class) => {
-    //                         let volume = VolumeBuilder::new(secret_class)
-    //                             .ephemeral(
-    //                                 SecretOperatorVolumeSourceBuilder::new(secret_class).build(),
-    //                             )
-    //                             .build();
-
-    //                         cb_prepare
-    //                             .add_volume_mount(secret_class, STACKABLE_MOUNT_CLIENT_TLS_DIR);
-    //                         cb_trino.add_volume_mount(secret_class, STACKABLE_MOUNT_CLIENT_TLS_DIR);
-    //                         pod_builder.add_volume(volume);
-
-    //                         cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    //                         cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    //                         pod_builder.add_volume(
-    //                             VolumeBuilder::new("client-tls")
-    //                                 .with_empty_dir(Some(""), None)
-    //                                 .build(),
-    //                         );
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     Ok(())
 }
