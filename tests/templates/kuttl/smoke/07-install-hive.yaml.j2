@@ -25,26 +25,9 @@ metadata:
   name: hive
 spec:
   version: {{ test_scenario['values']['hive'] }}
-  s3:
-    inline:
-      host: minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: s3-credentials
-{% if test_scenario['values']['s3-use-tls'] == 'true' %}
-      tls:
-        verification:
-          server:
-            caCert:
-              secretClass: minio-tls-certificates
-{% endif %}
   metastore:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
         config:
           database:
@@ -52,3 +35,5 @@ spec:
             user: hive
             password: hive
             dbType: postgres
+  s3:
+    reference: minio
