@@ -1,10 +1,10 @@
 = First steps
 
-After going through the xref:installation.adoc[] section and having installed all the operators, you will now deploy a Trino cluster and the required dependencies. Afterwards you can <<_verify_that_it_works, verify that it works>> by querying the REST API.
+After going through the xref:installation.adoc[] section and having installed all the operators, you will now deploy a Trino cluster and the required dependencies. Afterwards you can <<_verify_that_it_works, verify that it works>> by running some queries against Trino or visit the Trino web interface.
 
 == Setup Trino
 
-In the simplest form, Trino does not require any other operators (except the commons and secret ones) to work and access the UI. There are no data sources (e.g. PostgreSQL, Hive, S3 ...) connected and for our tests we only query Trino internal data.
+In the simplest form, Trino does not require any other operators (except the commons and secret operator) to work and access the web interface. There are no data sources (e.g. PostgreSQL, Hive, S3 ...) connected and for the tests only internal data is queried.
 
 Create a file named `trino.yaml` with the following content:
 
@@ -36,7 +36,7 @@ At first, make sure the StatefulSets are ready:
 kubectl get statefulset
 ----
 
-The output should show all pods ready:
+The output should show all pods in the StatefulSets ready:
 
 [source]
 ----
@@ -45,7 +45,7 @@ simple-trino-coordinator-default     2/2     5m
 simple-trino-worker-default          3/3     5m
 ----
 
-Create a port-forward for the coordinator to access it easily in the next steps:
+Create a port-forward for the coordinator to access Trino easily in the next steps:
 
 [source]
 ----
@@ -100,7 +100,7 @@ Congratulations, you set up your first Stackable Trino cluster successfully.
 
 === Access the Trino web interface
 
-With the port-forward still active, you can connect to the Trino web interface. Enter `https://localhost:8443/ui` in your browser and login with a random username.
+With the port-forward still active, you can connect to the Trino web interface. Enter `https://localhost:8443/ui` in your browser and login with the username `admin`. Since no authentication is enabled you do not need to enter a password.
 
 NOTE: Your browser will probably show a security risk warning because it does not trust the self generated TLS certificates. Just ignore that and continue.
 
@@ -108,9 +108,18 @@ After logging in you should see the Trino web interface:
 
 image::trino-web-ui.png[]
 
-If you mark the `Finished` button in the `Query Details` section you should see the two queries that were sent earlier:
+If you mark the `Finished` button in the `Query Details` section, you should see the two queries that were sent earlier via the CLI tool:
 
 image::trino-web-ui-finished.png[]
+
+== Clean up
+
+In order to remove the previous downloaded CLI tool, you can safely remove it from your system:
+
+[source]
+----
+include::example$code/getting-started.sh[tag=cleanup-trino-cli]
+----
 
 == What's next
 

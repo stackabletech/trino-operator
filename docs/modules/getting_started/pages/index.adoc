@@ -1,6 +1,6 @@
 = Getting started
 
-This guide will get you started with Trino using the Stackable Operator. It will guide you through the installation of the Operator and its dependencies, setting up your first Trino
+This guide will get you started with Trino using the Stackable Operator. It will guide you through the installation of the Operator and its dependencies and setting up your first Trino cluster.
 
 == Prerequisites
 
@@ -9,7 +9,7 @@ You will need:
 * a Kubernetes cluster
 * kubectl
 * optional: Helm
-* optional: https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-387-executable.jar[Trino CLI] (for testing)
+* optional: Trino CLI tool (for testing)
 
 == What's next
 
