@@ -1,23 +1,19 @@
-use stackable_operator::commons::s3::S3ConnectionSpec;
-use stackable_operator::commons::tls::{CaCert, Tls, TlsServerVerification, TlsVerification};
-use stackable_trino_crd::authentication::TrinoAuthenticationConfig;
 use stackable_trino_crd::{
-    TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME, ENV_S3_ACCESS_KEY, ENV_S3_SECRET_KEY,
-    HIVE_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_SECRET_DIR_NAME, SECRET_KEY_S3_ACCESS_KEY,
-    SECRET_KEY_S3_SECRET_KEY, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_CLIENT_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+    authentication::TrinoAuthenticationConfig, TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME,
+    ENV_S3_ACCESS_KEY, ENV_S3_SECRET_KEY, PASSWORD_DB, RW_CONFIG_DIR_NAME, S3_SECRET_DIR_NAME,
+    SECRET_KEY_S3_ACCESS_KEY, SECRET_KEY_S3_SECRET_KEY, STACKABLE_CLIENT_TLS_DIR,
+    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_CLIENT_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
     USER_PASSWORD_DATA_DIR_NAME,
 };
+
+use crate::catalog::CatalogConfig;
 
 const STACKABLE_CLIENT_CA_CERT: &str = "stackable-client-ca-cert";
 const STACKABLE_SERVER_CA_CERT: &str = "stackable-server-ca-cert";
 const STACKABLE_INTERNAL_CA_CERT: &str = "stackable-internal-ca-cert";
 
-pub fn container_prepare_args(
-    trino: &TrinoCluster,
-    s3_spec: Option<&S3ConnectionSpec>,
-) -> Vec<String> {
+pub fn container_prepare_args(trino: &TrinoCluster) -> Vec<String> {
     let mut args = vec![];
 
     // User password data
@@ -48,23 +44,23 @@ pub fn container_prepare_args(
         }
     }
 
-    // Load S3 CA to client truststore if S3 TLS enabled
-    if let Some(s3) = s3_spec {
-        if let Some(Tls {
-            verification:
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(_),
-                }),
-        }) = &s3.tls
-        {
-            args.extend(create_key_and_trust_store(
-                STACKABLE_MOUNT_CLIENT_TLS_DIR,
-                STACKABLE_CLIENT_TLS_DIR,
-                STACKABLE_CLIENT_CA_CERT,
-            ));
-            args.extend(chown_and_chmod(STACKABLE_CLIENT_TLS_DIR));
-        }
-    }
+    // // Load S3 CA to client truststore if S3 TLS enabled
+    // if let Some(s3) = s3_spec {
+    //     if let Some(Tls {
+    //         verification:
+    //             TlsVerification::Server(TlsServerVerification {
+    //                 ca_cert: CaCert::SecretClass(_),
+    //             }),
+    //     }) = &s3.tls
+    //     {
+    //         args.extend(create_key_and_trust_store(
+    //             STACKABLE_MOUNT_CLIENT_TLS_DIR,
+    //             STACKABLE_CLIENT_TLS_DIR,
+    //             STACKABLE_CLIENT_CA_CERT,
+    //         ));
+    //         args.extend(chown_and_chmod(STACKABLE_CLIENT_TLS_DIR));
+    //     }
+    // }
 
     args.extend(chown_and_chmod(RW_CONFIG_DIR_NAME));
     args.extend(chown_and_chmod(DATA_DIR_NAME));
@@ -73,9 +69,8 @@ pub fn container_prepare_args(
 }
 
 pub fn container_trino_args(
-    trino: &TrinoCluster,
     user_authentication: Option<&TrinoAuthenticationConfig>,
-    s3_connection_spec: Option<&S3ConnectionSpec>,
+    catalogs: &[CatalogConfig],
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder
@@ -101,40 +96,12 @@ pub fn container_trino_args(
         ));
     }
 
-    // We need to read the provided s3 credentials from the secret operator / secret class folder
-    // and export it to the required env variables in order for trino to pick them up
-    // out of the config via e.g. ${ENV:S3_ACCESS_KEY}.
-    if let Some(S3ConnectionSpec {
-        credentials: Some(_),
-        ..
-    }) = s3_connection_spec
-    {
-        args.extend(vec![
-            format!(
-                "export {env_var}=$(cat {secret_dir}/{file_name})",
-                env_var = ENV_S3_ACCESS_KEY,
-                secret_dir = S3_SECRET_DIR_NAME,
-                file_name = SECRET_KEY_S3_ACCESS_KEY
-            ),
-            format!(
-                "export {env_var}=$(cat {secret_dir}/{file_name})",
-                env_var = ENV_S3_SECRET_KEY,
-                secret_dir = S3_SECRET_DIR_NAME,
-                file_name = SECRET_KEY_S3_SECRET_KEY
-            ),
-        ]);
-    }
-
-    // hive required?
-    if trino.spec.hive_config_map_name.is_some() {
-        args.extend(vec![
-            format!( "echo Writing HIVE connect string \"hive.metastore.uri=${{HIVE}}\" to {rw_conf}/catalog/{hive_properties}",
-                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
-            ),
-            format!( "echo \"hive.metastore.uri=${{HIVE}}\" >> {rw_conf}/catalog/{hive_properties}",
-                     rw_conf = RW_CONFIG_DIR_NAME, hive_properties = HIVE_PROPERTIES
-            )])
-    }
+    // Add the command that are needed to set up the catalogs
+    catalogs.iter().for_each(|catalog| {
+        for (env_name, file) in &catalog.load_env_from_files {
+            args.push(format!("export {env_name}=$(cat {file})"));
+        }
+    });
 
     // start command
     args.push(format!(

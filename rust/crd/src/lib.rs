@@ -1,4 +1,5 @@
 pub mod authentication;
+pub mod catalog;
 pub mod discovery;
 
 use crate::{authentication::Authentication, discovery::TrinoPodRef};
@@ -7,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::{
     commons::{opa::OpaConfig, s3::S3ConnectionDef},
+    k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector,
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
     role_utils::{Role, RoleGroupRef},
@@ -16,7 +18,6 @@ use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
-pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 // ports
 pub const HTTP_PORT: u16 = 8080;
 pub const HTTPS_PORT: u16 = 8443;
@@ -32,7 +33,6 @@ pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
 pub const PASSWORD_DB: &str = "password.db";
-pub const HIVE_PROPERTIES: &str = "hive.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
@@ -70,12 +70,6 @@ pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
 pub const FILE_PASSWORD_FILE: &str = "file.password-file";
-// hive.properties
-pub const S3_ENDPOINT: &str = "hive.s3.endpoint";
-pub const S3_ACCESS_KEY: &str = "hive.s3.aws-access-key";
-pub const S3_SECRET_KEY: &str = "hive.s3.aws-secret-key";
-pub const S3_SSL_ENABLED: &str = "hive.s3.ssl.enabled";
-pub const S3_PATH_STYLE_ACCESS: &str = "hive.s3.path-style-access";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -145,9 +139,6 @@ pub struct TrinoClusterSpec {
     /// The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
-    /// The discovery ConfigMap name of the Hive cluster (usually the same as the Hive cluster name).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub hive_config_map_name: Option<String>,
     /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
@@ -162,6 +153,10 @@ pub struct TrinoClusterSpec {
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
+    /// LabelSelector[https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors] selecting the Catalogs
+    /// to include in the Trino instance
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catalog_label_selector: Option<LabelSelector>,
     /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfig>>,
