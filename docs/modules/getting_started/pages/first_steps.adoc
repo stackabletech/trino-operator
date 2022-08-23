@@ -1,0 +1,47 @@
+= First steps
+
+After going through the xref:installation.adoc[] section and having installed all the operators, you will now deploy a Trino cluster and the required dependencies. Afterwards you can <<_verify_that_it_works, verify that it works>> by querying the REST API.
+
+== Setup Trino
+
+In the simplest form, Trino does not require any other operators (except the commons and secret ones) to work and access the UI. There are no data sources connected and for our tests we only query Trino internal data.
+
+Create a file named `trino.yaml` with the following content:
+
+[source,yaml]
+----
+include::example$code/trino.yaml[]
+----
+
+and apply it:
+
+[source]
+----
+include::example$code/getting-started.sh[tag=install-trino]
+----
+
+== Verify that it works
+
+We use the https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-387-executable.jar[Trino CLI tool] to query data from Trino to make sure it is set up correctly. Make sure the client version matches the version used in the `trino.yaml` file.
+
+At first, make sure the StatefulSets are ready:
+
+[source]
+----
+kubectl get statefulset
+----
+
+The output should show all pods ready:
+
+[source]
+----
+NAME                                 READY   AGE
+simple-trino-coordinator-default     2/2     5m
+simple-trino-worker-default          3/3     5m
+----
+
+
+
+== What's next
+
+Have a look at the xref:ROOT:usage.adoc[] page to find out more about the features of the Trino Operator.
