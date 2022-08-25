@@ -251,10 +251,10 @@ Since Trino has internal and external communications running over a single port,
 
 ==== S3 connection specification
 
-You can specify S3 connection details directly inside the Trino specification
+You can specify S3 connection details directly inside the `TrinoCatalog` specification
 or by referring to an external `S3Connection` custom resource.
 
-To specify S3 connection details directly as part of the Trino resource, you
+To specify S3 connection details directly as part of the `TrinoCatalog` resource, you
 add an inline connection configuration as shown below:
 
 [source,yaml]
@@ -306,7 +306,7 @@ data:
 ----
 
 It is also possible to configure the bucket connection details as a separate
-Kubernetes resource and only refer to that object from the Trino specification
+Kubernetes resource and only refer to that object from the `TrinoCatalog` specification
 like this:
 
 [source,yaml]
