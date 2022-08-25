@@ -53,6 +53,18 @@ pub struct CatalogConfig {
 }
 
 impl CatalogConfig {
+    pub fn new(name: String) -> Self {
+        CatalogConfig {
+            name,
+            properties: BTreeMap::new(),
+            env_bindings: Vec::new(),
+            load_env_from_files: BTreeMap::new(),
+            init_container_extra_start_commands: Vec::new(),
+            volumes: Vec::new(),
+            volume_mounts: Vec::new(),
+        }
+    }
+
     fn add_property(&mut self, property: impl Into<String>, value: impl Into<String>) {
         self.properties.insert(property.into(), value.into());
     }
@@ -103,15 +115,7 @@ impl CatalogConfig {
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let catalog_name = catalog.name();
-        let mut config = CatalogConfig {
-            name: catalog_name.to_string(),
-            properties: BTreeMap::new(),
-            env_bindings: Vec::new(),
-            load_env_from_files: BTreeMap::new(),
-            init_container_extra_start_commands: Vec::new(),
-            volumes: Vec::new(),
-            volume_mounts: Vec::new(),
-        };
+        let mut config = CatalogConfig::new(catalog_name.clone());
 
         config.add_property("connector.name", catalog.spec.connector.name());
 
