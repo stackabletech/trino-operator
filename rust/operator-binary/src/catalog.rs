@@ -12,7 +12,7 @@ use stackable_operator::{
     kube::ResourceExt,
 };
 use stackable_trino_crd::{
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_MOUNT_CLIENT_TLS_DIR,
+    CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_MOUNT_CLIENT_TLS_DIR,
     {catalog::TrinoCatalog, S3_SECRET_DIR_NAME},
 };
 
@@ -207,7 +207,7 @@ impl CatalogConfig {
 
                 if let Some(hdfs) = &hive.hdfs {
                     let hdfs_site_dir =
-                        format!("{RW_CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
+                        format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
                     config.add_property(
                         "hive.config.resources",
                         format!("{hdfs_site_dir}/hdfs-site.xml"),

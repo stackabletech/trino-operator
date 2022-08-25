@@ -52,6 +52,7 @@ pub fn container_prepare_args(trino: &TrinoCluster, catalogs: &[CatalogConfig]) 
     args.extend(create_truststore_from_system_truststore(
         STACKABLE_CLIENT_TLS_DIR,
     ));
+    args.extend(chown_and_chmod(STACKABLE_CLIENT_TLS_DIR));
 
     // Add the commands that are needed to set up the catalogs
     catalogs.iter().for_each(|catalog| {
