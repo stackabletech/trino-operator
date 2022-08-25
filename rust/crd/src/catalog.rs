@@ -48,7 +48,7 @@ pub struct HiveConnector {
     pub metastore: MetastoreConnection, // We are using this nested struct to support HMS caching later on
     /// Connection to an S3 store
     pub s3: Option<S3ConnectionDef>,
-    // /// Connection to an HDFS
+    /// Connection to an HDFS cluster
     pub hdfs: Option<HdfsConnection>,
 }
 
