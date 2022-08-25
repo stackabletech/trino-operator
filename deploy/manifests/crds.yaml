@@ -52,7 +52,7 @@ spec:
                     - method
                   type: object
                 catalogLabelSelector:
-                  description: LabelSelector[https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors] selecting the Catalogs to include in the Trino instance
+                  description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance'
                   nullable: true
                   properties:
                     matchExpressions:
