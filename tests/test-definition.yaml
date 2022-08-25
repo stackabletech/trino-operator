@@ -2,16 +2,16 @@
 dimensions:
   - name: trino
     values:
-      # - 377-stackable0
+      - 377-stackable0
       - 387-stackable0.1.0
   - name: hive
     values:
-      # - 2.3.9-stackable0.5.0
+      - 2.3.9-stackable0.5.0
       - 3.1.3-stackable0.1.0
   - name: opa
     values:
       - 0.37.2-stackable0.2.0
-      # - 0.41.0-stackable0.1.0
+      - 0.41.0-stackable0.1.0
   - name: hdfs
     values:
       - 3.2.2-stackable0.5.0
@@ -25,15 +25,15 @@ dimensions:
   - name: use-authentication
     values:
       - "true"
-      # - "false"
+      - "false"
   - name: use-tls
     values:
       - "true"
-      # - "false"
+      - "false"
   - name: use-internal-tls
     values:
       - "true"
-      # - "false"
+      - "false"
 tests:
   - name: smoke
     dimensions:
