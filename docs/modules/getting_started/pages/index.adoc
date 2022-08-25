@@ -15,5 +15,5 @@ You will need:
 
 The guide is divided into the following steps:
 
-* xref:installation.adoc[Installing the Operators].
-* xref:first_steps.adoc[Setting up the Trino cluster].
+* xref:installation.adoc[Installing the Operators]
+* xref:first_steps.adoc[Setting up the Trino cluster]

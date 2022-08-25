@@ -41,8 +41,8 @@ The output should show all pods in the StatefulSets ready:
 [source]
 ----
 NAME                                 READY   AGE
-simple-trino-coordinator-default     2/2     5m
-simple-trino-worker-default          3/3     5m
+simple-trino-coordinator-default     1/1     5m
+simple-trino-worker-default          1/1     5m
 ----
 
 Create a port-forward for the coordinator to access Trino easily in the next steps:
@@ -114,7 +114,7 @@ image::trino-web-ui-finished.png[]
 
 == Clean up
 
-In order to remove the previous downloaded CLI tool, you can safely remove it from your system:
+In order to remove the previously downloaded CLI tool, you can safely remove it from your system:
 
 [source]
 ----

@@ -1,6 +1,6 @@
 = Installation
 
-On this page you will install the Stackable Operator for Trino and operators for its dependencies as well as the commons and secret operator which are required by all Stackable Operators.
+On this page you will install the Stackable Operator for Trino as well as the commons and secret operator which are required by all Stackable Operators.
 
 == Stackable Operators
 
@@ -23,7 +23,7 @@ include::example$code/getting-started.sh[tag=stackablectl-install-operators]
 
 The tool will show
 
-[source,bash]
+[source]
 ----
 include::example$code/install-operator-output.txt[tag=stackablectl-install-operators-output]
 ----
