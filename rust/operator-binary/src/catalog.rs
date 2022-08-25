@@ -97,15 +97,7 @@ impl CatalogConfig {
             },
         );
     }
-}
 
-fn calculate_env_name(catalog: impl Into<String>, property: impl Into<String>) -> String {
-    let catalog = catalog.into().replace('.', "_").replace('-', "_");
-    let property = property.into().replace('.', "_").replace('-', "_");
-    format!("CATALOG_{catalog}_{property}").to_uppercase()
-}
-
-impl CatalogConfig {
     pub async fn from_catalog(
         catalog: TrinoCatalog,
         client: &Client,
@@ -240,4 +232,10 @@ impl CatalogConfig {
         config.properties.extend(catalog.spec.config_overrides);
         Ok(config)
     }
+}
+
+fn calculate_env_name(catalog: impl Into<String>, property: impl Into<String>) -> String {
+    let catalog = catalog.into().replace('.', "_").replace('-', "_");
+    let property = property.into().replace('.', "_").replace('-', "_");
+    format!("CATALOG_{catalog}_{property}").to_uppercase()
 }
