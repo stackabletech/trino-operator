@@ -7,7 +7,7 @@ use crate::{authentication::Authentication, discovery::TrinoPodRef};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::{
-    commons::{opa::OpaConfig, s3::S3ConnectionDef},
+    commons::opa::OpaConfig,
     k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector,
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -143,9 +143,6 @@ pub struct TrinoClusterSpec {
     pub config: GlobalTrinoConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authentication: Option<Authentication>,
-    /// A reference to a S3 bucket.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub s3: Option<S3ConnectionDef>,
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
