@@ -149,7 +149,7 @@ pub struct TrinoClusterSpec {
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
-    /// LabelSelector[https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors] selecting the Catalogs
+    /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
     /// to include in the Trino instance
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub catalog_label_selector: Option<LabelSelector>,
