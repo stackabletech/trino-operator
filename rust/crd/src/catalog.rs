@@ -62,6 +62,6 @@ pub struct MetastoreConnection {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HdfsConnection {
-    /// Name of the discovery-configmap providing information about the HDFS
+    /// Name of the discovery-configmap providing information about the HDFS cluster
     pub config_map: String,
 }
