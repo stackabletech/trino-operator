@@ -22,6 +22,17 @@ use self::from_trino_catalog_error::{
     ResolveS3ConnectionDefSnafu, S3TlsNoVerificationNotSupportedSnafu,
 };
 
+#[derive(Debug, Snafu)]
+#[snafu(module)]
+pub enum FromTrinoCatalogError {
+    #[snafu(display("failed to resolve S3ConnectionDef"))]
+    ResolveS3ConnectionDef {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
+    S3TlsNoVerificationNotSupported,
+}
+
 pub struct CatalogConfig {
     /// Name of the catalog
     pub name: String,
@@ -229,15 +240,4 @@ impl CatalogConfig {
         config.properties.extend(catalog.spec.config_overrides);
         Ok(config)
     }
-}
-
-#[derive(Debug, Snafu)]
-#[snafu(module)]
-pub enum FromTrinoCatalogError {
-    #[snafu(display("failed to resolve S3ConnectionDef"))]
-    ResolveS3ConnectionDef {
-        source: stackable_operator::error::Error,
-    },
-    #[snafu(display("Trino does not support disabling the TLS verification of S3 servers"))]
-    S3TlsNoVerificationNotSupported,
 }

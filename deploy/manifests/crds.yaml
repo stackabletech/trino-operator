@@ -498,10 +498,11 @@ spec:
                     hive:
                       properties:
                         hdfs:
+                          description: Connection to an HDFS cluster
                           nullable: true
                           properties:
                             configMap:
-                              description: Name of the discovery-configmap providing information about the HDFS
+                              description: Name of the discovery-configmap providing information about the HDFS cluster
                               type: string
                           required:
                             - configMap
