@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
- - BREAKING: TrinoCatalogs now have their own CRD object and get referenced by the TrinoCluster according to [ADR19](https://docs.stackable.tech/home/contributor/adr/ADR019-trino_catalog_definitions.html) and [ADR20](https://docs.stackable.tech/home/contributor/adr/ADR020-trino_catalog_usage.html) ([#263]).
+- BREAKING: TrinoCatalogs now have their own CRD object and get referenced by the TrinoCluster according to [ADR19](https://docs.stackable.tech/home/contributor/adr/ADR019-trino_catalog_definitions.html) and [ADR20](https://docs.stackable.tech/home/contributor/adr/ADR020-trino_catalog_usage.html) ([#263]).
 - Include chart name when installing with a custom release name ([#233], [#234]).
 - `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
 - Internal and client TLS now configurable instead of defaulting to "tls" secret class ([#244]).
