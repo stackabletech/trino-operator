@@ -1,3 +1,4 @@
+use crate::catalog::config::CatalogConfig;
 use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig, TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME,
     PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
@@ -5,8 +6,6 @@ use stackable_trino_crd::{
     STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
     USER_PASSWORD_DATA_DIR_NAME,
 };
-
-use crate::catalog::CatalogConfig;
 
 pub const STACKABLE_CLIENT_CA_CERT: &str = "stackable-client-ca-cert";
 pub const STACKABLE_SERVER_CA_CERT: &str = "stackable-server-ca-cert";

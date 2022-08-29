@@ -1,6 +1,6 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
-    catalog::{self, CatalogConfig},
+    catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
 };
 use indoc::formatdoc;
@@ -151,7 +151,7 @@ pub enum Error {
     },
     #[snafu(display("failed to parse {catalog}"))]
     ParseCatalog {
-        source: catalog::FromTrinoCatalogError,
+        source: FromTrinoCatalogError,
         catalog: ObjectRef<TrinoCatalog>,
     },
 }
@@ -192,6 +192,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 .context(ParseCatalogSnafu {
                     catalog: catalog_ref,
                 })?;
+
         catalogs.push(catalog_config);
     }
 

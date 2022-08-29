@@ -1,45 +1,8 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::s3::S3ConnectionDef,
-    kube::CustomResource,
     schemars::{self, JsonSchema},
 };
-
-#[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[kube(
-    group = "trino.stackable.tech",
-    version = "v1alpha1",
-    kind = "TrinoCatalog",
-    plural = "trinocatalogs",
-    namespaced,
-    crates(
-        kube_core = "stackable_operator::kube::core",
-        k8s_openapi = "stackable_operator::k8s_openapi",
-        schemars = "stackable_operator::schemars"
-    )
-)]
-#[serde(rename_all = "camelCase")]
-pub struct TrinoCatalogSpec {
-    pub connector: TrinoCatalogConnector,
-    #[serde(default)]
-    pub config_overrides: HashMap<String, String>,
-}
-
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TrinoCatalogConnector {
-    Hive(HiveConnector),
-}
-
-impl TrinoCatalogConnector {
-    pub fn name(&self) -> String {
-        match self {
-            TrinoCatalogConnector::Hive(_) => "hive".to_string(),
-        }
-    }
-}
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
