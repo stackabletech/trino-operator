@@ -3,6 +3,7 @@ use super::{
     from_trino_catalog_error::{ResolveS3ConnectionDefSnafu, S3TlsNoVerificationNotSupportedSnafu},
     FromTrinoCatalogError, ToCatalogConfig,
 };
+use crate::command;
 use async_trait::async_trait;
 use snafu::ResultExt;
 use stackable_operator::{
@@ -16,7 +17,7 @@ use stackable_trino_crd::{
     {catalog::hive::HiveConnector, S3_SECRET_DIR_NAME},
 };
 
-use crate::command;
+pub const CONNECTOR_NAME: &str = "hive";
 
 #[async_trait]
 impl ToCatalogConfig for HiveConnector {
@@ -26,7 +27,7 @@ impl ToCatalogConfig for HiveConnector {
         catalog_namespace: Option<String>,
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let mut config = CatalogConfig::new(catalog_name.to_string(), "hive");
+        let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
 
         config.add_configmap_property(
             "hive.metastore.uri",
