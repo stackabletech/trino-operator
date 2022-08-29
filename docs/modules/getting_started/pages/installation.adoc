@@ -1,0 +1,53 @@
+= Installation
+
+On this page you will install the Stackable Operator for Trino as well as the commons and secret operator which are required by all Stackable Operators.
+
+== Stackable Operators
+
+There are two ways to install Stackable Operators:
+
+1. Using xref:stackablectl::index.adoc[stackablectl]
+
+2. Using Helm
+
+=== stackablectl
+
+The stackablectl command line tool is the recommended way to interact with operators and dependencies. Follow the xref:stackablectl::installation.adoc[installation steps] for your platform if you choose to work with stackablectl.
+
+After you have installed stackablectl, run the following command to install all operators necessary for Trino:
+
+[source,bash]
+----
+include::example$code/getting-started.sh[tag=stackablectl-install-operators]
+----
+
+The tool will show
+
+[source]
+----
+include::example$code/install-operator-output.txt[tag=stackablectl-install-operators-output]
+----
+
+TIP: Consult the xref:stackablectl::quickstart.adoc[] to learn more about how to use stackablectl.
+
+=== Helm
+
+You can also use Helm to install the operators. Add the Stackable Helm repository:
+
+[source,bash]
+----
+include::example$code/getting-started.sh[tag=helm-add-repo]
+----
+
+Then install the Stackable Operators:
+
+[source,bash]
+----
+include::example$code/getting-started.sh[tag=helm-install-operators]
+----
+
+Helm will deploy the operators in a Kubernetes Deployment and apply the CRDs for the Trino service (as well as the CRDs for the required operators). You are now ready to deploy Trino in Kubernetes.
+
+== What's next
+
+xref:first_steps.adoc[Set up a Trino cluster] and its dependencies.
