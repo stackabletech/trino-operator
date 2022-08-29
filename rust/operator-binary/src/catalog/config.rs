@@ -20,7 +20,7 @@ pub struct CatalogConfig {
     /// The value will be read from the file specified.
     /// You can think of it like `export <key>=$(cat <value>)`
     pub load_env_from_files: BTreeMap<String, String>,
-    // Additional commands that needs to be executed before starting Trino
+    /// Additional commands that needs to be executed before starting Trino
     pub init_container_extra_start_commands: Vec<String>,
     /// Volumes that need to be added to the pod (e.g. for S3 credentials)
     pub volumes: Vec<Volume>,
