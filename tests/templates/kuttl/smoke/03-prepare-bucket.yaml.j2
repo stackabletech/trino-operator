@@ -9,6 +9,6 @@ commands:
 {% else %}
       sh -c 'mc --insecure alias set minio http://minio:9000/ trino trinotrino'
 {% endif %}
-  - script: kubectl cp -n $NAMESPACE yellow_tripdata_2021-07.csv  minio-mc-0:/tmp
+  - script: kubectl cp -n $NAMESPACE yellow_tripdata_2021-07.csv  minio-mc-0:/tmp || true
 # We don't validate the custom MinIO cert here
   - script: kubectl exec -n $NAMESPACE minio-mc-0 -- mc --insecure cp /tmp/yellow_tripdata_2021-07.csv minio/trino

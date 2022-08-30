@@ -2,12 +2,10 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  - script: kubectl cp -n $NAMESPACE ./check-tls.py  trino-test-helper-0:/tmp
-  - script: kubectl cp -n $NAMESPACE ./test-config.json  trino-test-helper-0:/tmp
-  - script: kubectl cp -n $NAMESPACE ./requirements.txt  trino-test-helper-0:/tmp
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- pip install -q -r /tmp/requirements.txt
+  - script: kubectl cp -n $NAMESPACE ./check-tls.py       trino-test-helper-0:/tmp || true
+  - script: kubectl cp -n $NAMESPACE ./test-config.json   trino-test-helper-0:/tmp
 {% if test_scenario['values']['use-authentication'] == 'true' or test_scenario['values']['use-tls'] == 'true' %}
-  - script: kubectl cp -n $NAMESPACE trino-coordinator-default-0:/stackable/mount_server_tls/ca.crt /tmp/ca.crt
-  - script: kubectl cp -n $NAMESPACE /tmp/ca.crt trino-test-helper-0:/tmp/ca.crt
-  - script: kubectl cp -n $NAMESPACE ./untrusted-cert.crt trino-test-helper-0:/tmp/untrusted-cert.crt
+  - script: kubectl cp -n $NAMESPACE trino-coordinator-default-0:/stackable/mount_server_tls/ca.crt /tmp/ca.crt || true
+  - script: kubectl cp -n $NAMESPACE /tmp/ca.crt          trino-test-helper-0:/tmp/ca.crt || true
+  - script: kubectl cp -n $NAMESPACE ./untrusted-cert.crt trino-test-helper-0:/tmp/untrusted-cert.crt || true
 {% endif %}

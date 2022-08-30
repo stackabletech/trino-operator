@@ -13,6 +13,7 @@ stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git",
 stackable-trino-crd = { path = "../crd" }
 
 anyhow = "1.0"
+async-trait = "0.1"
 clap = "3.2"
 futures = { version = "0.3", features = ["compat"] }
 indoc = "1.0.7"

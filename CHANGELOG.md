@@ -4,20 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for connecting to HDFS ([#263]).
+- Add support for Hive 3.1.3 ([#243]).
+
 ### Changed
 
+- BREAKING: TrinoCatalogs now have their own CRD object and get referenced by the TrinoCluster according to [ADR19](https://docs.stackable.tech/home/contributor/adr/ADR019-trino_catalog_definitions.html) and [ADR20](https://docs.stackable.tech/home/contributor/adr/ADR020-trino_catalog_usage.html) ([#263]).
 - Include chart name when installing with a custom release name ([#233], [#234]).
 - `operator-rs` `0.21.1` -> `0.22.0` ([#235]).
-- Add support for Hive 3.1.3 ([#243])
 - Internal and client TLS now configurable instead of defaulting to "tls" secret class ([#244]).
 - S3 TLS properly supported ([#244]).
 - Introduced global `config` for `TLS` settings ([#244]).
+
+### Fixed
+
+- Add missing role to read S3Connection objects ([#263]).
+- Disable Hive connector setting that disallow dropping tables. This check is now done by normal Trino authorization (e.g. OPA) ([#263]).
 
 [#233]: https://github.com/stackabletech/trino-operator/pull/233
 [#234]: https://github.com/stackabletech/trino-operator/pull/234
 [#235]: https://github.com/stackabletech/trino-operator/pull/235
 [#243]: https://github.com/stackabletech/trino-operator/pull/243
 [#244]: https://github.com/stackabletech/trino-operator/pull/244
+[#263]: https://github.com/stackabletech/trino-operator/pull/263
 
 ## [0.4.0] - 2022-06-30
 

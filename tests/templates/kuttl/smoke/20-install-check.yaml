@@ -17,6 +17,5 @@ spec:
     spec:
       containers:
         - name: trino-test-helper
-          image: python:3.10-slim
-          stdin: true
-          tty: true
+          image: docker.stackable.tech/stackable/testing-tools:0.1.0-stackable0.1.0
+          command: ["sleep", "infinity"]

@@ -116,29 +116,35 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
-  s3:
-    inline:
-      host: test-minio
-      port: 9000
-      accessStyle: Path
-      credentials:
-        secretClass: minio-credentials
+  catalogLabelSelector:
+    trino: simple-trino
   coordinators:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
-        config: {}
   workers:
     roleGroups:
       default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
         replicas: 1
-        config: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: hive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
 ----
 
 To access the CLI please execute:
@@ -245,10 +251,10 @@ Since Trino has internal and external communications running over a single port,
 
 ==== S3 connection specification
 
-You can specify S3 connection details directly inside the Trino specification
+You can specify S3 connection details directly inside the `TrinoCatalog` specification
 or by referring to an external `S3Connection` custom resource.
 
-To specify S3 connection details directly as part of the Trino resource, you
+To specify S3 connection details directly as part of the `TrinoCatalog` resource, you
 add an inline connection configuration as shown below:
 
 [source,yaml]
@@ -300,7 +306,7 @@ data:
 ----
 
 It is also possible to configure the bucket connection details as a separate
-Kubernetes resource and only refer to that object from the Trino specification
+Kubernetes resource and only refer to that object from the `TrinoCatalog` specification
 like this:
 
 [source,yaml]
@@ -420,7 +426,6 @@ For a role or role group, at the same level of `config`, you can specify: `confi
 - `node.properties`
 - `log.properties`
 - `password-authenticator.properties`
-- `hive.properties`
 
 For a list of possible configuration properties consult the https://trino.io/docs/current/admin/properties.html[Trino Properties Reference].
 

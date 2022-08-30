@@ -101,3 +101,19 @@ rules:
       - {{ include "operator.name" . }}clusters/status
     verbs:
       - patch
+  - apiGroups:
+      - s3.stackable.tech
+    resources:
+      - s3connections
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - trino.stackable.tech
+    resources:
+      - trinocatalogs
+    verbs:
+      - get
+      - list
+      - watch
