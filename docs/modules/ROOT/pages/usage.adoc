@@ -10,7 +10,7 @@ Trino works together with the Apache Hive metastore and S3 bucket.
     ** Data in the Bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
 * Optional deployed Stackable xref:secret-operator::index.adoc[Secret Operator] for certificates when deploying for TLS
 * Optional deployed Stackable xref:commons-operator::index.adoc[Commons Operator] for certificates when deploying for TLS authentication
-* Optional for authorization: Deployed Stackable xref:opa-operator::index.adoc[OPA Operator][OPA-Operator]
+* Optional for authorization: Deployed Stackable xref:opa::index.adoc[OPA Operator][OPA-Operator]
 * Optional https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI] to test SQL queries
 
 == Installation
@@ -23,13 +23,13 @@ Please refer to the S3 provider.
 
 === Hive operator
 
-Please refer to the xref:hive-operator::index.adoc[Hive Operator] and https://docs.stackable.tech/hive/index.html[docs].
+Please refer to the xref:hive::index.adoc[Hive Operator] docs.
 
 Both Hive and Trino need the same S3 authentication.
 
 === OPA operator
 
-Please refer to the xref:opa-operator::index.adoc[OPA Operator] and https://docs.stackable.tech/opa/index.html[docs].
+Please refer to the xref:opa::index.adoc[OPA Operator] docs.
 
 === Authentication
 
