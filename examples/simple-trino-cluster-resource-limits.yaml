@@ -1,0 +1,25 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: 387-stackable0.1.0
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          resources:
+            storage:
+              data:
+                capacity: 3Gi
+            cpu:
+              min: 300m
+              max: "2"
+            memory:
+              limit: 3Gi
