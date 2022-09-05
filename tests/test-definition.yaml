@@ -49,3 +49,6 @@ tests:
       - use-authentication
       - use-tls
       - use-internal-tls
+  - name: resources
+    dimensions:
+      - trino

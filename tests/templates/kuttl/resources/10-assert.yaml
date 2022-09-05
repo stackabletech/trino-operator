@@ -1,0 +1,123 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 120
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-coordinator-resources-default
+spec:
+  template:
+    spec:
+      containers:
+        - name: trino
+          resources:
+            requests:
+              cpu: 100m
+              memory: 2Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-trino-coordinator-resources-default-0
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+status:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 2Gi
+  phase: Bound
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-resources-from-role
+spec:
+  template:
+    spec:
+      containers:
+        - name: trino
+          resources:
+            requests:
+              cpu: 300m
+              memory: 3Gi
+            limits:
+              cpu: 600m
+              memory: 3Gi
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-trino-worker-resources-from-role-0
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+status:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 3Gi
+  phase: Bound
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-resources-from-role-group
+spec:
+  template:
+    spec:
+      containers:
+        - name: trino
+          resources:
+            requests:
+              cpu: 400m
+              memory: 4Gi
+            limits:
+              cpu: 800m
+              memory: 4Gi
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-trino-worker-resources-from-role-group-0
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+status:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 4Gi
+  phase: Bound
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 600
+commands:
+  - script: kubectl get cm -n $NAMESPACE trino-coordinator-resources-default -o yaml | grep -- '-Xmx1638m' | xargs test ! -z
+  - script: kubectl get cm -n $NAMESPACE trino-worker-resources-from-role -o yaml | grep -- '-Xmx2457m' | xargs test ! -z
+  - script: kubectl get cm -n $NAMESPACE trino-worker-resources-from-role-group -o yaml | grep -- '-Xmx3276m' | xargs test ! -z

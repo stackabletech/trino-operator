@@ -1,0 +1,37 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  version: {{ test_scenario['values']['trino'] }}
+  coordinators:
+    roleGroups:
+      resources-default:
+        replicas: 1
+  workers:
+    config:
+      resources:
+        storage:
+          data:
+            capacity: 3Gi
+        cpu:
+          min: 300m
+          max: 600m
+        memory:
+          limit: 3Gi
+    roleGroups:
+      resources-from-role:
+        replicas: 1
+      resources-from-role-group:
+        replicas: 1
+        config:
+          resources:
+            storage:
+              data:
+                capacity: 4Gi
+            cpu:
+              min: 400m
+              max: 800m
+            memory:
+              limit: 4Gi

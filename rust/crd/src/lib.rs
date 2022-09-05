@@ -607,7 +607,7 @@ impl TrinoCluster {
         self.get_client_tls().is_some() || self.get_internal_tls().is_some()
     }
 
-    /// Retrieve and merge resource configs for role and rolegroup
+    /// Retrieve and merge resource configs for role and role groups
     pub fn resolve_resource_config_for_role_and_rolegroup(
         &self,
         role: &TrinoRole,
