@@ -154,6 +154,8 @@ pub enum Error {
         source: FromTrinoCatalogError,
         catalog: ObjectRef<TrinoCatalog>,
     },
+    #[snafu(display("failed to resolve and merge resource config for role and role group"))]
+    FailedToResolveResourceConfig,
     #[snafu(display("invalid java heap config - missing default or value in crd?"))]
     InvalidJavaHeapConfig,
     #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
@@ -243,10 +245,9 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 
-            // TODO: unwrap here?
             let resources = trino
                 .resolve_resource_config_for_role_and_rolegroup(&trino_role, &rolegroup)
-                .unwrap();
+                .context(FailedToResolveResourceConfigSnafu)?;
 
             let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
             let rg_configmap = build_rolegroup_config_map(
