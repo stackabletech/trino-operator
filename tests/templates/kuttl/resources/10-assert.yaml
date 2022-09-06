@@ -14,10 +14,10 @@ spec:
         - name: trino
           resources:
             requests:
-              cpu: 100m
+              cpu: 200m
               memory: 2Gi
             limits:
-              cpu: "1"
+              cpu: "4"
               memory: 2Gi
 status:
   readyReplicas: 1

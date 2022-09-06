@@ -292,8 +292,8 @@ impl TrinoConfig {
     fn default_resources() -> Resources<TrinoStorageConfig, NoRuntimeLimits> {
         Resources {
             cpu: CpuLimits {
-                min: Some(Quantity("100m".to_owned())),
-                max: Some(Quantity("1".to_owned())),
+                min: Some(Quantity("200m".to_owned())),
+                max: Some(Quantity("4".to_owned())),
             },
             memory: MemoryLimits {
                 limit: Some(Quantity("2Gi".to_owned())),
