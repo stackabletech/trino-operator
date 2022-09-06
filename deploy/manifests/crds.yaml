@@ -627,6 +627,13 @@ spec:
                   required:
                     - configMapName
                   type: object
+                serviceType:
+                  description: Specify the type of the created kubernetes service. This attribute will be removed in a future release when listener-operator is finished. Use with caution.
+                  enum:
+                    - NodePort
+                    - ClusterIP
+                  nullable: true
+                  type: string
                 stopped:
                   description: Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
                   nullable: true

@@ -333,7 +333,14 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
         spec: Some(ServiceSpec {
             ports: Some(service_ports(trino)),
             selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
-            type_: Some("NodePort".to_string()),
+            type_: Some(
+                trino
+                    .spec
+                    .service_type
+                    .clone()
+                    .unwrap_or_default()
+                    .to_string(),
+            ),
             ..ServiceSpec::default()
         }),
         status: None,
