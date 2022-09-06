@@ -7,8 +7,12 @@ use crate::{authentication::Authentication, discovery::TrinoPodRef};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::{
-    commons::opa::OpaConfig,
-    k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector,
+    commons::{
+        opa::OpaConfig,
+        resources::{CpuLimits, MemoryLimits, NoRuntimeLimits, PvcConfig, Resources},
+    },
+    config::merge::Merge,
+    k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
     role_utils::{Role, RoleGroupRef},
@@ -99,6 +103,8 @@ pub const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
 pub const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
 // TLS
 pub const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
+
+pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -263,7 +269,14 @@ impl FromStr for TrinoRole {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterStatus {}
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrinoStorageConfig {
+    #[serde(default)]
+    pub data: PvcConfig,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoConfig {
     // config.properties
@@ -271,6 +284,30 @@ pub struct TrinoConfig {
     pub query_max_memory_per_node: Option<String>,
     // log.properties
     pub log_level: Option<String>,
+    // misc
+    pub resources: Option<Resources<TrinoStorageConfig, NoRuntimeLimits>>,
+}
+
+impl TrinoConfig {
+    fn default_resources() -> Resources<TrinoStorageConfig, NoRuntimeLimits> {
+        Resources {
+            cpu: CpuLimits {
+                min: Some(Quantity("200m".to_owned())),
+                max: Some(Quantity("4".to_owned())),
+            },
+            memory: MemoryLimits {
+                limit: Some(Quantity("2Gi".to_owned())),
+                runtime_limits: NoRuntimeLimits {},
+            },
+            storage: TrinoStorageConfig {
+                data: PvcConfig {
+                    capacity: Some(Quantity("2Gi".to_owned())),
+                    storage_class: None,
+                    selectors: None,
+                },
+            },
+        }
+    }
 }
 
 impl Configuration for TrinoConfig {
@@ -568,6 +605,43 @@ impl TrinoCluster {
     /// Returns if the HTTPS port should be enabled
     pub fn https_port_enabled(&self) -> bool {
         self.get_client_tls().is_some() || self.get_internal_tls().is_some()
+    }
+
+    /// Retrieve and merge resource configs for role and role groups
+    pub fn resolve_resource_config_for_role_and_rolegroup(
+        &self,
+        role: &TrinoRole,
+        rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    ) -> Option<Resources<TrinoStorageConfig, NoRuntimeLimits>> {
+        // Initialize the result with all default values as baseline
+        let conf_defaults = TrinoConfig::default_resources();
+
+        let role = match role {
+            TrinoRole::Coordinator => self.spec.coordinators.as_ref()?,
+            TrinoRole::Worker => self.spec.workers.as_ref()?,
+        };
+
+        // Retrieve role resource config
+        let mut conf_role: Resources<TrinoStorageConfig, NoRuntimeLimits> =
+            role.config.config.resources.clone().unwrap_or_default();
+
+        // Retrieve rolegroup specific resource config
+        let mut conf_rolegroup: Resources<TrinoStorageConfig, NoRuntimeLimits> = role
+            .role_groups
+            .get(&rolegroup_ref.role_group)
+            .and_then(|rg| rg.config.config.resources.clone())
+            .unwrap_or_default();
+
+        // Merge more specific configs into default config
+        // Hierarchy is:
+        // 1. RoleGroup
+        // 2. Role
+        // 3. Default
+        conf_role.merge(&conf_defaults);
+        conf_rolegroup.merge(&conf_role);
+
+        tracing::debug!("Merged resource config: {:?}", conf_rolegroup);
+        Some(conf_rolegroup)
     }
 }
 

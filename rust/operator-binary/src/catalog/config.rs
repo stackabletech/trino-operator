@@ -106,7 +106,7 @@ impl CatalogConfig {
 }
 
 fn calculate_env_name(catalog: impl Into<String>, property: impl Into<String>) -> String {
-    let catalog = catalog.into().replace('.', "_").replace('-', "_");
-    let property = property.into().replace('.', "_").replace('-', "_");
+    let catalog = catalog.into().replace(['.', '-'], "_");
+    let property = property.into().replace(['.', '-'], "_");
     format!("CATALOG_{catalog}_{property}").to_uppercase()
 }

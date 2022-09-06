@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Add support for connecting to HDFS ([#263]).
 - Add support for Hive 3.1.3 ([#243]).
+- PVCs for data storage, cpu and memory limits are now configurable ([#270]).
 
 ### Changed
 
@@ -29,6 +30,7 @@ All notable changes to this project will be documented in this file.
 [#243]: https://github.com/stackabletech/trino-operator/pull/243
 [#244]: https://github.com/stackabletech/trino-operator/pull/244
 [#263]: https://github.com/stackabletech/trino-operator/pull/263
+[#270]: https://github.com/stackabletech/trino-operator/pull/270
 
 ## [0.4.0] - 2022-06-30
 
