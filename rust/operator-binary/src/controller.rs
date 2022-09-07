@@ -183,9 +183,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
             trino.metadata.namespace.as_deref(),
-            &trino
-                .spec
-                .catalog_label_selector,
+            &trino.spec.catalog_label_selector,
         )
         .await
         .context(GetCatalogsSnafu)?;
