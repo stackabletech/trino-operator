@@ -117,7 +117,8 @@ spec:
   version: 387-stackable0.1.0
   hiveConfigMapName: simple-hive-derby
   catalogLabelSelector:
-    trino: simple-trino
+    matchLabels:
+      trino: simple-trino
   coordinators:
     roleGroups:
       default:
