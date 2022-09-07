@@ -676,6 +676,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
@@ -694,6 +695,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             tls:
               secretClass: simple-trino-client-tls
@@ -715,6 +717,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             tls: null
         "#;
@@ -732,6 +735,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             internalTls:
               secretClass: simple-trino-internal-tls
@@ -756,6 +760,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
@@ -774,6 +779,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             internalTls:
               secretClass: simple-trino-internal-tls
@@ -795,6 +801,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             tls:
               secretClass: simple-trino-client-tls
