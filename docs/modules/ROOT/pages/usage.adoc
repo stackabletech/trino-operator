@@ -115,7 +115,6 @@ metadata:
   name: simple-trino
 spec:
   version: 387-stackable0.1.0
-  hiveConfigMapName: simple-hive-derby
   catalogLabelSelector:
     matchLabels:
       trino: simple-trino
