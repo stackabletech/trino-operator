@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2022-09-08
+
 ### Changed
 
 - BREAKING: TrinoClusters must specify a `catalogLabelSelector`. Previously all TrinoCatalogs within the same namespace where used when `catalogLabelSelector` was not specified, which is unwanted behavior ([#277]).
