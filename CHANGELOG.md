@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: TrinoClusters must specify a `catalogLabelSelector`. Previously all TrinoCatalogs within the same namespace where used when `catalogLabelSelector` was not specified, which is unwanted behaviour ([#277]).
+- BREAKING: TrinoClusters must specify a `catalogLabelSelector`. Previously all TrinoCatalogs within the same namespace where used when `catalogLabelSelector` was not specified, which is unwanted behavior ([#277]).
 
 [#277]: https://github.com/stackabletech/trino-operator/pull/277
 
