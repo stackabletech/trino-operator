@@ -52,7 +52,6 @@ spec:
                   type: object
                 catalogLabelSelector:
                   description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance'
-                  nullable: true
                   properties:
                     matchExpressions:
                       description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -1143,6 +1142,8 @@ spec:
                   required:
                     - roleGroups
                   type: object
+              required:
+                - catalogLabelSelector
               type: object
             status:
               nullable: true

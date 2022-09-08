@@ -46,6 +46,7 @@ metadata:
   name: trino
 spec:
   version: {{ test_scenario['values']['trino'] }}
+  catalogLabelSelector: {}
 {% if test_scenario['values']['use-tls'] == 'true' or test_scenario['values']['use-internal-tls'] == 'true' %}
   config:
 {% endif %}

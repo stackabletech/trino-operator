@@ -55,7 +55,6 @@ use stackable_trino_crd::{
     STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
-    borrow::Cow,
     collections::{BTreeMap, HashMap},
     fmt::Write,
     str::FromStr,
@@ -184,11 +183,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
             trino.metadata.namespace.as_deref(),
-            &trino
-                .spec
-                .catalog_label_selector
-                .as_ref()
-                .map_or_else(Cow::default, Cow::Borrowed),
+            &trino.spec.catalog_label_selector,
         )
         .await
         .context(GetCatalogsSnafu)?;

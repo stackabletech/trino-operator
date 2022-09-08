@@ -154,8 +154,7 @@ pub struct TrinoClusterSpec {
     pub coordinators: Option<Role<TrinoConfig>>,
     /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
     /// to include in the Trino instance
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub catalog_label_selector: Option<LabelSelector>,
+    pub catalog_label_selector: LabelSelector,
     /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfig>>,
@@ -677,6 +676,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
@@ -695,6 +695,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             tls:
               secretClass: simple-trino-client-tls
@@ -716,6 +717,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             tls: null
         "#;
@@ -733,6 +735,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             internalTls:
               secretClass: simple-trino-internal-tls
@@ -757,6 +760,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
@@ -775,6 +779,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             internalTls:
               secretClass: simple-trino-internal-tls
@@ -796,6 +801,7 @@ mod tests {
           name: simple-trino
         spec:
           version: abc
+          catalogLabelSelector: {}
           config:
             tls:
               secretClass: simple-trino-client-tls

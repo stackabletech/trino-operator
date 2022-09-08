@@ -6,7 +6,8 @@ metadata:
 spec:
   version: {{ test_scenario['values']['trino'] }}
   catalogLabelSelector:
-    trino: simple-trino
+    matchLabels:
+      trino: trino
   opa:
     configMapName: opa
     package: trino
