@@ -5,6 +5,9 @@ metadata:
   name: simple-trino
 spec:
   version: 387-stackable0.1.0
+  catalogLabelSelector:
+    matchLabels:
+      trino: simple-trino
   coordinators:
     roleGroups:
       default:
