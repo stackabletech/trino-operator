@@ -14,7 +14,8 @@ spec:
         userCredentialsSecret:
           name: simple-trino-users-secret
   catalogLabelSelector:
-    trino: simple-trino
+    matchLabels:
+      trino: simple-trino
   coordinators:
     roleGroups:
       default:
