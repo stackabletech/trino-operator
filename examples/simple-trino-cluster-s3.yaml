@@ -8,7 +8,8 @@ metadata:
 spec:
   version: 387-stackable0.1.0
   catalogLabelSelector:
-    trino: simple-trino
+    matchLabels:
+      trino: simple-trino
   coordinators:
     roleGroups:
       default:
