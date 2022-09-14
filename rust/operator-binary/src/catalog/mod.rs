@@ -1,5 +1,6 @@
 pub mod config;
 pub mod hive;
+pub mod iceberg;
 
 use self::config::CatalogConfig;
 use async_trait::async_trait;

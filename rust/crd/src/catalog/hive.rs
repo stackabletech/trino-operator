@@ -7,6 +7,13 @@ use stackable_operator::{
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HiveConnector {
+    #[serde(flatten)]
+    pub common: HiveAndIcebergCommonAttributes,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HiveAndIcebergCommonAttributes {
     /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata
     pub metastore: MetastoreConnection, // We are using this nested struct to support HMS caching later on
     /// Connection to an S3 store

@@ -77,6 +77,8 @@ FROM hive.minio.taxi_data
     assert rows_written == 5000 or rows_written == 0
     assert run_query(connection, "SELECT COUNT(*) FROM hive.minio.taxi_data_transformed")[0][0] == 5000
 
+    print("[INFO] Testing HDFS")
+
     # We have to put in the Namenode address *temporary* until hive metastore supports adding a HDFS connection based on the discovery configmap
     # You can see that based on the error stacktrace:
     #  Caused by: org.apache.hadoop.hive.metastore.api.MetaException: java.lang.IllegalArgumentException: java.net.UnknownHostException: hdfs
@@ -87,9 +89,46 @@ FROM hive.minio.taxi_data
     assert rows_written == 5000 or rows_written == 0
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
 
+    print("[INFO] Testing Iceberg")
+    rows_written = run_query(connection, """
+CREATE TABLE IF NOT EXISTS iceberg.minio.taxi_data_copy_iceberg
+WITH (partitioning = ARRAY['vendor_id', 'passenger_count'], format = 'parquet')
+AS SELECT * FROM hive.minio.taxi_data
+""")[0][0]
+    assert rows_written == 5000 or rows_written == 0
+    # Check current count
+    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 5000
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 1
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$partitions"')[0][0] == 12
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 12
+
+    assert run_query(connection, "INSERT INTO iceberg.minio.taxi_data_copy_iceberg SELECT * FROM hive.minio.taxi_data")[0][0] == 5000
+
+    # Check current count
+    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 10000
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 2
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$partitions"')[0][0] == 12
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 24
+    # Check count for first snapshot
+    first_snapshot = run_query(connection, 'select snapshot_id from iceberg.minio."taxi_data_copy_iceberg$snapshots" order by committed_at limit 1')[0][0]
+    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg FOR VERSION AS OF {first_snapshot}")[0][0] == 5000
+
+    # Compact files
+    assert run_query(connection, "ALTER TABLE iceberg.minio.taxi_data_copy_iceberg EXECUTE optimize")[0][0] == 10000
+    # Check current count
+    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 10000
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 3
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$partitions"')[0][0] == 12
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 12 # Compaction yeah :)
+
+    # We can't test UPDATEs and DELETEs as well as table spec version 2 as Trino 377 is too old for that
+
+    print("Dropping tables")
+
     assert run_query(connection, "DROP TABLE hive.minio.taxi_data")[0][0] is True
     assert run_query(connection, "DROP TABLE hive.minio.taxi_data_copy")[0][0] is True
     assert run_query(connection, "DROP TABLE hive.minio.taxi_data_transformed")[0][0] is True
     assert run_query(connection, "DROP TABLE hive.hdfs.taxi_data_copy")[0][0] is True
+    assert run_query(connection, "DROP TABLE hive.minio.taxi_data_iceberg")[0][0] is True
 
     print("[SUCCESS] All tests in check-s3.py succeeded!")

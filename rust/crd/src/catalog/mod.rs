@@ -1,4 +1,5 @@
 pub mod hive;
+pub mod iceberg;
 
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
@@ -8,6 +9,7 @@ use stackable_operator::{
 use std::collections::HashMap;
 
 use hive::HiveConnector;
+use iceberg::IcebergConnector;
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
@@ -33,4 +35,5 @@ pub struct TrinoCatalogSpec {
 #[serde(rename_all = "camelCase")]
 pub enum TrinoCatalogConnector {
     Hive(HiveConnector),
+    Iceberg(IcebergConnector),
 }
