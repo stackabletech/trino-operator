@@ -12,7 +12,7 @@ def get_connection(username, password, namespace):
     host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
     # If you want to debug this locally use
     # kubectl -n kuttl-test-XXX port-forward svc/trino-coordinator-default-0 8443
-    # host = '127.0.0.1'
+    host = '127.0.0.1'
 
     conn = trino.dbapi.connect(
         host=host,
@@ -90,12 +90,12 @@ FROM hive.minio.taxi_data
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
 
     print("[INFO] Testing Iceberg")
-    rows_written = run_query(connection, """
+    assert run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")[0][0] is True # Clean up table to don't fail an second run
+    assert run_query(connection, """
 CREATE TABLE IF NOT EXISTS iceberg.minio.taxi_data_copy_iceberg
 WITH (partitioning = ARRAY['vendor_id', 'passenger_count'], format = 'parquet')
 AS SELECT * FROM hive.minio.taxi_data
-""")[0][0]
-    assert rows_written == 5000 or rows_written == 0
+""")[0][0] == 5000
     # Check current count
     assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 5000
     assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 1
@@ -111,10 +111,10 @@ AS SELECT * FROM hive.minio.taxi_data
     assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 24
     # Check count for first snapshot
     first_snapshot = run_query(connection, 'select snapshot_id from iceberg.minio."taxi_data_copy_iceberg$snapshots" order by committed_at limit 1')[0][0]
-    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg FOR VERSION AS OF {first_snapshot}")[0][0] == 5000
+    assert run_query(connection, f"SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg FOR VERSION AS OF {first_snapshot}")[0][0] == 5000
 
     # Compact files
-    assert run_query(connection, "ALTER TABLE iceberg.minio.taxi_data_copy_iceberg EXECUTE optimize")[0][0] == 10000
+    run_query(connection, "ALTER TABLE iceberg.minio.taxi_data_copy_iceberg EXECUTE optimize")
     # Check current count
     assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 10000
     assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 3
@@ -129,6 +129,6 @@ AS SELECT * FROM hive.minio.taxi_data
     assert run_query(connection, "DROP TABLE hive.minio.taxi_data_copy")[0][0] is True
     assert run_query(connection, "DROP TABLE hive.minio.taxi_data_transformed")[0][0] is True
     assert run_query(connection, "DROP TABLE hive.hdfs.taxi_data_copy")[0][0] is True
-    assert run_query(connection, "DROP TABLE hive.minio.taxi_data_iceberg")[0][0] is True
+    assert run_query(connection, "DROP TABLE iceberg.minio.taxi_data_copy_iceberg")[0][0] is True
 
     print("[SUCCESS] All tests in check-s3.py succeeded!")
