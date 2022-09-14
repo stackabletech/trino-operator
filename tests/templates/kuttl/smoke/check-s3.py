@@ -12,7 +12,7 @@ def get_connection(username, password, namespace):
     host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
     # If you want to debug this locally use
     # kubectl -n kuttl-test-XXX port-forward svc/trino-coordinator-default-0 8443
-    host = '127.0.0.1'
+    # host = '127.0.0.1'
 
     conn = trino.dbapi.connect(
         host=host,
@@ -81,7 +81,7 @@ FROM hive.minio.taxi_data
 
     # We have to put in the Namenode address *temporary* until hive metastore supports adding a HDFS connection based on the discovery configmap
     # You can see that based on the error stacktrace:
-    #  Caused by: org.apache.hadoop.hive.metastore.api.MetaException: java.lang.IllegalArgumentException: java.net.UnknownHostException: hdfs
+    # Caused by: org.apache.hadoop.hive.metastore.api.MetaException: java.lang.IllegalArgumentException: java.net.UnknownHostException: hdfs
     # When hive supports the HDFS connection we should switch to the following command
     # assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs/trino/')")[0][0] is True
     assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs-namenode-default-0/trino/')")[0][0] is True
@@ -90,7 +90,7 @@ FROM hive.minio.taxi_data
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
 
     print("[INFO] Testing Iceberg")
-    assert run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")[0][0] is True # Clean up table to don't fail an second run
+    assert run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")[0][0] is True  # Clean up table to don't fail an second run
     assert run_query(connection, """
 CREATE TABLE IF NOT EXISTS iceberg.minio.taxi_data_copy_iceberg
 WITH (partitioning = ARRAY['vendor_id', 'passenger_count'], format = 'parquet')
@@ -119,7 +119,7 @@ AS SELECT * FROM hive.minio.taxi_data
     assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 10000
     assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 3
     assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$partitions"')[0][0] == 12
-    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 12 # Compaction yeah :)
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 12  # Compaction yeah :)
 
     # We can't test UPDATEs and DELETEs as well as table spec version 2 as Trino 377 is too old for that
 
