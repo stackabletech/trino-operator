@@ -122,14 +122,14 @@ AS SELECT * FROM hive.minio.taxi_data
     if trino_version == '377':
         # io.trino.spi.TrinoException: This connector [iceberg] does not support versioned tables
         print("[INFO] Skipping the Iceberg tests reading versioned tables for trino version 377 as it does not support versioned tables")
-        sys.exit(0)
-
-    # Check count for first snapshot
-    first_snapshot = run_query(connection, 'select snapshot_id from iceberg.minio."taxi_data_copy_iceberg$snapshots" order by committed_at limit 1')[0][0]
-    assert run_query(connection, f"SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg FOR VERSION AS OF {first_snapshot}")[0][0] == 5000
+    else:
+        # Check count for first snapshot
+        first_snapshot = run_query(connection, 'select snapshot_id from iceberg.minio."taxi_data_copy_iceberg$snapshots" order by committed_at limit 1')[0][0]
+        assert run_query(connection, f"SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg FOR VERSION AS OF {first_snapshot}")[0][0] == 5000
 
     # Compact files
     run_query(connection, "ALTER TABLE iceberg.minio.taxi_data_copy_iceberg EXECUTE optimize")
+
     # Check current count
     assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 10000
     assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 3
