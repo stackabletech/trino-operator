@@ -24,10 +24,10 @@ impl ToCatalogConfig for IcebergConnector {
         config.add_property("connector.name", CONNECTOR_NAME);
 
         // No authorization checks are enforced at the catalog level.
-        // We don't want the hive connector to prevent users from dropping tables.
-        // We also don't want that the hive connector makes decisions on which user is allowed to do what.
+        // We don't want the iceberg connector to prevent users from dropping tables.
+        // We also don't want that the iceberg connector makes decisions on which user is allowed to do what.
         // This decision should be done globally (for all catalogs) by OPA.
-        // See https://trino.io/docs/current/connector/hive-security.html
+        // See https://trino.io/docs/current/connector/iceberg.html
         config.add_property("iceberg.security", "allow-all");
 
         Ok(config)
