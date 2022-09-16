@@ -407,6 +407,90 @@ Peak Memory: 0B
 2.67 [15 rows, 8.08KB] [5 rows/s, 3.02KB/s]
 ----
 
+== Catalogs
+=== Create catalog
+Trino connects to datasources via https://trino.io/docs/current/connector.html[connectors].
+Each connector enables access to a specific underlying datasource like a Hive warehouse, PostgresSQL or Druid instance.
+
+Currently the following connectors are supported:
+
+* https://trino.io/docs/current/connector/hive.html[Hive]
+* https://trino.io/docs/current/connector/iceberg.html[Iceberg]
+
+An instance of a connector is called a catalog.
+Think of a setup containing a large Hive warehouses based on a HDFS.
+You then can have two catalogs called e.g. `warehouse_1` and `warehouse_2` that both use the `hive` connector.
+
+You can create a catalog using the `TrinoCatalog` object as follows.
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: hive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: iceberg
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    iceberg:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+----
+
+The `metadata.name` will be the name of the catalog that shows up in your Trino instance.
+The `metadata.labels` will be used to determine, which Trino instance imports which `TrinoCatalogs`.
+The `spec.connector.<connector>` determines which connector is used.
+Each connector supports a different set of attributes.
+
+=== Add catalog to Trino cluster
+You have to specify within your `TrinoCluster` which catalogs it should use as follows:
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: 387-stackable0.1.0
+  catalogLabelSelector:
+    matchLabels:
+      trino: simple-trino
+# ...
+----
+
+The `spec.catalogLabelSelector` is used to fetch the list of `TrinoCatalogs` used for this Trino cluster.
+In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector`.
+This mechanism allows to create a `TrinoCluster` once and then add new catalogs dynamically by creating `TrinoCatalog` objects.
+It also allows to reuse a `TrinoCatalog` within multiple `TrinoClusters`.
+
 == Monitoring
 
 The managed Trino instances are automatically configured to export Prometheus metrics. See

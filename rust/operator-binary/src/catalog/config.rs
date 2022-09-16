@@ -101,6 +101,11 @@ impl CatalogConfig {
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
                     .await
             }
+            TrinoCatalogConnector::Iceberg(connector) => {
+                connector
+                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .await
+            }
         }
     }
 }

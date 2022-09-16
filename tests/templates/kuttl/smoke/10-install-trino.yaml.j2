@@ -39,7 +39,6 @@ stringData:
   alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
   # bob:bob
   bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
-
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
@@ -52,6 +51,22 @@ spec:
     hive:
       metastore:
         configMap: hive
+      s3:
+        reference: minio
+      hdfs:
+        configMap: hdfs
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: iceberg
+  labels:
+    trino: trino
+spec:
+  connector:
+    iceberg:
+      metastore:
+        configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
       s3:
         reference: minio
       hdfs:

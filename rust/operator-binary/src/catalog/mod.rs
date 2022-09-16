@@ -1,5 +1,7 @@
+pub mod commons;
 pub mod config;
 pub mod hive;
+pub mod iceberg;
 
 use self::config::CatalogConfig;
 use async_trait::async_trait;
@@ -25,4 +27,15 @@ pub trait ToCatalogConfig {
         catalog_namespace: Option<String>,
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError>;
+}
+
+#[async_trait]
+pub trait ExtendCatalogConfig {
+    async fn extend_catalog_config(
+        &self,
+        catalog_config: &mut CatalogConfig,
+        catalog_name: &str,
+        catalog_namespace: Option<String>,
+        client: &Client,
+    ) -> Result<(), FromTrinoCatalogError>;
 }

@@ -11,7 +11,7 @@ warnings.simplefilter("ignore")
 def get_connection(username, password, namespace):
     host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
     # If you want to debug this locally use
-    # kubectl -n kuttl-test-XXX port-forward svc/trino-coordinator-default-0 8443
+    # kubectl -n kuttl-test-XXX port-forward svc/trino-coordinator-default 8443
     # host = '127.0.0.1'
 
     conn = trino.dbapi.connect(
@@ -23,7 +23,6 @@ def get_connection(username, password, namespace):
     )
     conn._http_session.verify = False
     return conn
-
 
 def run_query(connection, query):
     print(f"[DEBUG] Executing query {query}")
@@ -43,7 +42,17 @@ if __name__ == '__main__':
     print("Starting S3 tests...")
     connection = get_connection("admin", "admin", namespace)
 
+    trino_version = run_query(connection, "select node_version from system.runtime.nodes where coordinator = true and state = 'active'")[0][0]
+    print(f"[INFO] Testing against Trino version {trino_version}")
+
     assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.minio WITH (location = 's3a://trino/')")[0][0] is True
+
+    assert run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data")[0][0] is True
+    assert run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data_copy")[0][0] is True
+    assert run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data_transformed")[0][0] is True
+    assert run_query(connection, "DROP TABLE IF EXISTS hive.hdfs.taxi_data_copy")[0][0] is True
+    assert run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")[0][0] is True
+
     assert run_query(connection, """
 CREATE TABLE IF NOT EXISTS hive.minio.taxi_data (
     vendor_id VARCHAR,
@@ -77,9 +86,11 @@ FROM hive.minio.taxi_data
     assert rows_written == 5000 or rows_written == 0
     assert run_query(connection, "SELECT COUNT(*) FROM hive.minio.taxi_data_transformed")[0][0] == 5000
 
+    print("[INFO] Testing HDFS")
+
     # We have to put in the Namenode address *temporary* until hive metastore supports adding a HDFS connection based on the discovery configmap
     # You can see that based on the error stacktrace:
-    #  Caused by: org.apache.hadoop.hive.metastore.api.MetaException: java.lang.IllegalArgumentException: java.net.UnknownHostException: hdfs
+    # Caused by: org.apache.hadoop.hive.metastore.api.MetaException: java.lang.IllegalArgumentException: java.net.UnknownHostException: hdfs
     # When hive supports the HDFS connection we should switch to the following command
     # assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs/trino/')")[0][0] is True
     assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs-namenode-default-0/trino/')")[0][0] is True
@@ -87,9 +98,44 @@ FROM hive.minio.taxi_data
     assert rows_written == 5000 or rows_written == 0
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
 
-    assert run_query(connection, "DROP TABLE hive.minio.taxi_data")[0][0] is True
-    assert run_query(connection, "DROP TABLE hive.minio.taxi_data_copy")[0][0] is True
-    assert run_query(connection, "DROP TABLE hive.minio.taxi_data_transformed")[0][0] is True
-    assert run_query(connection, "DROP TABLE hive.hdfs.taxi_data_copy")[0][0] is True
+    print("[INFO] Testing Iceberg")
+    assert run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")[0][0] is True  # Clean up table to don't fail an second run
+    assert run_query(connection, """
+CREATE TABLE IF NOT EXISTS iceberg.minio.taxi_data_copy_iceberg
+WITH (partitioning = ARRAY['vendor_id', 'passenger_count'], format = 'parquet')
+AS SELECT * FROM hive.minio.taxi_data
+""")[0][0] == 5000
+    # Check current count
+    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 5000
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 1
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$partitions"')[0][0] == 12
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 12
+
+    assert run_query(connection, "INSERT INTO iceberg.minio.taxi_data_copy_iceberg SELECT * FROM hive.minio.taxi_data")[0][0] == 5000
+
+    # Check current count
+    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 10000
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 2
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$partitions"')[0][0] == 12
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 24
+
+    if trino_version == '377':
+        # io.trino.spi.TrinoException: This connector [iceberg] does not support versioned tables
+        print("[INFO] Skipping the Iceberg tests reading versioned tables for trino version 377 as it does not support versioned tables")
+    else:
+        # Check count for first snapshot
+        first_snapshot = run_query(connection, 'select snapshot_id from iceberg.minio."taxi_data_copy_iceberg$snapshots" order by committed_at limit 1')[0][0]
+        assert run_query(connection, f"SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg FOR VERSION AS OF {first_snapshot}")[0][0] == 5000
+
+    # Compact files
+    run_query(connection, "ALTER TABLE iceberg.minio.taxi_data_copy_iceberg EXECUTE optimize")
+
+    # Check current count
+    assert run_query(connection, "SELECT COUNT(*) FROM iceberg.minio.taxi_data_copy_iceberg")[0][0] == 10000
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$snapshots"')[0][0] == 3
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$partitions"')[0][0] == 12
+    assert run_query(connection, 'SELECT COUNT(*) FROM iceberg.minio."taxi_data_copy_iceberg$files"')[0][0] == 12  # Compaction yeah :)
+
+    # Test could be improved by also testing update and deletes
 
     print("[SUCCESS] All tests in check-s3.py succeeded!")

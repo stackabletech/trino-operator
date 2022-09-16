@@ -7,7 +7,7 @@ use stackable_operator::{
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HiveConnector {
+pub struct IcebergConnector {
     /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata
     pub metastore: MetastoreConnection,
     /// Connection to an S3 store
