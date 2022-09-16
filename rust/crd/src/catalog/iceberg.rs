@@ -1,10 +1,17 @@
-use super::hive::HiveAndIcebergCommonAttributes;
+use super::commons::{HdfsConnection, MetastoreConnection};
 use serde::{Deserialize, Serialize};
-use stackable_operator::schemars::{self, JsonSchema};
+use stackable_operator::{
+    commons::s3::S3ConnectionDef,
+    schemars::{self, JsonSchema},
+};
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IcebergConnector {
-    #[serde(flatten)]
-    pub common: HiveAndIcebergCommonAttributes,
+    /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata
+    pub metastore: MetastoreConnection,
+    /// Connection to an S3 store
+    pub s3: Option<S3ConnectionDef>,
+    /// Connection to an HDFS cluster
+    pub hdfs: Option<HdfsConnection>,
 }
