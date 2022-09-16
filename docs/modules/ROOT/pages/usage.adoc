@@ -489,6 +489,7 @@ spec:
 The `spec.catalogLabelSelector` is used to fetch the list of `TrinoCatalogs` used for this Trino cluster.
 In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector`.
 This mechanism allows to create a `TrinoCluster` once and then add new catalogs dynamically by creating `TrinoCatalog` objects.
+It also allows to reuse a `TrinoCatalog` within multiple `TrinoClusters`.
 
 == Monitoring
 
