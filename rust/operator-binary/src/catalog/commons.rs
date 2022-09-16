@@ -51,8 +51,6 @@ impl ExtendCatalogConfig for S3ConnectionDef {
             .await
             .context(ResolveS3ConnectionDefSnafu)?;
 
-        // let s3 = self.resolve(client, catalog_namespace.as_deref()).await.context(ResolveS3ConnectionDefSnafu)?;
-
         if let Some(endpoint) = s3.endpoint() {
             catalog_config.add_property("hive.s3.endpoint", endpoint)
         }
