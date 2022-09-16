@@ -419,7 +419,7 @@ Currently the following connectors are supported:
 
 An instance of a connector is called a catalog.
 Think of a setup containing a large Hive warehouses based on a HDFS.
-You than have two catalogs called e.g. `warehouse1` and `warehouse1` that both use the `hive` connector.
+You then can have two catalogs called e.g. `warehouse-1` and `warehouse-2` that both use the `hive` connector.
 
 You can create a catalog using the `TrinoCatalog` object as follows.
 
