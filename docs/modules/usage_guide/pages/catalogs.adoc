@@ -1,0 +1,74 @@
+= Catalogs
+
+== Create a catalog
+
+You can create a catalog using the `TrinoCatalog` object as follows.
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: hive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: iceberg
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    iceberg:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+----
+
+The `metadata.name` will be the name of the catalog that shows up in your Trino instance.
+The `metadata.labels` will be used to determine the link between Trino clusters and `TrinoCatalogs`.
+The `spec.connector.<connector>` determines which connector is used.
+Each connector supports a different set of attributes.
+
+== Add a catalog to a Trino cluster
+
+It is necessary to specify within the `TrinoCluster` which catalogs it should use. Here is an example of this:
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: 387-stackable0.1.0
+  catalogLabelSelector:
+    matchLabels:
+      trino: simple-trino
+# ...
+----
+
+The `spec.catalogLabelSelector` is used to fetch the list of `TrinoCatalogs` used for this Trino cluster.
+In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector`.
+
+A `TrinoCluster` can, once created, detect and use new catalogs that have been subsequently created with a matching label. This also means that it is possible to reuse a `TrinoCatalog` within multiple `TrinoClusters`.

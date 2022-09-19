@@ -1,2 +1,2 @@
 * xref:configuration.adoc[]
-* xref:usage.adoc[]
+* xref:concepts.adoc[]
