@@ -108,7 +108,9 @@ impl CatalogConfig {
             }
         }?;
 
-        catalog_config.properties.extend(catalog.spec.config_overrides);
+        catalog_config
+            .properties
+            .extend(catalog.spec.config_overrides);
 
         Ok(catalog_config)
     }
