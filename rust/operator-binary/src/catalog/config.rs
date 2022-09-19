@@ -95,7 +95,7 @@ impl CatalogConfig {
         let catalog_name = catalog.name();
         let catalog_namespace = catalog.namespace();
 
-        match catalog.spec.connector {
+        let mut catalog_config = match catalog.spec.connector {
             TrinoCatalogConnector::Hive(connector) => {
                 connector
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
@@ -106,7 +106,11 @@ impl CatalogConfig {
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
                     .await
             }
-        }
+        }?;
+
+        catalog_config.properties.extend(catalog.spec.config_overrides);
+
+        Ok(catalog_config)
     }
 }
 

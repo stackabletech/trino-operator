@@ -8,7 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Add support for [Iceberg connector](https://trino.io/docs/current/connector/iceberg.html) ([#286]).
 
+### Fixed
+
+- Fix not adding `configOverwrites` specified in a `TrinoCatalog` to the catalog ([#289]).
+
 [#286]: https://github.com/stackabletech/trino-operator/pull/286
+[#289]: https://github.com/stackabletech/trino-operator/pull/289
 
 ## [0.6.0] - 2022-09-08
 
