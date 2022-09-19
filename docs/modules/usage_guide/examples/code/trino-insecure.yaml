@@ -1,0 +1,55 @@
+
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: 387-stackable0.1.0
+  catalogLabelSelector:
+    matchLabels:
+      trino: simple-trino
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: hive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+---
+apiVersion: hive.stackable.tech/v1alpha1
+kind: HiveCluster
+metadata:
+  name: simple-hive-derby
+spec:
+  version: 3.1.3-stackable0.1.0
+  metastore:
+    roleGroups:
+      default:
+        replicas: 1
+        config:
+          database:
+            connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
+            user: APP
+            password: mine
+            dbType: derby

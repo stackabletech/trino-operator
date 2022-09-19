@@ -8,46 +8,11 @@ kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
 
 == Define an insecure cluster (testing)
 
-Create an insecure single node Trino (v387) cluster for testing. You will access the UI/CLI via http with neither user/password credentials nor authorization. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster.yaml` for an example setting up Hive and Trino):
+Create an insecure single node Trino (v387) cluster for testing. This can be accessed with the UI/CLI via http without either user/password credentials or authorization (although `minio-credentials` should be provided for `s3` access):
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCluster
-metadata:
-  name: simple-trino
-spec:
-  version: 387-stackable0.1.0
-  catalogLabelSelector:
-    matchLabels:
-      trino: simple-trino
-  coordinators:
-    roleGroups:
-      default:
-        replicas: 1
-  workers:
-    roleGroups:
-      default:
-        replicas: 1
----
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCatalog
-metadata:
-  name: hive
-  labels:
-    trino: simple-trino
-spec:
-  connector:
-    hive:
-      metastore:
-        configMap: simple-hive-derby
-      s3:
-        inline:
-          host: test-minio
-          port: 9000
-          accessStyle: Path
-          credentials:
-            secretClass: minio-credentials
+include::example$code/trino-insecure.yaml[]
 ----
 
 To access the CLI please execute:
@@ -58,11 +23,11 @@ To access the CLI please execute:
 
 == Define a secure cluster (production)
 
-There are multiple steps that must be taken to secure a Trino cluster:
+The following steps must be taken to secure a Trino cluster:
 
 1. Enable authentication
 2. Enable TLS between the clients and coordinator
-3. Enable internal TLS for communications between coordinators and workers
+3. Enable internal TLS for communication between coordinators and workers
 
 For testing purposes we use the https://trino.io/docs/current/installation/cli.html[Trino CLI].
 
