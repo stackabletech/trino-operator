@@ -2,6 +2,8 @@ pub mod commons;
 pub mod config;
 pub mod hive;
 pub mod iceberg;
+pub mod tpcds;
+pub mod tpch;
 
 use self::config::CatalogConfig;
 use async_trait::async_trait;

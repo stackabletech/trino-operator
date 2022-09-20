@@ -106,6 +106,16 @@ impl CatalogConfig {
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
                     .await
             }
+            TrinoCatalogConnector::Tpcds(connector) => {
+                connector
+                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .await
+            }
+            TrinoCatalogConnector::Tpch(connector) => {
+                connector
+                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .await
+            }
         }?;
 
         catalog_config

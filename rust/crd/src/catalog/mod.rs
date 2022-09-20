@@ -1,6 +1,8 @@
 pub mod commons;
 pub mod hive;
 pub mod iceberg;
+pub mod tpcds;
+pub mod tpch;
 
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
@@ -11,6 +13,8 @@ use std::collections::HashMap;
 
 use hive::HiveConnector;
 use iceberg::IcebergConnector;
+use tpcds::TpcdsConnector;
+use tpch::TpchConnector;
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
@@ -37,4 +41,6 @@ pub struct TrinoCatalogSpec {
 pub enum TrinoCatalogConnector {
     Hive(HiveConnector),
     Iceberg(IcebergConnector),
+    Tpcds(TpcdsConnector),
+    Tpch(TpchConnector),
 }

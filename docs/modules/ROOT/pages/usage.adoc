@@ -416,6 +416,8 @@ Currently the following connectors are supported:
 
 * https://trino.io/docs/current/connector/hive.html[Hive]
 * https://trino.io/docs/current/connector/iceberg.html[Iceberg]
+* https://trino.io/docs/current/connector/tpcds.html[TPCDS]
+* https://trino.io/docs/current/connector/tpch.html[TPCH]
 
 An instance of a connector is called a catalog.
 Think of a setup containing a large Hive warehouses based on a HDFS.
