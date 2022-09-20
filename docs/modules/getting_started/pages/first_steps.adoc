@@ -54,7 +54,7 @@ include::example$code/getting-started.sh[tag=port-forwarding]
 
 === Access the Trino cluster via CLI tool
 
-We use the https://trino.io/download.html[Trino CLI tool] to access the Trino cluster. This link points to the latest Trino version. In this guide we keep Trino cluster and client versions (396) in sync and download the CLI tool from the https://repo.stackable.tech/[Stackable repository]:
+We use the https://trino.io/download.html[Trino CLI tool] to access the Trino cluster. This link points to the latest Trino version. In this guide we keep Trino cluster and client versions in sync and download the CLI tool from the https://repo.stackable.tech/[Stackable repository]:
 
 [source,bash]
 ----
