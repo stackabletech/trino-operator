@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add support for [Iceberg connector](https://trino.io/docs/current/connector/iceberg.html) ([#286]).
+- Add support for [TPCH connector](https://trino.io/docs/current/connector/tpch.html) and [TPCDS connector](https://trino.io/docs/current/connector/tpcds.html) ([#293]).
 
 ### Fixed
 
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#286]: https://github.com/stackabletech/trino-operator/pull/286
 [#289]: https://github.com/stackabletech/trino-operator/pull/289
+[#293]: https://github.com/stackabletech/trino-operator/pull/293
 
 ## [0.6.0] - 2022-09-08
 

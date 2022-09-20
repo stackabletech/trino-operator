@@ -1192,6 +1192,10 @@ spec:
                         - hive
                     - required:
                         - iceberg
+                    - required:
+                        - tpcds
+                    - required:
+                        - tpch
                   properties:
                     hive:
                       properties:
@@ -1438,6 +1442,10 @@ spec:
                           type: object
                       required:
                         - metastore
+                      type: object
+                    tpcds:
+                      type: object
+                    tpch:
                       type: object
                   type: object
               required:
