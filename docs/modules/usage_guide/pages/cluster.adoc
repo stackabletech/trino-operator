@@ -2,7 +2,7 @@
 
 == Define an insecure cluster (testing)
 
-Create an insecure single node Trino (v387) cluster for testing. This can be accessed with the UI/CLI via http without either user/password credentials or authorization.
+Create an insecure single node Trino cluster for testing. This can be accessed with the UI/CLI via http without either user/password credentials or authorization.
 
 For testing purposes we use the https://trino.io/docs/current/installation/cli.html[Trino CLI].
 
@@ -42,7 +42,7 @@ Next, download the Trino CLI tool (this can be obtained from the Stackable repos
 
 [source]
 ----
-curl --output trino.jar https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-387-executable.jar
+curl --output trino.jar https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-396-executable.jar
 ----
 
 Execute some CLI commands to verify operation, such as returning the names of all catalogs. Note that an insecure connection is specified:

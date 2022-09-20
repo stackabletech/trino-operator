@@ -15,7 +15,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: 387-stackable0.1.0
+  version: 396-stackable0.1.0
   config:
     tls:
       secretClass: trino-tls # <1>
