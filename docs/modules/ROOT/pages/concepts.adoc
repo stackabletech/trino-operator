@@ -17,6 +17,8 @@ Currently, the following connectors are supported:
 
 * https://trino.io/docs/current/connector/hive.html[Hive]
 * https://trino.io/docs/current/connector/iceberg.html[Iceberg]
+* https://trino.io/docs/current/connector/tpcds.html[TPCDS]
+* https://trino.io/docs/current/connector/tpch.html[TPCH]
 
 == Catalog references
 
@@ -25,4 +27,6 @@ Within the Stackable a `TrinoCatalog` consists of the following:
 - a mandatory reference to a Hive metastore configuration map (in the same namespace)
 - optional references to S3 and/or HDFS storage
 
-A catalog should be re-usable within multiple Trino clusters. Catalogs are referenced by Trino clusters with labels and label selectors: this is consistent with the Kubernetes paradigm and keeps the definitions simple and flexible. An example of this is shown here: xref:usage_guide:catalogs.adoc[].
+A catalog should be re-usable within multiple Trino clusters. Catalogs are referenced by Trino clusters with labels and label selectors: this is consistent with the Kubernetes paradigm and keeps the definitions simple and flexible.
+
+A complete example of this is shown here: xref:usage_guide:catalogs.adoc[].

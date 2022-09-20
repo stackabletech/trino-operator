@@ -1,72 +1,89 @@
-= Defining a Trino cluster
-
-With the prerequisites fulfilled, the CRD for this operator can be created:
-[source]
-----
-kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
-----
+= Creating a Trino cluster
 
 == Define an insecure cluster (testing)
 
-Create an insecure single node Trino (v387) cluster for testing. This can be accessed with the UI/CLI via http without either user/password credentials or authorization (although `minio-credentials` should be provided for `s3` access):
+Create an insecure single node Trino (v387) cluster for testing. This can be accessed with the UI/CLI via http without either user/password credentials or authorization.
+
+For testing purposes we use the https://trino.io/docs/current/installation/cli.html[Trino CLI].
+
+First, ensure all necessary operator have been deployed:
+
+[source]
+----
+stackablectl operator install \
+  secret commons hive trino
+----
+
+The Trino cluster can now be deployed:
 
 [source,yaml]
 ----
 include::example$code/trino-insecure.yaml[]
 ----
 
-To access the CLI please execute:
+We have defined a single catalog - Hive - which uses an embedded database (derby).
+
+To interact with Trino, first obtain the host and port for the Trino coordinator service (in this and following examples, https://172.18.0.3:31748):
+
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server http://<node>:<http-port> --user=admin
+stackablectl services list
+
+ PRODUCT  NAME               NAMESPACE  ENDPOINTS                                     EXTRA INFOS
+
+ hive     simple-hive-derby  default    hive                172.18.0.4:32186
+                                        metrics             172.18.0.4:30109
+
+ trino    simple-trino       default    coordinator-metrics 172.18.0.3:32123
+                                        coordinator-https   https://172.18.0.3:31748
+----
+
+Next, download the Trino CLI tool (this can be obtained from the Stackable repository, as shown below):
+
+[source]
+----
+curl --output trino.jar https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-387-executable.jar
+----
+
+Execute some CLI commands to verify operation, such as returning the names of all catalogs. Note that an insecure connection is specified:
+[source]
+----
+./trino.jar --insecure --debug --server https://172.18.0.3:31748 --user=admin --execute "SHOW CATALOGS" --output-format=CSV_UNQUOTED
+
+hive
+system
 ----
 
 == Define a secure cluster (production)
 
-The following steps must be taken to secure a Trino cluster:
+For secure connections the following steps must be taken:
 
 1. Enable authentication
 2. Enable TLS between the clients and coordinator
 3. Enable internal TLS for communication between coordinators and workers
 
-For testing purposes we use the https://trino.io/docs/current/installation/cli.html[Trino CLI].
-
 === Via authentication
 
 If authentication is enabled, https://trino.io/docs/current/security/tls.html[TLS] for the coordinator as well as a shared secret for https://trino.io/docs/current/security/internal-communication.html[internal communications] (this is base64 and not encrypted) must be configured.
 
-Securing the Trino cluster will disable all HTTP ports and disable the web interface on the HTTP port as well.
+Securing the Trino cluster will disable all HTTP ports and disable the web interface on the HTTP port as well. In the definition below the authentication is directed to use the `trino-users` secret and TLS communication will use a certificate signed by the Secret Operator (indicated by `autoTls`).
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCluster
-metadata:
-  name: simple-trino
-spec:
-  version: 387-stackable0.1.0
-  config:
-    tls:
-      secretClass: trino-tls
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: simple-trino-users-secret
-[..]
+include::example$code/trino-secure-tls.yaml[]
 ----
 
-If no `config.tls.secretClass` is provided but authentication is enabled, it will default to `tls` provided by the xref:secret-operator::index.adoc[Secret Operator].
+<1> The name of (and reference to) the `SecretClass`
+<2> The name of (and reference to) the `Secret`
+<3> `TrinoCatalog` reference
+<4> TLS mechanism
+
+The CLI now requires that a path to the keystore and a password be provided:
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin  --keystore-path=keystore.p12 --keystore-password=changeit
-----
-or
-
-[source]
-----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --insecure
+./trino.jar --debug --server https://172.18.0.3:31748
+--user=admin --keystore-path=<path-to-keystore.p12> --keystore-password=<password>
 ----
 
 === Via TLS only
@@ -75,21 +92,18 @@ This will disable the HTTP port and UI access and encrypt client-server communic
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCluster
-metadata:
-  name: simple-trino
-spec:
-  version: 387-stackable0.1.0
-  config:
-    tls:
-      secretClass: trino-tls
-[..]
+include::example$code/trino-secure-tls-only.yaml[]
 ----
+
+<1> The name of (and reference to) the `SecretClass`
+<2> `TrinoCatalog` reference
+<3> TLS mechanism
+
+CLI callout:
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --keystore-path=keystore.p12 --keystore-password=changeit
+./trino.jar --debug --server https://172.18.0.3:31748 --keystore-path=<path-to-keystore.p12> --keystore-password=<password>
 ----
 
 === Via internal TLS
@@ -98,23 +112,18 @@ Internal TLS is for encrypted and authenticated communications between coordinat
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCluster
-metadata:
-  name: simple-trino
-spec:
-  version: 387-stackable0.1.0
-  config:
-    internalTls:
-      secretClass: trino-internal-tls
-[..]
+include::example$code/trino-secure-internal-tls.yaml[]
 ----
+
+<1> The name of (and reference to) the `SecretClass`
+<2> The name of (and reference to) the `Secret`
+<3> TLS mechanism
 
 Since Trino has internal and external communications running over a single port, this will enable the HTTPS port but not expose it. Cluster access is only possible via HTTP.
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server http://<host>:<http-port> --user=admin
+./trino.jar --debug --server http://172.18.0.3:31748 --user=admin
 ----
 
 == S3 connection specification
@@ -149,8 +158,10 @@ s3: # <1>
 <6> Optional TLS settings for encrypted traffic. The `secretClass` can be provided by the Secret Operator or yourself.
 
 A self provided S3 TLS secret can be specified like this:
+
 [source,yaml]
 ----
+---
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:

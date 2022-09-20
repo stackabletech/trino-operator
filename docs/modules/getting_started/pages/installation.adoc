@@ -48,6 +48,35 @@ include::example$code/getting-started.sh[tag=helm-install-operators]
 
 Helm will deploy the operators in a Kubernetes Deployment and apply the CRDs for the Trino service (as well as the CRDs for the required operators). You are now ready to deploy Trino in Kubernetes.
 
+== Optional installation steps
+
+Trino works together with the Apache Hive metastore and S3 buckets and for these components extra steps are required.
+
+* a Stackable Hive metastore
+* an accessible S3 bucket
+** an end-point, and access- and secret-keys
+** data in the bucket (we use the https://archive.ics.uci.edu/ml/datasets/iris[Iris] dataset here)
+* the following are optional
+** a Stackable xref:secret-operator::index.adoc[Secret Operator] for certificates when deploying for TLS
+** a Stackable xref:commons-operator::index.adoc[Commons Operator] for certificates when deploying for TLS authentication
+** (for authorization): a Stackable xref:opa::index.adoc[OPA Operator][OPA-Operator]
+** the https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI] to test SQL queries
+
+=== S3 bucket
+
+Please refer to the S3 provider.
+
+=== Hive operator
+
+Please refer to the xref:hive::index.adoc[Hive Operator] docs.
+
+Both Hive and Trino need the same S3 authentication.
+
+=== OPA operator
+
+Please refer to the xref:opa::index.adoc[OPA Operator] docs.
+
+
 == What's next
 
 xref:first_steps.adoc[Set up a Trino cluster] and its dependencies.

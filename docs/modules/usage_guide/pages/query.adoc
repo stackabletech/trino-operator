@@ -1,4 +1,4 @@
-= Test Trino with Hive and S3
+= Testing Trino with Hive and S3
 
 Create a schema and a table for the Iris data located in S3 and query data. This assumes to have the Iris data set in the `PARQUET` format available in the S3 bucket which can be downloaded https://www.kaggle.com/gpreda/iris-dataset/version/2?select=iris.parquet[here].
 
