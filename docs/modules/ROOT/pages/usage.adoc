@@ -105,7 +105,7 @@ kubectl apply -f /etc/stackable/trino-operator/crd/trinocluster.crd.yaml
 
 ==== Insecure for testing:
 
-Create an insecure single node Trino (v387) cluster for testing. You will access the UI/CLI via http and no user / password or authorization is required. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster.yaml` for an example setting up Hive and Trino):
+Create an insecure single node Trino cluster for testing. You will access the UI/CLI via http and no user / password or authorization is required. Please adapt the `s3` settings with your credentials (check `examples/simple-trino-cluster.yaml` for an example setting up Hive and Trino):
 
 [source,yaml]
 ----
@@ -114,7 +114,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: 387-stackable0.1.0
+  version: 396-stackable0.1.0
   catalogLabelSelector:
     matchLabels:
       trino: simple-trino
@@ -150,7 +150,7 @@ spec:
 To access the CLI please execute:
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server http://<node>:<http-port> --user=admin
+./trino-cli-396-executable.jar --debug --server http://<node>:<http-port> --user=admin
 ----
 
 ==== Secure for production:
@@ -176,7 +176,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: 387-stackable0.1.0
+  version: 396-stackable0.1.0
   config:
     tls:
       secretClass: trino-tls
@@ -192,13 +192,13 @@ If no `config.tls.secretClass` is provided but authentication is enabled, it wil
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin  --keystore-path=keystore.p12 --keystore-password=changeit
+./trino-cli-396-executable.jar --debug --server https://<host>:<https-port> --user=admin  --keystore-path=keystore.p12 --keystore-password=changeit
 ----
 or
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --insecure
+./trino-cli-396-executable.jar --debug --server https://<host>:<https-port> --user=admin --insecure
 ----
 
 ===== Via TLS only
@@ -212,7 +212,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: 387-stackable0.1.0
+  version: 396-stackable0.1.0
   config:
     tls:
       secretClass: trino-tls
@@ -221,7 +221,7 @@ spec:
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server https://<host>:<https-port> --user=admin --keystore-path=keystore.p12 --keystore-password=changeit
+./trino-cli-396-executable.jar --debug --server https://<host>:<https-port> --user=admin --keystore-path=keystore.p12 --keystore-password=changeit
 ----
 
 ===== Via internal TLS
@@ -235,7 +235,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: 387-stackable0.1.0
+  version: 396-stackable0.1.0
   config:
     internalTls:
       secretClass: trino-internal-tls
@@ -246,7 +246,7 @@ Since Trino has internal and external communications running over a single port,
 
 [source]
 ----
-./trino-cli-387-executable.jar --debug --server http://<host>:<http-port> --user=admin
+./trino-cli-396-executable.jar --debug --server http://<host>:<http-port> --user=admin
 ----
 
 ==== S3 connection specification
@@ -481,7 +481,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: 387-stackable0.1.0
+  version: 396-stackable0.1.0
   catalogLabelSelector:
     matchLabels:
       trino: simple-trino
