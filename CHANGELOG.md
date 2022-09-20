@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support for Trino `395-stackable0.1.0` and `396-stackable0.1.0` ([#292]).
 - Add support for [Iceberg connector](https://trino.io/docs/current/connector/iceberg.html) ([#286]).
 
 ### Fixed
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#286]: https://github.com/stackabletech/trino-operator/pull/286
 [#289]: https://github.com/stackabletech/trino-operator/pull/289
+[#292]: https://github.com/stackabletech/trino-operator/pull/292
 
 ## [0.6.0] - 2022-09-08
 
