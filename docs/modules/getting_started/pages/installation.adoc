@@ -50,7 +50,8 @@ Helm will deploy the operators in a Kubernetes Deployment and apply the CRDs for
 
 == Optional installation steps
 
-Trino works together with the Apache Hive metastore and S3 buckets and for these components extra steps are required.
+Some Trino connectors like `hive` or `iceberg` work together with the Apache Hive metastore and S3 buckets.
+For these components extra steps are required.
 
 * a Stackable Hive metastore
 * an accessible S3 bucket
