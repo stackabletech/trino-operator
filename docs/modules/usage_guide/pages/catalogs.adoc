@@ -1,5 +1,7 @@
 = Using Catalogs
-Catalogues are defined in their own resources and referenced from cluster objects.
+
+Catalogues are defined in their own resources and referenced from cluster objects. See the xref:ROOT:concepts.adoc[] page for more details.
+
 == Create a catalog
 
 You can create a catalog using the `TrinoCatalog` object as follows.
