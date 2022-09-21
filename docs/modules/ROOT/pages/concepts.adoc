@@ -24,4 +24,11 @@ Currently, the following connectors are supported:
 
 Within Stackable a `TrinoCatalog` consists of one or more (mandatory or optional) components which are specific to that catalog. A catalog should be re-usable within multiple Trino clusters. Catalogs are referenced by Trino clusters with labels and label selectors: this is consistent with the Kubernetes paradigm and keeps the definitions simple and flexible.
 
+The following diagram illustrates this. Two Trino catalogs - each an instance of a particular connector - are declared with labels that used to match them to a Trino cluster:
+
+[excalidraw,trino-catalog-overview,svg,width=70%]
+----
+include::partial$diagrams/TrinoCatalogs.excalidraw[]
+----
+
 A complete example of this is shown here: xref:usage_guide:catalogs.adoc[].
