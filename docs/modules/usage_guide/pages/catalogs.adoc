@@ -1,5 +1,5 @@
 = Using Catalogs
-
+Catalogues are defined in their own resources and referenced from cluster objects.
 == Create a catalog
 
 You can create a catalog using the `TrinoCatalog` object as follows.
