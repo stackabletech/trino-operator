@@ -1,4 +1,4 @@
-= Catalogs
+= Using Catalogs
 
 == Create a catalog
 
