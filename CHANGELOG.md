@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - 2022-09-22
+
 ### Added
 
 - Add support for Trino `395-stackable0.1.0` and `396-stackable0.1.0` ([#292]).
