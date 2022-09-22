@@ -1,0 +1,70 @@
+= Testing Trino with Hive and S3
+
+Create a schema and a table for the Iris data located in S3 and query data. This assumes to have the Iris data set in the `PARQUET` format available in the S3 bucket which can be downloaded https://www.kaggle.com/gpreda/iris-dataset/version/2?select=iris.parquet[here].
+
+== Create schema
+[source,sql]
+----
+CREATE SCHEMA IF NOT EXISTS hive.iris
+WITH (location = 's3a://iris/');
+----
+which should return:
+----
+CREATE SCHEMA
+----
+
+== Create table
+[source,sql]
+----
+CREATE TABLE IF NOT EXISTS hive.iris.iris_parquet (
+  sepal_length DOUBLE,
+  sepal_width  DOUBLE,
+  petal_length DOUBLE,
+  petal_width  DOUBLE,
+  class        VARCHAR
+)
+WITH (
+  external_location = 's3a://iris/parq',
+  format = 'PARQUET'
+);
+----
+which should return:
+----
+CREATE TABLE
+----
+
+== Query data
+[source,sql]
+----
+SELECT
+    sepal_length,
+    class
+FROM hive.iris.iris_parquet
+LIMIT 10;
+----
+
+which should return something like this:
+----
+ sepal_length |    class
+--------------+-------------
+          5.1 | Iris-setosa
+          4.9 | Iris-setosa
+          4.7 | Iris-setosa
+          4.6 | Iris-setosa
+          5.0 | Iris-setosa
+          5.4 | Iris-setosa
+          4.6 | Iris-setosa
+          5.0 | Iris-setosa
+          4.4 | Iris-setosa
+          4.9 | Iris-setosa
+(10 rows)
+
+Query 20220210_161615_00000_a8nka, FINISHED, 1 node
+https://172.18.0.5:30299/ui/query.html?20220210_161615_00000_a8nka
+Splits: 18 total, 18 done (100.00%)
+CPU Time: 0.7s total,    20 rows/s, 11.3KB/s, 74% active
+Per Node: 0.3 parallelism,     5 rows/s, 3.02KB/s
+Parallelism: 0.3
+Peak Memory: 0B
+2.67 [15 rows, 8.08KB] [5 rows/s, 3.02KB/s]
+----

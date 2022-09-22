@@ -1,0 +1,5 @@
+= Monitoring
+
+The managed Trino instances are automatically configured to export Prometheus metrics. See
+xref:home:operators:monitoring.adoc[] for more details.
+

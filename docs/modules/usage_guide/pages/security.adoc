@@ -1,0 +1,65 @@
+= Security considerations
+
+== Authentication
+
+We provide user authentication via a secret that can be referred in the custom resource:
+[source,yaml]
+----
+authentication:
+  method:
+    multiUser:
+      userCredentialsSecret:
+        namespace: default
+        name: simple-trino-users-secret
+----
+
+These secrets need to be created manually before startup. The secret may look like the following snippet:
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple-trino-users-secret
+type: kubernetes.io/opaque
+stringData:
+  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
+  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
+  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+----
+
+The <user>:<password> combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds.
+[source]
+----
+htpasswd -nbBC 10 admin admin
+----
+
+== Authorization
+
+In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Trino has to be applied. The following example is an all-access Rego rule for testing with the user `admin`. Do not use it in production!
+
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opa-bundle-trino
+  labels:
+    opa.stackable.tech/bundle: "trino"
+data:
+  trino.rego: |
+    package trino
+
+    import future.keywords.in
+
+    default allow = false
+
+    allow {
+      is_admin
+    }
+
+    is_admin() {
+      input.context.identity.user == "admin"
+    }
+----
+
+Users should write their own rego rules for more complex OPA authorization.

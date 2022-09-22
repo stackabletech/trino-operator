@@ -4,7 +4,7 @@ After going through the xref:installation.adoc[] section and having installed al
 
 == Setup Trino
 
-In the simplest form, Trino does not require any other operators (except the commons and secret operator) to work and access the web interface. There are no data sources (e.g. PostgreSQL, Hive or S3) configured and for the tests only internal data is queried.
+A working Trino cluster and its web interface require only the commons and secret operators to work. Simple tests are possible without an external data source (e.g. PostgreSQL, Hive or S3), as internal data can be used.
 
 Create a file named `trino.yaml` with the following content:
 
@@ -123,4 +123,4 @@ include::example$code/getting-started.sh[tag=cleanup-trino-cli]
 
 == What's next
 
-Have a look at the xref:ROOT:usage.adoc[] page to find out more about the features of the Trino Operator.
+Have a look at the xref:usage_guide:cluster.adoc[] to find out more about how to configure a Trino cluster.
