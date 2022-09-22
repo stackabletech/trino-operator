@@ -1,5 +1,5 @@
 # tag::stackablectl-install-operators-output[]
-[INFO ] Installing commons operator in version 0.3.0
-[INFO ] Installing secret operator in version 0.5.0
-[INFO ] Installing trino operator in version 0.7.0
+[INFO ] Installing commons operator in version 0.4.0-nightly
+[INFO ] Installing secret operator in version 0.6.0-nightly
+[INFO ] Installing trino operator in version 0.8.0-nightly
 # end::stackablectl-install-operators-output[]
