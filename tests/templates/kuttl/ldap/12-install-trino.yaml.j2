@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-with-ldap-bind
+  labels:
+    secrets.stackable.tech/class: trino-with-ldap-bind
+stringData:
+  user: cn=integrationtest,ou=users,dc=example,dc=org
+  password: integrationtest
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: NifiCluster
+metadata:
+  name: test-trino
+spec:
+  version: {{ test_scenario['values']['trino'] }}
+  config:
+    authentication:
+      method:
+{% if test_scenario['values']['ldap-use-tls'] == 'false' %}
+        authenticationClass: ldap-without-tls
+{% else  %}
+        authenticationClass: ldap-with-tls
+{% endif %}
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
