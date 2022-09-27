@@ -5,7 +5,7 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
 };
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IcebergConnector {
     /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata

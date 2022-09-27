@@ -31,10 +31,14 @@ spec:
                       oneOf:
                         - required:
                             - multiUser
+                        - required:
+                            - authenticationClass
                       properties:
+                        authenticationClass:
+                          type: string
                         multiUser:
                           properties:
-                            userCredentialsSecret:
+                            user_credentials_secret:
                               description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
                               properties:
                                 name:
@@ -45,7 +49,7 @@ spec:
                                   type: string
                               type: object
                           required:
-                            - userCredentialsSecret
+                            - user_credentials_secret
                           type: object
                       type: object
                   required:

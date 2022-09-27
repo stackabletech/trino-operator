@@ -10,652 +10,1154 @@ spec:
     kind: TrinoCluster
     plural: trinoclusters
     shortNames:
-      - trino
+    - trino
     singular: trinocluster
   scope: Namespaced
   versions:
-    - additionalPrinterColumns: []
-      name: v1alpha1
-      schema:
-        openAPIV3Schema:
-          description: "Auto-generated derived type for TrinoClusterSpec via `CustomResource`"
-          properties:
-            spec:
-              properties:
-                authentication:
-                  nullable: true
-                  properties:
-                    method:
-                      oneOf:
-                        - required:
-                            - multiUser
-                      properties:
-                        multiUser:
-                          properties:
-                            userCredentialsSecret:
-                              description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
-                              properties:
-                                name:
-                                  description: name is unique within a namespace to reference a secret resource.
-                                  type: string
-                                namespace:
-                                  description: namespace defines the space within which the secret name must be unique.
-                                  type: string
-                              type: object
-                          required:
-                            - userCredentialsSecret
-                          type: object
-                      type: object
-                  required:
-                    - method
-                  type: object
-                catalogLabelSelector:
-                  description: "[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance"
-                  properties:
-                    matchExpressions:
-                      description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                      items:
-                        description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for TrinoClusterSpec via `CustomResource`
+        properties:
+          spec:
+            properties:
+              authentication:
+                nullable: true
+                properties:
+                  method:
+                    oneOf:
+                    - required:
+                      - multiUser
+                    - required:
+                      - authenticationClass
+                    properties:
+                      authenticationClass:
+                        description: Other authentication methods like LDAP
+                        type: string
+                      multiUser:
+                        description: Set multiple users via the password file from a secret
                         properties:
-                          key:
-                            description: key is the label key that the selector applies to.
-                            type: string
-                          operator:
-                            description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
-                            type: string
-                          values:
-                            description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
-                            items:
-                              type: string
-                            type: array
+                          user_credentials_secret:
+                            description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
+                            properties:
+                              name:
+                                description: name is unique within a namespace to reference a secret resource.
+                                type: string
+                              namespace:
+                                description: namespace defines the space within which the secret name must be unique.
+                                type: string
+                            type: object
                         required:
-                          - key
-                          - operator
+                        - user_credentials_secret
                         type: object
-                      type: array
-                    matchLabels:
-                      additionalProperties:
-                        type: string
-                      description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
-                      type: object
-                  type: object
-                config:
-                  default:
-                    tls:
-                      secretClass: tls
-                    internalTls:
-                      secretClass: tls
-                  description: Global Trino Config for cluster settings like TLS
-                  properties:
-                    internalTls:
-                      default:
-                        secretClass: tls
-                      description: "Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server"
-                      nullable: true
+                    type: object
+                required:
+                - method
+                type: object
+              catalogLabelSelector:
+                description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance'
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
                       properties:
-                        secretClass:
+                        key:
+                          description: key is the label key that the selector applies to.
                           type: string
+                        operator:
+                          description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                          items:
+                            type: string
+                          type: array
                       required:
-                        - secretClass
+                      - key
+                      - operator
                       type: object
-                    tls:
-                      default:
-                        secretClass: tls
-                      description: "Only affects client connections. This setting controls: - If TLS encryption is used at all - Which cert the servers should use to authenticate themselves against the client"
-                      nullable: true
-                      properties:
-                        secretClass:
-                          type: string
-                      required:
-                        - secretClass
-                      type: object
-                  type: object
-                coordinators:
-                  description: Settings for the Coordinator Role/Process.
-                  nullable: true
-                  properties:
-                    cliOverrides:
-                      additionalProperties:
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                    type: object
+                type: object
+              config:
+                default:
+                  tls:
+                    secretClass: tls
+                  internalTls:
+                    secretClass: tls
+                description: Global Trino Config for cluster settings like TLS
+                properties:
+                  internalTls:
+                    default:
+                      secretClass: tls
+                    description: 'Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server'
+                    nullable: true
+                    properties:
+                      secretClass:
                         type: string
-                      default: {}
-                      type: object
-                    config:
-                      default: {}
-                      properties:
-                        logLevel:
-                          nullable: true
-                          type: string
-                        queryMaxMemory:
-                          nullable: true
-                          type: string
-                        queryMaxMemoryPerNode:
-                          nullable: true
-                          type: string
-                        resources:
-                          nullable: true
-                          properties:
-                            cpu:
-                              default:
-                                min: ~
-                                max: ~
-                              properties:
-                                max:
-                                  description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                  nullable: true
-                                  type: string
-                                min:
-                                  description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                  nullable: true
-                                  type: string
-                              type: object
-                            memory:
-                              properties:
-                                limit:
-                                  description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                  nullable: true
-                                  type: string
-                                runtimeLimits:
-                                  type: object
-                              type: object
-                            storage:
-                              properties:
-                                data:
-                                  default:
-                                    capacity: ~
-                                  properties:
-                                    capacity:
-                                      description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                      nullable: true
-                                      type: string
-                                    selectors:
-                                      description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                                      nullable: true
-                                      properties:
-                                        matchExpressions:
-                                          description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                          items:
-                                            description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
-                                            properties:
-                                              key:
-                                                description: key is the label key that the selector applies to.
+                    required:
+                    - secretClass
+                    type: object
+                  tls:
+                    default:
+                      secretClass: tls
+                    description: 'Only affects client connections. This setting controls: - If TLS encryption is used at all - Which cert the servers should use to authenticate themselves against the client'
+                    nullable: true
+                    properties:
+                      secretClass:
+                        type: string
+                    required:
+                    - secretClass
+                    type: object
+                type: object
+              coordinators:
+                description: Settings for the Coordinator Role/Process.
+                nullable: true
+                properties:
+                  cliOverrides:
+                    additionalProperties:
+                      type: string
+                    default: {}
+                    type: object
+                  config:
+                    default: {}
+                    properties:
+                      logLevel:
+                        nullable: true
+                        type: string
+                      queryMaxMemory:
+                        nullable: true
+                        type: string
+                      queryMaxMemoryPerNode:
+                        nullable: true
+                        type: string
+                      resources:
+                        nullable: true
+                        properties:
+                          cpu:
+                            default:
+                              min: null
+                              max: null
+                            properties:
+                              max:
+                                description: |-
+                                  Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                  The serialization format is:
+
+                                  <quantity>        ::= <signedNumber><suffix>
+                                    (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                  <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                    (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                  <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                    (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                  <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                  No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                  When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                  Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                    a. No precision is lost
+                                    b. No fractional digits will be emitted
+                                    c. The exponent (or suffix) is as large as possible.
+                                  The sign will be omitted unless the number is negative.
+
+                                  Examples:
+                                    1.5 will be serialized as "1500m"
+                                    1.5Gi will be serialized as "1536Mi"
+
+                                  Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                  Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                  This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                nullable: true
+                                type: string
+                              min:
+                                description: |-
+                                  Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                  The serialization format is:
+
+                                  <quantity>        ::= <signedNumber><suffix>
+                                    (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                  <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                    (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                  <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                    (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                  <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                  No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                  When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                  Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                    a. No precision is lost
+                                    b. No fractional digits will be emitted
+                                    c. The exponent (or suffix) is as large as possible.
+                                  The sign will be omitted unless the number is negative.
+
+                                  Examples:
+                                    1.5 will be serialized as "1500m"
+                                    1.5Gi will be serialized as "1536Mi"
+
+                                  Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                  Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                  This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                nullable: true
+                                type: string
+                            type: object
+                          memory:
+                            properties:
+                              limit:
+                                description: |-
+                                  Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                  The serialization format is:
+
+                                  <quantity>        ::= <signedNumber><suffix>
+                                    (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                  <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                    (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                  <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                    (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                  <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                  No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                  When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                  Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                    a. No precision is lost
+                                    b. No fractional digits will be emitted
+                                    c. The exponent (or suffix) is as large as possible.
+                                  The sign will be omitted unless the number is negative.
+
+                                  Examples:
+                                    1.5 will be serialized as "1500m"
+                                    1.5Gi will be serialized as "1536Mi"
+
+                                  Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                  Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                  This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                nullable: true
+                                type: string
+                              runtimeLimits:
+                                type: object
+                            type: object
+                          storage:
+                            properties:
+                              data:
+                                default:
+                                  capacity: null
+                                properties:
+                                  capacity:
+                                    description: |-
+                                      Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                      The serialization format is:
+
+                                      <quantity>        ::= <signedNumber><suffix>
+                                        (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                      <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                        (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                      <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                        (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                      <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                      No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                      When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                      Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                        a. No precision is lost
+                                        b. No fractional digits will be emitted
+                                        c. The exponent (or suffix) is as large as possible.
+                                      The sign will be omitted unless the number is negative.
+
+                                      Examples:
+                                        1.5 will be serialized as "1500m"
+                                        1.5Gi will be serialized as "1536Mi"
+
+                                      Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                      Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                      This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                    nullable: true
+                                    type: string
+                                  selectors:
+                                    description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                                    nullable: true
+                                    properties:
+                                      matchExpressions:
+                                        description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                        items:
+                                          description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                          properties:
+                                            key:
+                                              description: key is the label key that the selector applies to.
+                                              type: string
+                                            operator:
+                                              description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                              type: string
+                                            values:
+                                              description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                              items:
                                                 type: string
-                                              operator:
-                                                description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
-                                                type: string
-                                              values:
-                                                description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
-                                                items:
-                                                  type: string
-                                                type: array
-                                            required:
-                                              - key
-                                              - operator
-                                            type: object
-                                          type: array
-                                        matchLabels:
-                                          additionalProperties:
-                                            type: string
-                                          description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
                                           type: object
-                                      type: object
-                                    storageClass:
+                                        type: array
+                                      matchLabels:
+                                        additionalProperties:
+                                          type: string
+                                        description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                        type: object
+                                    type: object
+                                  storageClass:
+                                    nullable: true
+                                    type: string
+                                type: object
+                            type: object
+                        type: object
+                    type: object
+                  configOverrides:
+                    additionalProperties:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    default: {}
+                    type: object
+                  envOverrides:
+                    additionalProperties:
+                      type: string
+                    default: {}
+                    type: object
+                  roleGroups:
+                    additionalProperties:
+                      properties:
+                        cliOverrides:
+                          additionalProperties:
+                            type: string
+                          default: {}
+                          type: object
+                        config:
+                          default: {}
+                          properties:
+                            logLevel:
+                              nullable: true
+                              type: string
+                            queryMaxMemory:
+                              nullable: true
+                              type: string
+                            queryMaxMemoryPerNode:
+                              nullable: true
+                              type: string
+                            resources:
+                              nullable: true
+                              properties:
+                                cpu:
+                                  default:
+                                    min: null
+                                    max: null
+                                  properties:
+                                    max:
+                                      description: |-
+                                        Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                        The serialization format is:
+
+                                        <quantity>        ::= <signedNumber><suffix>
+                                          (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                        <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                          (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                        <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                          (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                        <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                        No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                        When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                        Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                          a. No precision is lost
+                                          b. No fractional digits will be emitted
+                                          c. The exponent (or suffix) is as large as possible.
+                                        The sign will be omitted unless the number is negative.
+
+                                        Examples:
+                                          1.5 will be serialized as "1500m"
+                                          1.5Gi will be serialized as "1536Mi"
+
+                                        Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                        Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                        This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
                                       nullable: true
                                       type: string
+                                    min:
+                                      description: |-
+                                        Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                        The serialization format is:
+
+                                        <quantity>        ::= <signedNumber><suffix>
+                                          (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                        <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                          (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                        <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                          (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                        <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                        No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                        When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                        Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                          a. No precision is lost
+                                          b. No fractional digits will be emitted
+                                          c. The exponent (or suffix) is as large as possible.
+                                        The sign will be omitted unless the number is negative.
+
+                                        Examples:
+                                          1.5 will be serialized as "1500m"
+                                          1.5Gi will be serialized as "1536Mi"
+
+                                        Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                        Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                        This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                      nullable: true
+                                      type: string
+                                  type: object
+                                memory:
+                                  properties:
+                                    limit:
+                                      description: |-
+                                        Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                        The serialization format is:
+
+                                        <quantity>        ::= <signedNumber><suffix>
+                                          (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                        <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                          (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                        <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                          (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                        <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                        No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                        When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                        Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                          a. No precision is lost
+                                          b. No fractional digits will be emitted
+                                          c. The exponent (or suffix) is as large as possible.
+                                        The sign will be omitted unless the number is negative.
+
+                                        Examples:
+                                          1.5 will be serialized as "1500m"
+                                          1.5Gi will be serialized as "1536Mi"
+
+                                        Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                        Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                        This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                      nullable: true
+                                      type: string
+                                    runtimeLimits:
+                                      type: object
+                                  type: object
+                                storage:
+                                  properties:
+                                    data:
+                                      default:
+                                        capacity: null
+                                      properties:
+                                        capacity:
+                                          description: |-
+                                            Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                            The serialization format is:
+
+                                            <quantity>        ::= <signedNumber><suffix>
+                                              (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                            <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                              (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                            <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                              (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                            <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                            No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                            When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                            Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                              a. No precision is lost
+                                              b. No fractional digits will be emitted
+                                              c. The exponent (or suffix) is as large as possible.
+                                            The sign will be omitted unless the number is negative.
+
+                                            Examples:
+                                              1.5 will be serialized as "1500m"
+                                              1.5Gi will be serialized as "1536Mi"
+
+                                            Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                            Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                            This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                          nullable: true
+                                          type: string
+                                        selectors:
+                                          description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                                          nullable: true
+                                          properties:
+                                            matchExpressions:
+                                              description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                              items:
+                                                description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                                properties:
+                                                  key:
+                                                    description: key is the label key that the selector applies to.
+                                                    type: string
+                                                  operator:
+                                                    description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                                    type: string
+                                                  values:
+                                                    description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                                    items:
+                                                      type: string
+                                                    type: array
+                                                required:
+                                                - key
+                                                - operator
+                                                type: object
+                                              type: array
+                                            matchLabels:
+                                              additionalProperties:
+                                                type: string
+                                              description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                              type: object
+                                          type: object
+                                        storageClass:
+                                          nullable: true
+                                          type: string
+                                      type: object
                                   type: object
                               type: object
                           type: object
-                      type: object
-                    configOverrides:
-                      additionalProperties:
-                        additionalProperties:
-                          type: string
-                        type: object
-                      default: {}
-                      type: object
-                    envOverrides:
-                      additionalProperties:
-                        type: string
-                      default: {}
-                      type: object
-                    roleGroups:
-                      additionalProperties:
-                        properties:
-                          cliOverrides:
+                        configOverrides:
+                          additionalProperties:
                             additionalProperties:
                               type: string
-                            default: {}
                             type: object
-                          config:
-                            default: {}
-                            properties:
-                              logLevel:
-                                nullable: true
-                                type: string
-                              queryMaxMemory:
-                                nullable: true
-                                type: string
-                              queryMaxMemoryPerNode:
-                                nullable: true
-                                type: string
-                              resources:
-                                nullable: true
-                                properties:
-                                  cpu:
-                                    default:
-                                      min: ~
-                                      max: ~
-                                    properties:
-                                      max:
-                                        description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                        nullable: true
-                                        type: string
-                                      min:
-                                        description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                        nullable: true
-                                        type: string
-                                    type: object
-                                  memory:
-                                    properties:
-                                      limit:
-                                        description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                        nullable: true
-                                        type: string
-                                      runtimeLimits:
-                                        type: object
-                                    type: object
-                                  storage:
-                                    properties:
-                                      data:
-                                        default:
-                                          capacity: ~
-                                        properties:
-                                          capacity:
-                                            description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                            nullable: true
-                                            type: string
-                                          selectors:
-                                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                                            nullable: true
-                                            properties:
-                                              matchExpressions:
-                                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                                items:
-                                                  description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
-                                                  properties:
-                                                    key:
-                                                      description: key is the label key that the selector applies to.
-                                                      type: string
-                                                    operator:
-                                                      description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
-                                                      type: string
-                                                    values:
-                                                      description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
-                                                      items:
-                                                        type: string
-                                                      type: array
-                                                  required:
-                                                    - key
-                                                    - operator
-                                                  type: object
-                                                type: array
-                                              matchLabels:
-                                                additionalProperties:
-                                                  type: string
-                                                description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
-                                                type: object
-                                            type: object
-                                          storageClass:
-                                            nullable: true
-                                            type: string
-                                        type: object
-                                    type: object
-                                type: object
-                            type: object
-                          configOverrides:
-                            additionalProperties:
-                              additionalProperties:
-                                type: string
-                              type: object
-                            default: {}
-                            type: object
-                          envOverrides:
-                            additionalProperties:
-                              type: string
-                            default: {}
-                            type: object
-                          replicas:
-                            format: uint16
-                            minimum: 0.0
-                            nullable: true
-                            type: integer
-                          selector:
-                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                            nullable: true
-                            properties:
-                              matchExpressions:
-                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                items:
-                                  description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
-                                  properties:
-                                    key:
-                                      description: key is the label key that the selector applies to.
-                                      type: string
-                                    operator:
-                                      description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
-                                      type: string
-                                    values:
-                                      description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
-                                      items:
-                                        type: string
-                                      type: array
-                                  required:
-                                    - key
-                                    - operator
-                                  type: object
-                                type: array
-                              matchLabels:
-                                additionalProperties:
-                                  type: string
-                                description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
-                                type: object
-                            type: object
-                        type: object
-                      type: object
-                  required:
-                    - roleGroups
-                  type: object
-                opa:
-                  description: The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
-                  nullable: true
-                  properties:
-                    configMapName:
-                      type: string
-                    package:
-                      nullable: true
-                      type: string
-                  required:
-                    - configMapName
-                  type: object
-                serviceType:
-                  description: Specify the type of the created kubernetes service. This attribute will be removed in a future release when listener-operator is finished. Use with caution.
-                  enum:
-                    - NodePort
-                    - ClusterIP
-                  nullable: true
-                  type: string
-                stopped:
-                  description: "Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would)."
-                  nullable: true
-                  type: boolean
-                version:
-                  description: "The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`."
-                  nullable: true
-                  type: string
-                workers:
-                  description: Settings for the Worker Role/Process.
-                  nullable: true
-                  properties:
-                    cliOverrides:
-                      additionalProperties:
-                        type: string
-                      default: {}
-                      type: object
-                    config:
-                      default: {}
-                      properties:
-                        logLevel:
+                          default: {}
+                          type: object
+                        envOverrides:
+                          additionalProperties:
+                            type: string
+                          default: {}
+                          type: object
+                        replicas:
+                          format: uint16
+                          minimum: 0.0
                           nullable: true
-                          type: string
-                        queryMaxMemory:
-                          nullable: true
-                          type: string
-                        queryMaxMemoryPerNode:
-                          nullable: true
-                          type: string
-                        resources:
+                          type: integer
+                        selector:
+                          description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
                           nullable: true
                           properties:
-                            cpu:
-                              default:
-                                min: ~
-                                max: ~
-                              properties:
-                                max:
-                                  description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                  nullable: true
-                                  type: string
-                                min:
-                                  description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                  nullable: true
-                                  type: string
-                              type: object
-                            memory:
-                              properties:
-                                limit:
-                                  description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                  nullable: true
-                                  type: string
-                                runtimeLimits:
-                                  type: object
-                              type: object
-                            storage:
-                              properties:
-                                data:
-                                  default:
-                                    capacity: ~
-                                  properties:
-                                    capacity:
-                                      description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                      nullable: true
+                            matchExpressions:
+                              description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                              items:
+                                description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                properties:
+                                  key:
+                                    description: key is the label key that the selector applies to.
+                                    type: string
+                                  operator:
+                                    description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                    type: string
+                                  values:
+                                    description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                    items:
                                       type: string
-                                    selectors:
-                                      description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                                      nullable: true
-                                      properties:
-                                        matchExpressions:
-                                          description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                          items:
-                                            description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
-                                            properties:
-                                              key:
-                                                description: key is the label key that the selector applies to.
-                                                type: string
-                                              operator:
-                                                description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
-                                                type: string
-                                              values:
-                                                description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
-                                                items:
-                                                  type: string
-                                                type: array
-                                            required:
-                                              - key
-                                              - operator
-                                            type: object
-                                          type: array
-                                        matchLabels:
-                                          additionalProperties:
-                                            type: string
-                                          description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
-                                          type: object
-                                      type: object
-                                    storageClass:
-                                      nullable: true
-                                      type: string
-                                  type: object
+                                    type: array
+                                required:
+                                - key
+                                - operator
+                                type: object
+                              type: array
+                            matchLabels:
+                              additionalProperties:
+                                type: string
+                              description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                               type: object
                           type: object
                       type: object
-                    configOverrides:
-                      additionalProperties:
-                        additionalProperties:
-                          type: string
+                    type: object
+                required:
+                - roleGroups
+                type: object
+              opa:
+                description: The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
+                nullable: true
+                properties:
+                  configMapName:
+                    type: string
+                  package:
+                    nullable: true
+                    type: string
+                required:
+                - configMapName
+                type: object
+              serviceType:
+                description: Specify the type of the created kubernetes service. This attribute will be removed in a future release when listener-operator is finished. Use with caution.
+                enum:
+                - NodePort
+                - ClusterIP
+                nullable: true
+                type: string
+              stopped:
+                description: Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
+                nullable: true
+                type: boolean
+              version:
+                description: The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`.
+                nullable: true
+                type: string
+              workers:
+                description: Settings for the Worker Role/Process.
+                nullable: true
+                properties:
+                  cliOverrides:
+                    additionalProperties:
+                      type: string
+                    default: {}
+                    type: object
+                  config:
+                    default: {}
+                    properties:
+                      logLevel:
+                        nullable: true
+                        type: string
+                      queryMaxMemory:
+                        nullable: true
+                        type: string
+                      queryMaxMemoryPerNode:
+                        nullable: true
+                        type: string
+                      resources:
+                        nullable: true
+                        properties:
+                          cpu:
+                            default:
+                              min: null
+                              max: null
+                            properties:
+                              max:
+                                description: |-
+                                  Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                  The serialization format is:
+
+                                  <quantity>        ::= <signedNumber><suffix>
+                                    (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                  <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                    (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                  <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                    (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                  <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                  No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                  When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                  Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                    a. No precision is lost
+                                    b. No fractional digits will be emitted
+                                    c. The exponent (or suffix) is as large as possible.
+                                  The sign will be omitted unless the number is negative.
+
+                                  Examples:
+                                    1.5 will be serialized as "1500m"
+                                    1.5Gi will be serialized as "1536Mi"
+
+                                  Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                  Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                  This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                nullable: true
+                                type: string
+                              min:
+                                description: |-
+                                  Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                  The serialization format is:
+
+                                  <quantity>        ::= <signedNumber><suffix>
+                                    (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                  <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                    (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                  <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                    (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                  <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                  No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                  When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                  Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                    a. No precision is lost
+                                    b. No fractional digits will be emitted
+                                    c. The exponent (or suffix) is as large as possible.
+                                  The sign will be omitted unless the number is negative.
+
+                                  Examples:
+                                    1.5 will be serialized as "1500m"
+                                    1.5Gi will be serialized as "1536Mi"
+
+                                  Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                  Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                  This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                nullable: true
+                                type: string
+                            type: object
+                          memory:
+                            properties:
+                              limit:
+                                description: |-
+                                  Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                  The serialization format is:
+
+                                  <quantity>        ::= <signedNumber><suffix>
+                                    (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                  <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                    (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                  <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                    (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                  <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                  No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                  When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                  Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                    a. No precision is lost
+                                    b. No fractional digits will be emitted
+                                    c. The exponent (or suffix) is as large as possible.
+                                  The sign will be omitted unless the number is negative.
+
+                                  Examples:
+                                    1.5 will be serialized as "1500m"
+                                    1.5Gi will be serialized as "1536Mi"
+
+                                  Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                  Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                  This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                nullable: true
+                                type: string
+                              runtimeLimits:
+                                type: object
+                            type: object
+                          storage:
+                            properties:
+                              data:
+                                default:
+                                  capacity: null
+                                properties:
+                                  capacity:
+                                    description: |-
+                                      Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                      The serialization format is:
+
+                                      <quantity>        ::= <signedNumber><suffix>
+                                        (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                      <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                        (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                      <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                        (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                      <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                      No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                      When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                      Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                        a. No precision is lost
+                                        b. No fractional digits will be emitted
+                                        c. The exponent (or suffix) is as large as possible.
+                                      The sign will be omitted unless the number is negative.
+
+                                      Examples:
+                                        1.5 will be serialized as "1500m"
+                                        1.5Gi will be serialized as "1536Mi"
+
+                                      Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                      Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                      This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                    nullable: true
+                                    type: string
+                                  selectors:
+                                    description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                                    nullable: true
+                                    properties:
+                                      matchExpressions:
+                                        description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                        items:
+                                          description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                          properties:
+                                            key:
+                                              description: key is the label key that the selector applies to.
+                                              type: string
+                                            operator:
+                                              description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                              type: string
+                                            values:
+                                              description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                              items:
+                                                type: string
+                                              type: array
+                                          required:
+                                          - key
+                                          - operator
+                                          type: object
+                                        type: array
+                                      matchLabels:
+                                        additionalProperties:
+                                          type: string
+                                        description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                        type: object
+                                    type: object
+                                  storageClass:
+                                    nullable: true
+                                    type: string
+                                type: object
+                            type: object
                         type: object
-                      default: {}
-                      type: object
-                    envOverrides:
+                    type: object
+                  configOverrides:
+                    additionalProperties:
                       additionalProperties:
                         type: string
-                      default: {}
                       type: object
-                    roleGroups:
-                      additionalProperties:
-                        properties:
-                          cliOverrides:
+                    default: {}
+                    type: object
+                  envOverrides:
+                    additionalProperties:
+                      type: string
+                    default: {}
+                    type: object
+                  roleGroups:
+                    additionalProperties:
+                      properties:
+                        cliOverrides:
+                          additionalProperties:
+                            type: string
+                          default: {}
+                          type: object
+                        config:
+                          default: {}
+                          properties:
+                            logLevel:
+                              nullable: true
+                              type: string
+                            queryMaxMemory:
+                              nullable: true
+                              type: string
+                            queryMaxMemoryPerNode:
+                              nullable: true
+                              type: string
+                            resources:
+                              nullable: true
+                              properties:
+                                cpu:
+                                  default:
+                                    min: null
+                                    max: null
+                                  properties:
+                                    max:
+                                      description: |-
+                                        Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                        The serialization format is:
+
+                                        <quantity>        ::= <signedNumber><suffix>
+                                          (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                        <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                          (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                        <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                          (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                        <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                        No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                        When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                        Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                          a. No precision is lost
+                                          b. No fractional digits will be emitted
+                                          c. The exponent (or suffix) is as large as possible.
+                                        The sign will be omitted unless the number is negative.
+
+                                        Examples:
+                                          1.5 will be serialized as "1500m"
+                                          1.5Gi will be serialized as "1536Mi"
+
+                                        Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                        Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                        This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                      nullable: true
+                                      type: string
+                                    min:
+                                      description: |-
+                                        Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                        The serialization format is:
+
+                                        <quantity>        ::= <signedNumber><suffix>
+                                          (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                        <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                          (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                        <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                          (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                        <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                        No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                        When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                        Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                          a. No precision is lost
+                                          b. No fractional digits will be emitted
+                                          c. The exponent (or suffix) is as large as possible.
+                                        The sign will be omitted unless the number is negative.
+
+                                        Examples:
+                                          1.5 will be serialized as "1500m"
+                                          1.5Gi will be serialized as "1536Mi"
+
+                                        Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                        Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                        This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                      nullable: true
+                                      type: string
+                                  type: object
+                                memory:
+                                  properties:
+                                    limit:
+                                      description: |-
+                                        Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                        The serialization format is:
+
+                                        <quantity>        ::= <signedNumber><suffix>
+                                          (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                        <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                          (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                        <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                          (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                        <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                        No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                        When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                        Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                          a. No precision is lost
+                                          b. No fractional digits will be emitted
+                                          c. The exponent (or suffix) is as large as possible.
+                                        The sign will be omitted unless the number is negative.
+
+                                        Examples:
+                                          1.5 will be serialized as "1500m"
+                                          1.5Gi will be serialized as "1536Mi"
+
+                                        Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                        Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                        This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                      nullable: true
+                                      type: string
+                                    runtimeLimits:
+                                      type: object
+                                  type: object
+                                storage:
+                                  properties:
+                                    data:
+                                      default:
+                                        capacity: null
+                                      properties:
+                                        capacity:
+                                          description: |-
+                                            Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.
+
+                                            The serialization format is:
+
+                                            <quantity>        ::= <signedNumber><suffix>
+                                              (Note that <suffix> may be empty, from the "" case in <decimalSI>.)
+                                            <digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= "+" | "-" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei
+                                              (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)
+                                            <decimalSI>       ::= m | "" | k | M | G | T | P | E
+                                              (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
+                                            <decimalExponent> ::= "e" <signedNumber> | "E" <signedNumber>
+
+                                            No matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.
+
+                                            When a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.
+
+                                            Before serializing, Quantity will be put in "canonical form". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:
+                                              a. No precision is lost
+                                              b. No fractional digits will be emitted
+                                              c. The exponent (or suffix) is as large as possible.
+                                            The sign will be omitted unless the number is negative.
+
+                                            Examples:
+                                              1.5 will be serialized as "1500m"
+                                              1.5Gi will be serialized as "1536Mi"
+
+                                            Note that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.
+
+                                            Non-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)
+
+                                            This format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.
+                                          nullable: true
+                                          type: string
+                                        selectors:
+                                          description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                                          nullable: true
+                                          properties:
+                                            matchExpressions:
+                                              description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                              items:
+                                                description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                                properties:
+                                                  key:
+                                                    description: key is the label key that the selector applies to.
+                                                    type: string
+                                                  operator:
+                                                    description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                                    type: string
+                                                  values:
+                                                    description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                                    items:
+                                                      type: string
+                                                    type: array
+                                                required:
+                                                - key
+                                                - operator
+                                                type: object
+                                              type: array
+                                            matchLabels:
+                                              additionalProperties:
+                                                type: string
+                                              description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                              type: object
+                                          type: object
+                                        storageClass:
+                                          nullable: true
+                                          type: string
+                                      type: object
+                                  type: object
+                              type: object
+                          type: object
+                        configOverrides:
+                          additionalProperties:
                             additionalProperties:
                               type: string
-                            default: {}
                             type: object
-                          config:
-                            default: {}
-                            properties:
-                              logLevel:
-                                nullable: true
-                                type: string
-                              queryMaxMemory:
-                                nullable: true
-                                type: string
-                              queryMaxMemoryPerNode:
-                                nullable: true
-                                type: string
-                              resources:
-                                nullable: true
+                          default: {}
+                          type: object
+                        envOverrides:
+                          additionalProperties:
+                            type: string
+                          default: {}
+                          type: object
+                        replicas:
+                          format: uint16
+                          minimum: 0.0
+                          nullable: true
+                          type: integer
+                        selector:
+                          description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+                          nullable: true
+                          properties:
+                            matchExpressions:
+                              description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                              items:
+                                description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
                                 properties:
-                                  cpu:
-                                    default:
-                                      min: ~
-                                      max: ~
-                                    properties:
-                                      max:
-                                        description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                        nullable: true
-                                        type: string
-                                      min:
-                                        description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                        nullable: true
-                                        type: string
-                                    type: object
-                                  memory:
-                                    properties:
-                                      limit:
-                                        description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                        nullable: true
-                                        type: string
-                                      runtimeLimits:
-                                        type: object
-                                    type: object
-                                  storage:
-                                    properties:
-                                      data:
-                                        default:
-                                          capacity: ~
-                                        properties:
-                                          capacity:
-                                            description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n<quantity>        ::= <signedNumber><suffix>\n  (Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n  (International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n  (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber>\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n  a. No precision is lost\n  b. No fractional digits will be emitted\n  c. The exponent (or suffix) is as large as possible.\nThe sign will be omitted unless the number is negative.\n\nExamples:\n  1.5 will be serialized as \"1500m\"\n  1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation."
-                                            nullable: true
-                                            type: string
-                                          selectors:
-                                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                                            nullable: true
-                                            properties:
-                                              matchExpressions:
-                                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                                items:
-                                                  description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
-                                                  properties:
-                                                    key:
-                                                      description: key is the label key that the selector applies to.
-                                                      type: string
-                                                    operator:
-                                                      description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
-                                                      type: string
-                                                    values:
-                                                      description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
-                                                      items:
-                                                        type: string
-                                                      type: array
-                                                  required:
-                                                    - key
-                                                    - operator
-                                                  type: object
-                                                type: array
-                                              matchLabels:
-                                                additionalProperties:
-                                                  type: string
-                                                description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
-                                                type: object
-                                            type: object
-                                          storageClass:
-                                            nullable: true
-                                            type: string
-                                        type: object
-                                    type: object
+                                  key:
+                                    description: key is the label key that the selector applies to.
+                                    type: string
+                                  operator:
+                                    description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                    type: string
+                                  values:
+                                    description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                    items:
+                                      type: string
+                                    type: array
+                                required:
+                                - key
+                                - operator
                                 type: object
-                            type: object
-                          configOverrides:
-                            additionalProperties:
+                              type: array
+                            matchLabels:
                               additionalProperties:
                                 type: string
+                              description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                               type: object
-                            default: {}
-                            type: object
-                          envOverrides:
-                            additionalProperties:
-                              type: string
-                            default: {}
-                            type: object
-                          replicas:
-                            format: uint16
-                            minimum: 0.0
-                            nullable: true
-                            type: integer
-                          selector:
-                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                            nullable: true
-                            properties:
-                              matchExpressions:
-                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                items:
-                                  description: "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values."
-                                  properties:
-                                    key:
-                                      description: key is the label key that the selector applies to.
-                                      type: string
-                                    operator:
-                                      description: "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist."
-                                      type: string
-                                    values:
-                                      description: "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch."
-                                      items:
-                                        type: string
-                                      type: array
-                                  required:
-                                    - key
-                                    - operator
-                                  type: object
-                                type: array
-                              matchLabels:
-                                additionalProperties:
-                                  type: string
-                                description: "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed."
-                                type: object
-                            type: object
-                        type: object
+                          type: object
                       type: object
-                  required:
-                    - roleGroups
-                  type: object
-              required:
-                - catalogLabelSelector
-              type: object
-            status:
-              nullable: true
-              type: object
-          required:
-            - spec
-          title: TrinoCluster
-          type: object
-      served: true
-      storage: true
-      subresources:
-        status: {}
+                    type: object
+                required:
+                - roleGroups
+                type: object
+            required:
+            - catalogLabelSelector
+            type: object
+          status:
+            nullable: true
+            type: object
+        required:
+        - spec
+        title: TrinoCluster
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

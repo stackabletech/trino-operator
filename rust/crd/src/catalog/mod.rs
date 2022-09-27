@@ -16,7 +16,7 @@ use iceberg::IcebergConnector;
 use tpcds::TpcdsConnector;
 use tpch::TpchConnector;
 
-#[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "trino.stackable.tech",
     version = "v1alpha1",
@@ -36,7 +36,7 @@ pub struct TrinoCatalogSpec {
     pub config_overrides: HashMap<String, String>,
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TrinoCatalogConnector {
     Hive(HiveConnector),

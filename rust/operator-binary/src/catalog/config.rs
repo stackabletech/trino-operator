@@ -92,7 +92,7 @@ impl CatalogConfig {
         catalog: TrinoCatalog,
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let catalog_name = catalog.name();
+        let catalog_name = catalog.name_any();
         let catalog_namespace = catalog.namespace();
 
         let mut catalog_config = match catalog.spec.connector {

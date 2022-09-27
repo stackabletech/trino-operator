@@ -11,7 +11,11 @@ pub const STACKABLE_CLIENT_CA_CERT: &str = "stackable-client-ca-cert";
 pub const STACKABLE_SERVER_CA_CERT: &str = "stackable-server-ca-cert";
 pub const STACKABLE_INTERNAL_CA_CERT: &str = "stackable-internal-ca-cert";
 
-pub fn container_prepare_args(trino: &TrinoCluster, catalogs: &[CatalogConfig]) -> Vec<String> {
+pub fn container_prepare_args(
+    trino: &TrinoCluster,
+    catalogs: &[CatalogConfig],
+    authentication_config: Option<&TrinoAuthenticationConfig>,
+) -> Vec<String> {
     let mut args = vec![];
 
     // User password data
@@ -22,9 +26,15 @@ pub fn container_prepare_args(trino: &TrinoCluster, catalogs: &[CatalogConfig]) 
             STACKABLE_SERVER_CA_CERT,
         ));
     }
-    if trino.get_authentication().is_some() {
-        args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
-    }
+
+    if let Some(auth) = authentication_config {
+        match auth {
+            TrinoAuthenticationConfig::MultiUser { .. } => {
+                args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
+            }
+            TrinoAuthenticationConfig::Ldap(_) => {}
+        }
+    };
 
     // Chown and mod the certificates dir (this will always be created even if no TLS is required)
     args.extend(chown_and_chmod(STACKABLE_SERVER_TLS_DIR));
@@ -83,13 +93,24 @@ pub fn container_trino_args(
     ];
 
     if let Some(auth) = user_authentication {
-        let user_data = auth.to_trino_user_data();
-        args.push(format!(
-            "echo '{data}' > {path}/{db}",
-            data = user_data,
-            path = USER_PASSWORD_DATA_DIR_NAME,
-            db = PASSWORD_DB
-        ));
+        // Write an extra password file if MultiUser auth requested
+        match auth {
+            TrinoAuthenticationConfig::MultiUser { user_credentials } => {
+                let user_data = user_credentials
+                    .iter()
+                    .map(|(user, password)| format!("{}:{}", user, password))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                args.push(format!(
+                    "echo '{data}' > {path}/{db}",
+                    data = user_data,
+                    path = USER_PASSWORD_DATA_DIR_NAME,
+                    db = PASSWORD_DB
+                ));
+            }
+            _ => {}
+        }
     }
 
     // Add the commands that are needed to set up the catalogs
