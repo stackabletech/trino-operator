@@ -102,46 +102,14 @@ In the above example, all Trino workers in the default group will store data (th
 
 By default, in case nothing is configured in the custom resource for a certain role group, each Pod will have a `2Gi` large local volume mount for the data location containing mainly logs.
 
-=== Memory requests
+=== Resource Requests
 
-You can request a certain amount of memory for each individual role group as shown below:
+// The "nightly" version is needed because the "include" directive searches for
+// files in the "stable" version by default.
+// TODO: remove the "nightly" version after the next platform release (current: 22.09)
+include::nightly@home:concepts:stackable_resource_requests.adoc[]
 
-[source,yaml]
-----
-workers:
-  roleGroups:
-    default:
-      config:
-        resources:
-          memory:
-            limit: '2Gi'
-----
-
-In this example, each Trino container in the `default` group will have a maximum of 2 gigabytes of memory. To be more precise, these memory limits apply to the container running Trino but not to any sidecar containers that are part of the pod.
-
-Setting this property will also automatically set the maximum Java heap size for the corresponding process to 80% of the available memory. Be aware that if the memory constraint is too low, the cluster might fail to start. If pods terminate with an 'OOMKilled' status and the cluster doesn't start, try increasing the memory limit.
-
-For more details regarding Kubernetes memory requests and limits see: https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/[Assign Memory Resources to Containers and Pods].
-
-=== CPU requests
-
-Similarly to memory resources, you can also configure CPU limits, as shown below:
-
-[source,yaml]
-----
-workers:
-  roleGroups:
-    default:
-      config:
-        resources:
-          cpu:
-            max: '500m'
-            min: '250m'
-----
-
-=== Defaults
-
-If nothing is specified, the operator will automatically set the following default values for resources:
+If no resource requests are configured explicitly, the Trino operator uses the following defaults:
 
 [source,yaml]
 ----
@@ -162,5 +130,3 @@ workers:
 ----
 
 WARNING: The default values are _most likely_ not sufficient to run a proper cluster in production. Please adapt according to your requirements.
-
-For more details regarding Kubernetes CPU limits see: https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/[Assign CPU Resources to Containers and Pods].
