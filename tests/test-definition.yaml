@@ -2,9 +2,9 @@
 dimensions:
   - name: trino
     values:
-      - 377-stackable0
-      - 387-stackable0.1.0
-      - 395-stackable0.1.0
+#      - 377-stackable0
+#      - 387-stackable0.1.0
+#      - 395-stackable0.1.0
       - 396-stackable0.1.0
   - name: hive
     values:
@@ -36,21 +36,29 @@ dimensions:
     values:
       - "true"
       - "false"
+  - name: ldap-use-tls
+    values:
+      - "false"
+      #- "true"
 tests:
-  - name: smoke
+#  - name: smoke
+#    dimensions:
+#      - trino
+#      - hive
+#      - opa
+#      - hdfs
+#      - zookeeper
+#      - s3-use-tls
+#  - name: tls
+#    dimensions:
+#      - trino
+#      - use-authentication
+#      - use-tls
+#      - use-internal-tls
+#  - name: resources
+#    dimensions:
+#      - trino
+  - name: ldap
     dimensions:
       - trino
-      - hive
-      - opa
-      - hdfs
-      - zookeeper
-      - s3-use-tls
-  - name: tls
-    dimensions:
-      - trino
-      - use-authentication
-      - use-tls
-      - use-internal-tls
-  - name: resources
-    dimensions:
-      - trino
+      - ldap-use-tls

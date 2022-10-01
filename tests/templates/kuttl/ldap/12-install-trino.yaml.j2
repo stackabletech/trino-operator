@@ -6,22 +6,22 @@ metadata:
   labels:
     secrets.stackable.tech/class: trino-with-ldap-bind
 stringData:
-  user: cn=integrationtest,ou=users,dc=example,dc=org
-  password: integrationtest
+  LDAP_USER: cn=integrationtest,ou=users,dc=example,dc=org
+  LDAP_PASSWORD: integrationtest
 ---
 apiVersion: trino.stackable.tech/v1alpha1
-kind: NifiCluster
+kind: TrinoCluster
 metadata:
-  name: test-trino
+  name: trino
 spec:
   version: {{ test_scenario['values']['trino'] }}
-  config:
-    authentication:
-      method:
+  catalogLabelSelector: {}
+  authentication:
+    method:
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-        authenticationClass: ldap-without-tls
+      authenticationClass: ldap-without-tls
 {% else  %}
-        authenticationClass: ldap-with-tls
+      authenticationClass: ldap-with-tls
 {% endif %}
   coordinators:
     roleGroups:

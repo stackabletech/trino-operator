@@ -6,7 +6,7 @@ timeout: 1200
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: test-trino-coordinator-default
+  name: trino-coordinator-default
 status:
   readyReplicas: 1
   replicas: 1
@@ -14,7 +14,7 @@ status:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: test-trino-worker-default
+  name: trino-worker-default
 status:
   readyReplicas: 1
   replicas: 1

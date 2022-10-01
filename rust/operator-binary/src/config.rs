@@ -1,8 +1,9 @@
 use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig, FILE_PASSWORD_FILE, LDAP_ALLOW_INSECURE,
     LDAP_BIND_DN, LDAP_BIND_PASSWORD, LDAP_GROUP_AUTH_PATTERN, LDAP_SSL_TRUST_CERTIFICATE,
-    LDAP_URL, LDAP_USER_BASE_DN, PASSWORD_AUTHENTICATOR_NAME, PASSWORD_AUTHENTICATOR_NAME_FILE,
-    PASSWORD_AUTHENTICATOR_NAME_LDAP, PASSWORD_DB, USER_PASSWORD_DATA_DIR_NAME,
+    LDAP_URL, LDAP_USER_BASE_DN, LDAP_USER_BIND_PATTERN, PASSWORD_AUTHENTICATOR_NAME,
+    PASSWORD_AUTHENTICATOR_NAME_FILE, PASSWORD_AUTHENTICATOR_NAME_LDAP, PASSWORD_DB,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::collections::BTreeMap;
 
@@ -29,7 +30,7 @@ pub fn password_authenticator_properties(
             );
         }
         // This requires
-        // password-authenticator.name=file
+        // password-authenticator.name=ldap
         // ldap.url=ldap://server:port
         // ...
         TrinoAuthenticationConfig::Ldap(ldap) => {
@@ -49,17 +50,31 @@ pub fn password_authenticator_properties(
                     server_port = ldap.port.unwrap_or_else(|| ldap.default_port()),
                 )),
             );
+
+            // config.insert(
+            //     LDAP_USER_BIND_PATTERN.to_string(),
+            //     Some(format!(
+            //         "{id}=${{USER}},ou=users,dc=example,dc=org",
+            //         id = ldap.ldap_field_names.uid,
+            //     )),
+            // );
+            //
             config.insert(
                 LDAP_USER_BASE_DN.to_string(),
-                Some(ldap.search_base.clone()),
+                //Some(ldap.search_base.clone()),
+                Some("ou=users,dc=example,dc=org".to_string()),
             );
+
             config.insert(
                 LDAP_GROUP_AUTH_PATTERN.to_string(),
                 // ldap.group-auth-pattern=(&(<ldap.field_names.uid>=${USER})(<ldap.search_filter>))
+                // Some(format!(
+                //     "(&({id}=${{USER}})({filter}))",
+                //     id = ldap.ldap_field_names.uid,
+                //     filter = ldap.search_filter,
+                // )),
                 Some(format!(
-                    "(&({id}=${{USER}})({filter}))",
-                    id = ldap.ldap_field_names.uid,
-                    filter = ldap.search_filter,
+                    "(&(objectClass=inetOrgPerson)(uid=${{USER}})(ou=users,dc=example,dc=org))"
                 )),
             );
 
@@ -69,11 +84,11 @@ pub fn password_authenticator_properties(
                 // TODO: use constants
                 config.insert(
                     LDAP_BIND_DN.to_string(),
-                    Some("${LDAP_USER}".to_string()), //Some(format!("${{{}}}", LDAP_BIND_DN_ENV)),
+                    Some("${ENV:LDAP_USER}".to_string()), //Some(format!("${{{}}}", LDAP_BIND_DN_ENV)),
                 );
                 config.insert(
                     LDAP_BIND_PASSWORD.to_string(),
-                    Some("${LDAP_PASSWORD}".to_string()), //Some(format!("${{{}}}", LDAP_BIND_PASSWORD_ENV)),
+                    Some("${ENV:LDAP_PASSWORD}".to_string()), //Some(format!("${{{}}}", LDAP_BIND_PASSWORD_ENV)),
                 );
             }
 
