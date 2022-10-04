@@ -1,3 +1,5 @@
+use snafu::Snafu;
+use stackable_operator::commons::tls::TlsVerification;
 use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig, FILE_PASSWORD_FILE, LDAP_ALLOW_INSECURE,
     LDAP_BIND_DN, LDAP_BIND_PASSWORD, LDAP_GROUP_AUTH_PATTERN, LDAP_PASSWORD_ENV,
@@ -9,10 +11,16 @@ use std::collections::BTreeMap;
 
 pub const LDAP_TRUST_CERT_PATH: &str = "/stackable/mount_ldap_tls";
 
+#[derive(Snafu, Debug)]
+pub enum ConfigError {
+    #[snafu(display("Trino does not support unverified TLS connections to LDAP"))]
+    UnverifiedLdapTlsConnectionNotSupported,
+}
+
 pub fn password_authenticator_properties(
     config: &mut BTreeMap<String, Option<String>>,
     trino_authentication: &TrinoAuthenticationConfig,
-) {
+) -> Result<(), ConfigError> {
     match &trino_authentication {
         // This requires:
         // password-authenticator.name=file
@@ -75,14 +83,24 @@ pub fn password_authenticator_properties(
                 );
             }
 
-            if ldap.tls.is_some() {
-                config.insert(
-                    LDAP_SSL_TRUST_CERTIFICATE.to_string(),
-                    Some(format!("{}/{}", LDAP_TRUST_CERT_PATH, "ca.crt")),
-                );
+            if let Some(tls) = &ldap.tls {
+                match &tls.verification {
+                    TlsVerification::None { .. } => {
+                        // not supported
+                        return Err(ConfigError::UnverifiedLdapTlsConnectionNotSupported);
+                    }
+                    TlsVerification::Server(_) => {
+                        config.insert(
+                            LDAP_SSL_TRUST_CERTIFICATE.to_string(),
+                            Some(format!("{}/{}", LDAP_TRUST_CERT_PATH, "ca.crt")),
+                        );
+                    }
+                }
             } else {
                 config.insert(LDAP_ALLOW_INSECURE.to_string(), Some("true".to_string()));
             }
         }
     }
+
+    Ok(())
 }

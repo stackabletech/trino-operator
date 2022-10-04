@@ -1,7 +1,7 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
-    command,
+    command, config,
     config::{password_authenticator_properties, LDAP_TRUST_CERT_PATH},
 };
 use indoc::formatdoc;
@@ -170,6 +170,8 @@ pub enum Error {
         source: stackable_operator::error::Error,
         container_name: String,
     },
+    #[snafu(display("invalid trino config"))]
+    InvalidTrinoConfig { source: config::ConfigError },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -450,7 +452,8 @@ fn build_rolegroup_config_map(
             PropertyNameKind::File(file_name) if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES => {
                 // depending on authentication we need to add more properties
                 if let Some(auth) = authentication_config {
-                    password_authenticator_properties(&mut transformed_config, auth);
+                    password_authenticator_properties(&mut transformed_config, auth)
+                        .context(InvalidTrinoConfigSnafu)?;
                 }
 
                 let pw_authenticator_properties =
