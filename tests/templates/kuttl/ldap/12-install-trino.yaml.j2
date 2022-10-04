@@ -6,8 +6,8 @@ metadata:
   labels:
     secrets.stackable.tech/class: trino-with-ldap-bind
 stringData:
-  LDAP_USER: cn=integrationtest,ou=users,dc=example,dc=org
-  LDAP_PASSWORD: integrationtest
+  LDAP_USER: cn=admin,dc=example,dc=org
+  LDAP_PASSWORD: admin
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
