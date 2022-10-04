@@ -79,17 +79,14 @@ pub const FILE_PASSWORD_FILE: &str = "file.password-file";
 // ldap
 pub const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";
 pub const LDAP_URL: &str = "ldap.url";
-pub const LDAP_USER_BIND_PATTERN: &str = "ldap.user-bind-pattern";
 pub const LDAP_BIND_DN: &str = "ldap.bind-dn";
 pub const LDAP_BIND_PASSWORD: &str = "ldap.bind-password";
 pub const LDAP_USER_BASE_DN: &str = "ldap.user-base-dn";
 pub const LDAP_GROUP_AUTH_PATTERN: &str = "ldap.group-auth-pattern";
 pub const LDAP_ALLOW_INSECURE: &str = "ldap.allow-insecure";
 pub const LDAP_SSL_TRUST_CERTIFICATE: &str = "ldap.ssl-trust-certificate";
-pub const LDAP_SSL_KEYSTORE_PATH: &str = "ldap.ssl.keystore.path";
-pub const LDAP_SSL_KEYSTORE_PASSWORD: &str = "ldap.ssl.keystore.password";
-pub const LDAP_SSL_TRUSTSTORE_PATH: &str = "ldap.ssl.truststore.path";
-pub const LDAP_SSL_TRUSTSTORE_PASSWORD: &str = "ldap.ssl.truststore.password";
+pub const LDAP_USER_ENV: &str = "LDAP_USER";
+pub const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config

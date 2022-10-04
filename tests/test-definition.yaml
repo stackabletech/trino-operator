@@ -39,7 +39,7 @@ dimensions:
   - name: ldap-use-tls
     values:
       - "false"
-      #- "true"
+      - "true"
 tests:
 #  - name: smoke
 #    dimensions:
