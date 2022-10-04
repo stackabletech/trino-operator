@@ -51,14 +51,14 @@ pub fn password_authenticator_properties(
                 )),
             );
 
-            // config.insert(
-            //     LDAP_USER_BIND_PATTERN.to_string(),
-            //     Some(format!(
-            //         "{id}=${{USER}},ou=users,dc=example,dc=org",
-            //         id = ldap.ldap_field_names.uid,
-            //     )),
-            // );
-            //
+            config.insert(
+                LDAP_USER_BIND_PATTERN.to_string(),
+                Some(format!(
+                    "{id}=${{USER}},ou=users,dc=example,dc=org",
+                    id = ldap.ldap_field_names.uid,
+                )),
+            );
+
             config.insert(
                 LDAP_USER_BASE_DN.to_string(),
                 //Some(ldap.search_base.clone()),
@@ -73,8 +73,11 @@ pub fn password_authenticator_properties(
                 //     id = ldap.ldap_field_names.uid,
                 //     filter = ldap.search_filter,
                 // )),
+
+                // (&(uid=${USER}))
                 Some(format!(
-                    "(&(objectClass=inetOrgPerson)(uid=${{USER}})(ou=users,dc=example,dc=org))"
+                    //"(&(objectClass=inetOrgPerson)(uid=${{USER}})(ou=users,dc=example,dc=org))"
+                    "(&(uid=${{USER}}))"
                 )),
             );
 
