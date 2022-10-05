@@ -2,8 +2,7 @@
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: ldap-without-tls
-  #name: ldap-with-tls
+  name: ldap-with-tls
 spec:
   provider:
     ldap:
@@ -11,13 +10,12 @@ spec:
       searchBase: ou=users,dc=example,dc=org
       bindCredentials:
         secretClass: trino-with-ldap-bind
-      port: 1389
-      #port: 1636
-      #tls:
-      #  verification:
-      #    server:
-      #      caCert:
-      #    secretClass: openldap-tls
+      port: 1636
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: openldap-tls
 ---
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
@@ -34,7 +32,7 @@ kind: Secret
 metadata:
   name: trino-with-ldap-bind
   labels:
-    secrets.stackable.tech/class: nifi-with-ldap-bind
+    secrets.stackable.tech/class: trino-with-ldap-bind
 stringData:
   LDAP_USER: cn=integrationtest,ou=users,dc=example,dc=org
   LDAP_PASSWORD: integrationtest
@@ -49,8 +47,7 @@ spec:
   config:
   authentication:
     method:
-      authenticationClass: ldap-without-tls
-     #authenticationClass: ldap-with-tls
+     authenticationClass: ldap-with-tls
   coordinators:
     roleGroups:
       default:

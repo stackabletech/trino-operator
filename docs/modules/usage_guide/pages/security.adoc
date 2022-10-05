@@ -1,19 +1,45 @@
-= Security considerations
+= Security
 
 == Authentication
 
-We provide user authentication via a secret that can be referred in the custom resource:
+Trino supports several https://trino.io/docs/current/security/authentication-types.html[authentication methods].
+
+=== Password
+
+The Trino operator currently supports the following `PASSWORD` https://trino.io/docs/current/security/password-file.html[authentication types].
+
+==== File
+
+The file based authentication can be defined as follows:vec
+
 [source,yaml]
 ----
-authentication:
-  method:
-    multiUser:
-      userCredentialsSecret:
-        namespace: default
-        name: simple-trino-users-secret
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: 396-stackable0.1.0
+  catalogLabelSelector: {}
+  authentication:
+    method:
+      multiUser:
+        userCredentialsSecret:
+          namespace: default
+          name: simple-trino-users-secret
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
 ----
 
-These secrets need to be created manually before startup. The secret may look like the following snippet:
+The `simple-trino-users-secret` points to a manually created secret. This contains username and password pairs as shown in the following snippet:
+
 [source,yaml]
 ----
 apiVersion: v1
@@ -27,11 +53,83 @@ stringData:
   bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
 ----
 
-The <user>:<password> combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds.
+The username and password combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds.
+
 [source]
 ----
 htpasswd -nbBC 10 admin admin
 ----
+
+==== LDAP
+
+The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well. The following snippet shows how to configure `PASSWORD` authentication using LDAP:
+
+[source,yaml]
+----
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: ldap-with-tls
+spec:
+  provider:
+    ldap:
+      hostname: openldap.default.svc.cluster.local
+      searchBase: ou=users,dc=example,dc=org
+      bindCredentials:
+        secretClass: trino-with-ldap-bind
+      port: 1636
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: openldap-tls
+---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: trino-with-ldap-bind
+spec:
+  backend:
+    k8sSearch:
+      searchNamespace:
+        pod: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-with-ldap-bind
+  labels:
+    secrets.stackable.tech/class: trino-with-ldap-bind
+stringData:
+  LDAP_USER: cn=integrationtest,ou=users,dc=example,dc=org
+  LDAP_PASSWORD: integrationtest
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  version: 396-stackable0.1.0
+  catalogLabelSelector: {}
+  config:
+  authentication:
+    method:
+     authenticationClass: ldap-with-tls
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
+----
+
+With this configuration, Trino will authenticate via `ldaps://openldap.default.svc.cluster.local:1636`.
+The UI or Trino CLI need to authenticate with the user `integrationtest` and password `integrationtest`.
+
+Please have a look at the LDAP https://github.com/stackabletech/nifi-operator/tree/main/tests/templates/kuttl/ldap[integration tests] for testing, setting up OpenLDAP and creating the integrationtest user.
 
 == Authorization
 

@@ -6,9 +6,9 @@ This section will help you to use the Trino Stackable Operator. It will show you
 
 The following guides are available here:
 
-* xref:security.adoc[Security considerations]
-* xref:catalogs.adoc[Using Catalogs]
 * xref:cluster.adoc[Creating a Trino cluster]
+* xref:catalogs.adoc[Using Catalogs]
 * xref:configuration.adoc[Configuration]
+* xref:security.adoc[Security considerations]
 * xref:monitoring.adoc[Monitoring]
 * xref:query.adoc[Testing Trino with Hive and S3]
