@@ -33,12 +33,7 @@ allow = [
     "Unicode-DFS-2016",
     "Zlib"
 ]
-
-exceptions = [
-    { name = "stackable-trino-crd", allow = ["OSL-3.0"] },
-    { name = "stackable-trino-operator", allow = ["OSL-3.0"] },
-    { name = "stackable-trino-operator-binary", allow = ["OSL-3.0"] },
-    ]
+private = { ignore = true }
 
 [[licenses.clarify]]
 name = "ring"
