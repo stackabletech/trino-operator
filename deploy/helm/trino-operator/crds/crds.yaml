@@ -34,10 +34,12 @@ spec:
                             - authenticationClass
                       properties:
                         authenticationClass:
+                          description: Other authentication methods like LDAP
                           type: string
                         multiUser:
+                          description: Set multiple users via the password file from a secret
                           properties:
-                            user_credentials_secret:
+                            userCredentialsSecret:
                               description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
                               properties:
                                 name:
@@ -48,7 +50,7 @@ spec:
                                   type: string
                               type: object
                           required:
-                            - user_credentials_secret
+                            - userCredentialsSecret
                           type: object
                       type: object
                   required:

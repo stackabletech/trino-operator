@@ -181,6 +181,7 @@ data:
             type: "string"
           allowedValues:
             - "file"
+            - "ldap"
           roles:
             - name: "coordinator"
               required: false

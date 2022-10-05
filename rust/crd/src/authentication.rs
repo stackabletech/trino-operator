@@ -57,6 +57,7 @@ pub struct TrinoAuthentication {
 #[serde(rename_all = "camelCase")]
 pub enum TrinoAuthenticationMethod {
     /// Set multiple users via the password file from a secret
+    #[serde(rename_all = "camelCase")]
     MultiUser {
         user_credentials_secret: SecretReference,
     },
