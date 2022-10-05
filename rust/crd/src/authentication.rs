@@ -126,18 +126,16 @@ impl TrinoAuthenticationMethod {
                     AuthenticationClassProvider::Ldap(ldap) => {
                         Ok(TrinoAuthenticationConfig::Ldap(ldap.clone()))
                     }
-                    _ => {
-                        return AuthenticationClassProviderNotSupportedSnafu {
-                            authentication_class_provider: authentication_class
-                                .spec
-                                .provider
-                                .to_string(),
-                            authentication_class: ObjectRef::<AuthenticationClass>::new(
-                                authentication_class_name,
-                            ),
-                        }
-                        .fail()
+                    _ => AuthenticationClassProviderNotSupportedSnafu {
+                        authentication_class_provider: authentication_class
+                            .spec
+                            .provider
+                            .to_string(),
+                        authentication_class: ObjectRef::<AuthenticationClass>::new(
+                            authentication_class_name,
+                        ),
                     }
+                    .fail(),
                 }
             }
         }
@@ -145,6 +143,7 @@ impl TrinoAuthenticationMethod {
 }
 
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum TrinoAuthenticationConfig {
     MultiUser {
         user_credentials: BTreeMap<String, String>,

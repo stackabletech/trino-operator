@@ -92,25 +92,20 @@ pub fn container_trino_args(
         ),
     ];
 
-    if let Some(auth) = user_authentication {
+    if let Some(TrinoAuthenticationConfig::MultiUser { user_credentials }) = user_authentication {
         // Write an extra password file if MultiUser auth requested
-        match auth {
-            TrinoAuthenticationConfig::MultiUser { user_credentials } => {
-                let user_data = user_credentials
-                    .iter()
-                    .map(|(user, password)| format!("{}:{}", user, password))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+        let user_data = user_credentials
+            .iter()
+            .map(|(user, password)| format!("{}:{}", user, password))
+            .collect::<Vec<_>>()
+            .join("\n");
 
-                args.push(format!(
-                    "echo '{data}' > {path}/{db}",
-                    data = user_data,
-                    path = USER_PASSWORD_DATA_DIR_NAME,
-                    db = PASSWORD_DB
-                ));
-            }
-            _ => {}
-        }
+        args.push(format!(
+            "echo '{data}' > {path}/{db}",
+            data = user_data,
+            path = USER_PASSWORD_DATA_DIR_NAME,
+            db = PASSWORD_DB
+        ));
     }
 
     // Add the commands that are needed to set up the catalogs
