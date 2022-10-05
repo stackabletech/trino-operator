@@ -4,11 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for LDAP authentication ([#306]).
+
 ### Changed
 
-- `operator-rs` `0.22.0` -> `0.25.0` ([#xxx]).
+- `operator-rs` `0.22.0` -> `0.25.0` ([#306]).
 
-[#xxx]: https://github.com/stackabletech/trino-operator/pull/xxx
+[#306]: https://github.com/stackabletech/trino-operator/pull/306
 
 ## [0.7.0] - 2022-09-22
 
