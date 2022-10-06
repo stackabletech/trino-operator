@@ -32,11 +32,16 @@ spec:
                         - required:
                             - multiUser
                         - required:
-                            - authenticationClass
+                            - ldap
                       properties:
-                        authenticationClass:
+                        ldap:
                           description: Other authentication methods like LDAP
-                          type: string
+                          properties:
+                            authenticationClass:
+                              type: string
+                          required:
+                            - authenticationClass
+                          type: object
                         multiUser:
                           description: Set multiple users via the password file from a secret
                           properties:

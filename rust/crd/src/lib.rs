@@ -421,7 +421,7 @@ impl Configuration for TrinoConfig {
                         // For Authentication we have to differentiate several options here:
                         // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
                         TrinoAuthenticationMethod::MultiUser { .. }
-                        | TrinoAuthenticationMethod::AuthenticationClass(_) => {
+                        | TrinoAuthenticationMethod::Ldap { .. } => {
                             if role_name == TrinoRole::Coordinator.to_string() {
                                 result.insert(
                                     HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),

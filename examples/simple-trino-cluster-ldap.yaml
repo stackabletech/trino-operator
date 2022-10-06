@@ -47,7 +47,8 @@ spec:
   config:
   authentication:
     method:
-      authenticationClass: ldap-with-tls
+      ldap:
+        authenticationClass: ldap-with-tls
   coordinators:
     roleGroups:
       default:

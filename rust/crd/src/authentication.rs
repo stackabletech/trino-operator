@@ -61,8 +61,9 @@ pub enum TrinoAuthenticationMethod {
     MultiUser {
         user_credentials_secret: SecretReference,
     },
+    #[serde(rename_all = "camelCase")]
     /// Other authentication methods like LDAP
-    AuthenticationClass(String),
+    Ldap { authentication_class: String },
 }
 
 impl TrinoAuthenticationMethod {
@@ -113,7 +114,9 @@ impl TrinoAuthenticationMethod {
                     user_credentials: users,
                 })
             }
-            TrinoAuthenticationMethod::AuthenticationClass(authentication_class_name) => {
+            TrinoAuthenticationMethod::Ldap {
+                authentication_class: authentication_class_name,
+            } => {
                 let authentication_class =
                     AuthenticationClass::resolve(client, authentication_class_name)
                         .await

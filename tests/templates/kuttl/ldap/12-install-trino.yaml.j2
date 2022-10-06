@@ -19,9 +19,11 @@ spec:
   authentication:
     method:
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-      authenticationClass: ldap-without-tls
+      ldap:
+        authenticationClass: ldap-without-tls
 {% else  %}
-      authenticationClass: ldap-with-tls
+      ldap:
+        authenticationClass: ldap-with-tls
 {% endif %}
   coordinators:
     roleGroups:
