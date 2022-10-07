@@ -72,11 +72,16 @@ spec:
                               properties:
                                 accessStyle:
                                   description: "Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>"
-                                  enum:
-                                    - Path
-                                    - VirtualHosted
                                   nullable: true
-                                  type: string
+                                  oneOf:
+                                    - description: "Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>"
+                                      enum:
+                                        - Path
+                                      type: string
+                                    - description: "Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>"
+                                      enum:
+                                        - VirtualHosted
+                                      type: string
                                 credentials:
                                   description: "If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient."
                                   nullable: true
@@ -195,11 +200,16 @@ spec:
                               properties:
                                 accessStyle:
                                   description: "Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>"
-                                  enum:
-                                    - Path
-                                    - VirtualHosted
                                   nullable: true
-                                  type: string
+                                  oneOf:
+                                    - description: "Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>"
+                                      enum:
+                                        - Path
+                                      type: string
+                                    - description: "Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>"
+                                      enum:
+                                        - VirtualHosted
+                                      type: string
                                 credentials:
                                   description: "If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient."
                                   nullable: true
