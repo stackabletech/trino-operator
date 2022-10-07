@@ -56,13 +56,13 @@ pub struct TrinoAuthentication {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TrinoAuthenticationMethod {
-    /// Set multiple users via the password file from a secret
+    /// File based PASSWORD authentication via user:password combinations from a secret
     #[serde(rename_all = "camelCase")]
     MultiUser {
         user_credentials_secret: SecretReference,
     },
     #[serde(rename_all = "camelCase")]
-    /// Other authentication methods like LDAP
+    /// LDAP based PASSWORD authentication
     Ldap { authentication_class: String },
 }
 

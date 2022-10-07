@@ -35,7 +35,7 @@ spec:
                             - ldap
                       properties:
                         ldap:
-                          description: Other authentication methods like LDAP
+                          description: LDAP based PASSWORD authentication
                           properties:
                             authenticationClass:
                               type: string
@@ -43,7 +43,7 @@ spec:
                             - authenticationClass
                           type: object
                         multiUser:
-                          description: Set multiple users via the password file from a secret
+                          description: File based PASSWORD authentication via user:password combinations from a secret
                           properties:
                             userCredentialsSecret:
                               description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace

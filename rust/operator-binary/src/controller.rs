@@ -172,6 +172,10 @@ pub enum Error {
     },
     #[snafu(display("invalid trino config"))]
     InvalidTrinoConfig { source: config::ConfigError },
+    #[snafu(display("failed to retrieve secret for internal communications"))]
+    FailedToRetrieveInternalSecret {
+        source: stackable_operator::error::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -357,7 +361,7 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
 fn build_rolegroup_config_map(
     trino: &TrinoCluster,
-    _role: &TrinoRole,
+    role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     opa_connect_string: Option<&str>,
@@ -449,7 +453,11 @@ fn build_rolegroup_config_map(
 
                 cm_conf_data.insert(file_name.to_string(), log_properties);
             }
-            PropertyNameKind::File(file_name) if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES => {
+            // authentication is coordinator only
+            PropertyNameKind::File(file_name)
+                if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES
+                    && *role == TrinoRole::Coordinator =>
+            {
                 // depending on authentication we need to add more properties
                 if let Some(auth) = authentication_config {
                     password_authenticator_properties(&mut transformed_config, auth)
@@ -917,9 +925,8 @@ async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) ->
     let secret = build_shared_internal_secret(trino)?;
     if client
         .get_opt::<Secret>(&secret.name_any(), secret.namespace().as_deref())
-        //TODO: .await?
         .await
-        .unwrap()
+        .context(FailedToRetrieveInternalSecretSnafu)?
         .is_none()
     {
         client
