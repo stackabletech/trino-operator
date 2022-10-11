@@ -40,7 +40,7 @@ stringData:
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
-  name: simple-trino
+  name: simple-trino-with-ldap
 spec:
   version: 396-stackable0.1.0
   catalogLabelSelector: {}
