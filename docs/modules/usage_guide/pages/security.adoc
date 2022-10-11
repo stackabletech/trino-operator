@@ -17,7 +17,7 @@ The https://trino.io/docs/current/security/password-file.html[file based authent
 include::example$code/trino-file-authentication.yaml[]
 ----
 
-The `simple-trino-users-secret` points to a manually created secret. This contains username and password pairs as shown in the following snippet:
+The `simple-trino-users-secret` points to a manually created secret. This contains username and password pairs as shown in the previous snippet.
 
 The username and password combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds.
 
