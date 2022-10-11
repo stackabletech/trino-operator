@@ -38,7 +38,7 @@ include::example$code/trino-ldap-authentication.yaml[]
 With this configuration, Trino will authenticate via `ldaps://openldap.default.svc.cluster.local:1636`.
 The UI or Trino CLI need to authenticate with the user `integrationtest` and password `integrationtest`.
 
-Please have a look at the LDAP https://github.com/stackabletech/nifi-operator/tree/main/tests/templates/kuttl/ldap[integration tests] for testing, setting up OpenLDAP and creating the integrationtest user.
+Please have a look at the LDAP https://github.com/stackabletech/trino-operator/tree/main/tests/templates/kuttl/ldap[integration tests] for testing, setting up OpenLDAP and creating the integrationtest user.
 
 == Authorization
 
