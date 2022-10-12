@@ -31,8 +31,19 @@ spec:
                       oneOf:
                         - required:
                             - multiUser
+                        - required:
+                            - ldap
                       properties:
+                        ldap:
+                          description: LDAP based PASSWORD authentication
+                          properties:
+                            authenticationClass:
+                              type: string
+                          required:
+                            - authenticationClass
+                          type: object
                         multiUser:
+                          description: File based PASSWORD authentication via user:password combinations from a secret
                           properties:
                             userCredentialsSecret:
                               description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace

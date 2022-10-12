@@ -1,5 +1,6 @@
 mod catalog;
 mod command;
+mod config;
 mod controller;
 
 use clap::Parser;

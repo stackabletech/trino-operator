@@ -1,0 +1,59 @@
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: ldap-with-tls
+spec:
+  provider:
+    ldap:
+      hostname: openldap.default.svc.cluster.local
+      searchBase: ou=users,dc=example,dc=org
+      bindCredentials:
+        secretClass: trino-with-ldap-bind
+      port: 1636
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: openldap-tls
+---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: trino-with-ldap-bind
+spec:
+  backend:
+    k8sSearch:
+      searchNamespace:
+        pod: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-with-ldap-bind
+  labels:
+    secrets.stackable.tech/class: trino-with-ldap-bind
+stringData:
+  LDAP_USER: cn=integrationtest,ou=users,dc=example,dc=org
+  LDAP_PASSWORD: integrationtest
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino-with-ldap
+spec:
+  version: 396-stackable0.1.0
+  catalogLabelSelector: {}
+  config:
+  authentication:
+    method:
+      ldap:
+        authenticationClass: ldap-with-tls
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1

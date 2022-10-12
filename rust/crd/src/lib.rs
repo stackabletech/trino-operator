@@ -2,8 +2,9 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use crate::{authentication::Authentication, discovery::TrinoPodRef};
+use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
 
+use crate::authentication::TrinoAuthenticationMethod;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, Snafu};
 use stackable_operator::{
@@ -72,8 +73,20 @@ pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.ty
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 // password-authenticator.properties
 pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
+// file
 pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
 pub const FILE_PASSWORD_FILE: &str = "file.password-file";
+// ldap
+pub const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";
+pub const LDAP_URL: &str = "ldap.url";
+pub const LDAP_BIND_DN: &str = "ldap.bind-dn";
+pub const LDAP_BIND_PASSWORD: &str = "ldap.bind-password";
+pub const LDAP_USER_BASE_DN: &str = "ldap.user-base-dn";
+pub const LDAP_GROUP_AUTH_PATTERN: &str = "ldap.group-auth-pattern";
+pub const LDAP_ALLOW_INSECURE: &str = "ldap.allow-insecure";
+pub const LDAP_SSL_TRUST_CERTIFICATE: &str = "ldap.ssl-trust-certificate";
+pub const LDAP_USER_ENV: &str = "LDAP_USER";
+pub const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -148,7 +161,7 @@ pub struct TrinoClusterSpec {
     #[serde(default)]
     pub config: GlobalTrinoConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication: Option<Authentication>,
+    pub authentication: Option<TrinoAuthentication>,
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfig>>,
@@ -354,7 +367,7 @@ impl Configuration for TrinoConfig {
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
-        let authentication_enabled: bool = resource.get_authentication().is_some();
+        let authentication: Option<&TrinoAuthentication> = resource.get_authentication();
         let client_tls_enabled: bool = resource.get_client_tls().is_some();
         let internal_tls_enabled: bool = resource.get_internal_tls().is_some();
 
@@ -364,7 +377,7 @@ impl Configuration for TrinoConfig {
                 // The Trino node environment is bound to alphanumeric lowercase and "_" characters
                 // and must start with alphanumeric (which is the case for resource names as well?)
                 // see https://trino.io/docs/current/installation/deployment.html
-                let node_env = resource.name().to_ascii_lowercase().replace('-', "_");
+                let node_env = resource.name_any().to_ascii_lowercase().replace('-', "_");
                 result.insert(NODE_ENVIRONMENT.to_string(), Some(node_env));
             }
             CONFIG_PROPERTIES => {
@@ -395,7 +408,7 @@ impl Configuration for TrinoConfig {
                 // If authentication is enabled and client tls is explicitly deactivated we error out
                 // Therefore from here on we can use resource.get_client_tls() as the only source
                 // of truth when enabling client TLS.
-                if authentication_enabled && !client_tls_enabled {
+                if authentication.is_some() && !client_tls_enabled {
                     return Err(ConfigError::InvalidConfiguration {
                         reason:
                             "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
@@ -403,16 +416,19 @@ impl Configuration for TrinoConfig {
                     });
                 }
 
-                if authentication_enabled {
-                    // For Authentication we have to differentiate several options here:
-                    // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
-                    // - requires both internal secret and client TLS to be configured
-                    if role_name == TrinoRole::Coordinator.to_string() {
-                        // password ui login
-                        result.insert(
-                            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                            Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                        );
+                if let Some(auth) = authentication {
+                    match &auth.method {
+                        // For Authentication we have to differentiate several options here:
+                        // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
+                        TrinoAuthenticationMethod::MultiUser { .. }
+                        | TrinoAuthenticationMethod::Ldap { .. } => {
+                            if role_name == TrinoRole::Coordinator.to_string() {
+                                result.insert(
+                                    HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                                    Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                                );
+                            }
+                        }
                     }
                 }
 
@@ -487,16 +503,8 @@ impl Configuration for TrinoConfig {
                 }
             }
             PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                if authentication_enabled {
-                    result.insert(
-                        PASSWORD_AUTHENTICATOR_NAME.to_string(),
-                        Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()),
-                    );
-                    result.insert(
-                        FILE_PASSWORD_FILE.to_string(),
-                        Some(format!("{}/{}", USER_PASSWORD_DATA_DIR_NAME, PASSWORD_DB)),
-                    );
-                }
+                // This is filled in rust/operator-binary/src/config.rs due to required resolving
+                // of the AuthenticationClass
             }
             LOG_PROPERTIES => {
                 if let Some(log_level) = &self.log_level {
@@ -593,7 +601,7 @@ impl TrinoCluster {
     }
 
     /// Returns user provided authentication settings
-    pub fn get_authentication(&self) -> Option<&Authentication> {
+    pub fn get_authentication(&self) -> Option<&TrinoAuthentication> {
         let spec: &TrinoClusterSpec = &self.spec;
         spec.authentication.as_ref()
     }

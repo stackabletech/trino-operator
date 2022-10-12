@@ -19,6 +19,8 @@ pub enum FromTrinoCatalogError {
     },
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
+    #[snafu(display("trino catalog has no name set"))]
+    InvalidCatalogSpec,
 }
 
 #[async_trait]

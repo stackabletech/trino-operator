@@ -1,10 +1,12 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
-    command,
+    command, config,
+    config::{password_authenticator_properties, LDAP_TRUST_CERT_PATH},
 };
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::commons::tls::{CaCert, Tls, TlsServerVerification, TlsVerification};
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -43,16 +45,17 @@ use stackable_operator::{
 };
 use stackable_trino_crd::{
     authentication,
-    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationMethod},
+    authentication::TrinoAuthenticationConfig,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     TlsSecretClass, TrinoCluster, TrinoRole, TrinoStorageConfig, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
-    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
-    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    JVM_HEAP_FACTOR, LDAP_PASSWORD_ENV, LDAP_USER_ENV, LOG_PROPERTIES, METRICS_PORT,
+    METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -69,6 +72,7 @@ pub struct Ctx {
 }
 
 pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
+const CONTROLLER_NAME: &str = "trino-operator";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -162,6 +166,17 @@ pub enum Error {
         source: stackable_operator::error::Error,
         unit: String,
     },
+    #[snafu(display("illegal container name: [{container_name}]"))]
+    IllegalContainerName {
+        source: stackable_operator::error::Error,
+        container_name: String,
+    },
+    #[snafu(display("invalid trino config"))]
+    InvalidTrinoConfig { source: config::ConfigError },
+    #[snafu(display("failed to retrieve secret for internal communications"))]
+    FailedToRetrieveInternalSecret {
+        source: stackable_operator::error::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -252,6 +267,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &config,
                 opa_connect_string.as_deref(),
                 &resources,
+                authentication_config.as_ref(),
             )?;
             let rg_catalog_configmap =
                 build_rolegroup_catalog_config_map(&trino, &rolegroup, &catalogs)?;
@@ -260,7 +276,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &trino_role,
                 &rolegroup,
                 &config,
-                authentication_config.to_owned(),
+                authentication_config.as_ref(),
                 &catalogs,
                 &resources,
             )?;
@@ -321,6 +337,7 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
                 trino
                     .image_version()
                     .context(TrinoProductVersionParseFailureSnafu)?,
+                CONTROLLER_NAME,
                 &role_name,
                 "global",
             )
@@ -345,11 +362,12 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
 fn build_rolegroup_config_map(
     trino: &TrinoCluster,
-    _role: &TrinoRole,
+    role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     opa_connect_string: Option<&str>,
     resources: &Resources<TrinoStorageConfig, NoRuntimeLimits>,
+    authentication_config: Option<&TrinoAuthenticationConfig>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -436,11 +454,22 @@ fn build_rolegroup_config_map(
 
                 cm_conf_data.insert(file_name.to_string(), log_properties);
             }
-            PropertyNameKind::File(file_name) if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                let pw_properties =
+            // authentication is coordinator only
+            PropertyNameKind::File(file_name)
+                if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES
+                    && *role == TrinoRole::Coordinator =>
+            {
+                // depending on authentication we need to add more properties
+                if let Some(auth) = authentication_config {
+                    password_authenticator_properties(&mut transformed_config, auth)
+                        .context(InvalidTrinoConfigSnafu)?;
+                }
+
+                let pw_authenticator_properties =
                     product_config::writer::to_java_properties_string(transformed_config.iter())
                         .context(FailedToWriteJavaPropertiesSnafu)?;
-                cm_conf_data.insert(file_name.to_string(), pw_properties);
+
+                cm_conf_data.insert(file_name.to_string(), pw_authenticator_properties);
             }
             PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
                 // make sure password db is created to fill it via container command scripts
@@ -483,6 +512,7 @@ fn build_rolegroup_config_map(
                     trino
                         .image_version()
                         .context(TrinoProductVersionParseFailureSnafu)?,
+                    CONTROLLER_NAME,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -515,6 +545,7 @@ fn build_rolegroup_catalog_config_map(
                     trino
                         .image_version()
                         .context(TrinoProductVersionParseFailureSnafu)?,
+                    CONTROLLER_NAME,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 )
@@ -554,12 +585,18 @@ fn build_rolegroup_statefulset(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    authentication_config: Option<TrinoAuthenticationConfig>,
+    authentication_config: Option<&TrinoAuthenticationConfig>,
     catalogs: &[CatalogConfig],
     resources: &Resources<TrinoStorageConfig, NoRuntimeLimits>,
 ) -> Result<StatefulSet> {
-    let mut cb_trino = ContainerBuilder::new(APP_NAME);
-    let mut cb_prepare = ContainerBuilder::new("prepare");
+    let mut cb_trino =
+        ContainerBuilder::new(APP_NAME).with_context(|_| IllegalContainerNameSnafu {
+            container_name: APP_NAME.to_string(),
+        })?;
+    let mut cb_prepare =
+        ContainerBuilder::new("prepare").with_context(|_| IllegalContainerNameSnafu {
+            container_name: "prepare".to_string(),
+        })?;
     let mut pod_builder = PodBuilder::new();
 
     let rolegroup = role
@@ -589,6 +626,30 @@ fn build_rolegroup_statefulset(
         env.push(internal_secret);
     };
 
+    // we need to mount ldap bind credentials from the secret as env vars
+    if let Some(auth) = authentication_config {
+        match auth {
+            TrinoAuthenticationConfig::MultiUser { .. } => {}
+            TrinoAuthenticationConfig::Ldap(ldap) => {
+                if let Some(ldap_bind_secret) = &ldap.bind_credentials {
+                    if let Some(ldap_user) = env_var_from_secret(
+                        &Some(ldap_bind_secret.secret_class.clone()),
+                        LDAP_USER_ENV,
+                    ) {
+                        env.push(ldap_user);
+                    }
+
+                    if let Some(ldap_password) = env_var_from_secret(
+                        &Some(ldap_bind_secret.secret_class.clone()),
+                        LDAP_PASSWORD_ENV,
+                    ) {
+                        env.push(ldap_password);
+                    }
+                }
+            }
+        }
+    }
+
     // Add the needed stuff for catalogs
     env.extend(
         catalogs
@@ -596,33 +657,25 @@ fn build_rolegroup_statefulset(
             .flat_map(|catalog| &catalog.env_bindings)
             .cloned(),
     );
-    pod_builder.add_volumes(
-        catalogs
-            .iter()
-            .flat_map(|catalog| &catalog.volumes)
-            .cloned()
-            .collect(),
-    );
-    cb_trino.add_volume_mounts(
-        catalogs
-            .iter()
-            .flat_map(|catalog| &catalog.volume_mounts)
-            .cloned(),
-    );
-    cb_prepare.add_volume_mounts(
-        catalogs
-            .iter()
-            .flat_map(|catalog| &catalog.volume_mounts)
-            .cloned(),
-    );
 
-    // add volume mounts depending on the client tls, internal tls and authentication
-    tls_volume_mounts(trino, &mut pod_builder, &mut cb_prepare, &mut cb_trino)?;
+    // add volume mounts depending on the client tls, internal tls, catalogs and authentication
+    tls_volume_mounts(
+        trino,
+        &mut pod_builder,
+        &mut cb_prepare,
+        &mut cb_trino,
+        catalogs,
+        authentication_config,
+    )?;
 
     let container_prepare = cb_prepare
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(command::container_prepare_args(trino, catalogs))
+        .args(command::container_prepare_args(
+            trino,
+            catalogs,
+            authentication_config,
+        ))
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .security_context(SecurityContextBuilder::run_as_root())
@@ -635,7 +688,7 @@ fn build_rolegroup_statefulset(
         ))
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(command::container_trino_args(
-            authentication_config.as_ref(),
+            authentication_config,
             catalogs,
         ))
         .add_env_vars(env)
@@ -655,6 +708,7 @@ fn build_rolegroup_statefulset(
                 trino,
                 APP_NAME,
                 trino_image_version,
+                CONTROLLER_NAME,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             )
@@ -694,6 +748,7 @@ fn build_rolegroup_statefulset(
                 trino,
                 APP_NAME,
                 trino_image_version,
+                CONTROLLER_NAME,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             )
@@ -745,6 +800,7 @@ fn build_rolegroup_service(
                 trino
                     .image_version()
                     .context(TrinoProductVersionParseFailureSnafu)?,
+                CONTROLLER_NAME,
                 &rolegroup.role,
                 &rolegroup.role_group,
             )
@@ -868,10 +924,11 @@ fn validated_product_config(
 
 async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) -> Result<()> {
     let secret = build_shared_internal_secret(trino)?;
-    if !client
-        .exists::<Secret>(&secret.name(), secret.namespace().as_deref())
+    if client
+        .get_opt::<Secret>(&secret.name_any(), secret.namespace().as_deref())
         .await
-        .context(ApplyInternalSecretSnafu)?
+        .context(FailedToRetrieveInternalSecretSnafu)?
+        .is_none()
     {
         client
             .apply_patch(FIELD_MANAGER_SCOPE, &secret, &secret)
@@ -900,7 +957,7 @@ fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
 }
 
 fn build_shared_internal_secret_name(trino: &TrinoCluster) -> String {
-    format!("{}-internal-secret", trino.name())
+    format!("{}-internal-secret", trino.name_any())
 }
 
 fn get_random_base64() -> String {
@@ -1020,6 +1077,8 @@ fn tls_volume_mounts(
     pod_builder: &mut PodBuilder,
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
+    catalogs: &[CatalogConfig],
+    authentication_config: Option<&TrinoAuthenticationConfig>,
 ) -> Result<()> {
     if let Some(client_tls) = trino.get_client_tls() {
         cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
@@ -1057,10 +1116,17 @@ fn tls_volume_mounts(
         );
     }
 
+    // catalogs
+    for catalog in catalogs {
+        cb_prepare.add_volume_mounts(catalog.volume_mounts.clone());
+        cb_trino.add_volume_mounts(catalog.volume_mounts.clone());
+        pod_builder.add_volumes(catalog.volumes.clone());
+    }
+
     // If authentication is required (tls already activated) add volume mount for user pw database
-    if let Some(auth) = trino.get_authentication() {
-        match auth.method {
-            TrinoAuthenticationMethod::MultiUser { .. } => {
+    if let Some(auth) = authentication_config {
+        match auth {
+            TrinoAuthenticationConfig::MultiUser { .. } => {
                 cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
                 cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
                 pod_builder.add_volume(
@@ -1068,6 +1134,23 @@ fn tls_volume_mounts(
                         .with_empty_dir(Some(""), None)
                         .build(),
                 );
+            }
+            TrinoAuthenticationConfig::Ldap(ldap) => {
+                if let Some(Tls {
+                    verification:
+                        TlsVerification::Server(TlsServerVerification {
+                            ca_cert: CaCert::SecretClass(secret_class_name),
+                        }),
+                }) = &ldap.tls
+                {
+                    cb_trino.add_volume_mount("ldap-tls-mount", LDAP_TRUST_CERT_PATH);
+                    pod_builder.add_volume(create_tls_volume(
+                        "ldap-tls-mount",
+                        &TlsSecretClass {
+                            secret_class: secret_class_name.clone(),
+                        },
+                    ));
+                }
             }
         }
     }

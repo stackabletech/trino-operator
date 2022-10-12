@@ -1,11 +1,10 @@
-use std::collections::BTreeMap;
-
 use stackable_operator::{
     client::Client,
     k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, Volume, VolumeMount},
-    kube::ResourceExt,
+    kube::{Resource, ResourceExt},
 };
 use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
+use std::collections::BTreeMap;
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
 
@@ -92,7 +91,11 @@ impl CatalogConfig {
         catalog: TrinoCatalog,
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let catalog_name = catalog.name();
+        let catalog_name = catalog
+            .meta()
+            .name
+            .clone()
+            .ok_or(FromTrinoCatalogError::InvalidCatalogSpec)?;
         let catalog_namespace = catalog.namespace();
 
         let mut catalog_config = match catalog.spec.connector {

@@ -36,6 +36,10 @@ dimensions:
     values:
       - "true"
       - "false"
+  - name: ldap-use-tls
+    values:
+      - "false"
+      - "true"
 tests:
   - name: smoke
     dimensions:
@@ -54,3 +58,7 @@ tests:
   - name: resources
     dimensions:
       - trino
+  - name: ldap
+    dimensions:
+      - trino
+      - ldap-use-tls

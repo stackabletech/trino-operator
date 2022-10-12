@@ -1,37 +1,44 @@
-= Security considerations
+= Security
 
 == Authentication
 
-We provide user authentication via a secret that can be referred in the custom resource:
+Trino supports several https://trino.io/docs/current/security/authentication-types.html[authentication types].
+
+=== Password
+
+The Trino operator currently supports the following `PASSWORD` authenticators.
+
+==== Password file
+
+The https://trino.io/docs/current/security/password-file.html[file based authentication] can be defined as follows:
+
 [source,yaml]
 ----
-authentication:
-  method:
-    multiUser:
-      userCredentialsSecret:
-        namespace: default
-        name: simple-trino-users-secret
+include::example$code/trino-file-authentication.yaml[]
 ----
 
-These secrets need to be created manually before startup. The secret may look like the following snippet:
-[source,yaml]
-----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: simple-trino-users-secret
-type: kubernetes.io/opaque
-stringData:
-  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
-  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
-----
+The `simple-trino-users-secret` points to a manually created secret. This contains username and password pairs as shown in the previous snippet.
 
-The <user>:<password> combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds.
+The username and password combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds.
+
 [source]
 ----
 htpasswd -nbBC 10 admin admin
 ----
+
+==== LDAP
+
+The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well. The following snippet shows how to configure `PASSWORD` authentication using LDAP:
+
+[source,yaml]
+----
+include::example$code/trino-ldap-authentication.yaml[]
+----
+
+With this configuration, Trino will authenticate via `ldaps://openldap.default.svc.cluster.local:1636`.
+The UI or Trino CLI need to authenticate with the user `integrationtest` and password `integrationtest`.
+
+Please have a look at the LDAP https://github.com/stackabletech/trino-operator/tree/main/tests/templates/kuttl/ldap[integration tests] for testing, setting up OpenLDAP and creating the integrationtest user.
 
 == Authorization
 
@@ -39,27 +46,7 @@ In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Tri
 
 [source,yaml]
 ----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: opa-bundle-trino
-  labels:
-    opa.stackable.tech/bundle: "trino"
-data:
-  trino.rego: |
-    package trino
-
-    import future.keywords.in
-
-    default allow = false
-
-    allow {
-      is_admin
-    }
-
-    is_admin() {
-      input.context.identity.user == "admin"
-    }
+include::example$code/opa-bundle-trino-cm.yaml[]
 ----
 
 Users should write their own rego rules for more complex OPA authorization.

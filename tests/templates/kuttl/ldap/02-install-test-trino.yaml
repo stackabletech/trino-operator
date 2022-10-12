@@ -1,0 +1,21 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-trino
+  labels:
+    app: test-trino
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-trino
+  template:
+    metadata:
+      labels:
+        app: test-trino
+    spec:
+      containers:
+        - name: test-trino
+          image: docker.stackable.tech/stackable/testing-tools:0.1.0-stackable0.1.0
+          command: ["sleep", "infinity"]

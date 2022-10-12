@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::commons::ldap::LdapAuthenticationProvider;
 use stackable_operator::{
     client::Client,
+    commons::authentication::{AuthenticationClass, AuthenticationClassProvider},
     k8s_openapi::api::core::v1::{Secret, SecretReference},
     kube::runtime::reflector::ObjectRef,
     schemars::{self, JsonSchema},
@@ -31,23 +33,37 @@ pub enum Error {
         key: String,
         secret: ObjectRef<Secret>,
     },
+    #[snafu(display("Failed to retrieve AuthenticationClass {authentication_class}"))]
+    AuthenticationClassRetrieval {
+        source: stackable_operator::error::Error,
+        authentication_class: ObjectRef<AuthenticationClass>,
+    },
+    #[snafu(display("The Trino Operator doesn't support the AuthenticationClass provider {authentication_class_provider} from AuthenticationClass {authentication_class} yet"))]
+    AuthenticationClassProviderNotSupported {
+        authentication_class_provider: String,
+        authentication_class: ObjectRef<AuthenticationClass>,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Authentication {
+pub struct TrinoAuthentication {
     pub method: TrinoAuthenticationMethod,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TrinoAuthenticationMethod {
+    /// File based PASSWORD authentication via user:password combinations from a secret
     #[serde(rename_all = "camelCase")]
     MultiUser {
         user_credentials_secret: SecretReference,
     },
+    #[serde(rename_all = "camelCase")]
+    /// LDAP based PASSWORD authentication
+    Ldap { authentication_class: String },
 }
 
 impl TrinoAuthenticationMethod {
@@ -98,26 +114,43 @@ impl TrinoAuthenticationMethod {
                     user_credentials: users,
                 })
             }
+            TrinoAuthenticationMethod::Ldap {
+                authentication_class: authentication_class_name,
+            } => {
+                let authentication_class =
+                    AuthenticationClass::resolve(client, authentication_class_name)
+                        .await
+                        .context(AuthenticationClassRetrievalSnafu {
+                            authentication_class: ObjectRef::<AuthenticationClass>::new(
+                                authentication_class_name,
+                            ),
+                        })?;
+
+                match &authentication_class.spec.provider {
+                    AuthenticationClassProvider::Ldap(ldap) => {
+                        Ok(TrinoAuthenticationConfig::Ldap(ldap.clone()))
+                    }
+                    _ => AuthenticationClassProviderNotSupportedSnafu {
+                        authentication_class_provider: authentication_class
+                            .spec
+                            .provider
+                            .to_string(),
+                        authentication_class: ObjectRef::<AuthenticationClass>::new(
+                            authentication_class_name,
+                        ),
+                    }
+                    .fail(),
+                }
+            }
         }
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum TrinoAuthenticationConfig {
     MultiUser {
         user_credentials: BTreeMap<String, String>,
     },
-}
-
-impl TrinoAuthenticationConfig {
-    /// Extracts the user and passwords provided in the `user_credentials`.
-    pub fn to_trino_user_data(&self) -> String {
-        match self {
-            TrinoAuthenticationConfig::MultiUser { user_credentials } => user_credentials
-                .iter()
-                .map(|(user, password)| format!("{}:{}", user, password))
-                .collect::<Vec<_>>()
-                .join("\n"),
-        }
-    }
+    Ldap(LdapAuthenticationProvider),
 }

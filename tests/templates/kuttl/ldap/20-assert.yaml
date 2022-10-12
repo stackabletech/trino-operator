@@ -1,0 +1,6 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+commands:
+  - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-active-workers.py -u integrationtest -p integrationtest -n $NAMESPACE -w 1
