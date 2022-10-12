@@ -623,14 +623,14 @@ impl TrinoCluster {
         spec.config.internal_tls.as_ref()
     }
 
-    /// Returns if the HTTP port should be enabled
-    pub fn http_port_enabled(&self) -> bool {
-        self.get_client_tls().is_none() && self.get_internal_tls().is_none()
+    /// Returns if the HTTP port should be expose
+    pub fn expose_http_port(&self) -> bool {
+        self.get_client_tls().is_none()
     }
 
-    /// Returns if the HTTPS port should be enabled
-    pub fn https_port_enabled(&self) -> bool {
-        self.get_client_tls().is_some() || self.get_internal_tls().is_some()
+    /// Returns if the HTTPS port should be exposed
+    pub fn expose_https_port(&self) -> bool {
+        self.get_client_tls().is_some()
     }
 
     /// Retrieve and merge resource configs for role and role groups
