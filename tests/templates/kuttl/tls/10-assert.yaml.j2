@@ -1,0 +1,42 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-coordinator-default
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-default
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-coordinator
+spec:
+  ports:
+    - name: metrics
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
+{% if test_scenario['values']['use-tls'] == 'false' %}
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+{% else %}
+    - name: https
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+{% endif %}
