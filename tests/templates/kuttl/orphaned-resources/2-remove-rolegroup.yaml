@@ -1,0 +1,12 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  coordinators:
+    roleGroups:
+      remove: null
+  workers:
+    roleGroups:
+      remove: null

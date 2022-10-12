@@ -1,0 +1,38 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+metadata:
+  name: install-trino
+timeout: 1200
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-coordinator-default
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-coordinator-remove
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-default
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-remove
+status:
+  readyReplicas: 1
+  replicas: 1
