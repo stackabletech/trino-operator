@@ -6,7 +6,6 @@ use crate::{
 };
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::tls::{CaCert, Tls, TlsServerVerification, TlsVerification};
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -31,7 +30,7 @@ use stackable_operator::{
     },
     kube::{
         runtime::{controller::Action, reflector::ObjectRef},
-        ResourceExt,
+        Resource, ResourceExt,
     },
     labels::{role_group_selector_labels, role_selector_labels},
     logging::controller::ReconcilerError,
@@ -42,6 +41,10 @@ use stackable_operator::{
         ValidatedRoleConfigByPropertyKind,
     },
     role_utils::RoleGroupRef,
+};
+use stackable_operator::{
+    cluster_resources::ClusterResources,
+    commons::tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
 };
 use stackable_trino_crd::{
     authentication,
@@ -71,7 +74,6 @@ pub struct Ctx {
     pub product_config: ProductConfigManager,
 }
 
-pub const FIELD_MANAGER_SCOPE: &str = "trinocluster";
 const CONTROLLER_NAME: &str = "trino-operator";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -84,6 +86,14 @@ pub enum Error {
     MissingTrinoRole { role: String },
     #[snafu(display("failed to calculate global service name"))]
     GlobalServiceNameNotFound,
+    #[snafu(display("failed to create cluster resources"))]
+    CreateClusterResources {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to delete orphaned resources"))]
+    DeleteOrphanedResources {
+        source: stackable_operator::error::Error,
+    },
     #[snafu(display("failed to apply global Service"))]
     ApplyRoleService {
         source: stackable_operator::error::Error,
@@ -218,6 +228,10 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let validated_config =
         validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
+    let mut cluster_resources =
+        ClusterResources::new(APP_NAME, CONTROLLER_NAME, &trino.object_ref(&()))
+            .context(CreateClusterResourcesSnafu)?;
+
     let authentication_config = user_authentication(&trino, client).await?;
 
     // Assemble the OPA connection string from the discovery and the given path if provided
@@ -239,12 +253,8 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let coordinator_role_service = build_coordinator_role_service(&trino)?;
 
-    client
-        .apply_patch(
-            FIELD_MANAGER_SCOPE,
-            &coordinator_role_service,
-            &coordinator_role_service,
-        )
+    cluster_resources
+        .add(client, &coordinator_role_service)
         .await
         .context(ApplyRoleServiceSnafu)?;
 
@@ -281,39 +291,40 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &resources,
             )?;
 
-            client
-                .apply_patch(FIELD_MANAGER_SCOPE, &rg_service, &rg_service)
+            cluster_resources
+                .add(client, &rg_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            client
-                .apply_patch(FIELD_MANAGER_SCOPE, &rg_configmap, &rg_configmap)
+            cluster_resources
+                .add(client, &rg_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            client
-                .apply_patch(
-                    FIELD_MANAGER_SCOPE,
-                    &rg_catalog_configmap,
-                    &rg_catalog_configmap,
-                )
+            cluster_resources
+                .add(client, &rg_catalog_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            client
-                .apply_patch(FIELD_MANAGER_SCOPE, &rg_stateful_set, &rg_stateful_set)
+            cluster_resources
+                .add(client, &rg_stateful_set)
                 .await
                 .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
         }
     }
+
+    cluster_resources
+        .delete_orphaned_resources(client)
+        .await
+        .context(DeleteOrphanedResourcesSnafu)?;
 
     Ok(Action::await_change())
 }
@@ -931,7 +942,7 @@ async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) ->
         .is_none()
     {
         client
-            .apply_patch(FIELD_MANAGER_SCOPE, &secret, &secret)
+            .apply_patch(CONTROLLER_NAME, &secret, &secret)
             .await
             .context(ApplyInternalSecretSnafu)?;
     }

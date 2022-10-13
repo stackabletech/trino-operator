@@ -1,0 +1,20 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  version: {{ test_scenario['values']['trino-latest'] }}
+  catalogLabelSelector: {}
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+      remove:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
+      remove:
+        replicas: 1

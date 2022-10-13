@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added support for LDAP authentication ([#306]).
+- Orphaned resources are deleted ([#310]).
 
 ### Changed
 
@@ -17,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Port 8080 missing from Coordinator service in case client TLS is disabled ([#311]).
 
 [#306]: https://github.com/stackabletech/trino-operator/pull/306
+[#310]: https://github.com/stackabletech/trino-operator/pull/310
 [#311]: https://github.com/stackabletech/trino-operator/pull/311
 
 ## [0.7.0] - 2022-09-22
