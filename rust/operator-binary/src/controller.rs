@@ -1025,7 +1025,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
 }
 
 fn readiness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = if trino.get_client_tls().is_some() {
+    let port_name = if trino.expose_https_port() {
         HTTPS_PORT_NAME
     } else {
         HTTP_PORT_NAME
@@ -1044,7 +1044,7 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
 }
 
 fn liveness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = if trino.get_client_tls().is_some() {
+    let port_name = if trino.expose_https_port() {
         HTTPS_PORT_NAME
     } else {
         HTTP_PORT_NAME
