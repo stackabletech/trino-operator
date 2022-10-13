@@ -84,7 +84,7 @@ pub const LDAP_BIND_PASSWORD: &str = "ldap.bind-password";
 pub const LDAP_USER_BASE_DN: &str = "ldap.user-base-dn";
 pub const LDAP_GROUP_AUTH_PATTERN: &str = "ldap.group-auth-pattern";
 pub const LDAP_ALLOW_INSECURE: &str = "ldap.allow-insecure";
-pub const LDAP_SSL_TRUST_CERTIFICATE: &str = "ldap.ssl-trust-certificate";
+pub const LDAP_SSL_TRUST_STORE_PATH: &str = "ldap.ssl.truststore.path";
 pub const LDAP_USER_ENV: &str = "LDAP_USER";
 pub const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 // log.properties

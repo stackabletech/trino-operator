@@ -3,7 +3,7 @@ use stackable_operator::commons::tls::TlsVerification;
 use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig, FILE_PASSWORD_FILE, LDAP_ALLOW_INSECURE,
     LDAP_BIND_DN, LDAP_BIND_PASSWORD, LDAP_GROUP_AUTH_PATTERN, LDAP_PASSWORD_ENV,
-    LDAP_SSL_TRUST_CERTIFICATE, LDAP_URL, LDAP_USER_BASE_DN, LDAP_USER_ENV,
+    LDAP_SSL_TRUST_STORE_PATH, LDAP_URL, LDAP_USER_BASE_DN, LDAP_USER_ENV,
     PASSWORD_AUTHENTICATOR_NAME, PASSWORD_AUTHENTICATOR_NAME_FILE,
     PASSWORD_AUTHENTICATOR_NAME_LDAP, PASSWORD_DB, USER_PASSWORD_DATA_DIR_NAME,
 };
@@ -91,7 +91,7 @@ pub fn password_authenticator_properties(
                     }
                     TlsVerification::Server(_) => {
                         config.insert(
-                            LDAP_SSL_TRUST_CERTIFICATE.to_string(),
+                            LDAP_SSL_TRUST_STORE_PATH.to_string(),
                             Some(format!("{}/{}", LDAP_TRUST_CERT_PATH, "ca.crt")),
                         );
                     }
