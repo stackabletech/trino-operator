@@ -6,6 +6,9 @@ dimensions:
       - 387-stackable0.1.0
       - 395-stackable0.1.0
       - 396-stackable0.1.0
+  - name: trino-latest
+    values:
+      - 396-stackable0.1.0
   - name: hive
     values:
       - 2.3.9-stackable0.5.0
@@ -62,3 +65,6 @@ tests:
     dimensions:
       - trino
       - ldap-use-tls
+  - name: orphaned-resources
+    dimensions:
+      - trino-latest

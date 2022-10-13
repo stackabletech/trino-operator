@@ -7,12 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added support for LDAP authentication ([#306]).
+- Orphaned resources are deleted ([#310]).
 
 ### Changed
 
 - `operator-rs` `0.22.0` -> `0.25.0` ([#306]).
 
 [#306]: https://github.com/stackabletech/trino-operator/pull/306
+[#310]: https://github.com/stackabletech/trino-operator/pull/310
 
 ## [0.7.0] - 2022-09-22
 
