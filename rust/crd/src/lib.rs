@@ -623,7 +623,7 @@ impl TrinoCluster {
         spec.config.internal_tls.as_ref()
     }
 
-    /// Returns if the HTTP port should be expose
+    /// Returns if the HTTP port should be exposed
     pub fn expose_http_port(&self) -> bool {
         self.get_client_tls().is_none()
     }
