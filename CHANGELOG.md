@@ -13,8 +13,13 @@ All notable changes to this project will be documented in this file.
 
 - `operator-rs` `0.22.0` -> `0.25.0` ([#306]).
 
+### Fixed
+
+- Port 8080 missing from Coordinator service if client TLS is disabled ([#311]).
+
 [#306]: https://github.com/stackabletech/trino-operator/pull/306
 [#310]: https://github.com/stackabletech/trino-operator/pull/310
+[#311]: https://github.com/stackabletech/trino-operator/pull/311
 
 ## [0.7.0] - 2022-09-22
 

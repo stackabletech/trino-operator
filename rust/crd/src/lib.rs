@@ -84,7 +84,7 @@ pub const LDAP_BIND_PASSWORD: &str = "ldap.bind-password";
 pub const LDAP_USER_BASE_DN: &str = "ldap.user-base-dn";
 pub const LDAP_GROUP_AUTH_PATTERN: &str = "ldap.group-auth-pattern";
 pub const LDAP_ALLOW_INSECURE: &str = "ldap.allow-insecure";
-pub const LDAP_SSL_TRUST_CERTIFICATE: &str = "ldap.ssl-trust-certificate";
+pub const LDAP_SSL_TRUST_STORE_PATH: &str = "ldap.ssl.truststore.path";
 pub const LDAP_USER_ENV: &str = "LDAP_USER";
 pub const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 // log.properties
@@ -623,14 +623,14 @@ impl TrinoCluster {
         spec.config.internal_tls.as_ref()
     }
 
-    /// Returns if the HTTP port should be enabled
-    pub fn http_port_enabled(&self) -> bool {
-        self.get_client_tls().is_none() && self.get_internal_tls().is_none()
+    /// Returns if the HTTP port should be exposed
+    pub fn expose_http_port(&self) -> bool {
+        self.get_client_tls().is_none()
     }
 
-    /// Returns if the HTTPS port should be enabled
-    pub fn https_port_enabled(&self) -> bool {
-        self.get_client_tls().is_some() || self.get_internal_tls().is_some()
+    /// Returns if the HTTPS port should be exposed
+    pub fn expose_https_port(&self) -> bool {
+        self.get_client_tls().is_some()
     }
 
     /// Retrieve and merge resource configs for role and role groups

@@ -985,7 +985,7 @@ fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
         ..ServicePort::default()
     }];
 
-    if trino.http_port_enabled() {
+    if trino.expose_http_port() {
         ports.push(ServicePort {
             name: Some(HTTP_PORT_NAME.to_string()),
             port: HTTP_PORT.into(),
@@ -994,7 +994,7 @@ fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
         });
     }
 
-    if trino.https_port_enabled() {
+    if trino.expose_https_port() {
         ports.push(ServicePort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             port: HTTPS_PORT.into(),
@@ -1014,7 +1014,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
         ..ContainerPort::default()
     }];
 
-    if trino.http_port_enabled() {
+    if trino.expose_http_port() {
         ports.push(ContainerPort {
             name: Some(HTTP_PORT_NAME.to_string()),
             container_port: HTTP_PORT.into(),
@@ -1023,7 +1023,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
         })
     }
 
-    if trino.https_port_enabled() {
+    if trino.expose_https_port() {
         ports.push(ContainerPort {
             name: Some(HTTPS_PORT_NAME.to_string()),
             container_port: HTTPS_PORT.into(),
@@ -1036,7 +1036,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
 }
 
 fn readiness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = if trino.https_port_enabled() {
+    let port_name = if trino.expose_https_port() {
         HTTPS_PORT_NAME
     } else {
         HTTP_PORT_NAME
@@ -1055,7 +1055,7 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
 }
 
 fn liveness_probe(trino: &TrinoCluster) -> Probe {
-    let port_name = if trino.https_port_enabled() {
+    let port_name = if trino.expose_https_port() {
         HTTPS_PORT_NAME
     } else {
         HTTP_PORT_NAME

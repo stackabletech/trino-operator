@@ -1,5 +1,9 @@
 {
-    "useAuthentication": {{ test_scenario['values']['use-authentication'] }},
+{% if test_scenario['values']['use-authentication'] == 'true' and test_scenario['values']['use-tls'] == 'true' %}
+    "useAuthentication": true,
+{% else %}
+    "useAuthentication": false,
+{% endif %}
     "useTls": {{ test_scenario['values']['use-tls'] }},
     "useInternalTls": {{ test_scenario['values']['use-internal-tls'] }}
 }
