@@ -6,6 +6,7 @@ license = "OSL-3.0"
 name = "stackable-trino-crd"
 repository = "https://github.com/stackabletech/trino-operator"
 version = "0.8.0-nightly"
+publish = false
 
 [dependencies]
 stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.25.0" }
