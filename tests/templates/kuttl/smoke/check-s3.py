@@ -88,12 +88,7 @@ FROM hive.minio.taxi_data
 
     print("[INFO] Testing HDFS")
 
-    # We have to put in the Namenode address *temporary* until hive metastore supports adding a HDFS connection based on the discovery configmap
-    # You can see that based on the error stacktrace:
-    # Caused by: org.apache.hadoop.hive.metastore.api.MetaException: java.lang.IllegalArgumentException: java.net.UnknownHostException: hdfs
-    # When hive supports the HDFS connection we should switch to the following command
-    # assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs/trino/')")[0][0] is True
-    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs-namenode-default-0/trino/')")[0][0] is True
+    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs/trino/')")[0][0] is True
     rows_written = run_query(connection, "CREATE TABLE IF NOT EXISTS hive.hdfs.taxi_data_copy AS SELECT * FROM hive.minio.taxi_data")[0][0]
     assert rows_written == 5000 or rows_written == 0
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
