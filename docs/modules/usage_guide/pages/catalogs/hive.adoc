@@ -1,0 +1,100 @@
+= Apache Hive
+
+The Apache Hive connector allows Trino to connect to a Hive metastore and query data stored in Apache Hadoop or S3 compatible objects storage.
+
+
+=== Example Hive catalog configuration
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  # The name of the catalog at it will appear in Trino
+  name: hive-catalog
+  # TrinoCluster can use these labels to select which catalogs to include
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    # Specify hive here when defining a hive catalog
+    hive:
+      # Configuration can be passed either as a configMap...
+      metastore:
+        configMap: simple-hive
+      #... or defined inline
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+# We can use configOverrides to add arbitrary properties to the Trino catalog configuration
+  configOverrides:
+    hive.metastore.username: trino
+----
+
+== Adding unmanaged Hive clusters
+You can add connect Trino to Hive catalogs from systems that are not managed by Stackable, including Hive running on existing Hadoop clusters. Unmanaged Hive instances can be defined by creating a configMap containing the configuration for the remote Hive Metastore and HDFS or S3 storage services.
+
+=== Create a Hive Metastore configMap
+The Hive metastore configMap contains the URL for the metastore's thrift endpoint.
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudera-hive
+data:
+  HIVE: thrift://10.132.0.59:9083
+----
+
+=== Create a HDFS configMap
+When the Hive data is stored on HDFS you will need to provide a configMap containing the HDFS configuration. To do this take the core-site.xml and hdfs-site.xml from your Hadoop cluster and create a configMap and define the properties data.core-site.xml and data.hdfs-site.xml.
+
+[source,yaml]
+----
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudera-hdfs
+data:
+  core-site.xml: |-
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+      <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://my.hadoop.cluster:8020</value>
+      </property>
+    <!-- truncated for brevity -->
+    </configuration>
+  hdfs-site.xml: |-
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+      <property>
+        <name>dfs.namenode.servicerpc-address</name>
+        <value>my.hadoop.cluster:8022</value>
+      </property>
+    <!-- truncated for brevity -->
+    </configuration>
+----
+
+=== Create the Trino Hive catalog
+To use the unmanaged Hive metastore we define a `TrinoCatalog` object in the same way we would for a managed cluster, referencing the custom configMap we created for Hive and HDFS.
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: clouderahive
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    hive:
+      metastore:
+        configMap: cloudera-hive
+      hdfs:
+        configMap: cloudera-hdfs
+----

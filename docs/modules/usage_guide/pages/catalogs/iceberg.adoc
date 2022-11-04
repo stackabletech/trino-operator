@@ -1,0 +1,29 @@
+= Apache Iceberg
+
+Apache Iceberg is a format for huge analytic tables designed to address some of the scaling issues with traditional Hive tables. Iceberg depends on Hive metastore being present and makes use of the same metastore configMap used by the Hive connector.
+
+== Example Iceberg catalog configuration
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  # The name of the catalog at it will appear in Trino
+  name: iceberg
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    # Specify iceberg here when defining a iceberg catalog
+    iceberg:
+      metastore:
+        configMap: simple-hive-derby
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+----
