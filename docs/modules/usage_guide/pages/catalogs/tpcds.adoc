@@ -16,6 +16,6 @@ metadata:
 spec:
   connector:
     # Specify hive here when defining a hive catalog
-    tpcds:
+    tpcds: {}
 ----
 
