@@ -1,4 +1,4 @@
-= TPC-DH
+= TPC-DS
 
 Trino provides connectors that provide a data source for the TCP-DS benchmark data set. This is not a stored data set and is instead a virtual data sets generated at query time using a deterministic algorithm.
 
