@@ -1,6 +1,6 @@
 = Catalogs
 
-Trino does not have a built-in catalog and instead provides connectors to external data sources. This allows Trino to connect to, read from and join a wide variety of data sources.
+Trino does not have a built-in catalog and instead `provides` connectors to external data sources. This allows Trino to connect to, read from and join a wide variety of data sources.
 
 == Using catalogs
 Catalogues are defined in their own resources and referenced from cluster objects. See the xref:ROOT:concepts.adoc[] page for more details.
@@ -29,6 +29,9 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
+# We can use configOverrides to add arbitrary properties to the Trino catalog configuration
+  configOverrides:
+    hive.metastore.username: trino
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
