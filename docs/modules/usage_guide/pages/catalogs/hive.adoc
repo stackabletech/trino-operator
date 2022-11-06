@@ -50,7 +50,7 @@ data:
 ----
 
 === Create a HDFS configMap
-When the Hive data is stored on HDFS you will need to provide a configMap containing the HDFS configuration. To do this take the core-site.xml and hdfs-site.xml from your Hadoop cluster and create a configMap and define the properties data.core-site.xml and data.hdfs-site.xml.
+When the Hive data is stored on HDFS you will need to provide a configMap containing the HDFS configuration. To do this take the `core-site.xml` and `hdfs-site.xml` from your Hadoop cluster and create a configMap with the keys `core-site.xml` and `hdfs-site.xml`.
 
 [source,yaml]
 ----
