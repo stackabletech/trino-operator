@@ -8,7 +8,7 @@ Trino provides connectors that provide a data source for the TCP-DS benchmark da
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  # The name of the catalog at it will appear in Trino
+  # The name of the catalog as it will appear in Trino
   name: tpcds
   # TrinoCluster can use these labels to select which catalogs to include
   labels:
