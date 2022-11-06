@@ -9,7 +9,7 @@ Apache Iceberg is a format for huge analytic tables designed to address some of 
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  # The name of the catalog at it will appear in Trino
+  # The name of the catalog as it will appear in Trino
   name: iceberg
   labels:
     trino: simple-trino
