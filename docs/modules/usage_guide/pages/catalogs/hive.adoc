@@ -3,7 +3,7 @@
 The Apache Hive connector allows Trino to connect to a Hive metastore and query data stored in Apache Hadoop or S3 compatible objects storage.
 
 
-=== Example Hive catalog configuration
+== Example Hive catalog configuration
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1
