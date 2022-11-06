@@ -9,7 +9,7 @@ The Apache Hive connector allows Trino to connect to a Hive metastore and query 
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  # The name of the catalog at it will appear in Trino
+  # The name of the catalog as it will appear in Trino
   name: hive-catalog
   # TrinoCluster can use these labels to select which catalogs to include
   labels:
