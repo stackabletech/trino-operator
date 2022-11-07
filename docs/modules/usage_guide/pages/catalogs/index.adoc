@@ -77,6 +77,6 @@ spec:
 ----
 
 The `spec.catalogLabelSelector` is used to fetch the list of `TrinoCatalogs` used for this Trino cluster.
-In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector` value simple-trino    .
+In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector` value `simple-trino`.
 
 A `TrinoCluster` can, once created, detect and use new catalogs that have been subsequently created with a matching label. This also means that it is possible to reuse a `TrinoCatalog` within multiple `TrinoClusters`.
