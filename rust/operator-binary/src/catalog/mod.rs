@@ -1,5 +1,6 @@
 pub mod commons;
 pub mod config;
+pub mod google_sheet;
 pub mod hive;
 pub mod iceberg;
 pub mod tpcds;
