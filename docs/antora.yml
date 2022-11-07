@@ -1,8 +1,8 @@
 name: trino
-version: "nightly"
+version: "0.8"
 title: Stackable Operator for Trino
 nav:
   - modules/getting_started/nav.adoc
   - modules/ROOT/nav.adoc
   - modules/usage_guide/nav.adoc
-prerelease: true
+prerelease: false
