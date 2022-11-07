@@ -1,8 +1,8 @@
 ---
 apiVersion: v2
 name: trino-operator
-version: "0.8.0-nightly"
-appVersion: "0.8.0-nightly"
+version: "0.8.0"
+appVersion: "0.8.0"
 description: The Stackable Operator for Trino
 home: https://github.com/stackabletech/trino-operator
 maintainers:

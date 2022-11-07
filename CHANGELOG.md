@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2022-11-07
+
 ### Added
 
 - Added support for LDAP authentication ([#306]).
