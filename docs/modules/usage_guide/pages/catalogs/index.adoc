@@ -1,8 +1,11 @@
-= Using Catalogs
+= Catalogs
 
+Trino does not have a built-in catalog and instead `provides` connectors to external data sources. This allows Trino to connect to, read from and join a wide variety of data sources.
+
+== Using catalogs
 Catalogues are defined in their own resources and referenced from cluster objects. See the xref:ROOT:concepts.adoc[] page for more details.
 
-== Create a catalog
+=== Create a catalog
 
 You can create a catalog using the `TrinoCatalog` object as follows.
 
@@ -11,7 +14,7 @@ You can create a catalog using the `TrinoCatalog` object as follows.
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  name: hive
+  name: hive-catalog
   labels:
     trino: simple-trino
 spec:
@@ -26,6 +29,9 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
+# We can use configOverrides to add arbitrary properties to the Trino catalog configuration
+  configOverrides:
+    hive.metastore.username: trino
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
@@ -48,11 +54,11 @@ spec:
 ----
 
 The `metadata.name` will be the name of the catalog that shows up in your Trino instance.
-The `metadata.labels` will be used to determine the link between Trino clusters and `TrinoCatalogs`.
+The `metadata.labels` will be used by `TrinoCluster` to determine the link between Trino clusters and `TrinoCatalogs`.
 The `spec.connector.<connector>` determines which connector is used.
 Each connector supports a different set of attributes.
 
-== Add a catalog to a Trino cluster
+=== Add a catalog to a Trino cluster
 
 It is necessary to specify within the `TrinoCluster` which catalogs it should use. Here is an example of this:
 
@@ -71,6 +77,6 @@ spec:
 ----
 
 The `spec.catalogLabelSelector` is used to fetch the list of `TrinoCatalogs` used for this Trino cluster.
-In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector`.
+In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector` value `simple-trino`.
 
 A `TrinoCluster` can, once created, detect and use new catalogs that have been subsequently created with a matching label. This also means that it is possible to reuse a `TrinoCatalog` within multiple `TrinoClusters`.
