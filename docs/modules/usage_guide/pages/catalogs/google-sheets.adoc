@@ -1,0 +1,43 @@
+= Google sheets
+
+Whith this connector Trino can connect to Google Sheets.
+It needs a serviceuser to access the Google APIs.
+Please consult the https://trino.io/docs/current/connector/googlesheets.html[official documentation] on how to use the Google Sheets connector.
+
+== Example Google sheets catalog configuration
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: gsheet
+  labels:
+    trino: trino
+spec:
+  connector:
+    googleSheet:
+      credentialsSecret: gsheet-credentials
+      metadataSheetId: 1dT4dRWo9tAKBk5GdH-a54dcizuoxOTn98X8igZcnYr8
+      cache: # optional
+        sheetsDataMaxCacheSize: 1000 # optional, defaults to 1000
+        sheetsDataExpireAfterWrite: 5m # optional, defaults to 5m
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gsheet-credentials
+stringData:
+  credentials: |+
+    {
+      "type": "service_account",
+      "project_id": "neat-bricolage-231015",
+      "private_key_id": "XXX",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nXXX=\n-----END PRIVATE KEY-----\n",
+      "client_email": "trino-550@neat-bricolage-231015.iam.gserviceaccount.com",
+      "client_id": "XXX",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/trino-550%40neat-bricolage-231015.iam.gserviceaccount.com"
+    }
+----

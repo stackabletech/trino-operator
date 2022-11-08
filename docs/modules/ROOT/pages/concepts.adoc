@@ -31,4 +31,4 @@ The following diagram illustrates this. Two Trino catalogs - each an instance of
 include::partial$diagrams/TrinoCatalogs.excalidraw[]
 ----
 
-A complete example of this is shown here: xref:usage_guide:catalogs.adoc[].
+A complete example of this is shown here: xref:usage_guide:catalogs/index.adoc[].
