@@ -15,6 +15,7 @@ There may exist two different catalogs called e.g. `warehouse_1` and `warehouse_
 
 Currently, the following connectors are supported:
 
+* https://trino.io/docs/current/connector/googlesheets.html[GoogleSheets]
 * https://trino.io/docs/current/connector/hive.html[Hive]
 * https://trino.io/docs/current/connector/iceberg.html[Iceberg]
 * https://trino.io/docs/current/connector/tpcds.html[TPCDS]
