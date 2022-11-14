@@ -1,4 +1,5 @@
 pub mod commons;
+pub mod google_sheet;
 pub mod hive;
 pub mod iceberg;
 pub mod tpcds;
@@ -11,6 +12,7 @@ use stackable_operator::{
 };
 use std::collections::HashMap;
 
+use google_sheet::GoogleSheetConnector;
 use hive::HiveConnector;
 use iceberg::IcebergConnector;
 use tpcds::TpcdsConnector;
@@ -39,6 +41,7 @@ pub struct TrinoCatalogSpec {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TrinoCatalogConnector {
+    GoogleSheet(GoogleSheetConnector),
     Hive(HiveConnector),
     Iceberg(IcebergConnector),
     Tpcds(TpcdsConnector),
