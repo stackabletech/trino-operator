@@ -8,7 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Add support for [Google sheets connector](https://trino.io/docs/current/connector/googlesheets.html) ([#337]).
 
+### Changed
+
+- Updated stackable image versions ([#340])
+
 [#337]: https://github.com/stackabletech/trino-operator/pull/337
+[#340]: https://github.com/stackabletech/trino-operator/pull/340
 
 ## [0.8.0] - 2022-11-07
 

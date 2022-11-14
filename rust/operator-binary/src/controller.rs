@@ -680,7 +680,7 @@ fn build_rolegroup_statefulset(
     )?;
 
     let container_prepare = cb_prepare
-        .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0")
+        .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0.4.0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(command::container_prepare_args(
             trino,

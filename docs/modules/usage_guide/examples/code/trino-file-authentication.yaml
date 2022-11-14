@@ -14,7 +14,7 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  version: 396-stackable0.1.0
+  version: 396-stackable0.2.0
   catalogLabelSelector: {}
   authentication:
     method:
