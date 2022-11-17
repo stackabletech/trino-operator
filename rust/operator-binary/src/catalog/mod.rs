@@ -14,6 +14,8 @@ use stackable_operator::client::Client;
 #[derive(Debug, Snafu)]
 #[snafu(module)]
 pub enum FromTrinoCatalogError {
+    #[snafu(display("object defines no namespace"))]
+    ObjectHasNoNamespace,
     #[snafu(display("failed to resolve S3ConnectionDef"))]
     ResolveS3ConnectionDef {
         source: stackable_operator::error::Error,

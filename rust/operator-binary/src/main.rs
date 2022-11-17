@@ -3,6 +3,8 @@ mod command;
 mod config;
 mod controller;
 
+use crate::controller::OPERATOR_NAME;
+
 use clap::Parser;
 use futures::stream::StreamExt;
 use stackable_operator::{
@@ -66,8 +68,7 @@ async fn main() -> anyhow::Result<()> {
             ])?;
 
             let client =
-                stackable_operator::client::create_client(Some("trino.stackable.tech".to_string()))
-                    .await?;
+                stackable_operator::client::create_client(Some(OPERATOR_NAME.to_string())).await?;
 
             let cluster_controller = Controller::new(
                 watch_namespace.get_api::<TrinoCluster>(&client),
@@ -87,6 +88,7 @@ async fn main() -> anyhow::Result<()> {
                     watch_namespace.get_api::<ConfigMap>(&client),
                     ListParams::default(),
                 )
+                .shutdown_on_signal()
                 .watches(
                     watch_namespace.get_api::<TrinoCatalog>(&client),
                     ListParams::default(),
@@ -100,7 +102,6 @@ async fn main() -> anyhow::Result<()> {
                             .map(|cluster| ObjectRef::from_obj(&*cluster))
                     },
                 )
-                .shutdown_on_signal()
                 .run(
                     controller::reconcile_trino,
                     controller::error_policy,

@@ -86,7 +86,7 @@ impl TrinoAuthenticationMethod {
                 };
 
                 let secret_content = client
-                    .get::<Secret>(secret_name, Some(secret_namespace))
+                    .get::<Secret>(secret_name, secret_namespace)
                     .await
                     .with_context(|_| MissingSecretSnafu {
                         secret: ObjectRef::new(secret_name).within(secret_namespace),

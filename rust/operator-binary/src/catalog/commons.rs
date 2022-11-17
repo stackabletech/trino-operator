@@ -1,6 +1,7 @@
 use crate::command;
+
 use async_trait::async_trait;
-use snafu::ResultExt;
+use snafu::{OptionExt, ResultExt};
 use stackable_operator::{
     builder::{SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder},
     client::Client,
@@ -14,7 +15,10 @@ use stackable_trino_crd::{
 
 use super::{
     config::CatalogConfig,
-    from_trino_catalog_error::{ResolveS3ConnectionDefSnafu, S3TlsNoVerificationNotSupportedSnafu},
+    from_trino_catalog_error::{
+        ObjectHasNoNamespaceSnafu, ResolveS3ConnectionDefSnafu,
+        S3TlsNoVerificationNotSupportedSnafu,
+    },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
 
@@ -47,7 +51,12 @@ impl ExtendCatalogConfig for S3ConnectionDef {
         client: &Client,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
-            .resolve(client, catalog_namespace.as_deref())
+            .resolve(
+                client,
+                catalog_namespace
+                    .as_deref()
+                    .context(ObjectHasNoNamespaceSnafu)?,
+            )
             .await
             .context(ResolveS3ConnectionDefSnafu)?;
 
