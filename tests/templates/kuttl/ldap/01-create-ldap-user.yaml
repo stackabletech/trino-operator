@@ -4,5 +4,5 @@ kind: TestStep
 metadata:
   name: create-ldap-user
 commands:
-  - script: kubectl cp ./create_ldap_user.sh openldap-0:/tmp
-  - script: kubectl exec openldap-0 -- sh /tmp/create_ldap_user.sh
+  - script: kubectl cp -n $NAMESPACE ./create_ldap_user.sh openldap-0:/tmp
+  - script: kubectl exec -n $NAMESPACE openldap-0 -- sh /tmp/create_ldap_user.sh
