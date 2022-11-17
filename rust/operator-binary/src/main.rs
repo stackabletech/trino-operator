@@ -3,7 +3,7 @@ mod command;
 mod config;
 mod controller;
 
-use crate::controller::OPERATOR_NAME;
+use crate::controller::{CONTROLLER_NAME, OPERATOR_NAME};
 
 use clap::Parser;
 use futures::stream::StreamExt;
@@ -113,7 +113,7 @@ async fn main() -> anyhow::Result<()> {
                 .map(|res| {
                     report_controller_reconciled(
                         &client,
-                        "trinoclusters.trino.stackable.tech",
+                        &format!("{CONTROLLER_NAME}.{OPERATOR_NAME}"),
                         &res,
                     )
                 })
