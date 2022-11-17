@@ -1,7 +1,7 @@
 ---
 apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
-timeout: 120
+timeout: 600
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -113,11 +113,3 @@ status:
   capacity:
     storage: 4Gi
   phase: Bound
----
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 600
-commands:
-  - script: kubectl get cm -n $NAMESPACE trino-coordinator-resources-default -o yaml | grep -- '-Xmx1638m' | xargs test ! -z
-  - script: kubectl get cm -n $NAMESPACE trino-worker-resources-from-role -o yaml | grep -- '-Xmx2457m' | xargs test ! -z
-  - script: kubectl get cm -n $NAMESPACE trino-worker-resources-from-role-group -o yaml | grep -- '-Xmx3276m' | xargs test ! -z
