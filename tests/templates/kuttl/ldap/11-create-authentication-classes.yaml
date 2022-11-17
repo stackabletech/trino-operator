@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+metadata:
+  name: create-ldap-user
+commands:
+  # We need to replace $NAMESPACE (by KUTTL) in the create-authentication-classes.yaml(.j2)
+  - script: eval "echo \"$(cat create-authentication-classes.yaml)\"" | kubectl apply -f -

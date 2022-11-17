@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 - Updated stackable image versions ([#340]).
 - `operator-rs` `0.25.0` -> `0.27.1` ([#344]).
+- LDAP integration tests create all resources in their namespace and not some in the default namespace ([#344]).
 
 [#337]: https://github.com/stackabletech/trino-operator/pull/337
 [#340]: https://github.com/stackabletech/trino-operator/pull/340
