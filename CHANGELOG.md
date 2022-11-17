@@ -10,10 +10,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Updated stackable image versions ([#340])
+- Updated stackable image versions ([#340]).
+- `operator-rs` `0.25.0` -> `0.27.1` ([#344]).
 
 [#337]: https://github.com/stackabletech/trino-operator/pull/337
 [#340]: https://github.com/stackabletech/trino-operator/pull/340
+[#344]: https://github.com/stackabletech/trino-operator/pull/344
 
 ## [0.8.0] - 2022-11-07
 
