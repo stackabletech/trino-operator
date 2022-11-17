@@ -6,9 +6,10 @@ use crate::authentication::TrinoAuthenticationMethod;
 use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
 
 use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::commons::resources::Resources;
 use stackable_operator::config::fragment;
+use stackable_operator::config::fragment::ValidationError;
 use stackable_operator::{
     commons::{
         opa::OpaConfig,
@@ -134,6 +135,8 @@ pub enum Error {
     ObjectHasNoVersion,
     #[snafu(display("Unknown Trino role found {role}. Should be one of {roles:?}"))]
     UnknownTrinoRole { role: String, roles: Vec<String> },
+    #[snafu(display("internal operator failure"))]
+    InternalOperatorFailure { source: ValidationError },
 }
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -655,13 +658,24 @@ impl TrinoCluster {
         &self,
         role: &TrinoRole,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    ) -> Option<Resources<TrinoStorageConfig, NoRuntimeLimits>> {
+    ) -> Result<Resources<TrinoStorageConfig, NoRuntimeLimits>, Error> {
         // Initialize the result with all default values as baseline
         let conf_defaults = TrinoConfig::default_resources();
 
         let role = match role {
-            TrinoRole::Coordinator => self.spec.coordinators.as_ref()?,
-            TrinoRole::Worker => self.spec.workers.as_ref()?,
+            TrinoRole::Coordinator => {
+                self.spec
+                    .coordinators
+                    .as_ref()
+                    .context(UnknownTrinoRoleSnafu {
+                        role: role.to_string(),
+                        roles: TrinoRole::roles(),
+                    })?
+            }
+            TrinoRole::Worker => self.spec.workers.as_ref().context(UnknownTrinoRoleSnafu {
+                role: role.to_string(),
+                roles: TrinoRole::roles(),
+            })?,
         };
 
         // Retrieve role resource config
@@ -684,7 +698,7 @@ impl TrinoCluster {
         conf_rolegroup.merge(&conf_role);
 
         tracing::debug!("Merged resource config: {:?}", conf_rolegroup);
-        Some(fragment::validate(conf_rolegroup).unwrap())
+        fragment::validate(conf_rolegroup).context(InternalOperatorFailureSnafu)
     }
 }
 

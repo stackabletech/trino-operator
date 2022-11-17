@@ -169,7 +169,7 @@ pub enum Error {
         catalog: ObjectRef<TrinoCatalog>,
     },
     #[snafu(display("failed to resolve and merge resource config for role and role group"))]
-    FailedToResolveResourceConfig,
+    FailedToResolveResourceConfig { source: stackable_trino_crd::Error },
     #[snafu(display("invalid java heap config - missing default or value in crd?"))]
     InvalidJavaHeapConfig,
     #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
