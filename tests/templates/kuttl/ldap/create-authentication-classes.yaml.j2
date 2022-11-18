@@ -10,7 +10,7 @@ metadata:
 spec:
   provider:
     ldap:
-      hostname: openldap.default.svc.cluster.local
+      hostname: openldap.$NAMESPACE.svc.cluster.local
       searchBase: ou=users,dc=example,dc=org
       bindCredentials:
         secretClass: trino-with-ldap-bind

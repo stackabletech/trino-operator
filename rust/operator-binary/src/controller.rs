@@ -32,7 +32,7 @@ use stackable_operator::{
         runtime::{controller::Action, reflector::ObjectRef},
         Resource, ResourceExt,
     },
-    labels::{role_group_selector_labels, role_selector_labels},
+    labels::{role_group_selector_labels, role_selector_labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{to_java_heap_value, BinaryMultiple},
     product_config::{self, types::PropertyNameKind, ProductConfigManager},
@@ -74,7 +74,8 @@ pub struct Ctx {
     pub product_config: ProductConfigManager,
 }
 
-const CONTROLLER_NAME: &str = "trino-operator";
+pub const OPERATOR_NAME: &str = "trino.stackable.tech";
+pub const CONTROLLER_NAME: &str = "trinocluster";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -168,7 +169,7 @@ pub enum Error {
         catalog: ObjectRef<TrinoCatalog>,
     },
     #[snafu(display("failed to resolve and merge resource config for role and role group"))]
-    FailedToResolveResourceConfig,
+    FailedToResolveResourceConfig { source: stackable_trino_crd::Error },
     #[snafu(display("invalid java heap config - missing default or value in crd?"))]
     InvalidJavaHeapConfig,
     #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
@@ -207,7 +208,11 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
-            trino.metadata.namespace.as_deref(),
+            trino
+                .metadata
+                .namespace
+                .as_deref()
+                .context(ObjectHasNoNamespaceSnafu)?,
             &trino.spec.catalog_label_selector,
         )
         .await
@@ -228,9 +233,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let validated_config =
         validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
 
-    let mut cluster_resources =
-        ClusterResources::new(APP_NAME, CONTROLLER_NAME, &trino.object_ref(&()))
-            .context(CreateClusterResourcesSnafu)?;
+    let mut cluster_resources = ClusterResources::new(
+        APP_NAME,
+        OPERATOR_NAME,
+        CONTROLLER_NAME,
+        &trino.object_ref(&()),
+    )
+    .context(CreateClusterResourcesSnafu)?;
 
     let authentication_config = user_authentication(&trino, client).await?;
 
@@ -342,16 +351,14 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
             .name(&role_svc_name)
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(
+            .with_recommended_labels(build_recommended_labels(
                 trino,
-                APP_NAME,
                 trino
                     .image_version()
                     .context(TrinoProductVersionParseFailureSnafu)?,
-                CONTROLLER_NAME,
                 &role_name,
                 "global",
-            )
+            ))
             .build(),
         spec: Some(ServiceSpec {
             ports: Some(service_ports(trino)),
@@ -517,16 +524,14 @@ fn build_rolegroup_config_map(
                 .name(rolegroup_ref.object_name())
                 .ownerreference_from_resource(trino, None, Some(true))
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
-                .with_recommended_labels(
+                .with_recommended_labels(build_recommended_labels(
                     trino,
-                    APP_NAME,
                     trino
                         .image_version()
                         .context(TrinoProductVersionParseFailureSnafu)?,
-                    CONTROLLER_NAME,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
-                )
+                ))
                 .build(),
         )
         .data(cm_conf_data)
@@ -550,16 +555,14 @@ fn build_rolegroup_catalog_config_map(
                 .name(format!("{}-catalog", rolegroup_ref.object_name()))
                 .ownerreference_from_resource(trino, None, Some(true))
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
-                .with_recommended_labels(
+                .with_recommended_labels(build_recommended_labels(
                     trino,
-                    APP_NAME,
                     trino
                         .image_version()
                         .context(TrinoProductVersionParseFailureSnafu)?,
-                    CONTROLLER_NAME,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
-                )
+                ))
                 .build(),
         )
         .data(
@@ -715,14 +718,12 @@ fn build_rolegroup_statefulset(
 
     pod_builder
         .metadata_builder(|m| {
-            m.with_recommended_labels(
+            m.with_recommended_labels(build_recommended_labels(
                 trino,
-                APP_NAME,
                 trino_image_version,
-                CONTROLLER_NAME,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
-            )
+            ))
         })
         .add_init_container(container_prepare)
         .add_container(container_trino)
@@ -755,14 +756,12 @@ fn build_rolegroup_statefulset(
             .name(&rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(
+            .with_recommended_labels(build_recommended_labels(
                 trino,
-                APP_NAME,
                 trino_image_version,
-                CONTROLLER_NAME,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
-            )
+            ))
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
@@ -797,24 +796,22 @@ fn build_rolegroup_statefulset(
 /// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
 fn build_rolegroup_service(
     trino: &TrinoCluster,
-    rolegroup: &RoleGroupRef<TrinoCluster>,
+    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
 ) -> Result<Service> {
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup.object_name())
+            .name(&rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(
+            .with_recommended_labels(build_recommended_labels(
                 trino,
-                APP_NAME,
                 trino
                     .image_version()
                     .context(TrinoProductVersionParseFailureSnafu)?,
-                CONTROLLER_NAME,
-                &rolegroup.role,
-                &rolegroup.role_group,
-            )
+                &rolegroup_ref.role,
+                &rolegroup_ref.role_group,
+            ))
             .with_label("prometheus.io/scrape", "true")
             .build(),
         spec: Some(ServiceSpec {
@@ -823,8 +820,8 @@ fn build_rolegroup_service(
             selector: Some(role_group_selector_labels(
                 trino,
                 APP_NAME,
-                &rolegroup.role,
-                &rolegroup.role_group,
+                &rolegroup_ref.role,
+                &rolegroup_ref.role_group,
             )),
             publish_not_ready_addresses: Some(true),
             ..ServiceSpec::default()
@@ -833,7 +830,7 @@ fn build_rolegroup_service(
     })
 }
 
-pub fn error_policy(_error: &Error, _ctx: Arc<Ctx>) -> Action {
+pub fn error_policy(_obj: Arc<TrinoCluster>, _error: &Error, _ctx: Arc<Ctx>) -> Action {
     Action::requeue(Duration::from_secs(5))
 }
 
@@ -933,10 +930,33 @@ fn validated_product_config(
         .context(InvalidProductConfigSnafu)
 }
 
+fn build_recommended_labels<'a>(
+    owner: &'a TrinoCluster,
+    app_version: &'a str,
+    role: &'a str,
+    role_group: &'a str,
+) -> ObjectLabels<'a, TrinoCluster> {
+    ObjectLabels {
+        owner,
+        app_name: APP_NAME,
+        app_version,
+        operator_name: OPERATOR_NAME,
+        controller_name: CONTROLLER_NAME,
+        role,
+        role_group,
+    }
+}
+
 async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) -> Result<()> {
     let secret = build_shared_internal_secret(trino)?;
     if client
-        .get_opt::<Secret>(&secret.name_any(), secret.namespace().as_deref())
+        .get_opt::<Secret>(
+            &secret.name_any(),
+            secret
+                .namespace()
+                .as_deref()
+                .context(ObjectHasNoNamespaceSnafu)?,
+        )
         .await
         .context(FailedToRetrieveInternalSecretSnafu)?
         .is_none()

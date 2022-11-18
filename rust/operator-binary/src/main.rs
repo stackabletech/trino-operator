@@ -3,6 +3,8 @@ mod command;
 mod config;
 mod controller;
 
+use crate::controller::{CONTROLLER_NAME, OPERATOR_NAME};
+
 use clap::Parser;
 use futures::stream::StreamExt;
 use stackable_operator::{
@@ -14,9 +16,10 @@ use stackable_operator::{
     kube::{
         api::ListParams,
         runtime::{reflector::ObjectRef, Controller},
-        CustomResourceExt, ResourceExt,
+        ResourceExt,
     },
     logging::controller::report_controller_reconciled,
+    CustomResourceExt,
 };
 use stackable_trino_crd::{catalog::TrinoCatalog, TrinoCluster, APP_NAME};
 use std::sync::Arc;
@@ -36,12 +39,10 @@ struct Opts {
 async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
-        // TODO: Replace with new yaml serde mechanism from operator-rs
-        Command::Crd => println!(
-            "{}---\n{}",
-            serde_yaml::to_string(&TrinoCluster::crd())?,
-            serde_yaml::to_string(&TrinoCatalog::crd())?
-        ),
+        Command::Crd => {
+            TrinoCluster::print_yaml_schema()?;
+            TrinoCatalog::print_yaml_schema()?;
+        }
         Command::Run(ProductOperatorRun {
             product_config,
             watch_namespace,
@@ -66,8 +67,7 @@ async fn main() -> anyhow::Result<()> {
             ])?;
 
             let client =
-                stackable_operator::client::create_client(Some("trino.stackable.tech".to_string()))
-                    .await?;
+                stackable_operator::client::create_client(Some(OPERATOR_NAME.to_string())).await?;
 
             let cluster_controller = Controller::new(
                 watch_namespace.get_api::<TrinoCluster>(&client),
@@ -87,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
                     watch_namespace.get_api::<ConfigMap>(&client),
                     ListParams::default(),
                 )
+                .shutdown_on_signal()
                 .watches(
                     watch_namespace.get_api::<TrinoCatalog>(&client),
                     ListParams::default(),
@@ -100,7 +101,6 @@ async fn main() -> anyhow::Result<()> {
                             .map(|cluster| ObjectRef::from_obj(&*cluster))
                     },
                 )
-                .shutdown_on_signal()
                 .run(
                     controller::reconcile_trino,
                     controller::error_policy,
@@ -112,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
                 .map(|res| {
                     report_controller_reconciled(
                         &client,
-                        "trinoclusters.trino.stackable.tech",
+                        &format!("{CONTROLLER_NAME}.{OPERATOR_NAME}"),
                         &res,
                     )
                 })
