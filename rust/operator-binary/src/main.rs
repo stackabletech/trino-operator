@@ -16,9 +16,10 @@ use stackable_operator::{
     kube::{
         api::ListParams,
         runtime::{reflector::ObjectRef, Controller},
-        CustomResourceExt, ResourceExt,
+        ResourceExt,
     },
     logging::controller::report_controller_reconciled,
+    CustomResourceExt,
 };
 use stackable_trino_crd::{catalog::TrinoCatalog, TrinoCluster, APP_NAME};
 use std::sync::Arc;
@@ -38,12 +39,10 @@ struct Opts {
 async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
-        // TODO: Replace with new yaml serde mechanism from operator-rs
-        Command::Crd => println!(
-            "{}---\n{}",
-            serde_yaml::to_string(&TrinoCluster::crd())?,
-            serde_yaml::to_string(&TrinoCatalog::crd())?
-        ),
+        Command::Crd => {
+            TrinoCluster::print_yaml_schema()?;
+            TrinoCatalog::print_yaml_schema()?;
+        }
         Command::Run(ProductOperatorRun {
             product_config,
             watch_namespace,
