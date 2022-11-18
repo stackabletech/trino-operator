@@ -3,7 +3,6 @@ apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
   name: openldap-tls
-  namespace: $NAMESPACE
 spec:
   backend:
     autoTls:
