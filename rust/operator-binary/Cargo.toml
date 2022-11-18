@@ -15,7 +15,7 @@ stackable-trino-crd = { path = "../crd" }
 
 anyhow = "1.0"
 async-trait = "0.1"
-clap = { version = "4.0", features = ["derive", "cargo", "env"] }
+clap = "4.0"
 futures = { version = "0.3", features = ["compat"] }
 indoc = "1.0.7"
 openssl = "0.10.42"
