@@ -1,3 +1,4 @@
+pub mod black_hole;
 pub mod commons;
 pub mod google_sheet;
 pub mod hive;
@@ -12,6 +13,7 @@ use stackable_operator::{
 };
 use std::collections::HashMap;
 
+use black_hole::BlackHoleConnector;
 use google_sheet::GoogleSheetConnector;
 use hive::HiveConnector;
 use iceberg::IcebergConnector;
@@ -41,6 +43,7 @@ pub struct TrinoCatalogSpec {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TrinoCatalogConnector {
+    BlackHole(BlackHoleConnector),
     GoogleSheet(GoogleSheetConnector),
     Hive(HiveConnector),
     Iceberg(IcebergConnector),

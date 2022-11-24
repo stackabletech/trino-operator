@@ -1,6 +1,7 @@
 = TPC-DS
 
-Trino provides connectors that provide a data source for the TCP-DS benchmark data set. This is not a stored data set and is instead a virtual data sets generated at query time using a deterministic algorithm.
+The https://trino.io/docs/current/connector/tpcds.html[TPC-DS connector] provides a data source for the TCP-DS benchmark data set.
+This is not a stored data set and is instead a virtual data sets generated at query time using a deterministic algorithm.
 
 == Example TPC-DS catalog configuration
 [source,yaml]
@@ -15,7 +16,5 @@ metadata:
     trino: simple-trino
 spec:
   connector:
-    # Specify hive here when defining a hive catalog
-    tpcds: {}
+    tpcds: {} # No options needed
 ----
-

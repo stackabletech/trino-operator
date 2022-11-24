@@ -1,3 +1,4 @@
+pub mod black_hole;
 pub mod commons;
 pub mod config;
 pub mod google_sheet;
