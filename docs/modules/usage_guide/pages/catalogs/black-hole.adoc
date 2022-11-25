@@ -1,7 +1,7 @@
 = Black Hole
 
 Primarily the https://trino.io/docs/current/connector/blackhole.html[Black Hole connector] is designed for high performance testing of other components.
-It works like the /dev/null device on Unix-like operating systems for data writing and like /dev/null or /dev/zero for data reading.
+It works like the `/dev/null` device on Unix-like operating systems for data writing and like `/dev/null` or `/dev/zero` for data reading.
 
 == Example Black Hole catalog configuration
 [source,yaml]
@@ -18,3 +18,8 @@ spec:
   connector:
     blackhole: {} # No options needed
 ----
+
+[NOTE]
+====
+This connector does not work properly with multiple coordinators, since each coordinator has different metadata.
+====
