@@ -1,6 +1,6 @@
 use stackable_operator::{
     client::Client,
-    k8s_openapi::api::core::v1::{ConfigMapKeySelector, EnvVar, EnvVarSource, Volume, VolumeMount},
+    k8s_openapi::api::core::v1::{EnvVar, Volume, VolumeMount},
     kube::{Resource, ResourceExt},
 };
 use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
@@ -46,11 +46,6 @@ impl CatalogConfig {
         self.properties.insert(property.into(), value.into());
     }
 
-    pub fn add_env_property(&mut self, property: impl Into<String>, env: EnvVar) {
-        self.add_property(property, format!("${{ENV:{}}}", env.name));
-        self.env_bindings.push(env);
-    }
-
     pub fn add_env_property_from_file(
         &mut self,
         property: impl Into<String>,
@@ -60,31 +55,6 @@ impl CatalogConfig {
         let env_name = calculate_env_name(&self.name, &property);
         self.add_property(&property, format!("${{ENV:{env_name}}}"));
         self.load_env_from_files.insert(env_name, file_name.into());
-    }
-
-    pub fn add_configmap_property(
-        &mut self,
-        property: impl Into<String>,
-        config_map: impl Into<String>,
-        config_map_key: impl Into<String>,
-    ) {
-        let property = property.into();
-        let env_name = calculate_env_name(&self.name, &property);
-        self.add_env_property(
-            &property,
-            EnvVar {
-                name: env_name,
-                value: None,
-                value_from: Some(EnvVarSource {
-                    config_map_key_ref: Some(ConfigMapKeySelector {
-                        name: Some(config_map.into()),
-                        key: config_map_key.into(),
-                        ..ConfigMapKeySelector::default()
-                    }),
-                    ..EnvVarSource::default()
-                }),
-            },
-        );
     }
 
     pub async fn from_catalog(

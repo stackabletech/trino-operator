@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Hive catalog now properly handles hive clusters with replicas > 1([#348]).
+- Hive catalog now properly handles hive clusters with replicas > 1 ([#348]).
 
 [#337]: https://github.com/stackabletech/trino-operator/pull/337
 [#340]: https://github.com/stackabletech/trino-operator/pull/340
