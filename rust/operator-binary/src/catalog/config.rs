@@ -99,12 +99,17 @@ impl CatalogConfig {
         let catalog_namespace = catalog.namespace();
 
         let mut catalog_config = match catalog.spec.connector {
-            TrinoCatalogConnector::Hive(connector) => {
+            TrinoCatalogConnector::BlackHole(connector) => {
                 connector
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
                     .await
             }
             TrinoCatalogConnector::GoogleSheet(connector) => {
+                connector
+                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .await
+            }
+            TrinoCatalogConnector::Hive(connector) => {
                 connector
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
                     .await

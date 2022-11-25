@@ -1202,6 +1202,8 @@ spec:
                 connector:
                   oneOf:
                     - required:
+                        - blackHole
+                    - required:
                         - googleSheet
                     - required:
                         - hive
@@ -1212,6 +1214,8 @@ spec:
                     - required:
                         - tpch
                   properties:
+                    blackHole:
+                      type: object
                     googleSheet:
                       properties:
                         cache:
