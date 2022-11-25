@@ -1,7 +1,7 @@
 = TPC-DS
 
 The https://trino.io/docs/current/connector/tpcds.html[TPC-DS connector] provides a data source for the TCP-DS benchmark data set.
-This is not a stored data set and is instead a virtual data sets generated at query time using a deterministic algorithm.
+This is not a stored data set and is instead a virtual data set generated at query time using a deterministic algorithm.
 
 == Example TPC-DS catalog configuration
 [source,yaml]
