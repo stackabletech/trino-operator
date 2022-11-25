@@ -15,10 +15,15 @@ All notable changes to this project will be documented in this file.
 - `operator-rs` `0.25.0` -> `0.27.1` ([#344]).
 - LDAP integration tests create all resources in their namespace and not some in the default namespace ([#344]).
 
+### Fixed
+
+- Hive catalog now properly handles hive clusters with replicas > 1([#348]).
+
 [#337]: https://github.com/stackabletech/trino-operator/pull/337
 [#340]: https://github.com/stackabletech/trino-operator/pull/340
 [#344]: https://github.com/stackabletech/trino-operator/pull/344
 [#347]: https://github.com/stackabletech/trino-operator/pull/347
+[#348]: https://github.com/stackabletech/trino-operator/pull/348
 
 ## [0.8.0] - 2022-11-07
 
