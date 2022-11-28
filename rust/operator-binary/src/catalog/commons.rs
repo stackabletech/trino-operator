@@ -61,9 +61,8 @@ impl ExtendCatalogConfig for MetastoreConnection {
                 data_key: data_key.to_string(),
             })?;
 
-        // This is tightly coupled now with the hive discovery config map data layout now
-        let transformed_hive_connection =
-            hive_connection.split('\n').collect::<Vec<&str>>().join(",");
+        // This is tightly coupled with the hive discovery config map data layout now
+        let transformed_hive_connection = hive_connection.replace('\n', ",");
 
         catalog_config.add_property("hive.metastore.uri", transformed_hive_connection);
 
