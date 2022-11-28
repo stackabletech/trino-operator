@@ -7,6 +7,7 @@ use stackable_operator::{
     client::Client,
     commons::s3::{S3AccessStyle, S3ConnectionDef},
     commons::tls::{CaCert, TlsServerVerification, TlsVerification},
+    k8s_openapi::api::core::v1::ConfigMap,
 };
 use stackable_trino_crd::catalog::commons::{HdfsConnection, MetastoreConnection};
 use stackable_trino_crd::{
@@ -16,7 +17,8 @@ use stackable_trino_crd::{
 use super::{
     config::CatalogConfig,
     from_trino_catalog_error::{
-        ObjectHasNoNamespaceSnafu, ResolveS3ConnectionDefSnafu,
+        FailedToGetDiscoveryConfigMapDataKeySnafu, FailedToGetDiscoveryConfigMapDataSnafu,
+        FailedToGetDiscoveryConfigMapSnafu, ObjectHasNoNamespaceSnafu, ResolveS3ConnectionDefSnafu,
         S3TlsNoVerificationNotSupportedSnafu,
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
@@ -27,15 +29,42 @@ impl ExtendCatalogConfig for MetastoreConnection {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        _catalog_name: &str,
-        _catalog_namespace: Option<String>,
-        _client: &Client,
+        catalog_name: &str,
+        catalog_namespace: Option<String>,
+        client: &Client,
     ) -> Result<(), FromTrinoCatalogError> {
-        catalog_config.add_configmap_property(
-            "hive.metastore.uri",
-            self.config_map.clone(),
-            "HIVE",
-        );
+        let hive_cm: ConfigMap = client
+            .get(
+                &self.config_map,
+                catalog_namespace
+                    .as_deref()
+                    .context(ObjectHasNoNamespaceSnafu)?,
+            )
+            .await
+            .with_context(|_| FailedToGetDiscoveryConfigMapSnafu {
+                catalog: catalog_name.to_string(),
+                cm_name: self.config_map.to_string(),
+            })?;
+
+        let data_key = "HIVE";
+        let hive_connection = hive_cm
+            .data
+            .as_ref()
+            .with_context(|| FailedToGetDiscoveryConfigMapDataSnafu {
+                catalog: catalog_name.to_string(),
+                cm_name: self.config_map.to_string(),
+            })?
+            .get(data_key)
+            .with_context(|| FailedToGetDiscoveryConfigMapDataKeySnafu {
+                catalog: catalog_name.to_string(),
+                cm_name: self.config_map.to_string(),
+                data_key: data_key.to_string(),
+            })?;
+
+        // This is tightly coupled with the hive discovery config map data layout now
+        let transformed_hive_connection = hive_connection.replace('\n', ",");
+
+        catalog_config.add_property("hive.metastore.uri", transformed_hive_connection);
 
         Ok(())
     }
