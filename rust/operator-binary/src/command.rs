@@ -11,11 +11,7 @@ pub const STACKABLE_CLIENT_CA_CERT: &str = "stackable-client-ca-cert";
 pub const STACKABLE_SERVER_CA_CERT: &str = "stackable-server-ca-cert";
 pub const STACKABLE_INTERNAL_CA_CERT: &str = "stackable-internal-ca-cert";
 
-pub fn container_prepare_args(
-    trino: &TrinoCluster,
-    catalogs: &[CatalogConfig],
-    authentication_config: Option<&TrinoAuthenticationConfig>,
-) -> Vec<String> {
+pub fn container_prepare_args(trino: &TrinoCluster, catalogs: &[CatalogConfig]) -> Vec<String> {
     let mut args = vec![];
 
     // User password data
@@ -27,25 +23,12 @@ pub fn container_prepare_args(
         ));
     }
 
-    if let Some(auth) = authentication_config {
-        match auth {
-            TrinoAuthenticationConfig::MultiUser { .. } => {
-                args.extend(chown_and_chmod(USER_PASSWORD_DATA_DIR_NAME));
-            }
-            TrinoAuthenticationConfig::Ldap(_) => {}
-        }
-    };
-
-    // Chown and mod the certificates dir (this will always be created even if no TLS is required)
-    args.extend(chown_and_chmod(STACKABLE_SERVER_TLS_DIR));
-
     if trino.get_internal_tls().is_some() {
         args.extend(create_key_and_trust_store(
             STACKABLE_MOUNT_INTERNAL_TLS_DIR,
             STACKABLE_INTERNAL_TLS_DIR,
             STACKABLE_INTERNAL_CA_CERT,
         ));
-        args.extend(chown_and_chmod(STACKABLE_INTERNAL_TLS_DIR));
         // Add cert to internal truststore
         if trino.tls_enabled() {
             args.extend(add_cert_to_stackable_truststore(
@@ -61,15 +44,11 @@ pub fn container_prepare_args(
     args.extend(create_truststore_from_system_truststore(
         STACKABLE_CLIENT_TLS_DIR,
     ));
-    args.extend(chown_and_chmod(STACKABLE_CLIENT_TLS_DIR));
 
     // Add the commands that are needed to set up the catalogs
     catalogs.iter().for_each(|catalog| {
         args.extend_from_slice(&catalog.init_container_extra_start_commands);
     });
-
-    args.extend(chown_and_chmod(RW_CONFIG_DIR_NAME));
-    args.extend(chown_and_chmod(DATA_DIR_NAME));
 
     vec![args.join(" && ")]
 }
@@ -159,14 +138,5 @@ pub fn add_cert_to_stackable_truststore(
     vec![
         format!("echo [{truststore_directory}] Adding cert from {cert_file} to truststore {truststore_directory}/truststore.p12"),
         format!("keytool -importcert -file {cert_file} -keystore {truststore_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias_name} -storepass {STACKABLE_TLS_STORE_PASSWORD}"),
-    ]
-}
-
-/// Generates a shell script to chown and chmod the provided directory.
-fn chown_and_chmod(directory: &str) -> Vec<String> {
-    vec![
-        format!("echo chown and chmod {dir}", dir = directory),
-        format!("chown -R stackable:stackable {dir}", dir = directory),
-        format!("chmod -R a=,u=rwX {dir}", dir = directory),
     ]
 }
