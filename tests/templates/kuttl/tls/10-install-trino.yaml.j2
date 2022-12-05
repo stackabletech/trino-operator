@@ -45,7 +45,9 @@ kind: TrinoCluster
 metadata:
   name: trino
 spec:
-  version: {{ test_scenario['values']['trino'] }}
+  image:
+    productVersion: "{{ test_scenario['values']['trino'].split('-stackable')[0] }}"
+    stackableVersion: "{{ test_scenario['values']['trino'].split('-stackable')[1] }}"
   catalogLabelSelector: {}
   config:
 {% if test_scenario['values']['use-tls'] == 'true' %}

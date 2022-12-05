@@ -24,7 +24,9 @@ kind: HiveCluster
 metadata:
   name: hive
 spec:
-  version: {{ test_scenario['values']['hive'] }}
+  image:
+    productVersion: "{{ test_scenario['values']['hive'].split('-stackable')[0] }}"
+    stackableVersion: "{{ test_scenario['values']['hive'].split('-stackable')[1] }}"
   metastore:
     roleGroups:
       default:
