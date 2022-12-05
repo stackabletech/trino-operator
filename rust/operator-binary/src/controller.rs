@@ -389,6 +389,7 @@ pub fn build_coordinator_role_service(
 }
 
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
+#[allow(clippy::too_many_arguments)]
 fn build_rolegroup_config_map(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
@@ -603,6 +604,7 @@ fn build_rolegroup_catalog_config_map(
 ///
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the
 /// corresponding [`Service`] (from [`build_rolegroup_service`]).
+#[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
