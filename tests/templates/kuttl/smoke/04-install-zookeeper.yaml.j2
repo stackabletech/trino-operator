@@ -4,7 +4,9 @@ kind: ZookeeperCluster
 metadata:
   name: zookeeper
 spec:
-  version: {{ test_scenario['values']['zookeeper'] }}
+  image:
+    productVersion: "{{ test_scenario['values']['zookeeper'].split('-stackable')[0] }}"
+    stackableVersion: "{{ test_scenario['values']['zookeeper'].split('-stackable')[1] }}"
   servers:
     roleGroups:
       default:

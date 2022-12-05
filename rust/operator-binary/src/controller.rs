@@ -9,8 +9,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
-        PodSecurityContextBuilder, SecretOperatorVolumeSourceBuilder, SecurityContextBuilder,
-        VolumeBuilder,
+        SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
     commons::{
@@ -21,9 +20,9 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, Probe,
-                Secret, SecretKeySelector, Service, ServicePort, ServiceSpec, TCPSocketAction,
-                Volume,
+                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource,
+                PodSecurityContext, Probe, Secret, SecretKeySelector, Service, ServicePort,
+                ServiceSpec, TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
@@ -685,14 +684,9 @@ fn build_rolegroup_statefulset(
     let container_prepare = cb_prepare
         .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0.4.0")
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(command::container_prepare_args(
-            trino,
-            catalogs,
-            authentication_config,
-        ))
+        .args(command::container_prepare_args(trino, catalogs))
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
-        .security_context(SecurityContextBuilder::run_as_root())
         .build();
 
     let container_trino = cb_trino
@@ -748,8 +742,12 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
-
+        .security_context(PodSecurityContext {
+            run_as_user: Some(1000),
+            run_as_group: Some(1000),
+            fs_group: Some(1000),
+            ..PodSecurityContext::default()
+        });
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
