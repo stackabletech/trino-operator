@@ -6,6 +6,7 @@ use crate::{
 };
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -75,6 +76,8 @@ pub struct Ctx {
 
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
+
+const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -156,8 +159,8 @@ pub enum Error {
     },
     #[snafu(display("invalid S3 connection: {reason}"))]
     InvalidS3Connection { reason: String },
-    #[snafu(display("failed to parse trino product version"))]
-    TrinoProductVersionParseFailure { source: stackable_trino_crd::Error },
+    #[snafu(display("failed to parse trino image version [{image_version}]"))]
+    TrinoImageVersionParseFailure { image_version: String },
     #[snafu(display("failed to get associated TrinoCatalogs"))]
     GetCatalogs {
         source: stackable_operator::error::Error,
@@ -201,9 +204,9 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     tracing::info!("Starting reconcile");
 
     let client = &ctx.client;
-    let trino_product_version = trino
-        .product_version()
-        .context(TrinoProductVersionParseFailureSnafu)?;
+
+    let resolved_product_image: ResolvedProductImage =
+        trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
 
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
@@ -229,8 +232,14 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         catalogs.push(catalog_config);
     }
 
-    let validated_config =
-        validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
+    let validated_config = validated_product_config(
+        &trino,
+        // The Trino version is a single number like 396.
+        // The product config expects semver formatted version strings.
+        // That is why we just add minor and patch version 0 here.
+        &format!("{}.0.0", resolved_product_image.product_version),
+        &ctx.product_config,
+    )?;
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -259,7 +268,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         None
     };
 
-    let coordinator_role_service = build_coordinator_role_service(&trino)?;
+    let coordinator_role_service = build_coordinator_role_service(&trino, &resolved_product_image)?;
 
     cluster_resources
         .add(client, &coordinator_role_service)
@@ -277,9 +286,10 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 .resolve_resource_config_for_role_and_rolegroup(&trino_role, &rolegroup)
                 .context(FailedToResolveResourceConfigSnafu)?;
 
-            let rg_service = build_rolegroup_service(&trino, &rolegroup)?;
+            let rg_service = build_rolegroup_service(&trino, &resolved_product_image, &rolegroup)?;
             let rg_configmap = build_rolegroup_config_map(
                 &trino,
+                &resolved_product_image,
                 &trino_role,
                 &rolegroup,
                 &config,
@@ -287,10 +297,15 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &resources,
                 authentication_config.as_ref(),
             )?;
-            let rg_catalog_configmap =
-                build_rolegroup_catalog_config_map(&trino, &rolegroup, &catalogs)?;
+            let rg_catalog_configmap = build_rolegroup_catalog_config_map(
+                &trino,
+                &resolved_product_image,
+                &rolegroup,
+                &catalogs,
+            )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
+                &resolved_product_image,
                 &trino_role,
                 &rolegroup,
                 &config,
@@ -339,7 +354,10 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
 /// The coordinator-role service is the primary endpoint that should be used by clients that do not
 /// perform internal load balancing, including targets outside of the cluster.
-pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
+pub fn build_coordinator_role_service(
+    trino: &TrinoCluster,
+    resolved_product_image: &ResolvedProductImage,
+) -> Result<Service> {
     let role_name = TrinoRole::Coordinator.to_string();
     let role_svc_name = trino
         .coordinator_role_service_name()
@@ -352,9 +370,7 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
                 trino,
-                trino
-                    .image_version()
-                    .context(TrinoProductVersionParseFailureSnafu)?,
+                &resolved_product_image.app_version_label,
                 &role_name,
                 "global",
             ))
@@ -377,8 +393,10 @@ pub fn build_coordinator_role_service(trino: &TrinoCluster) -> Result<Service> {
 }
 
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
+#[allow(clippy::too_many_arguments)]
 fn build_rolegroup_config_map(
     trino: &TrinoCluster,
+    resolved_product_image: &ResolvedProductImage,
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
@@ -525,9 +543,7 @@ fn build_rolegroup_config_map(
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
                 .with_recommended_labels(build_recommended_labels(
                     trino,
-                    trino
-                        .image_version()
-                        .context(TrinoProductVersionParseFailureSnafu)?,
+                    &resolved_product_image.app_version_label,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 ))
@@ -544,6 +560,7 @@ fn build_rolegroup_config_map(
 /// given by the administrator
 fn build_rolegroup_catalog_config_map(
     trino: &TrinoCluster,
+    resolved_product_image: &ResolvedProductImage,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     catalogs: &[CatalogConfig],
 ) -> Result<ConfigMap> {
@@ -556,9 +573,7 @@ fn build_rolegroup_catalog_config_map(
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
                 .with_recommended_labels(build_recommended_labels(
                     trino,
-                    trino
-                        .image_version()
-                        .context(TrinoProductVersionParseFailureSnafu)?,
+                    &resolved_product_image.app_version_label,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 ))
@@ -593,8 +608,10 @@ fn build_rolegroup_catalog_config_map(
 ///
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the
 /// corresponding [`Service`] (from [`build_rolegroup_service`]).
+#[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
+    resolved_product_image: &ResolvedProductImage,
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
@@ -619,9 +636,6 @@ fn build_rolegroup_statefulset(
         })?
         .role_groups
         .get(&rolegroup_ref.role_group);
-    let trino_image_version = trino
-        .image_version()
-        .context(TrinoProductVersionParseFailureSnafu)?;
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -690,10 +704,7 @@ fn build_rolegroup_statefulset(
         .build();
 
     let container_trino = cb_trino
-        .image(format!(
-            "docker.stackable.tech/stackable/trino:{}",
-            trino_image_version
-        ))
+        .image_from_product_image(resolved_product_image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(command::container_trino_args(
             authentication_config,
@@ -714,11 +725,12 @@ fn build_rolegroup_statefulset(
         .metadata_builder(|m| {
             m.with_recommended_labels(build_recommended_labels(
                 trino,
-                trino_image_version,
+                &resolved_product_image.app_version_label,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             ))
         })
+        .image_pull_secrets_from_product_image(resolved_product_image)
         .add_init_container(container_prepare)
         .add_container(container_trino)
         .add_volume(Volume {
@@ -756,7 +768,7 @@ fn build_rolegroup_statefulset(
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
                 trino,
-                trino_image_version,
+                &resolved_product_image.app_version_label,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             ))
@@ -794,6 +806,7 @@ fn build_rolegroup_statefulset(
 /// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
 fn build_rolegroup_service(
     trino: &TrinoCluster,
+    resolved_product_image: &ResolvedProductImage,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
 ) -> Result<Service> {
     Ok(Service {
@@ -804,9 +817,7 @@ fn build_rolegroup_service(
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
                 trino,
-                trino
-                    .image_version()
-                    .context(TrinoProductVersionParseFailureSnafu)?,
+                &resolved_product_image.app_version_label,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             ))

@@ -7,18 +7,16 @@ use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::resources::Resources;
-use stackable_operator::config::fragment;
-use stackable_operator::config::fragment::ValidationError;
+use stackable_operator::commons::product_image_selection::ProductImage;
 use stackable_operator::{
     commons::{
         opa::OpaConfig,
         resources::{
             CpuLimitsFragment, MemoryLimitsFragment, NoRuntimeLimits, NoRuntimeLimitsFragment,
-            PvcConfig, PvcConfigFragment, ResourcesFragment,
+            PvcConfig, PvcConfigFragment, Resources, ResourcesFragment,
         },
     },
-    config::{fragment::Fragment, merge::Merge},
+    config::{fragment, fragment::Fragment, fragment::ValidationError, merge::Merge},
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -127,8 +125,6 @@ pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("could not parse product version from image: [{image_version}]. Expected format e.g. [387-stackable0.1.0]"))]
-    TrinoProductVersion { image_version: String },
     #[snafu(display("object has no namespace associated"))]
     NoNamespace,
     #[snafu(display("object defines no version"))]
@@ -159,9 +155,8 @@ pub struct TrinoClusterSpec {
     /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped: Option<bool>,
-    /// The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    /// Trino product image to use
+    pub image: ProductImage,
     /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
@@ -598,28 +593,6 @@ impl TrinoCluster {
             }))
     }
 
-    /// Returns the provided docker image e.g. 377-stackable0
-    pub fn image_version(&self) -> Result<&str, Error> {
-        self.spec
-            .version
-            .as_deref()
-            .context(ObjectHasNoVersionSnafu)
-    }
-
-    /// Returns our semver representation for product config e.g. 377.0.0
-    pub fn product_version(&self) -> Result<String, Error> {
-        let image_version = self.image_version()?;
-        let product_version = image_version
-            .split('-')
-            .collect::<Vec<_>>()
-            .first()
-            .cloned()
-            .with_context(|| TrinoProductVersionSnafu {
-                image_version: image_version.to_string(),
-            })?;
-        Ok(format!("{}.0.0", product_version))
-    }
-
     /// Returns user provided authentication settings
     pub fn get_authentication(&self) -> Option<&TrinoAuthentication> {
         let spec: &TrinoClusterSpec = &self.spec;
@@ -714,7 +687,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -733,7 +708,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls:
@@ -755,7 +732,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls: null
@@ -773,7 +752,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -798,7 +779,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -817,7 +800,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -839,7 +824,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls:

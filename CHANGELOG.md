@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - `operator-rs` `0.25.0` -> `0.27.1` ([#344]).
 - LDAP integration tests create all resources in their namespace and not some in the default namespace ([#344]).
 - Don't run init container as root and avoid chmod and chowning ([#353]).
+- [BREAKING] Use Product image selection instead of version. `spec.version` has been replaced by `spec.image` ([#356]).
 
 ### Fixed
 
@@ -26,6 +27,7 @@ All notable changes to this project will be documented in this file.
 [#347]: https://github.com/stackabletech/trino-operator/pull/347
 [#348]: https://github.com/stackabletech/trino-operator/pull/348
 [#353]: https://github.com/stackabletech/trino-operator/pull/353
+[#356]: https://github.com/stackabletech/trino-operator/pull/356
 
 ## [0.8.0] - 2022-11-07
 
