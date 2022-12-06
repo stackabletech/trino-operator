@@ -634,7 +634,7 @@ spec:
                     - required:
                         - productVersion
                         - stackableVersion
-                  description: The provided Trino product image
+                  description: Trino product image to use
                   properties:
                     custom:
                       description: Overwrite the docker image. Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
