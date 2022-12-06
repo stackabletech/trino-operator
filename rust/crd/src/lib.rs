@@ -688,8 +688,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: 396
-            stackableVersion: 0.2.0
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -709,8 +709,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: 396
-            stackableVersion: 0.2.0
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls:
@@ -733,8 +733,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: 396
-            stackableVersion: 0.2.0
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls: null
@@ -753,8 +753,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: 396
-            stackableVersion: 0.2.0
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -780,8 +780,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: 396
-            stackableVersion: 0.2.0
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -801,8 +801,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: 396
-            stackableVersion: 0.2.0
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -825,8 +825,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: 396
-            stackableVersion: 0.2.0
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls:
