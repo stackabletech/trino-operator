@@ -687,7 +687,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: 396
+            stackableVersion: 0.2.0
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -706,7 +708,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: 396
+            stackableVersion: 0.2.0
           catalogLabelSelector: {}
           config:
             tls:
@@ -728,7 +732,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: 396
+            stackableVersion: 0.2.0
           catalogLabelSelector: {}
           config:
             tls: null
@@ -746,7 +752,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: 396
+            stackableVersion: 0.2.0
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -771,7 +779,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: 396
+            stackableVersion: 0.2.0
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -790,7 +800,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: 396
+            stackableVersion: 0.2.0
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -812,7 +824,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: 396
+            stackableVersion: 0.2.0
           catalogLabelSelector: {}
           config:
             tls:
