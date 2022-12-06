@@ -208,8 +208,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let resolved_product_image: ResolvedProductImage =
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
 
-    let trino_product_version = trino_version_to_semver(&resolved_product_image.product_version)?;
-
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
             trino
@@ -234,8 +232,14 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         catalogs.push(catalog_config);
     }
 
-    let validated_config =
-        validated_product_config(&trino, &trino_product_version, &ctx.product_config)?;
+    let validated_config = validated_product_config(
+        &trino,
+        // The Trino version is a single number like 396.
+        // The product config expects semver formatted version strings.
+        // That is why we just add minor and patch version 0 here.
+        &format!("{}.0.0", resolved_product_image.product_version),
+        &ctx.product_config,
+    )?;
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -950,19 +954,6 @@ fn build_recommended_labels<'a>(
         role,
         role_group,
     }
-}
-
-/// Returns our semver representation for product config e.g. 377.0.0
-pub fn trino_version_to_semver(image_version: &str) -> Result<String, Error> {
-    let product_version = image_version
-        .split('-')
-        .collect::<Vec<_>>()
-        .first()
-        .cloned()
-        .with_context(|| TrinoImageVersionParseFailureSnafu {
-            image_version: image_version.to_string(),
-        })?;
-    Ok(format!("{}.0.0", product_version))
 }
 
 async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) -> Result<()> {
