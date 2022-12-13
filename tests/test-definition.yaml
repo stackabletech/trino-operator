@@ -2,10 +2,10 @@
 dimensions:
   - name: trino
     values:
-      - 377-stackable0.2.0
-      - 387-stackable0.2.0
-      - 395-stackable0.2.0
-      - 396-stackable0.2.0
+      - 377-stackable0.3.0
+      - 387-stackable0.3.0
+      - 395-stackable0.3.0
+      - 396-stackable0.3.0
   - name: trino-latest
     values:
       - 396-stackable0.2.0
