@@ -696,7 +696,7 @@ fn build_rolegroup_statefulset(
     )?;
 
     let container_prepare = cb_prepare
-        .image("docker.stackable.tech/stackable/tools:0.2.0-stackable0.4.0")
+        .image_from_product_image(resolved_product_image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(command::container_prepare_args(trino, catalogs))
         .add_volume_mount("data", DATA_DIR_NAME)
