@@ -8,7 +8,7 @@ dimensions:
       - 396-stackable0.3.0
   - name: trino-latest
     values:
-      - 396-stackable0.2.0
+      - 396-stackable0.3.0
   - name: hive
     values:
       - 2.3.9-stackable0.6.0
