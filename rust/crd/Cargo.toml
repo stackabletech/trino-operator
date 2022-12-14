@@ -20,5 +20,5 @@ tracing = "0.1"
 
 [dev-dependencies]
 indoc = "1.0"
-rstest = "0.15"
+rstest = "0.16"
 serde_yaml = "0.9"
