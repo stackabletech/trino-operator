@@ -94,7 +94,7 @@ FROM hive.minio.taxi_data
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
 
     print("[INFO] Testing Iceberg")
-    run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg") # Clean up table to don't fail an second run
+    run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")  # Clean up table to don't fail an second run
     assert run_query(connection, """
 CREATE TABLE IF NOT EXISTS iceberg.minio.taxi_data_copy_iceberg
 WITH (partitioning = ARRAY['vendor_id', 'passenger_count'], format = 'parquet')
