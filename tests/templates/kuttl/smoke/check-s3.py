@@ -45,15 +45,15 @@ if __name__ == '__main__':
     trino_version = run_query(connection, "select node_version from system.runtime.nodes where coordinator = true and state = 'active'")[0][0]
     print(f"[INFO] Testing against Trino version {trino_version}")
 
-    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.minio WITH (location = 's3a://trino/')")[0][0] is True
+    run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.minio WITH (location = 's3a://trino/')")
 
-    assert run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data")[0][0] is True
-    assert run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data_copy")[0][0] is True
-    assert run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data_transformed")[0][0] is True
-    assert run_query(connection, "DROP TABLE IF EXISTS hive.hdfs.taxi_data_copy")[0][0] is True
-    assert run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")[0][0] is True
+    run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data")
+    run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data_copy")
+    run_query(connection, "DROP TABLE IF EXISTS hive.minio.taxi_data_transformed")
+    run_query(connection, "DROP TABLE IF EXISTS hive.hdfs.taxi_data_copy")
+    run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")
 
-    assert run_query(connection, """
+    run_query(connection, """
 CREATE TABLE IF NOT EXISTS hive.minio.taxi_data (
     vendor_id VARCHAR,
     tpep_pickup_datetime VARCHAR,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS hive.minio.taxi_data (
     format = 'csv',
     skip_header_line_count = 1
 )
-    """)[0][0] is True
+    """)
     assert run_query(connection, "SELECT COUNT(*) FROM hive.minio.taxi_data")[0][0] == 5000
     rows_written = run_query(connection, "CREATE TABLE IF NOT EXISTS hive.minio.taxi_data_copy AS SELECT * FROM hive.minio.taxi_data")[0][0]
     assert rows_written == 5000 or rows_written == 0
@@ -88,13 +88,13 @@ FROM hive.minio.taxi_data
 
     print("[INFO] Testing HDFS")
 
-    assert run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs/trino/')")[0][0] is True
+    run_query(connection, "CREATE SCHEMA IF NOT EXISTS hive.hdfs WITH (location = 'hdfs://hdfs/trino/')")
     rows_written = run_query(connection, "CREATE TABLE IF NOT EXISTS hive.hdfs.taxi_data_copy AS SELECT * FROM hive.minio.taxi_data")[0][0]
     assert rows_written == 5000 or rows_written == 0
     assert run_query(connection, "SELECT COUNT(*) FROM hive.hdfs.taxi_data_copy")[0][0] == 5000
 
     print("[INFO] Testing Iceberg")
-    assert run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")[0][0] is True  # Clean up table to don't fail an second run
+    run_query(connection, "DROP TABLE IF EXISTS iceberg.minio.taxi_data_copy_iceberg")  # Clean up table to don't fail an second run
     assert run_query(connection, """
 CREATE TABLE IF NOT EXISTS iceberg.minio.taxi_data_copy_iceberg
 WITH (partitioning = ARRAY['vendor_id', 'passenger_count'], format = 'parquet')
