@@ -145,7 +145,9 @@ pub enum Error {
     ProductConfigLoadFailed,
     #[snafu(display("failed to processing authentication config element from k8s"))]
     FailedProcessingAuthentication { source: authentication::Error },
-    #[snafu(display("internal operator failure"))]
+    #[snafu(display("failed to parse role: {source}"))]
+    FailedToParseRole { source: strum::ParseError },
+    #[snafu(display("internal operator failure: {source}"))]
     InternalOperatorFailure { source: stackable_trino_crd::Error },
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
@@ -278,7 +280,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     create_shared_internal_secret(&trino, client).await?;
 
     for (role, role_config) in validated_config {
-        let trino_role = TrinoRole::from_str(&role).context(InternalOperatorFailureSnafu)?;
+        let trino_role = TrinoRole::from_str(&role).context(FailedToParseRoleSnafu)?;
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 

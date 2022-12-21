@@ -23,8 +23,8 @@ use stackable_operator::{
     role_utils::{Role, RoleGroupRef},
     schemars::{self, JsonSchema},
 };
-use std::{collections::BTreeMap, str::FromStr};
-use strum::{Display, EnumIter, IntoEnumIterator};
+use std::{collections::BTreeMap};
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
 // ports
@@ -234,7 +234,17 @@ fn tls_default() -> Option<TlsSecretClass> {
 }
 
 #[derive(
-    Clone, Debug, Deserialize, Display, EnumIter, Eq, Hash, JsonSchema, PartialEq, Serialize,
+    Clone,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    Eq,
+    Hash,
+    JsonSchema,
+    PartialEq,
+    Serialize,
+    EnumString,
 )]
 pub enum TrinoRole {
     #[strum(serialize = "coordinator")]
@@ -279,23 +289,6 @@ impl TrinoRole {
             roles.push(role.to_string())
         }
         roles
-    }
-}
-
-impl FromStr for TrinoRole {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == Self::Coordinator.to_string() {
-            Ok(Self::Coordinator)
-        } else if s == Self::Worker.to_string() {
-            Ok(Self::Worker)
-        } else {
-            Err(Error::UnknownTrinoRole {
-                role: s.to_string(),
-                roles: TrinoRole::roles(),
-            })
-        }
     }
 }
 
