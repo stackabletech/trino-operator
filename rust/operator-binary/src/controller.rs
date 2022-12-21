@@ -145,7 +145,9 @@ pub enum Error {
     ProductConfigLoadFailed,
     #[snafu(display("failed to processing authentication config element from k8s"))]
     FailedProcessingAuthentication { source: authentication::Error },
-    #[snafu(display("internal operator failure"))]
+    #[snafu(display("failed to parse role: {source}"))]
+    FailedToParseRole { source: strum::ParseError },
+    #[snafu(display("internal operator failure: {source}"))]
     InternalOperatorFailure { source: stackable_trino_crd::Error },
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
@@ -278,7 +280,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     create_shared_internal_secret(&trino, client).await?;
 
     for (role, role_config) in validated_config {
-        let trino_role = TrinoRole::from_str(&role).context(InternalOperatorFailureSnafu)?;
+        let trino_role = TrinoRole::from_str(&role).context(FailedToParseRoleSnafu)?;
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 
@@ -306,7 +308,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
                 &resolved_product_image,
-                &trino_role,
                 &rolegroup,
                 &config,
                 authentication_config.as_ref(),
@@ -358,10 +359,11 @@ pub fn build_coordinator_role_service(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
 ) -> Result<Service> {
-    let role_name = TrinoRole::Coordinator.to_string();
+    let role = TrinoRole::Coordinator;
+    let role_name = role.to_string();
     let role_svc_name = trino
-        .coordinator_role_service_name()
-        .context(GlobalServiceNameNotFoundSnafu)?;
+        .role_service_name(&role)
+        .context(InternalOperatorFailureSnafu)?;
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
@@ -612,13 +614,16 @@ fn build_rolegroup_catalog_config_map(
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<&TrinoAuthenticationConfig>,
     catalogs: &[CatalogConfig],
     resources: &Resources<TrinoStorageConfig, NoRuntimeLimits>,
 ) -> Result<StatefulSet> {
+    let rolegroup = trino
+        .rolegroup(rolegroup_ref)
+        .context(InternalOperatorFailureSnafu)?;
+
     let mut cb_trino =
         ContainerBuilder::new(APP_NAME).with_context(|_| IllegalContainerNameSnafu {
             container_name: APP_NAME.to_string(),
@@ -628,14 +633,7 @@ fn build_rolegroup_statefulset(
             container_name: "prepare".to_string(),
         })?;
     let mut pod_builder = PodBuilder::new();
-
-    let rolegroup = role
-        .get_spec(trino)
-        .with_context(|| MissingTrinoRoleSnafu {
-            role: role.to_string(),
-        })?
-        .role_groups
-        .get(&rolegroup_ref.role_group);
+    pod_builder.node_selector_opt(rolegroup.selector.clone());
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -778,7 +776,7 @@ fn build_rolegroup_statefulset(
             replicas: if trino.spec.stopped.unwrap_or(false) {
                 Some(0)
             } else {
-                rolegroup.and_then(|rg| rg.replicas).map(i32::from)
+                rolegroup.replicas.map(i32::from)
             },
             selector: LabelSelector {
                 match_labels: Some(role_group_selector_labels(
