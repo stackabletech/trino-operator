@@ -14,13 +14,7 @@ spec:
     roleGroups:
       default:
         replicas: 1
-        selector:
-          matchLabels:
-            nodeType: druid-data
   workers:
     roleGroups:
       default:
         replicas: 1
-        selector:
-          matchLabels:
-            nodeType: druid-data
