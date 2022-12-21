@@ -620,7 +620,9 @@ fn build_rolegroup_statefulset(
     catalogs: &[CatalogConfig],
     resources: &Resources<TrinoStorageConfig, NoRuntimeLimits>,
 ) -> Result<StatefulSet> {
-    let rolegroup = trino.rolegroup(rolegroup_ref).context(InternalOperatorFailureSnafu)?;
+    let rolegroup = trino
+        .rolegroup(rolegroup_ref)
+        .context(InternalOperatorFailureSnafu)?;
 
     let mut cb_trino =
         ContainerBuilder::new(APP_NAME).with_context(|_| IllegalContainerNameSnafu {
