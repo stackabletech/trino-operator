@@ -362,7 +362,8 @@ pub fn build_coordinator_role_service(
 ) -> Result<Service> {
     let role = TrinoRole::Coordinator;
     let role_name = role.to_string();
-    let role_svc_name = trino.role_service_name(&role)
+    let role_svc_name = trino
+        .role_service_name(&role)
         .context(InternalOperatorFailureSnafu)?;
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
@@ -614,7 +615,7 @@ fn build_rolegroup_catalog_config_map(
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    role: &TrinoRole,
+    _role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<&TrinoAuthenticationConfig>,
@@ -631,13 +632,7 @@ fn build_rolegroup_statefulset(
         })?;
     let mut pod_builder = PodBuilder::new();
 
-    let rolegroup = role
-        .get_spec(trino)
-        .with_context(|| MissingTrinoRoleSnafu {
-            role: role.to_string(),
-        })?
-        .role_groups
-        .get(&rolegroup_ref.role_group);
+    let rolegroup = trino.rolegroup(rolegroup_ref).context(InternalOperatorFailureSnafu)?;
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -780,7 +775,7 @@ fn build_rolegroup_statefulset(
             replicas: if trino.spec.stopped.unwrap_or(false) {
                 Some(0)
             } else {
-                rolegroup.and_then(|rg| rg.replicas).map(i32::from)
+                rolegroup.replicas.map(i32::from)
             },
             selector: LabelSelector {
                 match_labels: Some(role_group_selector_labels(

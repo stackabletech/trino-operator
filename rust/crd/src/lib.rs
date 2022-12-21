@@ -8,6 +8,7 @@ use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::commons::product_image_selection::ProductImage;
+use stackable_operator::role_utils::RoleGroup;
 use stackable_operator::{
     commons::{
         opa::OpaConfig,
@@ -23,7 +24,8 @@ use stackable_operator::{
     role_utils::{Role, RoleGroupRef},
     schemars::{self, JsonSchema},
 };
-use std::{collections::BTreeMap};
+use std::collections::BTreeMap;
+use std::str::FromStr;
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
@@ -131,8 +133,16 @@ pub enum Error {
     NoName,
     #[snafu(display("object defines no version"))]
     ObjectHasNoVersion,
-    #[snafu(display("Unknown Trino role found {role}. Should be one of {roles:?}"))]
-    UnknownTrinoRole { role: String, roles: Vec<String> },
+    #[snafu(display("unknown role {role}. Should be one of {roles:?}"))]
+    UnknownTrinoRole {
+        source: strum::ParseError,
+        role: String,
+        roles: Vec<String>,
+    },
+    #[snafu(display("the role {role} is not defined"))]
+    CannotRetrieveTrinoRole { role: String },
+    #[snafu(display("the role group {role_group} is not defined"))]
+    CannotRetrieveTrinoRoleGroup { role_group: String },
     #[snafu(display("internal operator failure"))]
     InternalOperatorFailure { source: ValidationError },
 }
@@ -263,13 +273,6 @@ impl TrinoRole {
             "run".to_string(),
             format!("--etc-dir={}", CONFIG_DIR_NAME),
         ]
-    }
-
-    pub fn get_spec<'a>(&self, trino: &'a TrinoCluster) -> Option<&'a Role<TrinoConfig>> {
-        match self {
-            TrinoRole::Coordinator => trino.spec.coordinators.as_ref(),
-            TrinoRole::Worker => trino.spec.workers.as_ref(),
-        }
     }
 
     /// Metadata about a rolegroup
@@ -540,11 +543,44 @@ impl TrinoCluster {
     }
 
     pub fn role_service_name(&self, role: &TrinoRole) -> Result<String, Error> {
-        Ok(format!("{}-{}", self.name_r()?, role.to_string()))
+        Ok(format!("{}-{}", self.name_r()?, role))
     }
 
     pub fn role_service_fqdn(&self, role: &TrinoRole) -> Result<String, Error> {
-        Ok(format!("{}.{}.svc.cluster.local", self.role_service_name(role)?, self.namespace_r()?))
+        Ok(format!(
+            "{}.{}.svc.cluster.local",
+            self.role_service_name(role)?,
+            self.namespace_r()?
+        ))
+    }
+
+    /// Returns a reference to the role. Raises an error if the role is not defined.
+    pub fn role(&self, role_variant: &TrinoRole) -> Result<&Role<TrinoConfig>, Error> {
+        match role_variant {
+            TrinoRole::Coordinator => self.spec.coordinators.as_ref(),
+            TrinoRole::Worker => self.spec.workers.as_ref(),
+        }
+        .with_context(|| CannotRetrieveTrinoRoleSnafu {
+            role: role_variant.to_string(),
+        })
+    }
+
+    /// Returns a reference to the role group. Raises an error if the role or role group are not defined.
+    pub fn rolegroup(
+        &self,
+        rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    ) -> Result<&RoleGroup<TrinoConfig>, Error> {
+        let role_variant =
+            TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
+                role: rolegroup_ref.role.to_owned(),
+                roles: TrinoRole::roles(),
+            })?;
+        let role = self.role(&role_variant)?;
+        role.role_groups
+            .get(&rolegroup_ref.role_group)
+            .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
+                role_group: rolegroup_ref.role_group.to_owned(),
+            })
     }
 
     /// List all coordinator pods expected to form the cluster
@@ -614,21 +650,22 @@ impl TrinoCluster {
         // Initialize the result with all default values as baseline
         let conf_defaults = TrinoConfig::default_resources();
 
-        let role = match role {
-            TrinoRole::Coordinator => {
-                self.spec
-                    .coordinators
-                    .as_ref()
-                    .context(UnknownTrinoRoleSnafu {
+        let role =
+            match role {
+                TrinoRole::Coordinator => self.spec.coordinators.as_ref().with_context(|| {
+                    CannotRetrieveTrinoRoleSnafu {
                         role: role.to_string(),
-                        roles: TrinoRole::roles(),
-                    })?
-            }
-            TrinoRole::Worker => self.spec.workers.as_ref().context(UnknownTrinoRoleSnafu {
-                role: role.to_string(),
-                roles: TrinoRole::roles(),
-            })?,
-        };
+                    }
+                })?,
+                TrinoRole::Worker => {
+                    self.spec
+                        .workers
+                        .as_ref()
+                        .with_context(|| CannotRetrieveTrinoRoleSnafu {
+                            role: role.to_string(),
+                        })?
+                }
+            };
 
         // Retrieve role resource config
         let mut conf_role: ResourcesFragment<TrinoStorageConfig, NoRuntimeLimits> =
