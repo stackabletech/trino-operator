@@ -4,9 +4,9 @@ kind: TestStep
 timeout: 300
 commands:
   - script: >-
-      helm upgrade hive
+      helm upgrade postgresql
       --install
-      --version=10
+      --version=12.1.5
       --namespace $NAMESPACE
       --set postgresqlUsername=hive
       --set postgresqlPassword=hive
