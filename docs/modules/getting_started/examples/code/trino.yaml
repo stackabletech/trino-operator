@@ -5,7 +5,7 @@ metadata:
   name: simple-trino
 spec:
   image:
-    productVersion: 396
+    productVersion: "396"
     stackableVersion: 0.3.0
   catalogLabelSelector:
     matchLabels:
@@ -14,7 +14,13 @@ spec:
     roleGroups:
       default:
         replicas: 1
+        selector:
+          matchLabels:
+            nodeType: druid-data
   workers:
     roleGroups:
       default:
         replicas: 1
+        selector:
+          matchLabels:
+            nodeType: druid-data
