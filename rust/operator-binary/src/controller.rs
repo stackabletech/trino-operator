@@ -308,7 +308,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
                 &resolved_product_image,
-                &trino_role,
                 &rolegroup,
                 &config,
                 authentication_config.as_ref(),
@@ -615,13 +614,14 @@ fn build_rolegroup_catalog_config_map(
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    _role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     authentication_config: Option<&TrinoAuthenticationConfig>,
     catalogs: &[CatalogConfig],
     resources: &Resources<TrinoStorageConfig, NoRuntimeLimits>,
 ) -> Result<StatefulSet> {
+    let rolegroup = trino.rolegroup(rolegroup_ref).context(InternalOperatorFailureSnafu)?;
+
     let mut cb_trino =
         ContainerBuilder::new(APP_NAME).with_context(|_| IllegalContainerNameSnafu {
             container_name: APP_NAME.to_string(),
@@ -631,8 +631,7 @@ fn build_rolegroup_statefulset(
             container_name: "prepare".to_string(),
         })?;
     let mut pod_builder = PodBuilder::new();
-
-    let rolegroup = trino.rolegroup(rolegroup_ref).context(InternalOperatorFailureSnafu)?;
+    pod_builder.node_selector_opt(rolegroup.selector.clone());
 
     let mut env = config
         .get(&PropertyNameKind::Env)
