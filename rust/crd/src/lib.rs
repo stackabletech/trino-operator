@@ -127,6 +127,8 @@ pub const JVM_HEAP_FACTOR: f32 = 0.8;
 pub enum Error {
     #[snafu(display("object has no namespace associated"))]
     NoNamespace,
+    #[snafu(display("object has no names"))]
+    NoName,
     #[snafu(display("object defines no version"))]
     ObjectHasNoVersion,
     #[snafu(display("Unknown Trino role found {role}. Should be one of {roles:?}"))]
@@ -527,38 +529,22 @@ impl Configuration for TrinoConfig {
 }
 
 impl TrinoCluster {
-    /// The name of the role-level load-balanced Kubernetes `Service` for the worker nodes
-    pub fn worker_role_service_name(&self) -> Option<String> {
-        self.metadata
-            .name
-            .as_ref()
-            .map(|name| format!("{}-worker", name))
+    /// Returns the name of the cluster and raises an Error if the name is not set.
+    pub fn name_r(&self) -> Result<String, Error> {
+        self.metadata.name.to_owned().context(NoNameSnafu)
     }
 
-    /// The name of the role-level load-balanced Kubernetes `Service` for the coordinator nodes
-    pub fn coordinator_role_service_name(&self) -> Option<String> {
-        self.metadata
-            .name
-            .as_ref()
-            .map(|name| format!("{}-coordinator", name))
+    /// Returns the namespace of the cluster and raises an Error if the name is not set.
+    pub fn namespace_r(&self) -> Result<String, Error> {
+        self.metadata.namespace.to_owned().context(NoNamespaceSnafu)
     }
 
-    /// The fully-qualified domain name of the role-level load-balanced Kubernetes `Service`
-    pub fn coordinator_role_service_fqdn(&self) -> Option<String> {
-        Some(format!(
-            "{}.{}.svc.cluster.local",
-            self.coordinator_role_service_name()?,
-            self.metadata.namespace.as_ref()?
-        ))
+    pub fn role_service_name(&self, role: &TrinoRole) -> Result<String, Error> {
+        Ok(format!("{}-{}", self.name_r()?, role.to_string()))
     }
 
-    /// The fully-qualified domain name of the role-level load-balanced Kubernetes `Service`
-    pub fn worker_role_service_fqdn(&self) -> Option<String> {
-        Some(format!(
-            "{}.{}.svc.cluster.local",
-            self.worker_role_service_name()?,
-            self.metadata.namespace.as_ref()?
-        ))
+    pub fn role_service_fqdn(&self, role: &TrinoRole) -> Result<String, Error> {
+        Ok(format!("{}.{}.svc.cluster.local", self.role_service_name(role)?, self.namespace_r()?))
     }
 
     /// List all coordinator pods expected to form the cluster

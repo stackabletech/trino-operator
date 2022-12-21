@@ -360,10 +360,10 @@ pub fn build_coordinator_role_service(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
 ) -> Result<Service> {
-    let role_name = TrinoRole::Coordinator.to_string();
-    let role_svc_name = trino
-        .coordinator_role_service_name()
-        .context(GlobalServiceNameNotFoundSnafu)?;
+    let role = TrinoRole::Coordinator;
+    let role_name = role.to_string();
+    let role_svc_name = trino.role_service_name(&role)
+        .context(InternalOperatorFailureSnafu)?;
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
