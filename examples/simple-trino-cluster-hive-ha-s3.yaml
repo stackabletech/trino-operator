@@ -1,6 +1,6 @@
 # stackablectl operator install commons secret hive trino
 # helm install minio minio --repo https://charts.bitnami.com/bitnami --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key
-# helm upgrade hive --install --version=10 --set postgresqlUsername=hive --set postgresqlPassword=hive --set postgresqlDatabase=hive --repo https://charts.bitnami.com/bitnami postgresql
+# helm upgrade hive --install --version=12.1.5 --set postgresqlUsername=hive --set postgresqlPassword=hive --set postgresqlDatabase=hive --repo https://charts.bitnami.com/bitnami postgresql
 # PostgreSQL is required for Hive HA to work! Does not work with Derby.
 ---
 apiVersion: trino.stackable.tech/v1alpha1

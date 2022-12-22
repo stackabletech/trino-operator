@@ -7,7 +7,6 @@ spec:
   image:
     productVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[1] }}"
-  version: {{ test_scenario['values']['trino-latest'] }}
   catalogLabelSelector: {}
   coordinators:
     roleGroups:
