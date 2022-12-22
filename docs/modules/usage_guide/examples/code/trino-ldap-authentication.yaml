@@ -42,9 +42,10 @@ kind: TrinoCluster
 metadata:
   name: simple-trino-with-ldap
 spec:
-  version: 396-stackable0.2.0
+  image:
+    productVersion: 396
+    stackableVersion: 0.3.0
   catalogLabelSelector: {}
-  config:
   authentication:
     method:
       ldap:

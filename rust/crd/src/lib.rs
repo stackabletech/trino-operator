@@ -7,26 +7,26 @@ use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
 
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::resources::Resources;
-use stackable_operator::config::fragment;
-use stackable_operator::config::fragment::ValidationError;
+use stackable_operator::commons::product_image_selection::ProductImage;
+use stackable_operator::role_utils::RoleGroup;
 use stackable_operator::{
     commons::{
         opa::OpaConfig,
         resources::{
             CpuLimitsFragment, MemoryLimitsFragment, NoRuntimeLimits, NoRuntimeLimitsFragment,
-            PvcConfig, PvcConfigFragment, ResourcesFragment,
+            PvcConfig, PvcConfigFragment, Resources, ResourcesFragment,
         },
     },
-    config::{fragment::Fragment, merge::Merge},
+    config::{fragment, fragment::Fragment, fragment::ValidationError, merge::Merge},
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
     role_utils::{Role, RoleGroupRef},
     schemars::{self, JsonSchema},
 };
-use std::{collections::BTreeMap, str::FromStr};
-use strum::{Display, EnumIter, IntoEnumIterator};
+use std::collections::BTreeMap;
+use std::str::FromStr;
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
 // ports
@@ -127,14 +127,22 @@ pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("could not parse product version from image: [{image_version}]. Expected format e.g. [387-stackable0.1.0]"))]
-    TrinoProductVersion { image_version: String },
     #[snafu(display("object has no namespace associated"))]
     NoNamespace,
+    #[snafu(display("object has no names"))]
+    NoName,
     #[snafu(display("object defines no version"))]
     ObjectHasNoVersion,
-    #[snafu(display("Unknown Trino role found {role}. Should be one of {roles:?}"))]
-    UnknownTrinoRole { role: String, roles: Vec<String> },
+    #[snafu(display("unknown role {role}. Should be one of {roles:?}"))]
+    UnknownTrinoRole {
+        source: strum::ParseError,
+        role: String,
+        roles: Vec<String>,
+    },
+    #[snafu(display("the role {role} is not defined"))]
+    CannotRetrieveTrinoRole { role: String },
+    #[snafu(display("the role group {role_group} is not defined"))]
+    CannotRetrieveTrinoRoleGroup { role_group: String },
     #[snafu(display("internal operator failure"))]
     InternalOperatorFailure { source: ValidationError },
 }
@@ -159,9 +167,8 @@ pub struct TrinoClusterSpec {
     /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped: Option<bool>,
-    /// The provided trino image version in the form `xxx-stackableY.Y.Y` e.g. `387-stackable0.1.0`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    /// Trino product image to use
+    pub image: ProductImage,
     /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
@@ -239,7 +246,17 @@ fn tls_default() -> Option<TlsSecretClass> {
 }
 
 #[derive(
-    Clone, Debug, Deserialize, Display, EnumIter, Eq, Hash, JsonSchema, PartialEq, Serialize,
+    Clone,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    Eq,
+    Hash,
+    JsonSchema,
+    PartialEq,
+    Serialize,
+    EnumString,
 )]
 pub enum TrinoRole {
     #[strum(serialize = "coordinator")]
@@ -256,13 +273,6 @@ impl TrinoRole {
             "run".to_string(),
             format!("--etc-dir={}", CONFIG_DIR_NAME),
         ]
-    }
-
-    pub fn get_spec<'a>(&self, trino: &'a TrinoCluster) -> Option<&'a Role<TrinoConfig>> {
-        match self {
-            TrinoRole::Coordinator => trino.spec.coordinators.as_ref(),
-            TrinoRole::Worker => trino.spec.workers.as_ref(),
-        }
     }
 
     /// Metadata about a rolegroup
@@ -284,23 +294,6 @@ impl TrinoRole {
             roles.push(role.to_string())
         }
         roles
-    }
-}
-
-impl FromStr for TrinoRole {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == Self::Coordinator.to_string() {
-            Ok(Self::Coordinator)
-        } else if s == Self::Worker.to_string() {
-            Ok(Self::Worker)
-        } else {
-            Err(Error::UnknownTrinoRole {
-                role: s.to_string(),
-                roles: TrinoRole::roles(),
-            })
-        }
     }
 }
 
@@ -539,38 +532,55 @@ impl Configuration for TrinoConfig {
 }
 
 impl TrinoCluster {
-    /// The name of the role-level load-balanced Kubernetes `Service` for the worker nodes
-    pub fn worker_role_service_name(&self) -> Option<String> {
-        self.metadata
-            .name
-            .as_ref()
-            .map(|name| format!("{}-worker", name))
+    /// Returns the name of the cluster and raises an Error if the name is not set.
+    pub fn name_r(&self) -> Result<String, Error> {
+        self.metadata.name.to_owned().context(NoNameSnafu)
     }
 
-    /// The name of the role-level load-balanced Kubernetes `Service` for the coordinator nodes
-    pub fn coordinator_role_service_name(&self) -> Option<String> {
-        self.metadata
-            .name
-            .as_ref()
-            .map(|name| format!("{}-coordinator", name))
+    /// Returns the namespace of the cluster and raises an Error if the name is not set.
+    pub fn namespace_r(&self) -> Result<String, Error> {
+        self.metadata.namespace.to_owned().context(NoNamespaceSnafu)
     }
 
-    /// The fully-qualified domain name of the role-level load-balanced Kubernetes `Service`
-    pub fn coordinator_role_service_fqdn(&self) -> Option<String> {
-        Some(format!(
+    pub fn role_service_name(&self, role: &TrinoRole) -> Result<String, Error> {
+        Ok(format!("{}-{}", self.name_r()?, role))
+    }
+
+    pub fn role_service_fqdn(&self, role: &TrinoRole) -> Result<String, Error> {
+        Ok(format!(
             "{}.{}.svc.cluster.local",
-            self.coordinator_role_service_name()?,
-            self.metadata.namespace.as_ref()?
+            self.role_service_name(role)?,
+            self.namespace_r()?
         ))
     }
 
-    /// The fully-qualified domain name of the role-level load-balanced Kubernetes `Service`
-    pub fn worker_role_service_fqdn(&self) -> Option<String> {
-        Some(format!(
-            "{}.{}.svc.cluster.local",
-            self.worker_role_service_name()?,
-            self.metadata.namespace.as_ref()?
-        ))
+    /// Returns a reference to the role. Raises an error if the role is not defined.
+    pub fn role(&self, role_variant: &TrinoRole) -> Result<&Role<TrinoConfig>, Error> {
+        match role_variant {
+            TrinoRole::Coordinator => self.spec.coordinators.as_ref(),
+            TrinoRole::Worker => self.spec.workers.as_ref(),
+        }
+        .with_context(|| CannotRetrieveTrinoRoleSnafu {
+            role: role_variant.to_string(),
+        })
+    }
+
+    /// Returns a reference to the role group. Raises an error if the role or role group are not defined.
+    pub fn rolegroup(
+        &self,
+        rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    ) -> Result<&RoleGroup<TrinoConfig>, Error> {
+        let role_variant =
+            TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
+                role: rolegroup_ref.role.to_owned(),
+                roles: TrinoRole::roles(),
+            })?;
+        let role = self.role(&role_variant)?;
+        role.role_groups
+            .get(&rolegroup_ref.role_group)
+            .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
+                role_group: rolegroup_ref.role_group.to_owned(),
+            })
     }
 
     /// List all coordinator pods expected to form the cluster
@@ -596,28 +606,6 @@ impl TrinoCluster {
                     pod_name: format!("{}-{}", rolegroup_ref.object_name(), i),
                 })
             }))
-    }
-
-    /// Returns the provided docker image e.g. 377-stackable0
-    pub fn image_version(&self) -> Result<&str, Error> {
-        self.spec
-            .version
-            .as_deref()
-            .context(ObjectHasNoVersionSnafu)
-    }
-
-    /// Returns our semver representation for product config e.g. 377.0.0
-    pub fn product_version(&self) -> Result<String, Error> {
-        let image_version = self.image_version()?;
-        let product_version = image_version
-            .split('-')
-            .collect::<Vec<_>>()
-            .first()
-            .cloned()
-            .with_context(|| TrinoProductVersionSnafu {
-                image_version: image_version.to_string(),
-            })?;
-        Ok(format!("{}.0.0", product_version))
     }
 
     /// Returns user provided authentication settings
@@ -662,21 +650,22 @@ impl TrinoCluster {
         // Initialize the result with all default values as baseline
         let conf_defaults = TrinoConfig::default_resources();
 
-        let role = match role {
-            TrinoRole::Coordinator => {
-                self.spec
-                    .coordinators
-                    .as_ref()
-                    .context(UnknownTrinoRoleSnafu {
+        let role =
+            match role {
+                TrinoRole::Coordinator => self.spec.coordinators.as_ref().with_context(|| {
+                    CannotRetrieveTrinoRoleSnafu {
                         role: role.to_string(),
-                        roles: TrinoRole::roles(),
-                    })?
-            }
-            TrinoRole::Worker => self.spec.workers.as_ref().context(UnknownTrinoRoleSnafu {
-                role: role.to_string(),
-                roles: TrinoRole::roles(),
-            })?,
-        };
+                    }
+                })?,
+                TrinoRole::Worker => {
+                    self.spec
+                        .workers
+                        .as_ref()
+                        .with_context(|| CannotRetrieveTrinoRoleSnafu {
+                            role: role.to_string(),
+                        })?
+                }
+            };
 
         // Retrieve role resource config
         let mut conf_role: ResourcesFragment<TrinoStorageConfig, NoRuntimeLimits> =
@@ -714,7 +703,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -733,7 +724,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls:
@@ -755,7 +748,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls: null
@@ -773,7 +768,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -798,7 +795,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -817,7 +816,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -839,7 +840,9 @@ mod tests {
         metadata:
           name: simple-trino
         spec:
-          version: abc
+          image:
+            productVersion: "396"
+            stackableVersion: "0.2.0"
           catalogLabelSelector: {}
           config:
             tls:

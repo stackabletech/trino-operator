@@ -8,17 +8,21 @@ All notable changes to this project will be documented in this file.
 
 - Add support for [Google Sheets connector](https://trino.io/docs/current/connector/googlesheets.html) ([#337]).
 - Add support for [Black Hole connector](https://trino.io/docs/current/connector/blackhole.html) ([#347]).
+- Add support for Trino `403-stackable0.1.0` ([#358]).
 
 ### Changed
 
 - Updated stackable image versions ([#340]).
-- `operator-rs` `0.25.0` -> `0.27.1` ([#344]).
+- `operator-rs` `0.25.0` -> `0.30.1` ([#344], [#360]).
 - LDAP integration tests create all resources in their namespace and not some in the default namespace ([#344]).
 - Don't run init container as root and avoid chmod and chowning ([#353]).
+- [BREAKING] Use Product image selection instead of version. `spec.version` has been replaced by `spec.image` ([#356]).
+- [BREAKING]: Removed tools image for init container and replaced with Trino product image. This means the latest stackable version has to be used in the product image selection ([#357])
 
 ### Fixed
 
 - Hive catalog now properly handles hive clusters with replicas > 1 ([#348]).
+- Role group selectors are now applied to the generated StatefulSets ([#360]).
 
 [#337]: https://github.com/stackabletech/trino-operator/pull/337
 [#340]: https://github.com/stackabletech/trino-operator/pull/340
@@ -26,6 +30,10 @@ All notable changes to this project will be documented in this file.
 [#347]: https://github.com/stackabletech/trino-operator/pull/347
 [#348]: https://github.com/stackabletech/trino-operator/pull/348
 [#353]: https://github.com/stackabletech/trino-operator/pull/353
+[#356]: https://github.com/stackabletech/trino-operator/pull/356
+[#357]: https://github.com/stackabletech/trino-operator/pull/357
+[#358]: https://github.com/stackabletech/trino-operator/pull/358
+[#360]: https://github.com/stackabletech/trino-operator/pull/360
 
 ## [0.8.0] - 2022-11-07
 
