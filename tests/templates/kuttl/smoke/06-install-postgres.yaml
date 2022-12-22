@@ -8,7 +8,5 @@ commands:
       --install
       --version=12.1.5
       --namespace $NAMESPACE
-      --set postgresqlUsername=hive
-      --set postgresqlPassword=hive
-      --set postgresqlDatabase=hive
+      -f helm-bitnami-postgresql-values.yaml
       --repo https://charts.bitnami.com/bitnami postgresql

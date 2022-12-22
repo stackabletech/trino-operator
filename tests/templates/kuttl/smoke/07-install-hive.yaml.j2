@@ -24,14 +24,16 @@ kind: HiveCluster
 metadata:
   name: hive
 spec:
-  version: {{ test_scenario['values']['hive'] }}
+  image:
+    productVersion: "{{ test_scenario['values']['hive'].split('-stackable')[0] }}"
+    stackableVersion: "{{ test_scenario['values']['hive'].split('-stackable')[1] }}"
   metastore:
     roleGroups:
       default:
         replicas: 2
         config:
           database:
-            connString: jdbc:postgresql://hive-postgresql:5432/hive
+            connString: jdbc:postgresql://postgresql:5432/hive
             user: hive
             password: hive
             dbType: postgres
