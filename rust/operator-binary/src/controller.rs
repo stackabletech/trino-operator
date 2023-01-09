@@ -880,7 +880,11 @@ fn env_var_from_secret(secret_name: &Option<String>, env_var: &str) -> Option<En
     })
 }
 
-fn env_var_from_secret_with_key(secret_name: &Option<String>, secret_key: &str, env_var: &str) -> Option<EnvVar> {
+fn env_var_from_secret_with_key(
+    secret_name: &Option<String>,
+    secret_key: &str,
+    env_var: &str,
+) -> Option<EnvVar> {
     secret_name.as_ref().map(|secret| EnvVar {
         name: secret_key.to_string(),
         value_from: Some(EnvVarSource {
