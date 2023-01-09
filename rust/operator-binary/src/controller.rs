@@ -657,17 +657,15 @@ fn build_rolegroup_statefulset(
             TrinoAuthenticationConfig::MultiUser { .. } => {}
             TrinoAuthenticationConfig::Ldap(ldap) => {
                 if let Some(ldap_bind_secret) = &ldap.bind_credentials {
-                    if let Some(ldap_user) = env_var_from_secret_with_key(
+                    if let Some(ldap_user) = env_var_from_secret(
                         &Some(ldap_bind_secret.secret_class.clone()),
-                        "user",
                         LDAP_USER_ENV,
                     ) {
                         env.push(ldap_user);
                     }
 
-                    if let Some(ldap_password) = env_var_from_secret_with_key(
+                    if let Some(ldap_password) = env_var_from_secret(
                         &Some(ldap_bind_secret.secret_class.clone()),
-                        "password",
                         LDAP_PASSWORD_ENV,
                     ) {
                         env.push(ldap_password);
@@ -868,21 +866,6 @@ async fn user_authentication(
 fn env_var_from_secret(secret_name: &Option<String>, env_var: &str) -> Option<EnvVar> {
     secret_name.as_ref().map(|secret| EnvVar {
         name: env_var.to_string(),
-        value_from: Some(EnvVarSource {
-            secret_key_ref: Some(SecretKeySelector {
-                optional: Some(false),
-                name: Some(secret.to_string()),
-                key: env_var.to_string(),
-            }),
-            ..EnvVarSource::default()
-        }),
-        ..EnvVar::default()
-    })
-}
-
-fn env_var_from_secret_with_key(secret_name: &Option<String>, secret_key: &str, env_var: &str) -> Option<EnvVar> {
-    secret_name.as_ref().map(|secret| EnvVar {
-        name: secret_key.to_string(),
         value_from: Some(EnvVarSource {
             secret_key_ref: Some(SecretKeySelector {
                 optional: Some(false),
