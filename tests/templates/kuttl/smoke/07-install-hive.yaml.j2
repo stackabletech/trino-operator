@@ -27,17 +27,17 @@ spec:
   image:
     productVersion: "{{ test_scenario['values']['hive'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['hive'].split('-stackable')[1] }}"
+  clusterConfig:
+    database:
+      connString: jdbc:postgresql://postgresql:5432/hive
+      user: hive
+      password: hive
+      dbType: postgres
+    hdfs:
+      configMap: hdfs
+    s3:
+      reference: minio
   metastore:
     roleGroups:
       default:
         replicas: 2
-        config:
-          database:
-            connString: jdbc:postgresql://postgresql:5432/hive
-            user: hive
-            password: hive
-            dbType: postgres
-  s3:
-    reference: minio
-  hdfs:
-    configMap: hdfs
