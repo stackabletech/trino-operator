@@ -49,4 +49,3 @@ spec:
     roleGroups:
       default:
         replicas: 1
-
