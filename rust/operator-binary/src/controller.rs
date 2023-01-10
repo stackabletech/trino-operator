@@ -886,7 +886,7 @@ fn env_var_from_secret_with_key(
     env_var: &str,
 ) -> Option<EnvVar> {
     secret_name.as_ref().map(|secret| EnvVar {
-        name: secret_key.to_string(),
+        name: env_var.to_string(),
         value_from: Some(EnvVarSource {
             secret_key_ref: Some(SecretKeySelector {
                 optional: Some(false),
