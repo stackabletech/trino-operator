@@ -16,8 +16,9 @@ All notable changes to this project will be documented in this file.
 - `operator-rs` `0.25.0` -> `0.30.1` ([#344], [#360]).
 - LDAP integration tests create all resources in their namespace and not some in the default namespace ([#344]).
 - Don't run init container as root and avoid chmod and chowning ([#353]).
-- [BREAKING] Use Product image selection instead of version. `spec.version` has been replaced by `spec.image` ([#356]).
+- [BREAKING]: Use Product image selection instead of version. `spec.version` has been replaced by `spec.image` ([#356]).
 - [BREAKING]: Removed tools image for init container and replaced with Trino product image. This means the latest stackable version has to be used in the product image selection ([#357])
+- [BREAKING]: Use `user` and `password` Secret keys for LDAP bind credentials Secrets, instead of env var names ([#362])
 
 ### Fixed
 
@@ -34,6 +35,7 @@ All notable changes to this project will be documented in this file.
 [#357]: https://github.com/stackabletech/trino-operator/pull/357
 [#358]: https://github.com/stackabletech/trino-operator/pull/358
 [#360]: https://github.com/stackabletech/trino-operator/pull/360
+[#362]: https://github.com/stackabletech/trino-operator/pull/362
 
 ## [0.8.0] - 2022-11-07
 
