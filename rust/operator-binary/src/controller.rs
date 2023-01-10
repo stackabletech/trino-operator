@@ -891,7 +891,7 @@ fn env_var_from_secret_with_key(
             secret_key_ref: Some(SecretKeySelector {
                 optional: Some(false),
                 name: Some(secret.to_string()),
-                key: env_var.to_string(),
+                key: secret_key.to_string(),
             }),
             ..EnvVarSource::default()
         }),
