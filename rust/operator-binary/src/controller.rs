@@ -647,9 +647,7 @@ fn build_rolegroup_statefulset(
         .collect::<Vec<_>>();
 
     let secret_name = build_shared_internal_secret_name(trino);
-    if let Some(internal_secret) = env_var_from_secret(&Some(secret_name), ENV_INTERNAL_SECRET) {
-        env.push(internal_secret);
-    };
+    env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
     // we need to mount ldap bind credentials from the secret as env vars
     if let Some(auth) = authentication_config {
@@ -657,21 +655,18 @@ fn build_rolegroup_statefulset(
             TrinoAuthenticationConfig::MultiUser { .. } => {}
             TrinoAuthenticationConfig::Ldap(ldap) => {
                 if let Some(ldap_bind_secret) = &ldap.bind_credentials {
-                    if let Some(ldap_user) = env_var_from_secret_with_key(
-                        &Some(ldap_bind_secret.secret_class.clone()),
-                        "user",
+                    // LDAP user
+                    env.push(env_var_from_secret(
+                        &ldap_bind_secret.secret_class,
+                        Some("user"),
                         LDAP_USER_ENV,
-                    ) {
-                        env.push(ldap_user);
-                    }
-
-                    if let Some(ldap_password) = env_var_from_secret_with_key(
-                        &Some(ldap_bind_secret.secret_class.clone()),
-                        "password",
+                    ));
+                    // LDAP password
+                    env.push(env_var_from_secret(
+                        &ldap_bind_secret.secret_class,
+                        Some("password"),
                         LDAP_PASSWORD_ENV,
-                    ) {
-                        env.push(ldap_password);
-                    }
+                    ));
                 }
             }
         }
@@ -865,38 +860,22 @@ async fn user_authentication(
     })
 }
 
-fn env_var_from_secret(secret_name: &Option<String>, env_var: &str) -> Option<EnvVar> {
-    secret_name.as_ref().map(|secret| EnvVar {
+/// Give a secret name and an optional key in the secret to use.
+/// The value from the key will be set into the given env var name.
+/// If not secret key is given, the env var name will be used as the secret key.
+fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &str) -> EnvVar {
+    EnvVar {
         name: env_var.to_string(),
         value_from: Some(EnvVarSource {
             secret_key_ref: Some(SecretKeySelector {
                 optional: Some(false),
-                name: Some(secret.to_string()),
-                key: env_var.to_string(),
+                name: Some(secret_name.to_string()),
+                key: secret_key.unwrap_or(env_var).to_string(),
             }),
             ..EnvVarSource::default()
         }),
         ..EnvVar::default()
-    })
-}
-
-fn env_var_from_secret_with_key(
-    secret_name: &Option<String>,
-    secret_key: &str,
-    env_var: &str,
-) -> Option<EnvVar> {
-    secret_name.as_ref().map(|secret| EnvVar {
-        name: env_var.to_string(),
-        value_from: Some(EnvVarSource {
-            secret_key_ref: Some(SecretKeySelector {
-                optional: Some(false),
-                name: Some(secret.to_string()),
-                key: secret_key.to_string(),
-            }),
-            ..EnvVarSource::default()
-        }),
-        ..EnvVar::default()
-    })
+    }
 }
 
 /// Defines all required roles and their required configuration.
