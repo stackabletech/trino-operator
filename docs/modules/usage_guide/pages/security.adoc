@@ -1,5 +1,7 @@
 = Security
 
+This page covers <<Authentication>> and <<Authorization>>.
+
 == Authentication
 
 Trino supports several https://trino.io/docs/current/security/authentication-types.html[authentication types].
@@ -10,35 +12,46 @@ The Trino operator currently supports the following `PASSWORD` authenticators.
 
 ==== Password file
 
-The https://trino.io/docs/current/security/password-file.html[file based authentication] can be defined as follows:
+The https://trino.io/docs/current/security/password-file.html[file based authentication] can be defined as follows. First create a secret with your users:
 
 [source,yaml]
 ----
-include::example$code/trino-file-authentication.yaml[]
+include::example$code/trino-file-auth-snippet.yaml[tag=secret]
 ----
 
-The `simple-trino-users-secret` points to a manually created secret. This contains username and password pairs as shown in the previous snippet.
-
-The username and password combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds.
+This contains username and password pairs as shown in the previous snippet. The username and password combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds:
 
 [source]
 ----
 htpasswd -nbBC 10 admin admin
 ----
 
-==== LDAP
-
-The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well. The following snippet shows how to configure `PASSWORD` authentication using LDAP:
+Then reference the secret in your TrinoCluster definition:
 
 [source,yaml]
 ----
-include::example$code/trino-ldap-authentication.yaml[]
+include::example$code/trino-file-auth-snippet.yaml[tag=trino]
 ----
 
-With this configuration, Trino will authenticate via `ldaps://openldap.default.svc.cluster.local:1636`.
-The UI or Trino CLI need to authenticate with the user `integrationtest` and password `integrationtest`.
+=== LDAP
 
-Please have a look at the LDAP https://github.com/stackabletech/trino-operator/tree/main/tests/templates/kuttl/ldap[integration tests] for testing, setting up OpenLDAP and creating the integrationtest user.
+The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well and authentication in Stackable is done using xref:home:concepts:authentication.adoc#authenticationclass[AuthenticationClasses]:
+
+[source,yaml]
+----
+include::example$code/trino-ldap-auth-snippet.yaml[tag=authclass]
+----
+
+NOTE: You can follow the xref:home:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
+
+With an AuthenticationClass ready, `PASSWORD` authentication using LDAP is done by referincing the LDAP AuthenticationClass: 
+
+[source,yaml]
+----
+include::example$code/trino-ldap-auth-snippet.yaml[tag=trino]
+----
+
+In the Trino CLI and web interface, LDAP users can now be used to log in.
 
 == Authorization
 
