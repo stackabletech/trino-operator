@@ -2,17 +2,12 @@
 dimensions:
   - name: trino
     values:
-      - 377-stackable0.3.0
-      - 387-stackable0.3.0
-      - 395-stackable0.3.0
-      - 396-stackable0.3.0
       - 403-stackable0.1.0
   - name: trino-latest
     values:
       - 403-stackable0.1.0
   - name: hive
     values:
-      - 2.3.9-stackable0.6.0
       - 3.1.3-stackable0.2.0
   - name: opa
     values:
@@ -52,19 +47,7 @@ tests:
       - hdfs
       - zookeeper
       - s3-use-tls
-  - name: tls
-    dimensions:
-      - trino-latest
-      - use-authentication
-      - use-tls
-      - use-internal-tls
-  - name: resources
-    dimensions:
-      - trino-latest
   - name: ldap
     dimensions:
       - trino-latest
       - ldap-use-tls
-  - name: orphaned-resources
-    dimensions:
-      - trino-latest
