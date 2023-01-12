@@ -1,10 +1,10 @@
 use crate::catalog::config::CatalogConfig;
 use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig, TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME,
-    PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
-    USER_PASSWORD_DATA_DIR_NAME, LDAP_PASSWORD_ENV, LDAP_USER_ENV, 
+    LDAP_PASSWORD_ENV, LDAP_USER_ENV, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
+    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE,
+    SYSTEM_TRUST_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 
 pub const STACKABLE_CLIENT_CA_CERT: &str = "stackable-client-ca-cert";
@@ -79,7 +79,7 @@ pub fn container_trino_args(
                 .map(|(user, password)| format!("{}:{}", user, password))
                 .collect::<Vec<_>>()
                 .join("\n");
-    
+
             args.push(format!(
                 "echo '{data}' > {path}/{db}",
                 data = user_data,

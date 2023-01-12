@@ -2,10 +2,11 @@
 use crate::{
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command, config,
-    config::{password_authenticator_properties},
+    config::password_authenticator_properties,
 };
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::cluster_resources::ClusterResources;
 use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use stackable_operator::{
     builder::{
@@ -42,9 +43,6 @@ use stackable_operator::{
     },
     role_utils::RoleGroupRef,
 };
-use stackable_operator::{
-    cluster_resources::ClusterResources,
-};
 use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
@@ -53,11 +51,10 @@ use stackable_trino_crd::{
     TlsSecretClass, TrinoCluster, TrinoRole, TrinoStorageConfig, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT,
-    METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
+    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},

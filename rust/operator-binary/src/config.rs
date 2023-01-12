@@ -82,10 +82,7 @@ pub fn password_authenticator_properties(
 
             if ldap.use_tls() {
                 if let Some(path) = ldap.tls_ca_cert_mount_path() {
-                    config.insert(
-                        LDAP_SSL_TRUST_STORE_PATH.to_string(),
-                        Some(path),
-                    );
+                    config.insert(LDAP_SSL_TRUST_STORE_PATH.to_string(), Some(path));
                 } else {
                     // use TLD but don't verify => not supported
                     return Err(ConfigError::UnverifiedLdapTlsConnectionNotSupported);
