@@ -53,7 +53,7 @@ use stackable_trino_crd::{
     TlsSecretClass, TrinoCluster, TrinoRole, TrinoStorageConfig, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LDAP_PASSWORD_ENV, LDAP_USER_ENV, LOG_PROPERTIES, METRICS_PORT,
+    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT,
     METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
     RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
@@ -662,10 +662,6 @@ fn build_rolegroup_statefulset(
             }
             TrinoAuthenticationConfig::Ldap(ldap) => {
                 ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
-                if let Some((user_path, password_path)) = ldap.bind_credentials_mount_paths() {
-                    // "LDAP_USER = $(cat {user_path})"
-                    // env.push(Env)
-                }
             }
         }
     }
