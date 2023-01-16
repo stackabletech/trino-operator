@@ -82,7 +82,7 @@ pub fn password_authenticator_properties(
 
             if ldap.use_tls() {
                 if !ldap.use_tls_verification() {
-                    // use TLS but don't verify => not supported
+                    // Use TLS but don't verify LDAP server ca => not supported
                     return Err(ConfigError::UnverifiedLdapTlsConnectionNotSupported);
                 }
                 // If there is a custom certificate, configure it.
