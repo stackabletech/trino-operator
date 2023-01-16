@@ -90,7 +90,6 @@ pub fn password_authenticator_properties(
                 if let Some(path) = ldap.tls_ca_cert_mount_path() {
                     config.insert(LDAP_SSL_TRUST_STORE_PATH.to_string(), Some(path));
                 }
-
             } else {
                 // No TLS used, allow insure LDAP
                 config.insert(LDAP_ALLOW_INSECURE.to_string(), Some("true".to_string()));
