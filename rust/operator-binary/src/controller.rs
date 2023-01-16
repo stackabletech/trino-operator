@@ -653,7 +653,7 @@ fn build_rolegroup_statefulset(
                 cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
                 pod_builder.add_volume(
                     VolumeBuilder::new("users")
-                        .with_empty_dir(Some(""), None)
+                        .with_empty_dir(None::<String>, None)
                         .build(),
                 );
             }
@@ -728,7 +728,7 @@ fn build_rolegroup_statefulset(
         })
         .add_volume(
             VolumeBuilder::new("rwconfig")
-                .with_empty_dir(Some(""), None)
+                .with_empty_dir(None::<String>, None)
                 .build(),
         )
         .add_volume(Volume {
@@ -1117,7 +1117,7 @@ fn tls_volume_mounts(
     cb_trino.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
     pod_builder.add_volume(
         VolumeBuilder::new("server-tls")
-            .with_empty_dir(Some(""), None)
+            .with_empty_dir(None::<String>, None)
             .build(),
     );
 
@@ -1125,7 +1125,7 @@ fn tls_volume_mounts(
     cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
     pod_builder.add_volume(
         VolumeBuilder::new("client-tls")
-            .with_empty_dir(Some(""), None)
+            .with_empty_dir(None::<String>, None)
             .build(),
     );
 
@@ -1138,7 +1138,7 @@ fn tls_volume_mounts(
         cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
         pod_builder.add_volume(
             VolumeBuilder::new("internal-tls")
-                .with_empty_dir(Some(""), None)
+                .with_empty_dir(None::<String>, None)
                 .build(),
         );
     }
