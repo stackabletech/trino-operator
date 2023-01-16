@@ -81,13 +81,18 @@ pub fn password_authenticator_properties(
             }
 
             if ldap.use_tls() {
-                if let Some(path) = ldap.tls_ca_cert_mount_path() {
-                    config.insert(LDAP_SSL_TRUST_STORE_PATH.to_string(), Some(path));
-                } else {
+                if !ldap.use_tls_verification() {
                     // use TLS but don't verify => not supported
                     return Err(ConfigError::UnverifiedLdapTlsConnectionNotSupported);
                 }
+                // If there is a custom certificate, configure it.
+                // There might also be TLS verification using web PKI
+                if let Some(path) = ldap.tls_ca_cert_mount_path() {
+                    config.insert(LDAP_SSL_TRUST_STORE_PATH.to_string(), Some(path));
+                }
+
             } else {
+                // No TLS used, allow insure LDAP
                 config.insert(LDAP_ALLOW_INSECURE.to_string(), Some("true".to_string()));
             }
         }
