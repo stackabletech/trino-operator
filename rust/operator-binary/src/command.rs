@@ -80,6 +80,7 @@ pub fn container_trino_args(
                 .collect::<Vec<_>>()
                 .join("\n");
 
+            // FIXME: When we switch to AuthencationClass static we need to fix this to not have credentials in the Pod manifest (for now they are hashes).
             args.push(format!(
                 "echo '{data}' > {path}/{db}",
                 data = user_data,
