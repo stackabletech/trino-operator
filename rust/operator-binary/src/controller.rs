@@ -651,11 +651,7 @@ fn build_rolegroup_statefulset(
             TrinoAuthenticationConfig::MultiUser { .. } => {
                 cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
                 cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-                pod_builder.add_volume(
-                    VolumeBuilder::new("users")
-                        .with_empty_dir(None::<String>, None)
-                        .build(),
-                );
+                pod_builder.add_empty_dir_volume("users", None);
             }
             TrinoAuthenticationConfig::Ldap(ldap) => {
                 ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
@@ -726,11 +722,7 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .add_volume(
-            VolumeBuilder::new("rwconfig")
-                .with_empty_dir(None::<String>, None)
-                .build(),
-        )
+        .add_empty_dir_volume("rwconfig", None)
         .add_volume(Volume {
             name: "catalog".to_string(),
             config_map: Some(ConfigMapVolumeSource {
@@ -1115,19 +1107,11 @@ fn tls_volume_mounts(
 
     cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
     cb_trino.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
-    pod_builder.add_volume(
-        VolumeBuilder::new("server-tls")
-            .with_empty_dir(None::<String>, None)
-            .build(),
-    );
+    pod_builder.add_empty_dir_volume("server-tls", None);
 
     cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
     cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    pod_builder.add_volume(
-        VolumeBuilder::new("client-tls")
-            .with_empty_dir(None::<String>, None)
-            .build(),
-    );
+    pod_builder.add_empty_dir_volume("client-tls", None);
 
     if let Some(internal_tls) = trino.get_internal_tls() {
         cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
@@ -1136,11 +1120,7 @@ fn tls_volume_mounts(
 
         cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
         cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
-        pod_builder.add_volume(
-            VolumeBuilder::new("internal-tls")
-                .with_empty_dir(None::<String>, None)
-                .build(),
-        );
+        pod_builder.add_empty_dir_volume("internal-tls", None);
     }
 
     // catalogs
