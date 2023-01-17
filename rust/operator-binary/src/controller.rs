@@ -2,10 +2,11 @@
 use crate::{
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command, config,
-    config::{password_authenticator_properties, LDAP_TRUST_CERT_PATH},
+    config::password_authenticator_properties,
 };
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::cluster_resources::ClusterResources;
 use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use stackable_operator::{
     builder::{
@@ -42,10 +43,6 @@ use stackable_operator::{
     },
     role_utils::RoleGroupRef,
 };
-use stackable_operator::{
-    cluster_resources::ClusterResources,
-    commons::tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
-};
 use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
@@ -54,11 +51,10 @@ use stackable_trino_crd::{
     TlsSecretClass, TrinoCluster, TrinoRole, TrinoStorageConfig, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LDAP_PASSWORD_ENV, LDAP_USER_ENV, LOG_PROPERTIES, METRICS_PORT,
-    METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB,
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
+    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -652,22 +648,13 @@ fn build_rolegroup_statefulset(
     // we need to mount ldap bind credentials from the secret as env vars
     if let Some(auth) = authentication_config {
         match auth {
-            TrinoAuthenticationConfig::MultiUser { .. } => {}
+            TrinoAuthenticationConfig::MultiUser { .. } => {
+                cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
+                cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
+                pod_builder.add_empty_dir_volume("users", None);
+            }
             TrinoAuthenticationConfig::Ldap(ldap) => {
-                if let Some(ldap_bind_secret) = &ldap.bind_credentials {
-                    // LDAP user
-                    env.push(env_var_from_secret(
-                        &ldap_bind_secret.secret_class,
-                        Some("user"),
-                        LDAP_USER_ENV,
-                    ));
-                    // LDAP password
-                    env.push(env_var_from_secret(
-                        &ldap_bind_secret.secret_class,
-                        Some("password"),
-                        LDAP_PASSWORD_ENV,
-                    ));
-                }
+                ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
             }
         }
     }
@@ -687,7 +674,6 @@ fn build_rolegroup_statefulset(
         &mut cb_prepare,
         &mut cb_trino,
         catalogs,
-        authentication_config,
     )?;
 
     let container_prepare = cb_prepare
@@ -736,11 +722,7 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .add_volume(
-            VolumeBuilder::new("rwconfig")
-                .with_empty_dir(Some(""), None)
-                .build(),
-        )
+        .add_empty_dir_volume("rwconfig", None)
         .add_volume(Volume {
             name: "catalog".to_string(),
             config_map: Some(ConfigMapVolumeSource {
@@ -1116,7 +1098,6 @@ fn tls_volume_mounts(
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
     catalogs: &[CatalogConfig],
-    authentication_config: Option<&TrinoAuthenticationConfig>,
 ) -> Result<()> {
     if let Some(client_tls) = trino.get_client_tls() {
         cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
@@ -1126,19 +1107,11 @@ fn tls_volume_mounts(
 
     cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
     cb_trino.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
-    pod_builder.add_volume(
-        VolumeBuilder::new("server-tls")
-            .with_empty_dir(Some(""), None)
-            .build(),
-    );
+    pod_builder.add_empty_dir_volume("server-tls", None);
 
     cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
     cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    pod_builder.add_volume(
-        VolumeBuilder::new("client-tls")
-            .with_empty_dir(Some(""), None)
-            .build(),
-    );
+    pod_builder.add_empty_dir_volume("client-tls", None);
 
     if let Some(internal_tls) = trino.get_internal_tls() {
         cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
@@ -1147,11 +1120,7 @@ fn tls_volume_mounts(
 
         cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
         cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
-        pod_builder.add_volume(
-            VolumeBuilder::new("internal-tls")
-                .with_empty_dir(Some(""), None)
-                .build(),
-        );
+        pod_builder.add_empty_dir_volume("internal-tls", None);
     }
 
     // catalogs
@@ -1159,38 +1128,6 @@ fn tls_volume_mounts(
         cb_prepare.add_volume_mounts(catalog.volume_mounts.clone());
         cb_trino.add_volume_mounts(catalog.volume_mounts.clone());
         pod_builder.add_volumes(catalog.volumes.clone());
-    }
-
-    // If authentication is required (tls already activated) add volume mount for user pw database
-    if let Some(auth) = authentication_config {
-        match auth {
-            TrinoAuthenticationConfig::MultiUser { .. } => {
-                cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-                cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-                pod_builder.add_volume(
-                    VolumeBuilder::new("users")
-                        .with_empty_dir(Some(""), None)
-                        .build(),
-                );
-            }
-            TrinoAuthenticationConfig::Ldap(ldap) => {
-                if let Some(Tls {
-                    verification:
-                        TlsVerification::Server(TlsServerVerification {
-                            ca_cert: CaCert::SecretClass(secret_class_name),
-                        }),
-                }) = &ldap.tls
-                {
-                    cb_trino.add_volume_mount("ldap-tls-mount", LDAP_TRUST_CERT_PATH);
-                    pod_builder.add_volume(create_tls_volume(
-                        "ldap-tls-mount",
-                        &TlsSecretClass {
-                            secret_class: secret_class_name.clone(),
-                        },
-                    ));
-                }
-            }
-        }
     }
 
     Ok(())

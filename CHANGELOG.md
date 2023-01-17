@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 
 - Hive catalog now properly handles hive clusters with replicas > 1 ([#348]).
 - Role group selectors are now applied to the generated StatefulSets ([#360]).
+- LDAP bind credentials resolution from SecretClasses now works correctly ([#367]).
 
 [#337]: https://github.com/stackabletech/trino-operator/pull/337
 [#340]: https://github.com/stackabletech/trino-operator/pull/340
@@ -38,6 +39,7 @@ All notable changes to this project will be documented in this file.
 [#360]: https://github.com/stackabletech/trino-operator/pull/360
 [#362]: https://github.com/stackabletech/trino-operator/pull/362
 [#364]: https://github.com/stackabletech/trino-operator/pull/364
+[#367]: https://github.com/stackabletech/trino-operator/pull/367
 
 ## [0.8.0] - 2022-11-07
 
