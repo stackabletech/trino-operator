@@ -1,5 +1,5 @@
 name: trino
-version: "23.1.0"
+version: "23.1"
 title: Stackable Operator for Trino
 nav:
   - modules/getting_started/nav.adoc
