@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - `operator-rs` `0.31.0` -> `0.33.0` ([#378]).
-- Bumped stackable image versions to "stackable23.4.0-rc1" ([#378]).
+- Bumped stackable image versions to "23.4.0-rc1" ([#378]).
 
 [#378]: https://github.com/stackabletech/trino-operator/pull/378
 
