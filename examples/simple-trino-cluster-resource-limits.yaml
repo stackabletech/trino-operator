@@ -11,9 +11,6 @@ spec:
   coordinators:
     roleGroups:
       default:
-        configOverrides:
-          config.properties:
-            log.format: "json"
         replicas: 1
   workers:
     roleGroups:
