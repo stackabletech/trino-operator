@@ -18,14 +18,14 @@ After you have installed stackablectl, run the following command to install all 
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=stackablectl-install-operators]
+include::example$getting_started/code/getting-started.sh[tag=stackablectl-install-operators]
 ----
 
 The tool will show
 
 [source]
 ----
-include::example$code/install-operator-output.txt[tag=stackablectl-install-operators-output]
+include::example$getting_started/code/install-operator-output.txt[tag=stackablectl-install-operators-output]
 ----
 
 TIP: Consult the xref:stackablectl::quickstart.adoc[] to learn more about how to use stackablectl.
@@ -36,14 +36,14 @@ You can also use Helm to install the operators. Add the Stackable Helm repositor
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=helm-add-repo]
+include::example$getting_started/code/getting-started.sh[tag=helm-add-repo]
 ----
 
 Then install the Stackable Operators:
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=helm-install-operators]
+include::example$getting_started/code/getting-started.sh[tag=helm-install-operators]
 ----
 
 Helm will deploy the operators in a Kubernetes Deployment and apply the CRDs for the Trino service (as well as the CRDs for the required operators). You are now ready to deploy Trino in Kubernetes.
@@ -80,4 +80,4 @@ Please refer to the xref:opa::index.adoc[OPA Operator] docs.
 
 == What's next
 
-xref:first_steps.adoc[Set up a Trino cluster] and its dependencies.
+xref:getting_started/first_steps.adoc[Set up a Trino cluster] and its dependencies.

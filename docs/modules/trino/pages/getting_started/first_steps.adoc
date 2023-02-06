@@ -1,6 +1,6 @@
 = First steps
 
-After going through the xref:installation.adoc[] section and having installed all the operators, you will now deploy a Trino cluster and the required dependencies. Afterwards you can <<_verify_that_it_works, verify that it works>> by running some queries against Trino or visit the Trino web interface.
+After going through the xref:getting_started/installation.adoc[] section and having installed all the operators, you will now deploy a Trino cluster and the required dependencies. Afterwards you can <<_verify_that_it_works, verify that it works>> by running some queries against Trino or visit the Trino web interface.
 
 == Setup Trino
 
@@ -10,21 +10,21 @@ Create a file named `trino.yaml` with the following content:
 
 [source,yaml]
 ----
-include::example$code/trino.yaml[]
+include::example$getting_started/code/trino.yaml[]
 ----
 
 and apply it:
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=install-trino]
+include::example$getting_started/code/getting-started.sh[tag=install-trino]
 ----
 
 Wait for the Trino cluster to get ready:
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=watch-trino-rollout]
+include::example$getting_started/code/getting-started.sh[tag=watch-trino-rollout]
 ----
 
 == Verify that it works
@@ -49,7 +49,7 @@ Create a port-forward for the coordinator to access Trino easily in the next ste
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=port-forwarding]
+include::example$getting_started/code/getting-started.sh[tag=port-forwarding]
 ----
 
 === Access the Trino cluster via CLI tool
@@ -58,21 +58,21 @@ We use the https://trino.io/download.html[Trino CLI tool] to access the Trino cl
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=download-trino-cli]
+include::example$getting_started/code/getting-started.sh[tag=download-trino-cli]
 ----
 
 We need to make the CLI tool executable:
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=chmod-trino-cli]
+include::example$getting_started/code/getting-started.sh[tag=chmod-trino-cli]
 ----
 
 Now, run some queries against the coordinator. Show available catalogs:
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=retrieve-trino-catalogs]
+include::example$getting_started/code/getting-started.sh[tag=retrieve-trino-catalogs]
 ----
 
 which should output:
@@ -86,7 +86,7 @@ Check how many workers are connected to the coordinator:
 
 [source,bash]
 ----
-include::example$code/getting-started.sh[tag=retrieve-trino-workers]
+include::example$getting_started/code/getting-started.sh[tag=retrieve-trino-workers]
 ----
 
 which should output:
@@ -118,9 +118,9 @@ In order to remove the previously downloaded CLI tool, you can safely remove it 
 
 [source]
 ----
-include::example$code/getting-started.sh[tag=cleanup-trino-cli]
+include::example$getting_started/code/getting-started.sh[tag=cleanup-trino-cli]
 ----
 
 == What's next
 
-Have a look at the xref:usage_guide:cluster.adoc[] to find out more about how to configure a Trino cluster.
+Have a look at the xref:usage_guide/cluster.adoc[] to find out more about how to configure a Trino cluster.
