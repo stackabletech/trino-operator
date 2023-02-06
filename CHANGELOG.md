@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `operator-rs` `0.31.0` -> `0.33.0` ([#378]).
+- Bumped stackable image versions to "stackable23.4.0-rc1" ([#378]).
+
+[#378]: https://github.com/stackabletech/trino-operator/pull/378
+
+## [23.1.0] - 2023-01-23
+
 ### Added
 
 - Add support for [Google Sheets connector](https://trino.io/docs/current/connector/googlesheets.html) ([#337]).
