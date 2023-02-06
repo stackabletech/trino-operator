@@ -8,6 +8,7 @@ use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::cluster_resources::ClusterResources;
 use stackable_operator::commons::product_image_selection::ResolvedProductImage;
+use stackable_operator::memory::MemoryQuantity;
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -35,7 +36,7 @@ use stackable_operator::{
     },
     labels::{role_group_selector_labels, role_selector_labels, ObjectLabels},
     logging::controller::ReconcilerError,
-    memory::{to_java_heap_value, BinaryMultiple},
+    memory::BinaryMultiple,
     product_config::{self, types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{
         transform_all_roles_to_config, validate_all_roles_and_groups_config,
@@ -83,8 +84,6 @@ pub enum Error {
     ObjectHasNoNamespace,
     #[snafu(display("object defines no {} role", role))]
     MissingTrinoRole { role: String },
-    #[snafu(display("failed to calculate global service name"))]
-    GlobalServiceNameNotFound,
     #[snafu(display("failed to create cluster resources"))]
     CreateClusterResources {
         source: stackable_operator::error::Error,
@@ -137,8 +136,6 @@ pub enum Error {
     FailedToWriteJavaProperties {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
     },
-    #[snafu(display("failed to load Product Config"))]
-    ProductConfigLoadFailed,
     #[snafu(display("failed to processing authentication config element from k8s"))]
     FailedProcessingAuthentication { source: authentication::Error },
     #[snafu(display("failed to parse role: {source}"))]
@@ -155,10 +152,6 @@ pub enum Error {
     ResolveS3Connection {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("invalid S3 connection: {reason}"))]
-    InvalidS3Connection { reason: String },
-    #[snafu(display("failed to parse trino image version [{image_version}]"))]
-    TrinoImageVersionParseFailure { image_version: String },
     #[snafu(display("failed to get associated TrinoCatalogs"))]
     GetCatalogs {
         source: stackable_operator::error::Error,
@@ -170,10 +163,15 @@ pub enum Error {
     },
     #[snafu(display("failed to resolve and merge resource config for role and role group"))]
     FailedToResolveResourceConfig { source: stackable_trino_crd::Error },
-    #[snafu(display("invalid java heap config - missing default or value in crd?"))]
-    InvalidJavaHeapConfig,
+    #[snafu(display("invalid memory resource configuration - missing default or value in crd?"))]
+    MissingMemoryResourceConfig,
+    #[snafu(display("could not convert / scale memory resource config to [{unit}]"))]
+    FailedToConvertMemoryResourceConfig {
+        source: stackable_operator::error::Error,
+        unit: String,
+    },
     #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
-    FailedToConvertJavaHeap {
+    FailedToConvertMemoryResourceConfigToJavaHeap {
         source: stackable_operator::error::Error,
         unit: String,
     },
@@ -404,25 +402,26 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
-    let heap = to_java_heap_value(
+    let memory_unit = BinaryMultiple::Mebi;
+    let heap_size = MemoryQuantity::try_from(
         resources
             .memory
             .limit
             .as_ref()
-            .context(InvalidJavaHeapConfigSnafu)?,
-        JVM_HEAP_FACTOR,
-        BinaryMultiple::Mebi,
+            .context(MissingMemoryResourceConfigSnafu)?,
     )
-    .context(FailedToConvertJavaHeapSnafu {
-        unit: BinaryMultiple::Mebi.to_java_memory_unit(),
-    })?;
+    .context(FailedToConvertMemoryResourceConfigSnafu {
+        unit: memory_unit.to_java_memory_unit(),
+    })?
+    .scale_to(memory_unit)
+        * JVM_HEAP_FACTOR;
 
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
     let mut jvm_config = formatdoc!(
         "-server
-        -Xms{heap}m
-        -Xmx{heap}m
+        -Xms{heap}
+        -Xmx{heap}
         -XX:-UseBiasedLocking
         -XX:+UseG1GC
         -XX:G1HeapRegionSize=32M
@@ -438,7 +437,12 @@ fn build_rolegroup_config_map(
         -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
         -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
         -Djavax.net.ssl.trustStoreType=pkcs12
-        "
+        ",
+        heap = heap_size.format_for_java().context(
+            FailedToConvertMemoryResourceConfigToJavaHeapSnafu {
+                unit: memory_unit.to_java_memory_unit(),
+            }
+        )?
     );
 
     // TODO: we support only one coordinator for now
