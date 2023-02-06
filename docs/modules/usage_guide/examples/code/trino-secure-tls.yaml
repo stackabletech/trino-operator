@@ -17,7 +17,7 @@ metadata:
   name: simple-trino
 spec:
   image:
-    productVersion: 396
+    productVersion: "396"
     stackableVersion: "23.4.0-rc1"
   config:
     tls:
