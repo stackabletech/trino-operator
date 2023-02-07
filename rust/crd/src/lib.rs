@@ -705,7 +705,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "0.2.0"
+            stackableVersion: "23.4.0-rc1"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -726,7 +726,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "0.2.0"
+            stackableVersion: "23.4.0-rc1"
           catalogLabelSelector: {}
           config:
             tls:
@@ -750,7 +750,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "0.2.0"
+            stackableVersion: "23.4.0-rc1"
           catalogLabelSelector: {}
           config:
             tls: null
@@ -770,7 +770,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "0.2.0"
+            stackableVersion: "23.4.0-rc1"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -797,7 +797,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "0.2.0"
+            stackableVersion: "23.4.0-rc1"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -818,7 +818,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "0.2.0"
+            stackableVersion: "23.4.0-rc1"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -842,7 +842,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "0.2.0"
+            stackableVersion: "23.4.0-rc1"
           catalogLabelSelector: {}
           config:
             tls:
