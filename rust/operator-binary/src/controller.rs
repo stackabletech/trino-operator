@@ -5,8 +5,12 @@ use crate::{
     config::password_authenticator_properties,
 };
 
+use crate::product_logging::{
+    get_log_properties, get_vector_toml, resolve_vector_aggregator_address,
+};
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::product_logging::spec::{ConfigMapLogConfig, CustomContainerLogConfig};
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -19,12 +23,14 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource,
-                PodSecurityContext, Probe, Secret, SecretKeySelector, Service, ServicePort,
-                ServiceSpec, TCPSocketAction, Volume,
+                ConfigMap, ConfigMapVolumeSource, ContainerPort, EmptyDirVolumeSource, EnvVar,
+                EnvVarSource, PodSecurityContext, Probe, Secret, SecretKeySelector, Service,
+                ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
-        apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
+        apimachinery::pkg::{
+            api::resource::Quantity, apis::meta::v1::LabelSelector, util::intstr::IntOrString,
+        },
     },
     kube::{
         runtime::{controller::Action, reflector::ObjectRef},
@@ -39,6 +45,10 @@ use stackable_operator::{
         transform_all_roles_to_config, validate_all_roles_and_groups_config,
         ValidatedRoleConfigByPropertyKind,
     },
+    product_logging::{
+        self,
+        spec::{ContainerLogConfig, ContainerLogConfigChoice},
+    },
     role_utils::RoleGroupRef,
 };
 use stackable_trino_crd::{
@@ -46,10 +56,10 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    TlsSecretClass, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET,
-    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_HEAP_FACTOR,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    Container, TlsSecretClass, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
+    APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
+    ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
+    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
     STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
     STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
@@ -70,6 +80,16 @@ pub struct Ctx {
 
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
+
+pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
+pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
+
+pub const MAX_TRINO_LOG_FILES_SIZE_IN_MIB: u32 = 10;
+const MAX_PREPARE_LOG_FILE_SIZE_IN_MIB: u32 = 1;
+// Additional buffer space is not needed, as the `prepare` container already has sufficient buffer
+// space and all containers share a single volume.
+pub const LOG_VOLUME_SIZE_IN_MIB: u32 =
+    MAX_TRINO_LOG_FILES_SIZE_IN_MIB + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB;
 
 const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 
@@ -183,6 +203,15 @@ pub enum Error {
     },
     #[snafu(display("failed to resolve and merge config for role and role group"))]
     FailedToResolveConfig { source: stackable_trino_crd::Error },
+    #[snafu(display("failed to resolve the Vector aggregator address"))]
+    ResolveVectorAggregatorAddress {
+        source: crate::product_logging::Error,
+    },
+    #[snafu(display("failed to add the logging configuration to the ConfigMap [{cm_name}]"))]
+    InvalidLoggingConfig {
+        source: crate::product_logging::Error,
+        cm_name: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -270,6 +299,10 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     create_shared_internal_secret(&trino, client).await?;
 
+    let vector_aggregator_address = resolve_vector_aggregator_address(&trino, client)
+        .await
+        .context(ResolveVectorAggregatorAddressSnafu)?;
+
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&role).context(FailedToParseRoleSnafu)?;
         for (role_group, config) in role_config {
@@ -289,6 +322,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &merged_config,
                 authentication_config.as_ref(),
                 opa_connect_string.as_deref(),
+                vector_aggregator_address.as_deref(),
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 &trino,
@@ -396,6 +430,7 @@ fn build_rolegroup_config_map(
     merged_config: &TrinoConfig,
     authentication_config: Option<&TrinoAuthenticationConfig>,
     opa_connect_string: Option<&str>,
+    vector_aggregator_address: Option<&str>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -451,7 +486,12 @@ fn build_rolegroup_config_map(
         .context(MissingCoordinatorPodsSnafu)?;
 
     for (property_name_kind, config) in config {
-        let mut transformed_config: BTreeMap<String, Option<String>> = config
+        // We used this temporary map to add all dynamically resolved (e.g. discovery config maps)
+        // properties. This will be extended with the merged role group properties (transformed_config)
+        // to respect all possible override settings.
+        let mut dynamic_resolved_config = BTreeMap::<String, Option<String>>::new();
+
+        let transformed_config: BTreeMap<String, Option<String>> = config
             .iter()
             .map(|(k, v)| (k.clone(), Some(v.clone())))
             .collect();
@@ -465,29 +505,65 @@ fn build_rolegroup_config_map(
                 };
 
                 let discovery = TrinoDiscovery::new(&coordinator_ref, protocol);
-                transformed_config
+                dynamic_resolved_config
                     .insert(DISCOVERY_URI.to_string(), Some(discovery.discovery_uri()));
 
-                let config_properties =
-                    product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(FailedToWriteJavaPropertiesSnafu)?;
+                dynamic_resolved_config.insert("log.format".to_string(), Some("json".to_string()));
+                // The path to the log file used by Trino
+                dynamic_resolved_config.insert(
+                    "log.path".to_string(),
+                    Some(format!("{STACKABLE_LOG_DIR}/server.log")),
+                );
+                // The maximum number of general application log files to use, before log rotation replaces old content.
+                dynamic_resolved_config
+                    .insert("log.max-history".to_string(), Some("2".to_string()));
+                // The maximum file size for the general application log file.
+                dynamic_resolved_config.insert(
+                    "log.max-size".to_string(),
+                    Some(MAX_TRINO_LOG_FILES_SIZE_IN_MIB.to_string()),
+                );
+
+                // Add static properties and overrides
+                dynamic_resolved_config.extend(transformed_config);
+
+                let config_properties = product_config::writer::to_java_properties_string(
+                    dynamic_resolved_config.iter(),
+                )
+                .context(FailedToWriteJavaPropertiesSnafu)?;
 
                 cm_conf_data.insert(file_name.to_string(), config_properties);
             }
 
             PropertyNameKind::File(file_name) if file_name == NODE_PROPERTIES => {
-                let node_properties =
-                    product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(FailedToWriteJavaPropertiesSnafu)?;
+                // Add static properties and overrides
+                dynamic_resolved_config.extend(transformed_config);
+
+                let node_properties = product_config::writer::to_java_properties_string(
+                    dynamic_resolved_config.iter(),
+                )
+                .context(FailedToWriteJavaPropertiesSnafu)?;
 
                 cm_conf_data.insert(file_name.to_string(), node_properties);
             }
             PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
-                let log_properties =
-                    product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(FailedToWriteJavaPropertiesSnafu)?;
+                // No overrides required here, all settings can be set via logging options
+                if let Some(log_properties) = get_log_properties(&merged_config.logging) {
+                    cm_conf_data.insert(file_name.to_string(), log_properties);
+                }
 
-                cm_conf_data.insert(file_name.to_string(), log_properties);
+                if let Some(vector_toml) = get_vector_toml(
+                    rolegroup_ref,
+                    vector_aggregator_address,
+                    &merged_config.logging,
+                )
+                .context(InvalidLoggingConfigSnafu {
+                    cm_name: rolegroup_ref.object_name(),
+                })? {
+                    cm_conf_data.insert(
+                        product_logging::framework::VECTOR_CONFIG_FILE.to_string(),
+                        vector_toml,
+                    );
+                }
             }
             // authentication is coordinator only
             PropertyNameKind::File(file_name)
@@ -496,13 +572,18 @@ fn build_rolegroup_config_map(
             {
                 // depending on authentication we need to add more properties
                 if let Some(auth) = authentication_config {
-                    password_authenticator_properties(&mut transformed_config, auth)
+                    password_authenticator_properties(&mut dynamic_resolved_config, auth)
                         .context(InvalidTrinoConfigSnafu)?;
                 }
 
+                // Add static properties and overrides
+                dynamic_resolved_config.extend(transformed_config);
+
                 let pw_authenticator_properties =
-                    product_config::writer::to_java_properties_string(transformed_config.iter())
-                        .context(FailedToWriteJavaPropertiesSnafu)?;
+                    product_config::writer::to_java_properties_string(
+                        dynamic_resolved_config.iter(),
+                    )
+                    .context(FailedToWriteJavaPropertiesSnafu)?;
 
                 cm_conf_data.insert(file_name.to_string(), pw_authenticator_properties);
             }
@@ -622,16 +703,19 @@ fn build_rolegroup_statefulset(
         .rolegroup(rolegroup_ref)
         .context(InternalOperatorFailureSnafu)?;
 
-    let mut cb_trino =
-        ContainerBuilder::new(APP_NAME).with_context(|_| IllegalContainerNameSnafu {
-            container_name: APP_NAME.to_string(),
-        })?;
-    let mut cb_prepare =
-        ContainerBuilder::new("prepare").with_context(|_| IllegalContainerNameSnafu {
-            container_name: "prepare".to_string(),
-        })?;
+    let trino_container_name = Container::Trino.to_string();
+    let mut cb_trino = ContainerBuilder::new(&trino_container_name).with_context(|_| {
+        IllegalContainerNameSnafu {
+            container_name: trino_container_name.clone(),
+        }
+    })?;
+    let prepare_container_name = Container::Prepare.to_string();
+    let mut cb_prepare = ContainerBuilder::new(&prepare_container_name).with_context(|_| {
+        IllegalContainerNameSnafu {
+            container_name: prepare_container_name.clone(),
+        }
+    })?;
     let mut pod_builder = PodBuilder::new();
-    pod_builder.node_selector_opt(rolegroup.selector.clone());
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -678,12 +762,27 @@ fn build_rolegroup_statefulset(
         catalogs,
     )?;
 
+    let mut prepare_args = vec![];
+    if let Some(ContainerLogConfig {
+        choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+    }) = merged_config.logging.containers.get(&Container::Prepare)
+    {
+        prepare_args.push(product_logging::framework::capture_shell_output(
+            STACKABLE_LOG_DIR,
+            &prepare_container_name,
+            log_config,
+        ));
+    }
+
+    prepare_args.extend(command::container_prepare_args(trino, catalogs));
+
     let container_prepare = cb_prepare
         .image_from_product_image(resolved_product_image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(command::container_prepare_args(trino, catalogs))
+        .args(vec![prepare_args.join(" && ")])
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
+        .add_volume_mount("log", STACKABLE_LOG_DIR)
         .build();
 
     let container_trino = cb_trino
@@ -698,11 +797,51 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("config", CONFIG_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
+        .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
+        .add_volume_mount("log", STACKABLE_LOG_DIR)
         .add_container_ports(container_ports(trino))
         .resources(merged_config.resources.clone().into())
         .readiness_probe(readiness_probe(trino))
         .liveness_probe(liveness_probe(trino))
         .build();
+
+    // add trino container first to better default into that container (e.g. instead of vector)
+    pod_builder.add_container(container_trino);
+
+    if let Some(ContainerLogConfig {
+        choice:
+            Some(ContainerLogConfigChoice::Custom(CustomContainerLogConfig {
+                custom: ConfigMapLogConfig { config_map },
+            })),
+    }) = merged_config.logging.containers.get(&Container::Trino)
+    {
+        pod_builder.add_volume(Volume {
+            name: "log-config".to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: Some(config_map.into()),
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        });
+    } else {
+        pod_builder.add_volume(Volume {
+            name: "log-config".to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: Some(rolegroup_ref.object_name()),
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        });
+    }
+
+    if merged_config.logging.enable_vector_agent {
+        pod_builder.add_container(product_logging::framework::vector_container(
+            resolved_product_image,
+            "config",
+            "log",
+            merged_config.logging.containers.get(&Container::Vector),
+        ));
+    }
 
     pod_builder
         .metadata_builder(|m| {
@@ -714,8 +853,8 @@ fn build_rolegroup_statefulset(
             ))
         })
         .image_pull_secrets_from_product_image(resolved_product_image)
+        .node_selector_opt(rolegroup.selector.clone())
         .add_init_container(container_prepare)
-        .add_container(container_trino)
         .add_volume(Volume {
             name: "config".to_string(),
             config_map: Some(ConfigMapVolumeSource {
@@ -730,6 +869,14 @@ fn build_rolegroup_statefulset(
             config_map: Some(ConfigMapVolumeSource {
                 name: Some(format!("{}-catalog", rolegroup_ref.object_name())),
                 ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        })
+        .add_volume(Volume {
+            name: "log".to_string(),
+            empty_dir: Some(EmptyDirVolumeSource {
+                medium: None,
+                size_limit: Some(Quantity(format!("{LOG_VOLUME_SIZE_IN_MIB}Mi"))),
             }),
             ..Volume::default()
         })

@@ -50,7 +50,7 @@ pub fn container_prepare_args(trino: &TrinoCluster, catalogs: &[CatalogConfig]) 
         args.extend_from_slice(&catalog.init_container_extra_start_commands);
     });
 
-    vec![args.join(" && ")]
+    args
 }
 
 pub fn container_trino_args(
@@ -80,7 +80,7 @@ pub fn container_trino_args(
                 .collect::<Vec<_>>()
                 .join("\n");
 
-            // FIXME: When we switch to AuthencationClass static we need to fix this to not have credentials in the Pod manifest (for now they are hashes).
+            // FIXME: When we switch to AuthenticationClass static we need to fix this to not have credentials in the Pod manifest (for now they are hashes).
             args.push(format!(
                 "echo '{data}' > {path}/{db}",
                 data = user_data,
