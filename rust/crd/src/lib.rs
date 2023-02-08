@@ -145,8 +145,6 @@ pub enum Error {
     CannotRetrieveTrinoRole { role: String },
     #[snafu(display("the role group {role_group} is not defined"))]
     CannotRetrieveTrinoRoleGroup { role_group: String },
-    #[snafu(display("internal operator failure"))]
-    InternalOperatorFailure { source: ValidationError },
     #[snafu(display("fragment validation failure"))]
     FragmentValidationFailure { source: ValidationError },
 }
