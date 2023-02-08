@@ -15,7 +15,6 @@ use stackable_operator::{
     client::Client,
     cluster_resources::ClusterResources,
     commons::{opa::OpaApiVersion, product_image_selection::ResolvedProductImage},
-    config::fragment,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -159,8 +158,6 @@ pub enum Error {
         source: FromTrinoCatalogError,
         catalog: ObjectRef<TrinoCatalog>,
     },
-    #[snafu(display("failed to resolve and merge resource config for role and role group"))]
-    FailedToResolveResourceConfig { source: stackable_trino_crd::Error },
     #[snafu(display("invalid memory resource configuration - missing default or value in crd?"))]
     MissingMemoryResourceConfig,
     #[snafu(display("could not convert / scale memory resource config to [{unit}]"))]
@@ -183,11 +180,6 @@ pub enum Error {
     #[snafu(display("failed to retrieve secret for internal communications"))]
     FailedToRetrieveInternalSecret {
         source: stackable_operator::error::Error,
-    },
-    #[snafu(display("failed to validate resources for [{rolegroup}]"))]
-    ResourceValidation {
-        source: fragment::ValidationError,
-        rolegroup: RoleGroupRef<TrinoCluster>,
     },
     #[snafu(display("failed to resolve and merge config for role and role group"))]
     FailedToResolveConfig { source: stackable_trino_crd::Error },
