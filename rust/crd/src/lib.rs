@@ -17,7 +17,11 @@ use stackable_operator::{
             PvcConfig, PvcConfigFragment, Resources, ResourcesFragment,
         },
     },
-    config::{fragment, fragment::Fragment, fragment::ValidationError, merge::Merge},
+    config::{
+        fragment::Fragment,
+        fragment::{self, ValidationError},
+        merge::Merge,
+    },
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -131,8 +135,6 @@ pub enum Error {
     NoNamespace,
     #[snafu(display("object has no names"))]
     NoName,
-    #[snafu(display("object defines no version"))]
-    ObjectHasNoVersion,
     #[snafu(display("unknown role {role}. Should be one of {roles:?}"))]
     UnknownTrinoRole {
         source: strum::ParseError,
@@ -145,6 +147,8 @@ pub enum Error {
     CannotRetrieveTrinoRoleGroup { role_group: String },
     #[snafu(display("internal operator failure"))]
     InternalOperatorFailure { source: ValidationError },
+    #[snafu(display("fragment validation failure"))]
+    FragmentValidationFailure { source: ValidationError },
 }
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -179,13 +183,13 @@ pub struct TrinoClusterSpec {
     pub authentication: Option<TrinoAuthentication>,
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub coordinators: Option<Role<TrinoConfig>>,
+    pub coordinators: Option<Role<TrinoConfigFragment>>,
     /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
     /// to include in the Trino instance
     pub catalog_label_selector: LabelSelector,
     /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workers: Option<Role<TrinoConfig>>,
+    pub workers: Option<Role<TrinoConfigFragment>>,
     /// Specify the type of the created kubernetes service.
     /// This attribute will be removed in a future release when listener-operator is finished.
     /// Use with caution.
@@ -320,41 +324,56 @@ pub struct TrinoStorageConfig {
     pub data: PvcConfig,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
+#[fragment_attrs(
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        Merge,
+        JsonSchema,
+        PartialEq,
+        Serialize
+    ),
+    serde(rename_all = "camelCase")
+)]
 pub struct TrinoConfig {
     // config.properties
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
     // log.properties
     pub log_level: Option<String>,
-    // misc
-    pub resources: Option<ResourcesFragment<TrinoStorageConfig, NoRuntimeLimits>>,
+    #[fragment_attrs(serde(default))]
+    pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
 }
 
 impl TrinoConfig {
-    fn default_resources() -> ResourcesFragment<TrinoStorageConfig, NoRuntimeLimits> {
-        ResourcesFragment {
-            cpu: CpuLimitsFragment {
-                min: Some(Quantity("200m".to_owned())),
-                max: Some(Quantity("4".to_owned())),
-            },
-            memory: MemoryLimitsFragment {
-                limit: Some(Quantity("2Gi".to_owned())),
-                runtime_limits: NoRuntimeLimitsFragment {},
-            },
-            storage: TrinoStorageConfigFragment {
-                data: PvcConfigFragment {
-                    capacity: Some(Quantity("2Gi".to_owned())),
-                    storage_class: None,
-                    selectors: None,
+    fn default_config() -> TrinoConfigFragment {
+        TrinoConfigFragment {
+            resources: ResourcesFragment {
+                cpu: CpuLimitsFragment {
+                    min: Some(Quantity("200m".to_owned())),
+                    max: Some(Quantity("4".to_owned())),
+                },
+                memory: MemoryLimitsFragment {
+                    limit: Some(Quantity("2Gi".to_owned())),
+                    runtime_limits: NoRuntimeLimitsFragment {},
+                },
+                storage: TrinoStorageConfigFragment {
+                    data: PvcConfigFragment {
+                        capacity: Some(Quantity("2Gi".to_owned())),
+                        storage_class: None,
+                        selectors: None,
+                    },
                 },
             },
+            ..TrinoConfigFragment::default()
         }
     }
 }
 
-impl Configuration for TrinoConfig {
+impl Configuration for TrinoConfigFragment {
     type Configurable = TrinoCluster;
 
     fn compute_env(
@@ -555,7 +574,7 @@ impl TrinoCluster {
     }
 
     /// Returns a reference to the role. Raises an error if the role is not defined.
-    pub fn role(&self, role_variant: &TrinoRole) -> Result<&Role<TrinoConfig>, Error> {
+    pub fn role(&self, role_variant: &TrinoRole) -> Result<&Role<TrinoConfigFragment>, Error> {
         match role_variant {
             TrinoRole::Coordinator => self.spec.coordinators.as_ref(),
             TrinoRole::Worker => self.spec.workers.as_ref(),
@@ -569,7 +588,7 @@ impl TrinoCluster {
     pub fn rolegroup(
         &self,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    ) -> Result<&RoleGroup<TrinoConfig>, Error> {
+    ) -> Result<RoleGroup<TrinoConfigFragment>, Error> {
         let role_variant =
             TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
                 role: rolegroup_ref.role.to_owned(),
@@ -581,6 +600,7 @@ impl TrinoCluster {
             .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
                 role_group: rolegroup_ref.role_group.to_owned(),
             })
+            .cloned()
     }
 
     /// List all coordinator pods expected to form the cluster
@@ -642,41 +662,25 @@ impl TrinoCluster {
     }
 
     /// Retrieve and merge resource configs for role and role groups
-    pub fn resolve_resource_config_for_role_and_rolegroup(
+    pub fn merged_config(
         &self,
-        role: &TrinoRole,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    ) -> Result<Resources<TrinoStorageConfig, NoRuntimeLimits>, Error> {
+    ) -> Result<TrinoConfig, Error> {
         // Initialize the result with all default values as baseline
-        let conf_defaults = TrinoConfig::default_resources();
+        let conf_defaults = TrinoConfig::default_config();
 
-        let role =
-            match role {
-                TrinoRole::Coordinator => self.spec.coordinators.as_ref().with_context(|| {
-                    CannotRetrieveTrinoRoleSnafu {
-                        role: role.to_string(),
-                    }
-                })?,
-                TrinoRole::Worker => {
-                    self.spec
-                        .workers
-                        .as_ref()
-                        .with_context(|| CannotRetrieveTrinoRoleSnafu {
-                            role: role.to_string(),
-                        })?
-                }
-            };
+        let role = self.role(&TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| {
+            UnknownTrinoRoleSnafu {
+                role: rolegroup_ref.role.to_owned(),
+                roles: TrinoRole::roles(),
+            }
+        })?)?;
 
         // Retrieve role resource config
-        let mut conf_role: ResourcesFragment<TrinoStorageConfig, NoRuntimeLimits> =
-            role.config.config.resources.clone().unwrap_or_default();
+        let mut conf_role = role.config.config.to_owned();
 
         // Retrieve rolegroup specific resource config
-        let mut conf_rolegroup: ResourcesFragment<TrinoStorageConfig, NoRuntimeLimits> = role
-            .role_groups
-            .get(&rolegroup_ref.role_group)
-            .and_then(|rg| rg.config.config.resources.clone())
-            .unwrap_or_default();
+        let mut conf_rolegroup = self.rolegroup(rolegroup_ref)?.config.config;
 
         // Merge more specific configs into default config
         // Hierarchy is:
@@ -686,8 +690,8 @@ impl TrinoCluster {
         conf_role.merge(&conf_defaults);
         conf_rolegroup.merge(&conf_role);
 
-        tracing::debug!("Merged resource config: {:?}", conf_rolegroup);
-        fragment::validate(conf_rolegroup).context(InternalOperatorFailureSnafu)
+        tracing::debug!("Merged config: {:?}", conf_rolegroup);
+        fragment::validate(conf_rolegroup).context(FragmentValidationFailureSnafu)
     }
 }
 
