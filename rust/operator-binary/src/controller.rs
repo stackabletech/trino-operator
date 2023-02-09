@@ -520,7 +520,7 @@ fn build_rolegroup_config_map(
                 // The maximum file size for the general application log file.
                 dynamic_resolved_config.insert(
                     "log.max-size".to_string(),
-                    Some(MAX_TRINO_LOG_FILES_SIZE_IN_MIB.to_string()),
+                    Some(format!("{MAX_TRINO_LOG_FILES_SIZE_IN_MIB}MB")),
                 );
 
                 // Add static properties and overrides
@@ -762,6 +762,7 @@ fn build_rolegroup_statefulset(
         catalogs,
     )?;
 
+    // TODO: prepare default missing!!!
     let mut prepare_args = vec![];
     if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
@@ -1015,8 +1016,8 @@ fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &st
 /// The roles and their configs are then validated and complemented by the product config.
 ///
 /// # Arguments
-/// * `resource`        - The NifiCluster containing the role definitions.
-/// * `version`         - The NifiCluster version.
+/// * `resource`        - The TrinoCluster containing the role definitions.
+/// * `version`         - The TrinoCluster version.
 /// * `product_config`  - The product config to validate and complement the user config.
 ///
 fn validated_product_config(

@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: trino-log-config
 data:
-  logback.xml: |
+  log.properties: |
    io.trino=info
    io.trino.server=debug
 ---
@@ -17,9 +17,7 @@ spec:
     productVersion: "{{ test_scenario['values']['trino'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['trino'].split('-stackable')[1] }}"
   catalogLabelSelector: {}
-{% if lookup('env', 'VECTOR_AGGREGATOR') %}
   vectorAggregatorConfigMapName: vector-aggregator-discovery
-{% endif %}
   coordinators:
     roleGroups:
       automatic-log-config:

@@ -26,6 +26,7 @@ use stackable_operator::{
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
+    product_logging,
     product_logging::spec::{Logging, LoggingFragment},
     role_utils::{Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
@@ -377,10 +378,12 @@ impl TrinoConfig {
         TrinoConfigFragment {
             // we can not use product_logging::spec::default_logging() here because it will
             // add ROOT loggers that we do not want / need.
-            logging: LoggingFragment::<Container> {
-                enable_vector_agent: Some(false),
-                containers: BTreeMap::new(),
-            },
+            // logging: LoggingFragment::<Container> {
+            //     enable_vector_agent: Some(false),
+            //     containers: BTreeMap::new(),
+            // },
+            // TODO: replace with correct defaults
+            logging: product_logging::spec::default_logging(),
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity("200m".to_owned())),
