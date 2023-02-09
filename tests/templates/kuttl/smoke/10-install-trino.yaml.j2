@@ -13,17 +13,26 @@ spec:
   opa:
     configMapName: opa
     package: trino
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+  vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
   authentication:
     method:
       multiUser:
         userCredentialsSecret:
           name: trino-users
   coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
     roleGroups:
       default:
         replicas: 1
         config: {}
   workers:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
     roleGroups:
       default:
         replicas: 1
