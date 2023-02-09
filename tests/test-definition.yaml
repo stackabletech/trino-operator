@@ -68,3 +68,6 @@ tests:
   - name: orphaned-resources
     dimensions:
       - trino-latest
+  - name: logging
+    dimensions:
+      - trino
