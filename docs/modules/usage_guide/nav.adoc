@@ -3,6 +3,7 @@
 ** xref:configuration.adoc[]
 ** xref:security.adoc[]
 ** xref:monitoring.adoc[]
+** xref:log-aggregation.adoc[]
 ** xref:query.adoc[]
 ** xref:catalogs/index.adoc[]
 *** xref:catalogs/black-hole.adoc[]
