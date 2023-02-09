@@ -512,7 +512,10 @@ fn build_rolegroup_config_map(
                 // The path to the log file used by Trino
                 dynamic_resolved_config.insert(
                     "log.path".to_string(),
-                    Some(format!("{STACKABLE_LOG_DIR}/server.log")),
+                    Some(format!(
+                        "{STACKABLE_LOG_DIR}/{container}/server.log",
+                        container = Container::Trino.to_string()
+                    )),
                 );
                 // The maximum number of general application log files to use, before log rotation replaces old content.
                 dynamic_resolved_config
