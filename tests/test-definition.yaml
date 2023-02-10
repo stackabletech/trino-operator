@@ -2,14 +2,14 @@
 dimensions:
   - name: trino
     values:
-      - 377-stackable23.4.0-rc1
-      - 387-stackable23.4.0-rc1
-      - 395-stackable23.4.0-rc1
-      - 396-stackable23.4.0-rc1
-      - 403-stackable23.4.0-rc1
+      - 377-stackable23.4.0-rc2
+      - 387-stackable23.4.0-rc2
+      - 395-stackable23.4.0-rc2
+      - 396-stackable23.4.0-rc2
+      - 403-stackable23.4.0-rc2
   - name: trino-latest
     values:
-      - 403-stackable23.4.0-rc1
+      - 403-stackable23.4.0-rc2
   - name: hive
     values:
       - 2.3.9-stackable23.4.0-rc1
