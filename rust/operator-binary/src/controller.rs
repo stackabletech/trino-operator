@@ -85,13 +85,11 @@ pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
 
 pub const MAX_TRINO_LOG_FILES_SIZE_IN_MIB: u32 = 10;
-pub const MAX_TRINO_HTTP_SERVER_LOG_FILES_SIZE_IN_MIB: u32 = 10;
 const MAX_PREPARE_LOG_FILE_SIZE_IN_MIB: u32 = 1;
 // Additional buffer space is not needed, as the `prepare` container already has sufficient buffer
 // space and all containers share a single volume.
 pub const LOG_VOLUME_SIZE_IN_MIB: u32 = MAX_TRINO_LOG_FILES_SIZE_IN_MIB
-    + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB
-    + MAX_TRINO_HTTP_SERVER_LOG_FILES_SIZE_IN_MIB;
+    + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB;
 
 const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 
@@ -515,7 +513,7 @@ fn build_rolegroup_config_map(
                 dynamic_resolved_config.insert(
                     "log.path".to_string(),
                     Some(format!(
-                        "{STACKABLE_LOG_DIR}/{container}/server.log",
+                        "{STACKABLE_LOG_DIR}/{container}/server.airlift.json",
                         container = Container::Trino.to_string()
                     )),
                 );
@@ -526,24 +524,6 @@ fn build_rolegroup_config_map(
                 dynamic_resolved_config.insert(
                     "log.max-size".to_string(),
                     Some(format!("{MAX_TRINO_LOG_FILES_SIZE_IN_MIB}MB")),
-                );
-
-                dynamic_resolved_config.insert(
-                    "http-server.log.path".to_string(),
-                    Some(format!(
-                        "{STACKABLE_LOG_DIR}/{container}/http-request.log",
-                        container = Container::Trino.to_string()
-                    )),
-                );
-                // The maximum number of log files for the HTTP server to use, before log rotation replaces old content.
-                dynamic_resolved_config.insert(
-                    "http-server.log.max-history".to_string(),
-                    Some("2".to_string()),
-                );
-                // The maximum file size for the log file of the HTTP server.
-                dynamic_resolved_config.insert(
-                    "http-server.log.max-size".to_string(),
-                    Some(format!("{MAX_TRINO_HTTP_SERVER_LOG_FILES_SIZE_IN_MIB}MB")),
                 );
 
                 // Add static properties and overrides

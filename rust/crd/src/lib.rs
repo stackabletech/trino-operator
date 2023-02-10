@@ -27,7 +27,10 @@ use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
     product_logging,
-    product_logging::spec::{Logging, LoggingFragment},
+    product_logging::spec::{
+        AutomaticContainerLogConfigFragment, ContainerLogConfigChoiceFragment,
+        ContainerLogConfigFragment, Logging, LoggingFragment,
+    },
     role_utils::{Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
 };
@@ -375,15 +378,23 @@ pub struct TrinoConfig {
 
 impl TrinoConfig {
     fn default_config() -> TrinoConfigFragment {
+        // We remove the default ROOT_LOGGER config from the trino container
+        // It is not required
+        let mut default_logging: LoggingFragment<Container> =
+            product_logging::spec::default_logging();
+        if let Some(ContainerLogConfigFragment {
+            choice:
+                Some(ContainerLogConfigChoiceFragment::Automatic(AutomaticContainerLogConfigFragment {
+                    loggers: config,
+                    ..
+                })),
+        }) = default_logging.containers.get_mut(&Container::Trino)
+        {
+            config.clear();
+        }
+
         TrinoConfigFragment {
-            // we can not use product_logging::spec::default_logging() here because it will
-            // add ROOT loggers that we do not want / need.
-            // logging: LoggingFragment::<Container> {
-            //     enable_vector_agent: Some(false),
-            //     containers: BTreeMap::new(),
-            // },
-            // TODO: replace with correct defaults
-            logging: product_logging::spec::default_logging(),
+            logging: default_logging,
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity("200m".to_owned())),
@@ -464,6 +475,13 @@ impl Configuration for TrinoConfigFragment {
                         Some(query_max_memory_per_node.to_string()),
                     );
                 }
+
+                // disable http-request logs
+                result.insert(
+                    "http-server.log.enabled".to_string(),
+                    Some("false".to_string()),
+                );
+
                 // Always use the internal secret (base64)
                 result.insert(
                     INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
@@ -571,12 +589,7 @@ impl Configuration for TrinoConfigFragment {
                 // This is filled in rust/operator-binary/src/config.rs due to required resolving
                 // of the AuthenticationClass
             }
-            LOG_PROPERTIES => {
-                // TODO: set loglevels
-                // if let Some(log_level) = &self.log_level {
-                //     result.insert(IO_TRINO.to_string(), Some(log_level.to_string()));
-                // }
-            }
+            LOG_PROPERTIES => {}
             _ => {}
         }
 
