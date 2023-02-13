@@ -11,4 +11,5 @@ The following guides are available here:
 * xref:usage_guide/configuration.adoc[]
 * xref:usage_guide/security.adoc[]
 * xref:usage_guide/monitoring.adoc[]
+* xref:usage_guide/log-aggregation.adoc[]
 * xref:usage_guide/query.adoc[]
