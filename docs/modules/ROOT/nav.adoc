@@ -1,2 +1,0 @@
-* xref:configuration.adoc[]
-* xref:concepts.adoc[]

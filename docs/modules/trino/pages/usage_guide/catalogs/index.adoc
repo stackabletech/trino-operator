@@ -3,7 +3,7 @@
 Trino does not have a built-in catalog and instead `provides` connectors to external data sources. This allows Trino to connect to, read from and join a wide variety of data sources.
 
 == Using catalogs
-Catalogues are defined in their own resources and referenced from cluster objects. See the xref:ROOT:concepts.adoc[] page for more details.
+Catalogues are defined in their own resources and referenced from cluster objects. See the xref:concepts.adoc[] page for more details.
 
 === Create a catalog
 
