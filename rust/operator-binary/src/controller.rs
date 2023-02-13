@@ -514,7 +514,7 @@ fn build_rolegroup_config_map(
                     "log.path".to_string(),
                     Some(format!(
                         "{STACKABLE_LOG_DIR}/{container}/server.airlift.json",
-                        container = Container::Trino.to_string()
+                        container = Container::Trino
                     )),
                 );
                 // The maximum number of general application log files to use, before log rotation replaces old content.
