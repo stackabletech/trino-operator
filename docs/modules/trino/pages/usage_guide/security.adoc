@@ -16,7 +16,7 @@ The https://trino.io/docs/current/security/password-file.html[file based authent
 
 [source,yaml]
 ----
-include::example$code/trino-file-auth-snippet.yaml[tag=secret]
+include::example$usage_guide/trino-file-auth-snippet.yaml[tag=secret]
 ----
 
 This contains username and password pairs as shown in the previous snippet. The username and password combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds:
@@ -30,7 +30,7 @@ Then reference the secret in your TrinoCluster definition:
 
 [source,yaml]
 ----
-include::example$code/trino-file-auth-snippet.yaml[tag=trino]
+include::example$usage_guide/trino-file-auth-snippet.yaml[tag=trino]
 ----
 
 === LDAP
@@ -39,7 +39,7 @@ The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDA
 
 [source,yaml]
 ----
-include::example$code/trino-ldap-auth-snippet.yaml[tag=authclass]
+include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=authclass]
 ----
 
 NOTE: You can follow the xref:home:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
@@ -48,7 +48,7 @@ With an AuthenticationClass ready, `PASSWORD` authentication using LDAP is done 
 
 [source,yaml]
 ----
-include::example$code/trino-ldap-auth-snippet.yaml[tag=trino]
+include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=trino]
 ----
 
 In the Trino CLI and web interface, LDAP users can now be used to log in.
@@ -59,7 +59,7 @@ In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Tri
 
 [source,yaml]
 ----
-include::example$code/opa-bundle-trino-cm.yaml[]
+include::example$usage_guide/opa-bundle-trino-cm.yaml[]
 ----
 
 Users should write their own rego rules for more complex OPA authorization.

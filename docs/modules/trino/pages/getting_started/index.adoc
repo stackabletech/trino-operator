@@ -20,5 +20,5 @@ Resource sizing depends on cluster type(s), usage and scope, but as a starting p
 
 The guide is divided into the following steps:
 
-* xref:installation.adoc[Installing the Operators]
-* xref:first_steps.adoc[Setting up the Trino cluster]
+* xref:getting_started/installation.adoc[Installing the Operators]
+* xref:getting_started/first_steps.adoc[Setting up the Trino cluster]

@@ -18,7 +18,7 @@ The Trino cluster can now be deployed:
 
 [source,yaml]
 ----
-include::example$code/trino-insecure.yaml[]
+include::example$usage_guide/trino-insecure.yaml[]
 ----
 
 We have defined a single catalog - Hive - which uses an embedded database (derby).
@@ -70,7 +70,7 @@ Securing the Trino cluster will disable all HTTP ports and disable the web inter
 
 [source,yaml]
 ----
-include::example$code/trino-secure-tls.yaml[]
+include::example$usage_guide/trino-secure-tls.yaml[]
 ----
 
 <1> The name of (and reference to) the `SecretClass`
@@ -92,7 +92,7 @@ This will disable the HTTP port and UI access and encrypt client-server communic
 
 [source,yaml]
 ----
-include::example$code/trino-secure-tls-only.yaml[]
+include::example$usage_guide/trino-secure-tls-only.yaml[]
 ----
 
 <1> The name of (and reference to) the `SecretClass`
@@ -112,7 +112,7 @@ Internal TLS is for encrypted and authenticated communications between coordinat
 
 [source,yaml]
 ----
-include::example$code/trino-secure-internal-tls.yaml[]
+include::example$usage_guide/trino-secure-internal-tls.yaml[]
 ----
 
 <1> The name of (and reference to) the `SecretClass`
