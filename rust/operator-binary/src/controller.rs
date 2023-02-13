@@ -88,8 +88,8 @@ pub const MAX_TRINO_LOG_FILES_SIZE_IN_MIB: u32 = 10;
 const MAX_PREPARE_LOG_FILE_SIZE_IN_MIB: u32 = 1;
 // Additional buffer space is not needed, as the `prepare` container already has sufficient buffer
 // space and all containers share a single volume.
-pub const LOG_VOLUME_SIZE_IN_MIB: u32 = MAX_TRINO_LOG_FILES_SIZE_IN_MIB
-    + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB;
+pub const LOG_VOLUME_SIZE_IN_MIB: u32 =
+    MAX_TRINO_LOG_FILES_SIZE_IN_MIB + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB;
 
 const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 

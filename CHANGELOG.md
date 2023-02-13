@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- [BREAKING]: Removed `log_level` from `TrinoConfig` which is now set via the logging framework struct ([#380]). 
+- [BREAKING]: Removed `log_level` from `TrinoConfig` which is now set via the logging framework struct ([#380]).
 
 [#378]: https://github.com/stackabletech/trino-operator/pull/378
 [#379]: https://github.com/stackabletech/trino-operator/pull/379
