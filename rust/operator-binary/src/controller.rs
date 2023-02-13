@@ -4,20 +4,17 @@ use crate::{
     command, config,
     config::password_authenticator_properties,
 };
+
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::cluster_resources::ClusterResources;
-use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
         SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
-    commons::{
-        opa::OpaApiVersion,
-        resources::{NoRuntimeLimits, Resources},
-    },
+    cluster_resources::ClusterResources,
+    commons::{opa::OpaApiVersion, product_image_selection::ResolvedProductImage},
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -35,7 +32,8 @@ use stackable_operator::{
     },
     labels::{role_group_selector_labels, role_selector_labels, ObjectLabels},
     logging::controller::ReconcilerError,
-    memory::{to_java_heap_value, BinaryMultiple},
+    memory::BinaryMultiple,
+    memory::MemoryQuantity,
     product_config::{self, types::PropertyNameKind, ProductConfigManager},
     product_config_utils::{
         transform_all_roles_to_config, validate_all_roles_and_groups_config,
@@ -48,10 +46,10 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    TlsSecretClass, TrinoCluster, TrinoRole, TrinoStorageConfig, ACCESS_CONTROL_PROPERTIES,
-    APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
-    ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    TlsSecretClass, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
+    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET,
+    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_HEAP_FACTOR,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
     STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
     STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
@@ -83,8 +81,6 @@ pub enum Error {
     ObjectHasNoNamespace,
     #[snafu(display("object defines no {} role", role))]
     MissingTrinoRole { role: String },
-    #[snafu(display("failed to calculate global service name"))]
-    GlobalServiceNameNotFound,
     #[snafu(display("failed to create cluster resources"))]
     CreateClusterResources {
         source: stackable_operator::error::Error,
@@ -137,8 +133,6 @@ pub enum Error {
     FailedToWriteJavaProperties {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
     },
-    #[snafu(display("failed to load Product Config"))]
-    ProductConfigLoadFailed,
     #[snafu(display("failed to processing authentication config element from k8s"))]
     FailedProcessingAuthentication { source: authentication::Error },
     #[snafu(display("failed to parse role: {source}"))]
@@ -155,10 +149,6 @@ pub enum Error {
     ResolveS3Connection {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("invalid S3 connection: {reason}"))]
-    InvalidS3Connection { reason: String },
-    #[snafu(display("failed to parse trino image version [{image_version}]"))]
-    TrinoImageVersionParseFailure { image_version: String },
     #[snafu(display("failed to get associated TrinoCatalogs"))]
     GetCatalogs {
         source: stackable_operator::error::Error,
@@ -168,12 +158,15 @@ pub enum Error {
         source: FromTrinoCatalogError,
         catalog: ObjectRef<TrinoCatalog>,
     },
-    #[snafu(display("failed to resolve and merge resource config for role and role group"))]
-    FailedToResolveResourceConfig { source: stackable_trino_crd::Error },
-    #[snafu(display("invalid java heap config - missing default or value in crd?"))]
-    InvalidJavaHeapConfig,
+    #[snafu(display("invalid memory resource configuration - missing default or value in crd?"))]
+    MissingMemoryResourceConfig,
+    #[snafu(display("could not convert / scale memory resource config to [{unit}]"))]
+    FailedToConvertMemoryResourceConfig {
+        source: stackable_operator::error::Error,
+        unit: String,
+    },
     #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
-    FailedToConvertJavaHeap {
+    FailedToConvertMemoryResourceConfigToJavaHeap {
         source: stackable_operator::error::Error,
         unit: String,
     },
@@ -188,6 +181,8 @@ pub enum Error {
     FailedToRetrieveInternalSecret {
         source: stackable_operator::error::Error,
     },
+    #[snafu(display("failed to resolve and merge config for role and role group"))]
+    FailedToResolveConfig { source: stackable_trino_crd::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -280,9 +275,9 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 
-            let resources = trino
-                .resolve_resource_config_for_role_and_rolegroup(&trino_role, &rolegroup)
-                .context(FailedToResolveResourceConfigSnafu)?;
+            let merged_config = trino
+                .merged_config(&rolegroup)
+                .context(FailedToResolveConfigSnafu)?;
 
             let rg_service = build_rolegroup_service(&trino, &resolved_product_image, &rolegroup)?;
             let rg_configmap = build_rolegroup_config_map(
@@ -291,9 +286,9 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &trino_role,
                 &rolegroup,
                 &config,
-                opa_connect_string.as_deref(),
-                &resources,
+                &merged_config,
                 authentication_config.as_ref(),
+                opa_connect_string.as_deref(),
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 &trino,
@@ -306,9 +301,9 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &resolved_product_image,
                 &rolegroup,
                 &config,
+                &merged_config,
                 authentication_config.as_ref(),
                 &catalogs,
-                &resources,
             )?;
 
             cluster_resources
@@ -398,31 +393,33 @@ fn build_rolegroup_config_map(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    opa_connect_string: Option<&str>,
-    resources: &Resources<TrinoStorageConfig, NoRuntimeLimits>,
+    merged_config: &TrinoConfig,
     authentication_config: Option<&TrinoAuthenticationConfig>,
+    opa_connect_string: Option<&str>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
-    let heap = to_java_heap_value(
-        resources
+    let memory_unit = BinaryMultiple::Mebi;
+    let heap_size = MemoryQuantity::try_from(
+        merged_config
+            .resources
             .memory
             .limit
             .as_ref()
-            .context(InvalidJavaHeapConfigSnafu)?,
-        JVM_HEAP_FACTOR,
-        BinaryMultiple::Mebi,
+            .context(MissingMemoryResourceConfigSnafu)?,
     )
-    .context(FailedToConvertJavaHeapSnafu {
-        unit: BinaryMultiple::Mebi.to_java_memory_unit(),
-    })?;
+    .context(FailedToConvertMemoryResourceConfigSnafu {
+        unit: memory_unit.to_java_memory_unit(),
+    })?
+    .scale_to(memory_unit)
+        * JVM_HEAP_FACTOR;
 
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
     let mut jvm_config = formatdoc!(
         "-server
-        -Xms{heap}m
-        -Xmx{heap}m
+        -Xms{heap}
+        -Xmx{heap}
         -XX:-UseBiasedLocking
         -XX:+UseG1GC
         -XX:G1HeapRegionSize=32M
@@ -438,7 +435,12 @@ fn build_rolegroup_config_map(
         -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
         -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
         -Djavax.net.ssl.trustStoreType=pkcs12
-        "
+        ",
+        heap = heap_size.format_for_java().context(
+            FailedToConvertMemoryResourceConfigToJavaHeapSnafu {
+                unit: memory_unit.to_java_memory_unit(),
+            }
+        )?
     );
 
     // TODO: we support only one coordinator for now
@@ -612,9 +614,9 @@ fn build_rolegroup_statefulset(
     resolved_product_image: &ResolvedProductImage,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    merged_config: &TrinoConfig,
     authentication_config: Option<&TrinoAuthenticationConfig>,
     catalogs: &[CatalogConfig],
-    resources: &Resources<TrinoStorageConfig, NoRuntimeLimits>,
 ) -> Result<StatefulSet> {
     let rolegroup = trino
         .rolegroup(rolegroup_ref)
@@ -697,7 +699,7 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
         .add_container_ports(container_ports(trino))
-        .resources(resources.clone().into())
+        .resources(merged_config.resources.clone().into())
         .readiness_probe(readiness_probe(trino))
         .liveness_probe(liveness_probe(trino))
         .build();
@@ -768,7 +770,8 @@ fn build_rolegroup_statefulset(
             },
             service_name: rolegroup_ref.object_name(),
             template: pod_builder.build_template(),
-            volume_claim_templates: Some(vec![resources
+            volume_claim_templates: Some(vec![merged_config
+                .resources
                 .storage
                 .data
                 .build_pvc("data", Some(vec!["ReadWriteOnce"]))]),
