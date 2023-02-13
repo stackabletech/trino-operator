@@ -6,9 +6,9 @@ This section will help you to use the Trino Stackable Operator. It will show you
 
 The following guides are available here:
 
-* xref:cluster.adoc[]
-* xref:catalogs/index.adoc[]
-* xref:configuration.adoc[]
-* xref:security.adoc[]
-* xref:monitoring.adoc[]
-* xref:query.adoc[]
+* xref:usage_guide/cluster.adoc[]
+* xref:usage_guide/catalogs/index.adoc[]
+* xref:usage_guide/configuration.adoc[]
+* xref:usage_guide/security.adoc[]
+* xref:usage_guide/monitoring.adoc[]
+* xref:usage_guide/query.adoc[]

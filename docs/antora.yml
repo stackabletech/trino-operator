@@ -1,8 +1,3 @@
-name: trino
+---
+name: home
 version: "nightly"
-title: Stackable Operator for Trino
-nav:
-  - modules/getting_started/nav.adoc
-  - modules/ROOT/nav.adoc
-  - modules/usage_guide/nav.adoc
-prerelease: true
