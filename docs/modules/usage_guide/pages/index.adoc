@@ -7,7 +7,7 @@ This section will help you to use the Trino Stackable Operator. It will show you
 The following guides are available here:
 
 * xref:cluster.adoc[]
-* xref:catalogs.adoc[]
+* xref:catalogs/index.adoc[]
 * xref:configuration.adoc[]
 * xref:security.adoc[]
 * xref:monitoring.adoc[]
