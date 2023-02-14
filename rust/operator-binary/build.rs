@@ -9,5 +9,5 @@ fn main() {
         "Cargo.toml".as_ref(),
         &out_dir.join("built.rs"),
     )
-        .unwrap();
+    .unwrap();
 }
