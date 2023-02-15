@@ -15,4 +15,3 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: trino-vector-aggregator-discovery
-
