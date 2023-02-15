@@ -782,7 +782,7 @@ fn build_rolegroup_statefulset(
     prepare_args.extend(command::container_prepare_args(
         trino,
         catalogs,
-        &merged_config,
+        merged_config,
     ));
 
     let container_prepare = cb_prepare

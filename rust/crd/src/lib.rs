@@ -378,23 +378,8 @@ pub struct TrinoConfig {
 
 impl TrinoConfig {
     fn default_config() -> TrinoConfigFragment {
-        // We remove the default ROOT_LOGGER config from the trino container
-        // It is not required
-        let mut default_logging: LoggingFragment<Container> =
-            product_logging::spec::default_logging();
-        if let Some(ContainerLogConfigFragment {
-            choice:
-                Some(ContainerLogConfigChoiceFragment::Automatic(AutomaticContainerLogConfigFragment {
-                    loggers: config,
-                    ..
-                })),
-        }) = default_logging.containers.get_mut(&Container::Trino)
-        {
-            config.clear();
-        }
-
         TrinoConfigFragment {
-            logging: default_logging,
+            logging: product_logging::spec::default_logging(),
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity("200m".to_owned())),

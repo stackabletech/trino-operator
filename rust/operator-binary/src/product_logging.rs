@@ -143,6 +143,13 @@ fn create_trino_log_properties(automatic_container_config: &AutomaticContainerLo
     automatic_container_config
         .loggers
         .iter()
-        .map(|(logger, config)| format!("{}={}\n", logger, TrinoLogLevel::from(config.level)))
+        .map(|(logger, config)| {
+            let log_level = TrinoLogLevel::from(config.level);
+            if logger == AutomaticContainerLogConfig::ROOT_LOGGER {
+                format!("={}\n", log_level)
+            } else {
+                format!("{}={}\n", logger, log_level)
+            }
+        })
         .collect::<String>()
 }
