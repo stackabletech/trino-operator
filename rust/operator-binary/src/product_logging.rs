@@ -42,6 +42,7 @@ pub enum TrinoLogLevel {
     Info,
     Warn,
     Error,
+    Off,
 }
 
 impl From<LogLevel> for TrinoLogLevel {
@@ -50,7 +51,8 @@ impl From<LogLevel> for TrinoLogLevel {
             LogLevel::TRACE | LogLevel::DEBUG => Self::Debug,
             LogLevel::INFO => Self::Info,
             LogLevel::WARN => Self::Warn,
-            LogLevel::ERROR | LogLevel::FATAL | LogLevel::NONE => Self::Error,
+            LogLevel::ERROR | LogLevel::FATAL => Self::Error,
+            LogLevel::NONE => Self::Off,
         }
     }
 }
@@ -134,8 +136,8 @@ pub fn get_vector_toml(
 ///
 /// The `log.properties` will adhere to the example format:
 /// ```
-/// io.trino=DEBUG
-/// io.trino.server=INFO
+/// io.trino=debug
+/// io.trino.server=info
 /// ```
 fn create_trino_log_properties(automatic_container_config: &AutomaticContainerLogConfig) -> String {
     automatic_container_config
