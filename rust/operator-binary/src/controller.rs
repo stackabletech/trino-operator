@@ -523,7 +523,8 @@ fn build_rolegroup_config_map(
                     )),
                 );
                 // We do not compress. This will result in LOG_MAX_TOTAL_SIZE / LOG_MAX_SIZE files.
-                dynamic_resolved_config.insert(LOG_COMPRESSION.to_string(), Some(format!("none")));
+                dynamic_resolved_config
+                    .insert(LOG_COMPRESSION.to_string(), Some("none".to_string()));
                 // The size of one log file
                 dynamic_resolved_config.insert(
                     LOG_MAX_SIZE.to_string(),
