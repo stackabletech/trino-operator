@@ -27,10 +27,7 @@ use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
     product_logging,
-    product_logging::spec::{
-        AutomaticContainerLogConfigFragment, ContainerLogConfigChoiceFragment,
-        ContainerLogConfigFragment, Logging, LoggingFragment,
-    },
+    product_logging::spec::Logging,
     role_utils::{Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
 };
