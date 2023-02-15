@@ -12,6 +12,6 @@ commands:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vector-aggregator-discovery
+  name: trino-vector-aggregator-discovery
 data:
   ADDRESS: trino-vector-aggregator:6123
