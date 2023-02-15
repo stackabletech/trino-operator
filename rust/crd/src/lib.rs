@@ -128,6 +128,12 @@ pub const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
 pub const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
 // TLS
 pub const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
+// Logging
+pub const LOG_FORMAT: &str = "log.format";
+pub const LOG_PATH: &str = "log.path";
+pub const LOG_COMPRESSION: &str = "log.compression";
+pub const LOG_MAX_SIZE: &str = "log.max-size";
+pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 

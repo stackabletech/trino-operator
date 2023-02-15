@@ -1,13 +1,13 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
+use crate::product_logging::{
+    get_log_properties, get_vector_toml, resolve_vector_aggregator_address,
+};
 use crate::{
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command, config,
     config::password_authenticator_properties,
 };
 
-use crate::product_logging::{
-    get_log_properties, get_vector_toml, resolve_vector_aggregator_address,
-};
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -61,7 +61,8 @@ use stackable_trino_crd::{
     Container, TlsSecretClass, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    JVM_HEAP_FACTOR, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
     STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
     STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
@@ -86,12 +87,13 @@ pub const CONTROLLER_NAME: &str = "trinocluster";
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
 
-pub const MAX_TRINO_LOG_FILES_SIZE_IN_MIB: u32 = 10;
+const TRINO_LOG_FILE_SIZE_IN_MIB: u32 = TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB / 2;
+const TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB: u32 = 10;
 const MAX_PREPARE_LOG_FILE_SIZE_IN_MIB: u32 = 1;
 // Additional buffer space is not needed, as the `prepare` container already has sufficient buffer
 // space and all containers share a single volume.
-pub const LOG_VOLUME_SIZE_IN_MIB: u32 =
-    MAX_TRINO_LOG_FILES_SIZE_IN_MIB + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB;
+const LOG_VOLUME_SIZE_IN_MIB: u32 =
+    TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB;
 
 const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 
@@ -510,22 +512,27 @@ fn build_rolegroup_config_map(
                 dynamic_resolved_config
                     .insert(DISCOVERY_URI.to_string(), Some(discovery.discovery_uri()));
 
-                dynamic_resolved_config.insert("log.format".to_string(), Some("json".to_string()));
+                // The log format used by Trino
+                dynamic_resolved_config.insert(LOG_FORMAT.to_string(), Some("json".to_string()));
                 // The path to the log file used by Trino
                 dynamic_resolved_config.insert(
-                    "log.path".to_string(),
+                    LOG_PATH.to_string(),
                     Some(format!(
                         "{STACKABLE_LOG_DIR}/{container}/server.airlift.json",
                         container = Container::Trino
                     )),
                 );
-                // The maximum number of general application log files to use, before log rotation replaces old content.
-                dynamic_resolved_config
-                    .insert("log.max-history".to_string(), Some("2".to_string()));
-                // The maximum file size for the general application log file.
+                // We do not compress. This will result in LOG_MAX_TOTAL_SIZE / LOG_MAX_SIZE files.
+                dynamic_resolved_config.insert(LOG_COMPRESSION.to_string(), Some(format!("none")));
+                // The size of one log file
                 dynamic_resolved_config.insert(
-                    "log.max-size".to_string(),
-                    Some(format!("{MAX_TRINO_LOG_FILES_SIZE_IN_MIB}MB")),
+                    LOG_MAX_SIZE.to_string(),
+                    Some(format!("{TRINO_LOG_FILE_SIZE_IN_MIB}MB")),
+                );
+                // The maximum size of all logfiles combined
+                dynamic_resolved_config.insert(
+                    LOG_MAX_TOTAL_SIZE.to_string(),
+                    Some(format!("{TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB}MB")),
                 );
 
                 // Add static properties and overrides
