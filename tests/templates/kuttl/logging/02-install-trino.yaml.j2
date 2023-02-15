@@ -17,7 +17,7 @@ spec:
     productVersion: "{{ test_scenario['values']['trino'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['trino'].split('-stackable')[1] }}"
   catalogLabelSelector: {}
-  vectorAggregatorConfigMapName: vector-aggregator-discovery
+  vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
   coordinators:
     roleGroups:
       automatic-log-config:
@@ -31,6 +31,14 @@ spec:
                   io.trino:
                     level: INFO
               vector:
+                console:
+                  level: INFO
+                file:
+                  level: INFO
+                loggers:
+                  ROOT:
+                    level: INFO
+              prepare:
                 console:
                   level: INFO
                 file:
@@ -60,6 +68,14 @@ spec:
                   io.trino:
                     level: INFO
               vector:
+                console:
+                  level: INFO
+                file:
+                  level: INFO
+                loggers:
+                  ROOT:
+                    level: INFO
+              prepare:
                 console:
                   level: INFO
                 file:
