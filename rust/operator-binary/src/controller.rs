@@ -10,7 +10,6 @@ use crate::product_logging::{
 };
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::product_logging::spec::{ConfigMapLogConfig, CustomContainerLogConfig};
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -47,7 +46,10 @@ use stackable_operator::{
     },
     product_logging::{
         self,
-        spec::{ContainerLogConfig, ContainerLogConfigChoice},
+        spec::{
+            ConfigMapLogConfig, ContainerLogConfig, ContainerLogConfigChoice,
+            CustomContainerLogConfig,
+        },
     },
     role_utils::RoleGroupRef,
 };
