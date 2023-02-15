@@ -767,7 +767,6 @@ fn build_rolegroup_statefulset(
         catalogs,
     )?;
 
-    // TODO: prepare default missing!!!
     let mut prepare_args = vec![];
     if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
@@ -780,7 +779,11 @@ fn build_rolegroup_statefulset(
         ));
     }
 
-    prepare_args.extend(command::container_prepare_args(trino, catalogs));
+    prepare_args.extend(command::container_prepare_args(
+        trino,
+        catalogs,
+        &merged_config,
+    ));
 
     let container_prepare = cb_prepare
         .image_from_product_image(resolved_product_image)
@@ -788,6 +791,7 @@ fn build_rolegroup_statefulset(
         .args(vec![prepare_args.join(" && ")])
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
+        .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
         .add_volume_mount("log", STACKABLE_LOG_DIR)
         .build();
 
@@ -803,7 +807,6 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("config", CONFIG_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
-        .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
         .add_volume_mount("log", STACKABLE_LOG_DIR)
         .add_container_ports(container_ports(trino))
         .resources(merged_config.resources.clone().into())

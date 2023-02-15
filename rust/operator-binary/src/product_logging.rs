@@ -36,7 +36,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 const VECTOR_AGGREGATOR_CM_ENTRY: &str = "ADDRESS";
 
 #[derive(Display)]
-#[strum(serialize_all = "kebab-case")]
+#[strum(serialize_all = "lowercase")]
 pub enum TrinoLogLevel {
     Debug,
     Info,
