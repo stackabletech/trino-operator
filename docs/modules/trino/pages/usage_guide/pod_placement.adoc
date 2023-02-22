@@ -1,6 +1,6 @@
 = Pod placement
 
-You can configure Pod placement for HDFS nodes as described in xref:concepts:pod_placement.adoc[].
+You can configure the Pod placement of the Trino pods as described in xref:concepts:pod_placement.adoc[].
 
 The default affinities created by the operator are:
 
