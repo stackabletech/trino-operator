@@ -213,8 +213,8 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .await
         .context(GetCatalogsSnafu)?;
     let mut catalogs = vec![];
-    for catalog in catalog_definitions {
-        let catalog_ref = ObjectRef::from_obj(&catalog);
+    for catalog in &catalog_definitions {
+        let catalog_ref = ObjectRef::from_obj(catalog);
         let catalog_config =
             CatalogConfig::from_catalog(catalog, client)
                 .await
@@ -276,7 +276,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 
             let merged_config = trino
-                .merged_config(&trino_role, &rolegroup)
+                .merged_config(&trino_role, &rolegroup, &catalog_definitions)
                 .context(FailedToResolveConfigSnafu)?;
 
             let rg_service = build_rolegroup_service(&trino, &resolved_product_image, &rolegroup)?;

@@ -5,49 +5,91 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{PodAffinity, PodAntiAffinity},
 };
 
-use crate::{TrinoRole, APP_NAME};
+use crate::{catalog::TrinoCatalogConnector, TrinoCatalog, TrinoRole, APP_NAME};
 
-pub fn get_affinity(cluster_name: &str, role: &TrinoRole) -> StackableAffinityFragment {
+pub fn get_affinity(
+    cluster_name: &str,
+    role: &TrinoRole,
+    trino_catalogs: &[TrinoCatalog],
+) -> StackableAffinityFragment {
     let affinity_between_cluster_pods = affinity_between_cluster_pods(APP_NAME, cluster_name, 20);
     match role {
-        TrinoRole::Coordinator => StackableAffinityFragment {
-            pod_affinity: Some(PodAffinity {
-                preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    affinity_between_cluster_pods,
-                ]),
-                required_during_scheduling_ignored_during_execution: None,
-            }),
-            pod_anti_affinity: Some(PodAntiAffinity {
-                preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    affinity_between_role_pods(APP_NAME, cluster_name, &role.to_string(), 70),
-                ]),
-                required_during_scheduling_ignored_during_execution: None,
-            }),
-            node_affinity: None,
-            node_selector: None,
-        },
-        TrinoRole::Worker => StackableAffinityFragment {
-            pod_affinity: Some(PodAffinity {
-                preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    affinity_between_cluster_pods,
-                    // affinity_between_role_pods(
-                    //     "hdfs",
-                    //     hdfs_discovery_cm_name, // The discovery cm has the same name as the HdfsCluster itself
-                    //     "datanode",
-                    //     50,
-                    // ),
-                ]),
-                required_during_scheduling_ignored_during_execution: None,
-            }),
-            pod_anti_affinity: Some(PodAntiAffinity {
-                preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    affinity_between_role_pods(APP_NAME, cluster_name, &role.to_string(), 70),
-                ]),
-                required_during_scheduling_ignored_during_execution: None,
-            }),
-            node_affinity: None,
-            node_selector: None,
-        },
+        TrinoRole::Coordinator => {
+            let mut affinities = vec![affinity_between_cluster_pods];
+            let hive_metastore_affinities = trino_catalogs
+                .iter()
+                .filter_map(|catalog| match &catalog.spec.connector {
+                    TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
+                    TrinoCatalogConnector::Iceberg(iceberg) => Some(&iceberg.metastore.config_map),
+                    TrinoCatalogConnector::BlackHole(_)
+                    | TrinoCatalogConnector::GoogleSheet(_)
+                    | TrinoCatalogConnector::Tpcds(_)
+                    | TrinoCatalogConnector::Tpch(_) => None,
+                })
+                .map(|hive_cluster_name| {
+                    affinity_between_role_pods(
+                        "hive",
+                        hive_cluster_name, // The discovery cm has the same name as the HiveCluster itself
+                        "metastore",
+                        50,
+                    )
+                });
+            affinities.extend(hive_metastore_affinities);
+            StackableAffinityFragment {
+                pod_affinity: Some(PodAffinity {
+                    preferred_during_scheduling_ignored_during_execution: Some(affinities),
+                    required_during_scheduling_ignored_during_execution: None,
+                }),
+                pod_anti_affinity: Some(PodAntiAffinity {
+                    preferred_during_scheduling_ignored_during_execution: Some(vec![
+                        affinity_between_role_pods(APP_NAME, cluster_name, &role.to_string(), 70),
+                    ]),
+                    required_during_scheduling_ignored_during_execution: None,
+                }),
+                node_affinity: None,
+                node_selector: None,
+            }
+        }
+        TrinoRole::Worker => {
+            let mut affinities = vec![affinity_between_cluster_pods];
+            let hdfs_affinities = trino_catalogs
+                .iter()
+                .filter_map(|catalog| match &catalog.spec.connector {
+                    TrinoCatalogConnector::Hive(hive) => {
+                        hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                    }
+                    TrinoCatalogConnector::Iceberg(iceberg) => {
+                        iceberg.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                    }
+                    TrinoCatalogConnector::BlackHole(_)
+                    | TrinoCatalogConnector::GoogleSheet(_)
+                    | TrinoCatalogConnector::Tpcds(_)
+                    | TrinoCatalogConnector::Tpch(_) => None,
+                })
+                .map(|hdfs_cluster_name| {
+                    affinity_between_role_pods(
+                        "hdfs",
+                        hdfs_cluster_name, // The discovery cm has the same name as the HdfsCluster itself
+                        "datanode",
+                        50,
+                    )
+                });
+            affinities.extend(hdfs_affinities);
+            StackableAffinityFragment {
+                pod_affinity: Some(PodAffinity {
+                    preferred_during_scheduling_ignored_during_execution: Some(affinities),
+                    required_during_scheduling_ignored_during_execution: None,
+                }),
+                pod_anti_affinity: Some(PodAntiAffinity {
+                    preferred_during_scheduling_ignored_during_execution: Some(vec![
+                        affinity_between_role_pods(APP_NAME, cluster_name, &role.to_string(), 70),
+                    ]),
+                    required_during_scheduling_ignored_during_execution: None,
+                }),
+                node_affinity: None,
+                node_selector: None,
+            }
+        }
     }
 }
 
@@ -97,7 +139,7 @@ mod tests {
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         let merged_config = trino
-            .merged_config(&role, &role.rolegroup_ref(&trino, "default"))
+            .merged_config(&role, &role.rolegroup_ref(&trino, "default"), &[])
             .unwrap();
 
         assert_eq!(
@@ -159,9 +201,224 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_hdfs_affinity() {
-        todo!()
+    #[rstest]
+    #[case(TrinoRole::Coordinator)]
+    #[case(TrinoRole::Worker)]
+    fn test_hms_and_hdfs_affinity(#[case] role: TrinoRole) {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "396"
+            stackableVersion: "23.1"
+          catalogLabelSelector:
+            matchLabels:
+              trino: simple-trino
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCatalog
+        metadata:
+          name: hive-1
+          labels:
+            trino: simple-trino
+        spec:
+          connector:
+            hive:
+              metastore:
+                configMap: simple-hive-1
+              hdfs:
+                configMap: simple-hdfs
+        "#;
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        let hive_catalog_1: TrinoCatalog =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCatalog
+        metadata:
+          name: tpch
+          labels:
+            trino: simple-trino
+        spec:
+          connector:
+            tpch: {}
+        "#;
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        let tpch_catalog: TrinoCatalog =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        let input = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCatalog
+            metadata:
+              name: hive-2
+              labels:
+                trino: simple-trino
+            spec:
+              connector:
+                hive:
+                  metastore:
+                    configMap: simple-hive-2
+                  s3:
+                    reference: minio
+            "#;
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        let hive_catalog_2: TrinoCatalog =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        let merged_config = trino
+            .merged_config(
+                &role,
+                &role.rolegroup_ref(&trino, "default"),
+                &[hive_catalog_1, tpch_catalog, hive_catalog_2],
+            )
+            .unwrap();
+
+        let mut expected_affinities = vec![WeightedPodAffinityTerm {
+            pod_affinity_term: PodAffinityTerm {
+                label_selector: Some(LabelSelector {
+                    match_expressions: None,
+                    match_labels: Some(BTreeMap::from([
+                        ("app.kubernetes.io/name".to_string(), "trino".to_string()),
+                        (
+                            "app.kubernetes.io/instance".to_string(),
+                            "simple-trino".to_string(),
+                        ),
+                    ])),
+                }),
+                namespace_selector: None,
+                namespaces: None,
+                topology_key: "kubernetes.io/hostname".to_string(),
+            },
+            weight: 20,
+        }];
+
+        match role {
+            TrinoRole::Coordinator => {
+                expected_affinities.push(WeightedPodAffinityTerm {
+                    pod_affinity_term: PodAffinityTerm {
+                        label_selector: Some(LabelSelector {
+                            match_expressions: None,
+                            match_labels: Some(BTreeMap::from([
+                                ("app.kubernetes.io/name".to_string(), "hive".to_string()),
+                                (
+                                    "app.kubernetes.io/instance".to_string(),
+                                    "simple-hive-1".to_string(),
+                                ),
+                                (
+                                    "app.kubernetes.io/component".to_string(),
+                                    "metastore".to_string(),
+                                ),
+                            ])),
+                        }),
+                        namespace_selector: None,
+                        namespaces: None,
+                        topology_key: "kubernetes.io/hostname".to_string(),
+                    },
+                    weight: 50,
+                });
+                expected_affinities.push(WeightedPodAffinityTerm {
+                    pod_affinity_term: PodAffinityTerm {
+                        label_selector: Some(LabelSelector {
+                            match_expressions: None,
+                            match_labels: Some(BTreeMap::from([
+                                ("app.kubernetes.io/name".to_string(), "hive".to_string()),
+                                (
+                                    "app.kubernetes.io/instance".to_string(),
+                                    "simple-hive-2".to_string(),
+                                ),
+                                (
+                                    "app.kubernetes.io/component".to_string(),
+                                    "metastore".to_string(),
+                                ),
+                            ])),
+                        }),
+                        namespace_selector: None,
+                        namespaces: None,
+                        topology_key: "kubernetes.io/hostname".to_string(),
+                    },
+                    weight: 50,
+                });
+            }
+            TrinoRole::Worker => {
+                expected_affinities.push(WeightedPodAffinityTerm {
+                    pod_affinity_term: PodAffinityTerm {
+                        label_selector: Some(LabelSelector {
+                            match_expressions: None,
+                            match_labels: Some(BTreeMap::from([
+                                ("app.kubernetes.io/name".to_string(), "hdfs".to_string()),
+                                (
+                                    "app.kubernetes.io/instance".to_string(),
+                                    "simple-hdfs".to_string(),
+                                ),
+                                (
+                                    "app.kubernetes.io/component".to_string(),
+                                    "datanode".to_string(),
+                                ),
+                            ])),
+                        }),
+                        namespace_selector: None,
+                        namespaces: None,
+                        topology_key: "kubernetes.io/hostname".to_string(),
+                    },
+                    weight: 50,
+                });
+            }
+        };
+
+        assert_eq!(
+            merged_config.affinity,
+            StackableAffinity {
+                pod_affinity: Some(PodAffinity {
+                    preferred_during_scheduling_ignored_during_execution: Some(expected_affinities),
+                    required_during_scheduling_ignored_during_execution: None,
+                }),
+                pod_anti_affinity: Some(PodAntiAffinity {
+                    preferred_during_scheduling_ignored_during_execution: Some(vec![
+                        WeightedPodAffinityTerm {
+                            pod_affinity_term: PodAffinityTerm {
+                                label_selector: Some(LabelSelector {
+                                    match_expressions: None,
+                                    match_labels: Some(BTreeMap::from([
+                                        ("app.kubernetes.io/name".to_string(), "trino".to_string(),),
+                                        (
+                                            "app.kubernetes.io/instance".to_string(),
+                                            "simple-trino".to_string(),
+                                        ),
+                                        (
+                                            "app.kubernetes.io/component".to_string(),
+                                            role.to_string(),
+                                        )
+                                    ]))
+                                }),
+                                namespace_selector: None,
+                                namespaces: None,
+                                topology_key: "kubernetes.io/hostname".to_string(),
+                            },
+                            weight: 70
+                        }
+                    ]),
+                    required_during_scheduling_ignored_during_execution: None,
+                }),
+                node_affinity: None,
+                node_selector: None,
+            }
+        );
     }
 
     #[test]
@@ -201,6 +458,7 @@ mod tests {
             .merged_config(
                 &TrinoRole::Coordinator,
                 &TrinoRole::Coordinator.rolegroup_ref(&trino, "default"),
+                &[],
             )
             .unwrap();
 

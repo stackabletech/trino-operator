@@ -7,6 +7,7 @@ use crate::authentication::TrinoAuthenticationMethod;
 use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
 
 use affinity::get_affinity;
+use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::commons::affinity::StackableAffinity;
@@ -352,7 +353,11 @@ pub struct TrinoConfig {
 }
 
 impl TrinoConfig {
-    fn default_config(cluster_name: &str, role: &TrinoRole) -> TrinoConfigFragment {
+    fn default_config(
+        cluster_name: &str,
+        role: &TrinoRole,
+        trino_catalogs: &[TrinoCatalog],
+    ) -> TrinoConfigFragment {
         TrinoConfigFragment {
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
@@ -371,7 +376,7 @@ impl TrinoConfig {
                     },
                 },
             },
-            affinity: get_affinity(cluster_name, role),
+            affinity: get_affinity(cluster_name, role, trino_catalogs),
             ..TrinoConfigFragment::default()
         }
     }
@@ -670,9 +675,10 @@ impl TrinoCluster {
         &self,
         role: &TrinoRole,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+        trino_catalogs: &[TrinoCatalog],
     ) -> Result<TrinoConfig, Error> {
         // Initialize the result with all default values as baseline
-        let conf_defaults = TrinoConfig::default_config(&self.name_any(), role);
+        let conf_defaults = TrinoConfig::default_config(&self.name_any(), role, trino_catalogs);
 
         let role = self.role(role)?;
 
