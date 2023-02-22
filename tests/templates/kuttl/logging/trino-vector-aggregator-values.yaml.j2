@@ -1,0 +1,103 @@
+---
+role: Aggregator
+service:
+  ports:
+  - name: api
+    port: 8686
+    protocol: TCP
+    targetPort: 8686
+  - name: vector
+    port: 6123
+    protocol: TCP
+    targetPort: 6000
+customConfig:
+  api:
+    address: 0.0.0.0:8686
+    enabled: true
+  sources:
+    vector:
+      address: 0.0.0.0:6000
+      type: vector
+      version: "2"
+  transforms:
+    automaticLogConfigCoordinatorTrino:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-coordinator-automatic-log-config-0" &&
+        .container == "trino"
+    automaticLogConfigCoordinatorVector:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-coordinator-automatic-log-config-0" &&
+        .container == "vector"
+    automaticLogConfigCoordinatorPrepare:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-coordinator-automatic-log-config-0" &&
+        .container == "prepare"
+    automaticLogConfigWorkerTrino:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-worker-automatic-log-config-0" &&
+        .container == "trino"
+    automaticLogConfigWorkerVector:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-worker-automatic-log-config-0" &&
+        .container == "vector"
+    automaticLogConfigWorkerPrepare:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-worker-automatic-log-config-0" &&
+        .container == "prepare"
+    customLogConfigCoordinatorTrino:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-coordinator-custom-log-config-0" &&
+        .container == "trino"
+    customLogConfigCoordinatorVector:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-coordinator-custom-log-config-0" &&
+        .container == "vector"
+    customLogConfigCoordinatorPrepare:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-coordinator-custom-log-config-0" &&
+        .container == "prepare"
+    customLogConfigWorkerTrino:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-worker-custom-log-config-0" &&
+        .container == "trino"
+    customLogConfigWorkerVector:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-worker-custom-log-config-0" &&
+        .container == "vector"
+    customLogConfigWorkerPrepare:
+      type: filter
+      inputs: [vector]
+      condition: >-
+        .pod == "test-trino-worker-custom-log-config-0" &&
+        .container == "prepare"
+  sinks:
+    out:
+      inputs: [automaticLogConfig*, customLogConfig*]
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+      type: vector
+      address: {{ lookup('env', 'VECTOR_AGGREGATOR') }}
+{% else %}
+      type: blackhole
+{% endif %}

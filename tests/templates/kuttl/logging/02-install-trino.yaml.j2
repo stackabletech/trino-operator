@@ -1,0 +1,96 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-log-config
+data:
+  log.properties: |
+   io.trino=info
+   io.trino.server=debug
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: test-trino
+spec:
+  image:
+    productVersion: "{{ test_scenario['values']['trino'].split('-stackable')[0] }}"
+    stackableVersion: "{{ test_scenario['values']['trino'].split('-stackable')[1] }}"
+  catalogLabelSelector: {}
+  vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
+  coordinators:
+    roleGroups:
+      automatic-log-config:
+        replicas: 1
+        config:
+          logging:
+            enableVectorAgent: true
+            containers:
+              trino:
+                loggers:
+                  io.trino:
+                    level: INFO
+              vector:
+                console:
+                  level: INFO
+                file:
+                  level: INFO
+                loggers:
+                  ROOT:
+                    level: INFO
+              prepare:
+                console:
+                  level: INFO
+                file:
+                  level: INFO
+                loggers:
+                  ROOT:
+                    level: INFO
+      custom-log-config:
+        replicas: 1
+        config:
+          logging:
+            enableVectorAgent: true
+            containers:
+              trino:
+                custom:
+                  configMap: trino-log-config
+  workers:
+    roleGroups:
+      automatic-log-config:
+        replicas: 1
+        config:
+          logging:
+            enableVectorAgent: true
+            containers:
+              trino:
+                loggers:
+                  io.trino:
+                    level: INFO
+                  ROOT:
+                    level: ERROR
+              vector:
+                console:
+                  level: INFO
+                file:
+                  level: INFO
+                loggers:
+                  ROOT:
+                    level: INFO
+              prepare:
+                console:
+                  level: INFO
+                file:
+                  level: INFO
+                loggers:
+                  ROOT:
+                    level: INFO
+      custom-log-config:
+        replicas: 1
+        config:
+          logging:
+            enableVectorAgent: true
+            containers:
+              trino:
+                custom:
+                  configMap: trino-log-config

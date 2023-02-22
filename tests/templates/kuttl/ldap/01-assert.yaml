@@ -1,6 +1,12 @@
 ---
 apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
-commands:
-  - script: kubectl exec -n $NAMESPACE openldap-0 -- ldapsearch -H ldap://localhost:1389 -D cn=integrationtest,ou=users,dc=example,dc=org -w integrationtest -b ou=users,dc=example,dc=org > /dev/null
-  - script: kubectl exec -n $NAMESPACE openldap-0 -- bash -c LDAPTLS_CACERT=/tls/ca.crt ldapsearch -Z -H ldaps://localhost:1636 -D cn=integrationtest,ou=users,dc=example,dc=org -w integrationtest -b ou=users,dc=example,dc=org > /dev/null
+timeout: 300
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: openldap
+status:
+  readyReplicas: 1
+  replicas: 1

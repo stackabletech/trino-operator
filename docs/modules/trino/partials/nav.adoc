@@ -8,6 +8,7 @@
 ** xref:trino:usage_guide/configuration.adoc[]
 ** xref:trino:usage_guide/security.adoc[]
 ** xref:trino:usage_guide/monitoring.adoc[]
+** xref:trino:usage_guide/log-aggregation.adoc[]
 ** xref:trino:usage_guide/query.adoc[]
 ** xref:trino:usage_guide/catalogs/index.adoc[]
 *** xref:trino:usage_guide/catalogs/black-hole.adoc[]
