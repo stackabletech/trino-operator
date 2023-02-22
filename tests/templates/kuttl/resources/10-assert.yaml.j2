@@ -99,6 +99,9 @@ spec:
             limits:
               cpu: 800m
               memory: 4Gi
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+        - name: vector
+{% endif %}
 status:
   readyReplicas: 1
   replicas: 1
