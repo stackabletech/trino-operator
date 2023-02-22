@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Deploy default and support custom affinities ([#391]).
+
+[#391]: https://github.com/stackabletech/trino-operator/pull/391
+
 ### Changed
 
 - `operator-rs` `0.31.0` -> `0.35.0` ([#378], [#380]).
