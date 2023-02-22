@@ -1,0 +1,17 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: >-
+      helm install trino-vector-aggregator vector
+      --namespace $NAMESPACE
+      --version 0.19.0
+      --repo https://helm.vector.dev
+      --values trino-vector-aggregator-values.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-vector-aggregator-discovery
+data:
+  ADDRESS: trino-vector-aggregator:6123

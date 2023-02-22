@@ -3,19 +3,21 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use crate::authentication::TrinoAuthenticationMethod;
-use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
+use crate::{
+    authentication::{TrinoAuthentication, TrinoAuthenticationMethod},
+    discovery::TrinoPodRef,
+};
 
 use affinity::get_affinity;
 use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::affinity::StackableAffinity;
-use stackable_operator::commons::product_image_selection::ProductImage;
-use stackable_operator::role_utils::RoleGroup;
+
 use stackable_operator::{
     commons::{
+        affinity::StackableAffinity,
         opa::OpaConfig,
+        product_image_selection::ProductImage,
         resources::{
             CpuLimitsFragment, MemoryLimitsFragment, NoRuntimeLimits, NoRuntimeLimitsFragment,
             PvcConfig, PvcConfigFragment, Resources, ResourcesFragment,
@@ -29,11 +31,12 @@ use stackable_operator::{
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
-    role_utils::{Role, RoleGroupRef},
+    product_logging,
+    product_logging::spec::Logging,
+    role_utils::{Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
 };
-use std::collections::BTreeMap;
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
@@ -130,6 +133,12 @@ pub const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
 pub const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
 // TLS
 pub const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
+// Logging
+pub const LOG_FORMAT: &str = "log.format";
+pub const LOG_PATH: &str = "log.path";
+pub const LOG_COMPRESSION: &str = "log.compression";
+pub const LOG_MAX_SIZE: &str = "log.max-size";
+pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
@@ -197,6 +206,10 @@ pub struct TrinoClusterSpec {
     /// Use with caution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub service_type: Option<ServiceType>,
+    /// Name of the Vector aggregator discovery ConfigMap.
+    /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vector_aggregator_config_map_name: Option<String>,
 }
 
 // TODO: Temporary solution until listener-operator is finished
@@ -326,6 +339,27 @@ pub struct TrinoStorageConfig {
     pub data: PvcConfig,
 }
 
+#[derive(
+    Clone,
+    Debug,
+    Deserialize,
+    Display,
+    Eq,
+    EnumIter,
+    JsonSchema,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum Container {
+    Prepare,
+    Vector,
+    Trino,
+}
+
 #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
 #[fragment_attrs(
     derive(
@@ -344,8 +378,8 @@ pub struct TrinoConfig {
     // config.properties
     pub query_max_memory: Option<String>,
     pub query_max_memory_per_node: Option<String>,
-    // log.properties
-    pub log_level: Option<String>,
+    #[fragment_attrs(serde(default))]
+    pub logging: Logging<Container>,
     #[fragment_attrs(serde(default))]
     pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
     #[fragment_attrs(serde(default))]
@@ -359,6 +393,7 @@ impl TrinoConfig {
         trino_catalogs: &[TrinoCatalog],
     ) -> TrinoConfigFragment {
         TrinoConfigFragment {
+            logging: product_logging::spec::default_logging(),
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity("200m".to_owned())),
@@ -440,6 +475,13 @@ impl Configuration for TrinoConfigFragment {
                         Some(query_max_memory_per_node.to_string()),
                     );
                 }
+
+                // disable http-request logs
+                result.insert(
+                    "http-server.log.enabled".to_string(),
+                    Some("false".to_string()),
+                );
+
                 // Always use the internal secret (base64)
                 result.insert(
                     INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
@@ -547,11 +589,7 @@ impl Configuration for TrinoConfigFragment {
                 // This is filled in rust/operator-binary/src/config.rs due to required resolving
                 // of the AuthenticationClass
             }
-            LOG_PROPERTIES => {
-                if let Some(log_level) = &self.log_level {
-                    result.insert(IO_TRINO.to_string(), Some(log_level.to_string()));
-                }
-            }
+            LOG_PROPERTIES => {}
             _ => {}
         }
 
@@ -726,7 +764,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "23.4.0-rc1"
+            stackableVersion: "23.4.0-rc2"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -747,7 +785,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "23.4.0-rc1"
+            stackableVersion: "23.4.0-rc2"
           catalogLabelSelector: {}
           config:
             tls:
@@ -771,7 +809,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "23.4.0-rc1"
+            stackableVersion: "23.4.0-rc2"
           catalogLabelSelector: {}
           config:
             tls: null
@@ -791,7 +829,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "23.4.0-rc1"
+            stackableVersion: "23.4.0-rc2"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -818,7 +856,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "23.4.0-rc1"
+            stackableVersion: "23.4.0-rc2"
           catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -839,7 +877,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "23.4.0-rc1"
+            stackableVersion: "23.4.0-rc2"
           catalogLabelSelector: {}
           config:
             internalTls:
@@ -863,7 +901,7 @@ mod tests {
         spec:
           image:
             productVersion: "396"
-            stackableVersion: "23.4.0-rc1"
+            stackableVersion: "23.4.0-rc2"
           catalogLabelSelector: {}
           config:
             tls:

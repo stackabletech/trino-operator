@@ -18,6 +18,9 @@ spec:
     productVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[1] }}"
   catalogLabelSelector: {}
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+  vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
   authentication:
     method:
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
@@ -28,10 +31,16 @@ spec:
         authenticationClass: ldap-with-tls
 {% endif %}
   coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
     roleGroups:
       default:
         replicas: 1
   workers:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
     roleGroups:
       default:
         replicas: 1

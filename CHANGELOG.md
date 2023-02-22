@@ -6,12 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.31.0` -> `0.33.0` ([#378]).
-- Bumped stackable image versions to "23.4.0-rc1" ([#378]).
+- `operator-rs` `0.31.0` -> `0.35.0` ([#378], [#380]).
+- Bumped stackable image versions to `23.4.0-rc2` ([#378], [#380]).
 - Fragmented `TrinoConfig` ([#379]).
+- Enabled logging and log aggregation ([#380]).
+
+### Removed
+
+- [BREAKING]: Removed `log_level` from `TrinoConfig` which is now set via the logging framework struct ([#380]).
 
 [#378]: https://github.com/stackabletech/trino-operator/pull/378
 [#379]: https://github.com/stackabletech/trino-operator/pull/379
+[#380]: https://github.com/stackabletech/trino-operator/pull/380
 
 ## [23.1.0] - 2023-01-23
 

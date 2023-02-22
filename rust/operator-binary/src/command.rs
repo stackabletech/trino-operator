@@ -1,18 +1,42 @@
 use crate::catalog::config::CatalogConfig;
+use crate::controller::STACKABLE_LOG_CONFIG_DIR;
+
+use stackable_operator::product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice};
 use stackable_trino_crd::{
-    authentication::TrinoAuthenticationConfig, TrinoCluster, CONFIG_DIR_NAME, DATA_DIR_NAME,
-    LDAP_PASSWORD_ENV, LDAP_USER_ENV, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
-    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
-    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE,
-    SYSTEM_TRUST_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    authentication::TrinoAuthenticationConfig, Container, TrinoCluster, TrinoConfig,
+    CONFIG_DIR_NAME, DATA_DIR_NAME, LDAP_PASSWORD_ENV, LDAP_USER_ENV, LOG_PROPERTIES, PASSWORD_DB,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+    STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
+    USER_PASSWORD_DATA_DIR_NAME,
 };
 
 pub const STACKABLE_CLIENT_CA_CERT: &str = "stackable-client-ca-cert";
 pub const STACKABLE_SERVER_CA_CERT: &str = "stackable-server-ca-cert";
 pub const STACKABLE_INTERNAL_CA_CERT: &str = "stackable-internal-ca-cert";
 
-pub fn container_prepare_args(trino: &TrinoCluster, catalogs: &[CatalogConfig]) -> Vec<String> {
+pub fn container_prepare_args(
+    trino: &TrinoCluster,
+    catalogs: &[CatalogConfig],
+    merged_config: &TrinoConfig,
+) -> Vec<String> {
     let mut args = vec![];
+
+    // Copy custom logging provided `log.properties` to rw config
+    if let Some(ContainerLogConfig {
+        choice: Some(ContainerLogConfigChoice::Custom(_)),
+    }) = merged_config.logging.containers.get(&Container::Trino)
+    {
+        // copy config files to a writeable empty folder
+        args.push(format!(
+            "echo copying {STACKABLE_LOG_CONFIG_DIR}/{LOG_PROPERTIES} {rw_conf}/{LOG_PROPERTIES}",
+            rw_conf = RW_CONFIG_DIR_NAME
+        ));
+        args.push(format!(
+            "cp -RL {STACKABLE_LOG_CONFIG_DIR}/{LOG_PROPERTIES} {rw_conf}/{LOG_PROPERTIES}",
+            rw_conf = RW_CONFIG_DIR_NAME
+        ));
+    }
 
     // User password data
     if trino.tls_enabled() {
@@ -50,7 +74,7 @@ pub fn container_prepare_args(trino: &TrinoCluster, catalogs: &[CatalogConfig]) 
         args.extend_from_slice(&catalog.init_container_extra_start_commands);
     });
 
-    vec![args.join(" && ")]
+    args
 }
 
 pub fn container_trino_args(
@@ -80,7 +104,7 @@ pub fn container_trino_args(
                 .collect::<Vec<_>>()
                 .join("\n");
 
-            // FIXME: When we switch to AuthencationClass static we need to fix this to not have credentials in the Pod manifest (for now they are hashes).
+            // FIXME: When we switch to AuthenticationClass static we need to fix this to not have credentials in the Pod manifest (for now they are hashes).
             args.push(format!(
                 "echo '{data}' > {path}/{db}",
                 data = user_data,
