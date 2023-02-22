@@ -276,7 +276,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
 
             let merged_config = trino
-                .merged_config(&rolegroup)
+                .merged_config(&trino_role, &rolegroup)
                 .context(FailedToResolveConfigSnafu)?;
 
             let rg_service = build_rolegroup_service(&trino, &resolved_product_image, &rolegroup)?;
@@ -631,7 +631,7 @@ fn build_rolegroup_statefulset(
             container_name: "prepare".to_string(),
         })?;
     let mut pod_builder = PodBuilder::new();
-    pod_builder.node_selector_opt(rolegroup.selector.clone());
+    pod_builder.affinity(&merged_config.affinity);
 
     let mut env = config
         .get(&PropertyNameKind::Env)
