@@ -58,7 +58,7 @@ impl CatalogConfig {
     }
 
     pub async fn from_catalog(
-        catalog: TrinoCatalog,
+        catalog: &TrinoCatalog,
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let catalog_name = catalog
@@ -68,7 +68,7 @@ impl CatalogConfig {
             .ok_or(FromTrinoCatalogError::InvalidCatalogSpec)?;
         let catalog_namespace = catalog.namespace();
 
-        let mut catalog_config = match catalog.spec.connector {
+        let mut catalog_config = match &catalog.spec.connector {
             TrinoCatalogConnector::BlackHole(connector) => {
                 connector
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
@@ -103,7 +103,7 @@ impl CatalogConfig {
 
         catalog_config
             .properties
-            .extend(catalog.spec.config_overrides);
+            .extend(catalog.spec.config_overrides.clone());
 
         Ok(catalog_config)
     }

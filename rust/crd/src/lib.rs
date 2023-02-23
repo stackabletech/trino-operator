@@ -1,3 +1,4 @@
+pub mod affinity;
 pub mod authentication;
 pub mod catalog;
 pub mod discovery;
@@ -7,10 +8,14 @@ use crate::{
     discovery::TrinoPodRef,
 };
 
+use affinity::get_affinity;
+use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
+
 use stackable_operator::{
     commons::{
+        affinity::StackableAffinity,
         opa::OpaConfig,
         product_image_selection::ProductImage,
         resources::{
@@ -377,10 +382,16 @@ pub struct TrinoConfig {
     pub logging: Logging<Container>,
     #[fragment_attrs(serde(default))]
     pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
+    #[fragment_attrs(serde(default))]
+    pub affinity: StackableAffinity,
 }
 
 impl TrinoConfig {
-    fn default_config() -> TrinoConfigFragment {
+    fn default_config(
+        cluster_name: &str,
+        role: &TrinoRole,
+        trino_catalogs: &[TrinoCatalog],
+    ) -> TrinoConfigFragment {
         TrinoConfigFragment {
             logging: product_logging::spec::default_logging(),
             resources: ResourcesFragment {
@@ -400,6 +411,7 @@ impl TrinoConfig {
                     },
                 },
             },
+            affinity: get_affinity(cluster_name, role, trino_catalogs),
             ..TrinoConfigFragment::default()
         }
     }
@@ -699,23 +711,31 @@ impl TrinoCluster {
     /// Retrieve and merge resource configs for role and role groups
     pub fn merged_config(
         &self,
+        role: &TrinoRole,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+        trino_catalogs: &[TrinoCatalog],
     ) -> Result<TrinoConfig, Error> {
         // Initialize the result with all default values as baseline
-        let conf_defaults = TrinoConfig::default_config();
+        let conf_defaults = TrinoConfig::default_config(&self.name_any(), role, trino_catalogs);
 
-        let role = self.role(&TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| {
-            UnknownTrinoRoleSnafu {
-                role: rolegroup_ref.role.to_owned(),
-                roles: TrinoRole::roles(),
-            }
-        })?)?;
+        let role = self.role(role)?;
 
         // Retrieve role resource config
         let mut conf_role = role.config.config.to_owned();
 
         // Retrieve rolegroup specific resource config
         let mut conf_rolegroup = self.rolegroup(rolegroup_ref)?.config.config;
+
+        if let Some(RoleGroup {
+            selector: Some(selector),
+            ..
+        }) = role.role_groups.get(&rolegroup_ref.role_group)
+        {
+            // Migrate old `selector` attribute, see ADR 26 affinities.
+            // TODO Can be removed after support for the old `selector` field is dropped.
+            #[allow(deprecated)]
+            conf_rolegroup.affinity.add_legacy_selector(selector);
+        }
 
         // Merge more specific configs into default config
         // Hierarchy is:
