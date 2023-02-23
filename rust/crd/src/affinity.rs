@@ -12,56 +12,51 @@ pub fn get_affinity(
     role: &TrinoRole,
     trino_catalogs: &[TrinoCatalog],
 ) -> StackableAffinityFragment {
-{
     let affinity_between_cluster_pods = affinity_between_cluster_pods(APP_NAME, cluster_name, 20);
     let mut affinities = vec![affinity_between_cluster_pods];
-    let additional_affinities: Vec<WeightedPodAffinityTerm> = match role {
-        TrinoRole::Coordinator => {
-            trino_catalogs
-                .iter()
-                .filter_map(|catalog| match &catalog.spec.connector {
-                    TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
-                    TrinoCatalogConnector::Iceberg(iceberg) => Some(&iceberg.metastore.config_map),
-                    TrinoCatalogConnector::BlackHole(_)
-                    | TrinoCatalogConnector::GoogleSheet(_)
-                    | TrinoCatalogConnector::Tpcds(_)
-                    | TrinoCatalogConnector::Tpch(_) => None,
-                })
-                .map(|hive_cluster_name| {
-                    affinity_between_role_pods(
-                        "hive",
-                        hive_cluster_name, // The discovery cm has the same name as the HiveCluster itself
-                        "metastore",
-                        50,
-                    )
-                })
-                .collect()
-        }
-        TrinoRole::Worker => {
-            trino_catalogs
-                .iter()
-                .filter_map(|catalog| match &catalog.spec.connector {
-                    TrinoCatalogConnector::Hive(hive) => {
-                        hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
-                    }
-                    TrinoCatalogConnector::Iceberg(iceberg) => {
-                        iceberg.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
-                    }
-                    TrinoCatalogConnector::BlackHole(_)
-                    | TrinoCatalogConnector::GoogleSheet(_)
-                    | TrinoCatalogConnector::Tpcds(_)
-                    | TrinoCatalogConnector::Tpch(_) => None,
-                })
-                .map(|hdfs_cluster_name| {
-                    affinity_between_role_pods(
-                        "hdfs",
-                        hdfs_cluster_name, // The discovery cm has the same name as the HdfsCluster itself
-                        "datanode",
-                        50,
-                    )
-                })
-                .collect()
-        }
+    let additional_affinities: Vec<_> = match role {
+        TrinoRole::Coordinator => trino_catalogs
+            .iter()
+            .filter_map(|catalog| match &catalog.spec.connector {
+                TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
+                TrinoCatalogConnector::Iceberg(iceberg) => Some(&iceberg.metastore.config_map),
+                TrinoCatalogConnector::BlackHole(_)
+                | TrinoCatalogConnector::GoogleSheet(_)
+                | TrinoCatalogConnector::Tpcds(_)
+                | TrinoCatalogConnector::Tpch(_) => None,
+            })
+            .map(|hive_cluster_name| {
+                affinity_between_role_pods(
+                    "hive",
+                    hive_cluster_name, // The discovery cm has the same name as the HiveCluster itself
+                    "metastore",
+                    50,
+                )
+            })
+            .collect(),
+        TrinoRole::Worker => trino_catalogs
+            .iter()
+            .filter_map(|catalog| match &catalog.spec.connector {
+                TrinoCatalogConnector::Hive(hive) => {
+                    hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                }
+                TrinoCatalogConnector::Iceberg(iceberg) => {
+                    iceberg.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                }
+                TrinoCatalogConnector::BlackHole(_)
+                | TrinoCatalogConnector::GoogleSheet(_)
+                | TrinoCatalogConnector::Tpcds(_)
+                | TrinoCatalogConnector::Tpch(_) => None,
+            })
+            .map(|hdfs_cluster_name| {
+                affinity_between_role_pods(
+                    "hdfs",
+                    hdfs_cluster_name, // The discovery cm has the same name as the HdfsCluster itself
+                    "datanode",
+                    50,
+                )
+            })
+            .collect(),
     };
     affinities.extend(additional_affinities);
     StackableAffinityFragment {
@@ -78,7 +73,6 @@ pub fn get_affinity(
         node_affinity: None,
         node_selector: None,
     }
-}
 }
 
 #[cfg(test)]
