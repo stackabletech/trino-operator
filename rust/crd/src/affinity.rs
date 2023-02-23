@@ -12,11 +12,12 @@ pub fn get_affinity(
     role: &TrinoRole,
     trino_catalogs: &[TrinoCatalog],
 ) -> StackableAffinityFragment {
+{
     let affinity_between_cluster_pods = affinity_between_cluster_pods(APP_NAME, cluster_name, 20);
-    match role {
+    let mut affinities = vec![affinity_between_cluster_pods];
+    let additional_affinities: Vec<WeightedPodAffinityTerm> = match role {
         TrinoRole::Coordinator => {
-            let mut affinities = vec![affinity_between_cluster_pods];
-            let hive_metastore_affinities = trino_catalogs
+            trino_catalogs
                 .iter()
                 .filter_map(|catalog| match &catalog.spec.connector {
                     TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
@@ -33,26 +34,11 @@ pub fn get_affinity(
                         "metastore",
                         50,
                     )
-                });
-            affinities.extend(hive_metastore_affinities);
-            StackableAffinityFragment {
-                pod_affinity: Some(PodAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(affinities),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                pod_anti_affinity: Some(PodAntiAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(vec![
-                        affinity_between_role_pods(APP_NAME, cluster_name, &role.to_string(), 70),
-                    ]),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                node_affinity: None,
-                node_selector: None,
-            }
+                })
+                .collect()
         }
         TrinoRole::Worker => {
-            let mut affinities = vec![affinity_between_cluster_pods];
-            let hdfs_affinities = trino_catalogs
+            trino_catalogs
                 .iter()
                 .filter_map(|catalog| match &catalog.spec.connector {
                     TrinoCatalogConnector::Hive(hive) => {
@@ -73,24 +59,26 @@ pub fn get_affinity(
                         "datanode",
                         50,
                     )
-                });
-            affinities.extend(hdfs_affinities);
-            StackableAffinityFragment {
-                pod_affinity: Some(PodAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(affinities),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                pod_anti_affinity: Some(PodAntiAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(vec![
-                        affinity_between_role_pods(APP_NAME, cluster_name, &role.to_string(), 70),
-                    ]),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                node_affinity: None,
-                node_selector: None,
-            }
+                })
+                .collect()
         }
+    };
+    affinities.extend(additional_affinities);
+    StackableAffinityFragment {
+        pod_affinity: Some(PodAffinity {
+            preferred_during_scheduling_ignored_during_execution: Some(affinities),
+            required_during_scheduling_ignored_during_execution: None,
+        }),
+        pod_anti_affinity: Some(PodAntiAffinity {
+            preferred_during_scheduling_ignored_during_execution: Some(vec![
+                affinity_between_role_pods(APP_NAME, cluster_name, &role.to_string(), 70),
+            ]),
+            required_during_scheduling_ignored_during_execution: None,
+        }),
+        node_affinity: None,
+        node_selector: None,
     }
+}
 }
 
 #[cfg(test)]
