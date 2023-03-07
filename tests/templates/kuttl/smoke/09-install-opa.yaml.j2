@@ -7,6 +7,10 @@ spec:
   image:
     productVersion: "{{ test_scenario['values']['opa'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['opa'].split('-stackable')[1] }}"
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+  clusterConfig:
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
   servers:
     roleGroups:
       default:
