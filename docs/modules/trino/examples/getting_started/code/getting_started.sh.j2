@@ -55,12 +55,12 @@ echo "Installing Trino cluster from trino.yaml"
 kubectl apply -f trino.yaml
 # end::install-trino[]
 
-sleep 5
+sleep 15
 
 echo "Awaiting Trino rollout finish"
 # tag::watch-trino-rollout[]
-kubectl rollout status --watch statefulset/simple-trino-coordinator-default
-kubectl rollout status --watch statefulset/simple-trino-worker-default
+kubectl rollout status --watch --timeout=5m statefulset/simple-trino-coordinator-default
+kubectl rollout status --watch --timeout=5m statefulset/simple-trino-worker-default
 # end::watch-trino-rollout[]
 
 sleep 5
