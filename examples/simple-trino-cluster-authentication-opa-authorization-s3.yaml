@@ -7,17 +7,19 @@ spec:
   image:
     productVersion: "396"
     stackableVersion: "23.4.0-rc2"
-  opa:
-    configMapName: simple-opa
-    package: trino
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: simple-trino-users-secret
-  catalogLabelSelector:
-    matchLabels:
-      trino: simple-trino
+  clusterConfig:
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            name: simple-trino-users-secret
+    authorization:
+      opa:
+        configMapName: simple-opa
+        package: trino
+    catalogLabelSelector:
+      matchLabels:
+        trino: simple-trino
   coordinators:
     roleGroups:
       default:

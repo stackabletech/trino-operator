@@ -11,9 +11,10 @@ spec:
   image:
     productVersion: "396"
     stackableVersion: "23.4.0-rc2"
-  catalogLabelSelector:
-    matchLabels:
-      trino: simple-trino
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: simple-trino
   coordinators:
     roleGroups:
       default:
