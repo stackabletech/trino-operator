@@ -783,14 +783,8 @@ mod tests {
             catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_server_tls().as_deref(),
-            Some(TLS_DEFAULT_SECRET_CLASS)
-        );
-        assert_eq!(
-            trino.get_internal_tls().as_deref(),
-            Some(TLS_DEFAULT_SECRET_CLASS)
-        );
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -807,14 +801,8 @@ mod tests {
               serverSecretClass: simple-trino-server-tls
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_server_tls().as_deref(),
-            Some("simple-trino-server-tls")
-        );
-        assert_eq!(
-            trino.get_internal_tls().as_deref(),
-            Some(TLS_DEFAULT_SECRET_CLASS)
-        );
+        assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
+        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -850,14 +838,8 @@ mod tests {
               internalSecretClass: simple-trino-internal-tls
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_server_tls().as_deref(),
-            Some(TLS_DEFAULT_SECRET_CLASS)
-        );
-        assert_eq!(
-            trino.get_internal_tls().as_deref(),
-            Some("simple-trino-internal-tls")
-        );
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(trino.get_internal_tls(), Some("simple-trino-internal-tls"));
     }
 
     #[test]
@@ -875,14 +857,8 @@ mod tests {
             catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_internal_tls().as_deref(),
-            Some(TLS_DEFAULT_SECRET_CLASS)
-        );
-        assert_eq!(
-            trino.get_server_tls().as_deref(),
-            Some(TLS_DEFAULT_SECRET_CLASS)
-        );
+        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -899,14 +875,8 @@ mod tests {
               internalSecretClass: simple-trino-internal-tls
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_internal_tls().as_deref(),
-            Some("simple-trino-internal-tls")
-        );
-        assert_eq!(
-            trino.get_server_tls().as_deref(),
-            Some(TLS_DEFAULT_SECRET_CLASS)
-        );
+        assert_eq!(trino.get_internal_tls(), Some("simple-trino-internal-tls"));
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -925,9 +895,6 @@ mod tests {
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_internal_tls(), None);
-        assert_eq!(
-            trino.get_server_tls().as_deref(),
-            Some("simple-trino-server-tls")
-        );
+        assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
     }
 }
