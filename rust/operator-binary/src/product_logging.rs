@@ -63,8 +63,11 @@ pub async fn resolve_vector_aggregator_address(
     trino: &TrinoCluster,
     client: &Client,
 ) -> Result<Option<String>> {
-    let vector_aggregator_address = if let Some(vector_aggregator_config_map_name) =
-        &trino.spec.vector_aggregator_config_map_name.as_ref()
+    let vector_aggregator_address = if let Some(vector_aggregator_config_map_name) = &trino
+        .spec
+        .cluster_config
+        .vector_aggregator_config_map_name
+        .as_ref()
     {
         let vector_aggregator_address = client
             .get::<ConfigMap>(

@@ -58,14 +58,14 @@ use stackable_trino_crd::{
     authentication::TrinoAuthenticationConfig,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    Container, TlsSecretClass, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
-    APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
-    ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
-    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
-    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    Container, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
+    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET,
+    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_HEAP_FACTOR,
+    LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES,
+    METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES,
+    PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -241,7 +241,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 .namespace
                 .as_deref()
                 .context(ObjectHasNoNamespaceSnafu)?,
-            &trino.spec.catalog_label_selector,
+            &trino.spec.cluster_config.catalog_label_selector,
         )
         .await
         .context(GetCatalogsSnafu)?;
@@ -278,7 +278,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let authentication_config = user_authentication(&trino, client).await?;
 
     // Assemble the OPA connection string from the discovery and the given path if provided
-    let opa_connect_string = if let Some(opa_config) = &trino.spec.opa {
+    let opa_connect_string = if let Some(opa_config) = trino
+        .spec
+        .cluster_config
+        .authorization
+        .as_ref()
+        .and_then(|authz| authz.opa.as_ref())
+    {
         Some(
             opa_config
                 .full_document_url_from_config_map(
@@ -412,6 +418,7 @@ pub fn build_coordinator_role_service(
             type_: Some(
                 trino
                     .spec
+                    .cluster_config
                     .service_type
                     .clone()
                     .unwrap_or_default()
@@ -919,7 +926,7 @@ fn build_rolegroup_statefulset(
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
-            replicas: if trino.spec.stopped.unwrap_or(false) {
+            replicas: if trino.spec.cluster_config.stopped.unwrap_or(false) {
                 Some(0)
             } else {
                 rolegroup.replicas.map(i32::from)
@@ -1249,10 +1256,10 @@ fn liveness_probe(trino: &TrinoCluster) -> Probe {
     }
 }
 
-fn create_tls_volume(volume_name: &str, tls_secret_class: &TlsSecretClass) -> Volume {
+fn create_tls_volume(volume_name: &str, tls_secret_class: &str) -> Volume {
     VolumeBuilder::new(volume_name)
         .ephemeral(
-            SecretOperatorVolumeSourceBuilder::new(&tls_secret_class.secret_class)
+            SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
                 .with_pod_scope()
                 .with_node_scope()
                 .build(),
@@ -1267,10 +1274,10 @@ fn tls_volume_mounts(
     cb_trino: &mut ContainerBuilder,
     catalogs: &[CatalogConfig],
 ) -> Result<()> {
-    if let Some(client_tls) = trino.get_client_tls() {
+    if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
         cb_trino.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume("server-tls-mount", client_tls));
+        pod_builder.add_volume(create_tls_volume("server-tls-mount", server_tls));
     }
 
     cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);

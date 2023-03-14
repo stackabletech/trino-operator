@@ -107,9 +107,10 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.1"
-          catalogLabelSelector:
-            matchLabels:
-              trino: simple-trino
+          clusterConfig:  
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
           coordinators:
             roleGroups:
               default:
@@ -196,9 +197,10 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.1"
-          catalogLabelSelector:
-            matchLabels:
-              trino: simple-trino
+          clusterConfig:  
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
           coordinators:
             roleGroups:
               default:
@@ -414,9 +416,10 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.1"
-          catalogLabelSelector:
-            matchLabels:
-              trino: simple-trino
+          clusterConfig:  
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
           coordinators:
             roleGroups:
               default:
