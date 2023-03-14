@@ -458,7 +458,7 @@ impl Configuration for TrinoConfigFragment {
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
         let authentication: Option<&TrinoAuthentication> = resource.get_authentication();
-        let client_tls_enabled: bool = resource.get_server_tls().is_some();
+        let server_tls_enabled: bool = resource.get_server_tls().is_some();
         let internal_tls_enabled: bool = resource.get_internal_tls().is_some();
 
         match file {
