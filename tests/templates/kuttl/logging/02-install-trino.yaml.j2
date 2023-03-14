@@ -16,8 +16,9 @@ spec:
   image:
     productVersion: "{{ test_scenario['values']['trino'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['trino'].split('-stackable')[1] }}"
-  catalogLabelSelector: {}
-  vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
+  clusterConfig:
+    catalogLabelSelector: {}
+    vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
   coordinators:
     roleGroups:
       automatic-log-config:

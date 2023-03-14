@@ -48,29 +48,28 @@ spec:
   image:
     productVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[1] }}"
-  catalogLabelSelector: {}
+  clusterConfig:
+    catalogLabelSelector: {}
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
-  vectorAggregatorConfigMapName: vector-aggregator-discovery
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
-  config:
-{% if test_scenario['values']['use-tls'] == 'true' %}
     tls:
-      secretClass: trino-tls
+{% if test_scenario['values']['use-tls'] == 'true' %}
+      serverSecretClass: trino-tls
 {% else  %}
-    tls: null
+      serverSecretClass: null
 {% endif %}
 {% if test_scenario['values']['use-internal-tls'] == 'true' %}
-    internalTls:
-      secretClass: trino-internal-tls
+      internalSecretClass: trino-internal-tls
 {% else  %}
-    internalTls: null
+      internalSecretClass: null
 {% endif %}
 {% if test_scenario['values']['use-authentication'] == 'true' and test_scenario['values']['use-tls'] == 'true' %}
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: trino-users
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            name: trino-users
 {% endif %}
   coordinators:
     config:
