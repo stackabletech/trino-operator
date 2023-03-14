@@ -10,17 +10,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- [BREAKING]: Moved top level config options (TLS, Authentication, Authorization etc.) to new top level field `clusterConfig` ([#400]).
-
-[#391]: https://github.com/stackabletech/trino-operator/pull/391
-[#400]: https://github.com/stackabletech/trino-operator/pull/400
-
-### Changed
-
 - `operator-rs` `0.31.0` -> `0.35.0` ([#378], [#380]).
 - Bumped stackable image versions to `23.4.0-rc2` ([#378], [#380]).
 - Fragmented `TrinoConfig` ([#379]).
 - Enabled logging and log aggregation ([#380]).
+- [BREAKING]: Moved top level config options (TLS, Authentication, Authorization etc.) to new top level field `clusterConfig` ([#400]).
 
 ### Removed
 
@@ -29,6 +23,8 @@ All notable changes to this project will be documented in this file.
 [#378]: https://github.com/stackabletech/trino-operator/pull/378
 [#379]: https://github.com/stackabletech/trino-operator/pull/379
 [#380]: https://github.com/stackabletech/trino-operator/pull/380
+[#391]: https://github.com/stackabletech/trino-operator/pull/391
+[#400]: https://github.com/stackabletech/trino-operator/pull/400
 
 ## [23.1.0] - 2023-01-23
 
