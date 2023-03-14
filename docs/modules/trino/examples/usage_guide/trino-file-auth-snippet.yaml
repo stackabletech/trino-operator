@@ -19,10 +19,11 @@ metadata:
   name: simple-trino
 spec:
   ...
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: simple-trino-users-secret
+  clusterConfig:
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            name: simple-trino-users-secret
   ...
 # end::trino[]

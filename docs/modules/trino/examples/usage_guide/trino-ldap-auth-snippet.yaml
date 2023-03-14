@@ -7,10 +7,11 @@ metadata:
   name: trino-with-ldap
 spec:
   ...
-  authentication:
-    method:
-      ldap:
-        authenticationClass: my-ldap
+  clusterConfig:
+    authentication:
+      method:
+        ldap:
+          authenticationClass: my-ldap
   ...
 # end::trino[]
 ---

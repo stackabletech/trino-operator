@@ -19,17 +19,17 @@ spec:
   image:
     productVersion: "396"
     stackableVersion: "23.4.0-rc2"
-  config:
+  clusterConfig:
     tls:
-      secretClass: trino-tls # <1>
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: trino-users # <2>
-  catalogLabelSelector:
-    matchLabels:
-      trino: simple-trino # <3>
+      serverSecretClass: trino-tls # <1>
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            name: trino-users # <2>
+    catalogLabelSelector:
+      matchLabels:
+        trino: simple-trino # <3>
   coordinators:
     roleGroups:
       default:
