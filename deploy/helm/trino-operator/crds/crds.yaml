@@ -24,104 +24,129 @@ spec:
           properties:
             spec:
               properties:
-                authentication:
-                  nullable: true
+                clusterConfig:
+                  description: Trini cluster configuration options.
                   properties:
-                    method:
-                      oneOf:
-                        - required:
-                            - multiUser
-                        - required:
-                            - ldap
+                    authentication:
+                      description: Authentication options for Trino.
+                      nullable: true
                       properties:
-                        ldap:
-                          description: LDAP based PASSWORD authentication
+                        method:
+                          oneOf:
+                            - required:
+                                - multiUser
+                            - required:
+                                - ldap
                           properties:
-                            authenticationClass:
-                              type: string
-                          required:
-                            - authenticationClass
-                          type: object
-                        multiUser:
-                          description: File based PASSWORD authentication via user:password combinations from a secret
-                          properties:
-                            userCredentialsSecret:
-                              description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
+                            ldap:
+                              description: LDAP based PASSWORD authentication
                               properties:
-                                name:
-                                  description: name is unique within a namespace to reference a secret resource.
+                                authenticationClass:
                                   type: string
-                                namespace:
-                                  description: namespace defines the space within which the secret name must be unique.
-                                  type: string
+                              required:
+                                - authenticationClass
                               type: object
+                            multiUser:
+                              description: File based PASSWORD authentication via user:password combinations from a secret
+                              properties:
+                                userCredentialsSecret:
+                                  description: SecretReference represents a Secret Reference. It has enough information to retrieve secret in any namespace
+                                  properties:
+                                    name:
+                                      description: name is unique within a namespace to reference a secret resource.
+                                      type: string
+                                    namespace:
+                                      description: namespace defines the space within which the secret name must be unique.
+                                      type: string
+                                  type: object
+                              required:
+                                - userCredentialsSecret
+                              type: object
+                          type: object
+                      required:
+                        - method
+                      type: object
+                    authorization:
+                      description: Authorization options for Trino.
+                      nullable: true
+                      properties:
+                        opa:
+                          description: The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
+                          nullable: true
+                          properties:
+                            configMapName:
+                              type: string
+                            package:
+                              nullable: true
+                              type: string
                           required:
-                            - userCredentialsSecret
+                            - configMapName
                           type: object
                       type: object
+                    catalogLabelSelector:
+                      description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance'
+                      properties:
+                        matchExpressions:
+                          description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                          items:
+                            description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                            properties:
+                              key:
+                                description: key is the label key that the selector applies to.
+                                type: string
+                              operator:
+                                description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                type: string
+                              values:
+                                description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                              - key
+                              - operator
+                            type: object
+                          type: array
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                          type: object
+                      type: object
+                    serviceType:
+                      description: Specify the type of the created kubernetes service. This attribute will be removed in a future release when listener-operator is finished. Use with caution.
+                      enum:
+                        - NodePort
+                        - ClusterIP
+                      nullable: true
+                      type: string
+                    stopped:
+                      description: Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
+                      nullable: true
+                      type: boolean
+                    tls:
+                      default:
+                        serverSecretClass: tls
+                        internalSecretClass: tls
+                      description: Global Trino Config for cluster settings like TLS.
+                      properties:
+                        internalSecretClass:
+                          default: tls
+                          description: 'Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server'
+                          nullable: true
+                          type: string
+                        serverSecretClass:
+                          default: tls
+                          description: 'Only affects client connections. This setting controls: - If TLS encryption is used at all - Which cert the servers should use to authenticate themselves against the client'
+                          nullable: true
+                          type: string
+                      type: object
+                    vectorAggregatorConfigMapName:
+                      description: Name of the Vector aggregator discovery ConfigMap. It must contain the key `ADDRESS` with the address of the Vector aggregator.
+                      nullable: true
+                      type: string
                   required:
-                    - method
-                  type: object
-                catalogLabelSelector:
-                  description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance'
-                  properties:
-                    matchExpressions:
-                      description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                      items:
-                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-                        properties:
-                          key:
-                            description: key is the label key that the selector applies to.
-                            type: string
-                          operator:
-                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                            type: string
-                          values:
-                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-                            items:
-                              type: string
-                            type: array
-                        required:
-                          - key
-                          - operator
-                        type: object
-                      type: array
-                    matchLabels:
-                      additionalProperties:
-                        type: string
-                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-                      type: object
-                  type: object
-                config:
-                  default:
-                    tls:
-                      secretClass: tls
-                    internalTls:
-                      secretClass: tls
-                  description: Global Trino Config for cluster settings like TLS
-                  properties:
-                    internalTls:
-                      default:
-                        secretClass: tls
-                      description: 'Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server'
-                      nullable: true
-                      properties:
-                        secretClass:
-                          type: string
-                      required:
-                        - secretClass
-                      type: object
-                    tls:
-                      default:
-                        secretClass: tls
-                      description: 'Only affects client connections. This setting controls: - If TLS encryption is used at all - Which cert the servers should use to authenticate themselves against the client'
-                      nullable: true
-                      properties:
-                        secretClass:
-                          type: string
-                      required:
-                        - secretClass
-                      type: object
+                    - catalogLabelSelector
                   type: object
                 coordinators:
                   description: Settings for the Coordinator Role/Process.
@@ -1507,7 +1532,7 @@ spec:
                     - required:
                         - productVersion
                         - stackableVersion
-                  description: Trino product image to use
+                  description: Trino product image to use.
                   properties:
                     custom:
                       description: Overwrite the docker image. Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
@@ -1542,33 +1567,6 @@ spec:
                       description: Stackable version of the product, e.g. 2.1.0
                       type: string
                   type: object
-                opa:
-                  description: The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
-                  nullable: true
-                  properties:
-                    configMapName:
-                      type: string
-                    package:
-                      nullable: true
-                      type: string
-                  required:
-                    - configMapName
-                  type: object
-                serviceType:
-                  description: Specify the type of the created kubernetes service. This attribute will be removed in a future release when listener-operator is finished. Use with caution.
-                  enum:
-                    - NodePort
-                    - ClusterIP
-                  nullable: true
-                  type: string
-                stopped:
-                  description: Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
-                  nullable: true
-                  type: boolean
-                vectorAggregatorConfigMapName:
-                  description: Name of the Vector aggregator discovery ConfigMap. It must contain the key `ADDRESS` with the address of the Vector aggregator.
-                  nullable: true
-                  type: string
                 workers:
                   description: Settings for the Worker Role/Process.
                   nullable: true
@@ -2946,7 +2944,7 @@ spec:
                     - roleGroups
                   type: object
               required:
-                - catalogLabelSelector
+                - clusterConfig
                 - image
               type: object
             status:
