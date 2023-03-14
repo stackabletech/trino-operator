@@ -505,7 +505,7 @@ impl Configuration for TrinoConfigFragment {
                 // If authentication is enabled and client tls is explicitly deactivated we error out
                 // Therefore from here on we can use resource.get_server_tls() as the only source
                 // of truth when enabling client TLS.
-                if authentication.is_some() && !client_tls_enabled {
+                if authentication.is_some() && !server_tls_enabled {
                     return Err(ConfigError::InvalidConfiguration {
                         reason:
                             "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
@@ -529,7 +529,7 @@ impl Configuration for TrinoConfigFragment {
                     }
                 }
 
-                if client_tls_enabled || internal_tls_enabled {
+                if server_tls_enabled || internal_tls_enabled {
                     // enable TLS
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
@@ -541,7 +541,7 @@ impl Configuration for TrinoConfigFragment {
                         Some(HTTPS_PORT.to_string()),
                     );
 
-                    let tls_store_dir = if client_tls_enabled {
+                    let tls_store_dir = if server_tls_enabled {
                         STACKABLE_SERVER_TLS_DIR
                     } else {
                         // allow insecure communication
@@ -769,7 +769,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_client_tls() {
+    fn test_server_tls() {
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
