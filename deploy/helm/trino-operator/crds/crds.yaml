@@ -25,7 +25,7 @@ spec:
             spec:
               properties:
                 clusterConfig:
-                  description: Trini cluster configuration options.
+                  description: Trino cluster configuration options.
                   properties:
                     authentication:
                       description: Authentication options for Trino.
@@ -84,7 +84,7 @@ spec:
                           type: object
                       type: object
                     catalogLabelSelector:
-                      description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance'
+                      description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance.'
                       properties:
                         matchExpressions:
                           description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -128,7 +128,7 @@ spec:
                       default:
                         serverSecretClass: tls
                         internalSecretClass: tls
-                      description: Global Trino Config for cluster settings like TLS.
+                      description: TLS configuration options for server and internal communication.
                       properties:
                         internalSecretClass:
                           default: tls

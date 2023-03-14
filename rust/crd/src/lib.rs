@@ -181,7 +181,7 @@ pub enum Error {
 pub struct TrinoClusterSpec {
     /// Trino product image to use.
     pub image: ProductImage,
-    /// Trini cluster configuration options.
+    /// Trino cluster configuration options.
     pub cluster_config: TrinoClusterConfig,
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -201,7 +201,7 @@ pub struct TrinoClusterConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization: Option<TrinoAuthorization>,
     /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
-    /// to include in the Trino instance
+    /// to include in the Trino instance.
     pub catalog_label_selector: LabelSelector,
     /// Specify the type of the created kubernetes service.
     /// This attribute will be removed in a future release when listener-operator is finished.
@@ -211,7 +211,7 @@ pub struct TrinoClusterConfig {
     /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stopped: Option<bool>,
-    /// Global Trino Config for cluster settings like TLS.
+    /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,
     /// Name of the Vector aggregator discovery ConfigMap.
