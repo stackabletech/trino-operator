@@ -19,12 +19,12 @@ spec:
   image:
     productVersion: "396"
     stackableVersion: "23.4.0-rc2"
-  config:
+  clusterConfig:
     tls:
-      secretClass: trino-tls # <1>
-  catalogLabelSelector:
-    matchLabels:
-      trino: simple-trino # <2>
+      serverSecretClass: trino-tls # <1>
+    catalogLabelSelector:
+      matchLabels:
+        trino: simple-trino # <2>
   coordinators:
     roleGroups:
       default:

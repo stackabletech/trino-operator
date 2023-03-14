@@ -179,33 +179,41 @@ pub enum Error {
 #[kube(status = "TrinoClusterStatus")]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
-    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stopped: Option<bool>,
-    /// Trino product image to use
+    /// Trino product image to use.
     pub image: ProductImage,
-    /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub opa: Option<OpaConfig>,
-    /// Global Trino Config for cluster settings like TLS
-    #[serde(default)]
-    pub config: GlobalTrinoConfig,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication: Option<TrinoAuthentication>,
+    /// Trino cluster configuration options.
+    pub cluster_config: TrinoClusterConfig,
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfigFragment>>,
-    /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
-    /// to include in the Trino instance
-    pub catalog_label_selector: LabelSelector,
     /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfigFragment>>,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrinoClusterConfig {
+    /// Authentication options for Trino.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authentication: Option<TrinoAuthentication>,
+    /// Authorization options for Trino.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authorization: Option<TrinoAuthorization>,
+    /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
+    /// to include in the Trino instance.
+    pub catalog_label_selector: LabelSelector,
     /// Specify the type of the created kubernetes service.
     /// This attribute will be removed in a future release when listener-operator is finished.
     /// Use with caution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub service_type: Option<ServiceType>,
+    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stopped: Option<bool>,
+    /// TLS configuration options for server and internal communication.
+    #[serde(default)]
+    pub tls: TrinoTls,
     /// Name of the Vector aggregator discovery ConfigMap.
     /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -228,40 +236,46 @@ impl Default for ServiceType {
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GlobalTrinoConfig {
-    /// Only affects client connections.
-    /// This setting controls:
-    /// - If TLS encryption is used at all
-    /// - Which cert the servers should use to authenticate themselves against the client
-    #[serde(default = "tls_default", skip_serializing_if = "Option::is_none")]
-    pub tls: Option<TlsSecretClass>,
-    /// Only affects internal communication. Use mutual verification between Trino nodes
-    /// This setting controls:
-    /// - Which cert the servers should use to authenticate themselves against other servers
-    /// - Which ca.crt to use when validating the other server
-    #[serde(default = "tls_default", skip_serializing_if = "Option::is_none")]
-    pub internal_tls: Option<TlsSecretClass>,
-}
-
-impl Default for GlobalTrinoConfig {
-    fn default() -> Self {
-        GlobalTrinoConfig {
-            tls: tls_default(),
-            internal_tls: tls_default(),
-        }
-    }
+pub struct TrinoAuthorization {
+    /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opa: Option<OpaConfig>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TlsSecretClass {
-    pub secret_class: String,
+pub struct TrinoTls {
+    /// Only affects client connections.
+    /// This setting controls:
+    /// - If TLS encryption is used at all
+    /// - Which cert the servers should use to authenticate themselves against the client
+    #[serde(
+        default = "tls_secret_class_default",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub server_secret_class: Option<String>,
+    /// Only affects internal communication. Use mutual verification between Trino nodes
+    /// This setting controls:
+    /// - Which cert the servers should use to authenticate themselves against other servers
+    /// - Which ca.crt to use when validating the other server
+    #[serde(
+        default = "tls_secret_class_default",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub internal_secret_class: Option<String>,
 }
 
-fn tls_default() -> Option<TlsSecretClass> {
-    Some(TlsSecretClass {
-        secret_class: TLS_DEFAULT_SECRET_CLASS.to_string(),
-    })
+impl Default for TrinoTls {
+    fn default() -> Self {
+        TrinoTls {
+            server_secret_class: tls_secret_class_default(),
+            internal_secret_class: tls_secret_class_default(),
+        }
+    }
+}
+
+fn tls_secret_class_default() -> Option<String> {
+    Some(TLS_DEFAULT_SECRET_CLASS.to_string())
 }
 
 #[derive(
@@ -444,7 +458,7 @@ impl Configuration for TrinoConfigFragment {
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
         let authentication: Option<&TrinoAuthentication> = resource.get_authentication();
-        let client_tls_enabled: bool = resource.get_client_tls().is_some();
+        let server_tls_enabled: bool = resource.get_server_tls().is_some();
         let internal_tls_enabled: bool = resource.get_internal_tls().is_some();
 
         match file {
@@ -489,9 +503,9 @@ impl Configuration for TrinoConfigFragment {
                 );
 
                 // If authentication is enabled and client tls is explicitly deactivated we error out
-                // Therefore from here on we can use resource.get_client_tls() as the only source
+                // Therefore from here on we can use resource.get_server_tls() as the only source
                 // of truth when enabling client TLS.
-                if authentication.is_some() && !client_tls_enabled {
+                if authentication.is_some() && !server_tls_enabled {
                     return Err(ConfigError::InvalidConfiguration {
                         reason:
                             "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
@@ -515,7 +529,7 @@ impl Configuration for TrinoConfigFragment {
                     }
                 }
 
-                if client_tls_enabled || internal_tls_enabled {
+                if server_tls_enabled || internal_tls_enabled {
                     // enable TLS
                     result.insert(
                         HTTP_SERVER_HTTPS_ENABLED.to_string(),
@@ -527,7 +541,7 @@ impl Configuration for TrinoConfigFragment {
                         Some(HTTPS_PORT.to_string()),
                     );
 
-                    let tls_store_dir = if client_tls_enabled {
+                    let tls_store_dir = if server_tls_enabled {
                         STACKABLE_SERVER_TLS_DIR
                     } else {
                         // allow insecure communication
@@ -678,34 +692,34 @@ impl TrinoCluster {
     /// Returns user provided authentication settings
     pub fn get_authentication(&self) -> Option<&TrinoAuthentication> {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.authentication.as_ref()
+        spec.cluster_config.authentication.as_ref()
     }
 
-    /// Return user provided client TLS settings
-    pub fn get_client_tls(&self) -> Option<&TlsSecretClass> {
+    /// Return user provided server TLS settings
+    pub fn get_server_tls(&self) -> Option<&str> {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.config.tls.as_ref()
+        spec.cluster_config.tls.server_secret_class.as_deref()
     }
 
     /// Return if client TLS should be set depending on settings for authentication and client TLS.
     pub fn tls_enabled(&self) -> bool {
-        self.get_authentication().is_some() || self.get_client_tls().is_some()
+        self.get_authentication().is_some() || self.get_server_tls().is_some()
     }
 
     /// Return user provided internal TLS settings.
-    pub fn get_internal_tls(&self) -> Option<&TlsSecretClass> {
+    pub fn get_internal_tls(&self) -> Option<&str> {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.config.internal_tls.as_ref()
+        spec.cluster_config.tls.internal_secret_class.as_deref()
     }
 
     /// Returns if the HTTP port should be exposed
     pub fn expose_http_port(&self) -> bool {
-        self.get_client_tls().is_none()
+        self.get_server_tls().is_none()
     }
 
     /// Returns if the HTTPS port should be exposed
     pub fn expose_https_port(&self) -> bool {
-        self.get_client_tls().is_some()
+        self.get_server_tls().is_some()
     }
 
     /// Retrieve and merge resource configs for role and role groups
@@ -755,7 +769,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_client_tls() {
+    fn test_server_tls() {
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -765,17 +779,12 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          catalogLabelSelector: {}
+          clusterConfig:  
+            catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_client_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS.to_string()
-        );
-        assert_eq!(
-            trino.get_internal_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS.to_string()
-        );
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -786,20 +795,14 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          catalogLabelSelector: {}
-          config:
+          clusterConfig:  
+            catalogLabelSelector: {}
             tls:
-              secretClass: simple-trino-client-tls
+              serverSecretClass: simple-trino-server-tls
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_client_tls().unwrap().secret_class,
-            "simple-trino-client-tls".to_string()
-        );
-        assert_eq!(
-            trino.get_internal_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS.to_string()
-        );
+        assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
+        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -810,16 +813,15 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          catalogLabelSelector: {}
-          config:
-            tls: null
+          clusterConfig:    
+            catalogLabelSelector: {}
+            tls: 
+              serverSecretClass: null
+              internalSecretClass: null
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_client_tls(), None);
-        assert_eq!(
-            trino.get_internal_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS.to_string()
-        );
+        assert_eq!(trino.get_server_tls(), None);
+        assert_eq!(trino.get_internal_tls(), None);
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -830,20 +832,14 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          catalogLabelSelector: {}
-          config:
-            internalTls:
-              secretClass: simple-trino-internal-tls
+          clusterConfig:
+            catalogLabelSelector: {}
+            tls:
+              internalSecretClass: simple-trino-internal-tls
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_client_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS.to_string()
-        );
-        assert_eq!(
-            trino.get_internal_tls().unwrap().secret_class,
-            "simple-trino-internal-tls"
-        );
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(trino.get_internal_tls(), Some("simple-trino-internal-tls"));
     }
 
     #[test]
@@ -857,17 +853,12 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          catalogLabelSelector: {}
+          clusterConfig:  
+            catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_internal_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS.to_string()
-        );
-        assert_eq!(
-            trino.get_client_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS
-        );
+        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -878,41 +869,32 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          catalogLabelSelector: {}
-          config:
-            internalTls:
-              secretClass: simple-trino-internal-tls
-        "#;
-        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.get_internal_tls().unwrap().secret_class,
-            "simple-trino-internal-tls".to_string()
-        );
-        assert_eq!(
-            trino.get_client_tls().unwrap().secret_class,
-            TLS_DEFAULT_SECRET_CLASS
-        );
-
-        let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: simple-trino
-        spec:
-          image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
-          catalogLabelSelector: {}
-          config:
+          clusterConfig:
+            catalogLabelSelector: {}
             tls:
-              secretClass: simple-trino-client-tls
-            internalTls: null
+              internalSecretClass: simple-trino-internal-tls
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(trino.get_internal_tls(), Some("simple-trino-internal-tls"));
+        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "396"
+            stackableVersion: "23.4.0-rc2"
+          clusterConfig:  
+            catalogLabelSelector: {}
+            tls:
+              serverSecretClass: simple-trino-server-tls
+              internalSecretClass: null
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_internal_tls(), None);
-        assert_eq!(
-            trino.get_client_tls().unwrap().secret_class,
-            "simple-trino-client-tls"
-        );
+        assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
     }
 }

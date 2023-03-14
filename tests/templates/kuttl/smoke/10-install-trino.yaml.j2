@@ -7,20 +7,22 @@ spec:
   image:
     productVersion: "{{ test_scenario['values']['trino'].split('-stackable')[0] }}"
     stackableVersion: "{{ test_scenario['values']['trino'].split('-stackable')[1] }}"
-  catalogLabelSelector:
-    matchLabels:
-      trino: trino
-  opa:
-    configMapName: opa
-    package: trino
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: trino
+    authentication:
+      method:
+        multiUser:
+          userCredentialsSecret:
+            name: trino-users
+    authorization:
+      opa:
+        configMapName: opa
+        package: trino
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
-  vectorAggregatorConfigMapName: vector-aggregator-discovery
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
-  authentication:
-    method:
-      multiUser:
-        userCredentialsSecret:
-          name: trino-users
   coordinators:
     config:
       logging:
