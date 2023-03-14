@@ -8,7 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Deploy default and support custom affinities ([#391]).
 
+### Changed
+
+- [BREAKING]: Moved top level config options (TLS, Authentication, Authorization etc.) to new top level field `clusterConfig` ([#400]).
+
 [#391]: https://github.com/stackabletech/trino-operator/pull/391
+[#400]: https://github.com/stackabletech/trino-operator/pull/400
 
 ### Changed
 
