@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Deploy default and support custom affinities ([#391]).
+- Cluster status conditions ([#xxx])
 
 ### Changed
 
@@ -25,6 +26,7 @@ All notable changes to this project will be documented in this file.
 [#380]: https://github.com/stackabletech/trino-operator/pull/380
 [#391]: https://github.com/stackabletech/trino-operator/pull/391
 [#400]: https://github.com/stackabletech/trino-operator/pull/400
+[#xxx]: https://github.com/stackabletech/trino-operator/pull/xxx
 
 ## [23.1.0] - 2023-01-23
 

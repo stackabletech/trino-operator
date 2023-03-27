@@ -52,7 +52,9 @@ use stackable_operator::{
         },
     },
     role_utils::RoleGroupRef,
+    status::condition::{compute_conditions, statefulset::StatefulSetConditionBuilder},
 };
+use stackable_trino_crd::TrinoClusterStatus;
 use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
@@ -216,6 +218,10 @@ pub enum Error {
         source: crate::product_logging::Error,
         cm_name: String,
     },
+    #[snafu(display("failed to update status"))]
+    ApplyStatus {
+        source: stackable_operator::error::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -313,6 +319,8 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .await
         .context(ResolveVectorAggregatorAddressSnafu)?;
 
+    let mut sts_cond_builder = StatefulSetConditionBuilder::default();
+
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&role).context(FailedToParseRoleSnafu)?;
         for (role_group, config) in role_config {
@@ -371,12 +379,14 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            cluster_resources
-                .add(client, &rg_stateful_set)
-                .await
-                .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
-                    rolegroup: rolegroup.clone(),
-                })?;
+            sts_cond_builder.add(
+                cluster_resources
+                    .add(client, &rg_stateful_set)
+                    .await
+                    .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
+                        rolegroup: rolegroup.clone(),
+                    })?,
+            );
         }
     }
 
@@ -384,6 +394,14 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .delete_orphaned_resources(client)
         .await
         .context(DeleteOrphanedResourcesSnafu)?;
+
+    let status = TrinoClusterStatus {
+        conditions: compute_conditions(trino.as_ref(), &[&sts_cond_builder]),
+    };
+    client
+        .apply_patch_status(OPERATOR_NAME, &*trino, &status)
+        .await
+        .context(ApplyStatusSnafu)?;
 
     Ok(Action::await_change())
 }
