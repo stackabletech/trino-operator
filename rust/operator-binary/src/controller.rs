@@ -10,7 +10,9 @@ use crate::{
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::builder::PodSecurityContextBuilder;
 use stackable_operator::cluster_resources::ClusterResourceApplyStrategy;
+use stackable_operator::commons::rbac::build_rbac_resources;
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -24,8 +26,8 @@ use stackable_operator::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 ConfigMap, ConfigMapVolumeSource, ContainerPort, EmptyDirVolumeSource, EnvVar,
-                EnvVarSource, PodSecurityContext, Probe, Secret, SecretKeySelector, Service,
-                ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                EnvVarSource, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
+                TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
@@ -84,6 +86,7 @@ pub struct Ctx {
 
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
+pub const TRINO_UID: i64 = 1000;
 
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
@@ -217,6 +220,16 @@ pub enum Error {
         source: crate::product_logging::Error,
         cm_name: String,
     },
+    #[snafu(display("failed to patch service account: {source}"))]
+    ApplyServiceAccount {
+        name: String,
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to patch role binding: {source}"))]
+    ApplyRoleBinding {
+        name: String,
+        source: stackable_operator::error::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -234,6 +247,20 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let resolved_product_image: ResolvedProductImage =
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
+
+    let (rbac_sa, rbac_rolebinding) = build_rbac_resources(trino.as_ref(), "trino");
+    client
+        .apply_patch(CONTROLLER_NAME, &rbac_sa, &rbac_sa)
+        .await
+        .with_context(|_| ApplyServiceAccountSnafu {
+            name: rbac_sa.name_unchecked(),
+        })?;
+    client
+        .apply_patch(CONTROLLER_NAME, &rbac_rolebinding, &rbac_rolebinding)
+        .await
+        .with_context(|_| ApplyRoleBindingSnafu {
+            name: rbac_rolebinding.name_unchecked(),
+        })?;
 
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
@@ -350,6 +377,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &merged_config,
                 authentication_config.as_ref(),
                 &catalogs,
+                &rbac_sa.name_unchecked(),
             )?;
 
             cluster_resources
@@ -720,6 +748,7 @@ fn build_rolegroup_statefulset(
     merged_config: &TrinoConfig,
     authentication_config: Option<&TrinoAuthenticationConfig>,
     catalogs: &[CatalogConfig],
+    sa_name: &str,
 ) -> Result<StatefulSet> {
     let rolegroup = trino
         .rolegroup(rolegroup_ref)
@@ -907,12 +936,14 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .security_context(PodSecurityContext {
-            run_as_user: Some(1000),
-            run_as_group: Some(1000),
-            fs_group: Some(1000),
-            ..PodSecurityContext::default()
-        });
+        .service_account_name(sa_name)
+        .security_context(
+            PodSecurityContextBuilder::new()
+                .run_as_user(TRINO_UID)
+                .run_as_group(0)
+                .fs_group(1000)
+                .build(),
+        );
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
