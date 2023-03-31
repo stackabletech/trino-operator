@@ -30,6 +30,7 @@ spec:
       labels:
         app.kubernetes.io/name: openldap
     spec:
+      serviceAccountName: "ldap-sa"
       containers:
         - name: openldap
           image: docker.io/bitnami/openldap:2.5
@@ -86,3 +87,91 @@ spec:
       targetPort: tls-ldap
   selector:
     app.kubernetes.io/name: openldap
+
+{% if test_scenario['values']['openshift'] == 'true' %}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: openldap-clusterrole
+rules:
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - stackable-openldap-scc
+    verbs:
+      - use
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: stackable-openldap-scc
+  annotations:
+    kubernetes.io/description: custom SCC for tests with OpenLDAP
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: true
+allowedCapabilities: null
+defaultAddCapabilities: null
+fsGroup:
+  type: RunAsAny
+groups: []
+priority: null
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - MKNOD
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+users: []
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - ephemeral
+  - hostPath
+  - nfs
+  - persistentVolumeClaim
+  - projected
+  - secret
+  - csi
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: use-integration-tests-scc
+  namespace: $NAMESPACE
+rules:
+- apiGroups: ["security.openshift.io"]
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["privileged"]
+  verbs: ["use"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ldap-sa
+  namespace: $NAMESPACE
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: use-integration-tests-scc
+  namespace: $NAMESPACE
+subjects:
+  - kind: ServiceAccount
+    name: ldap-sa
+roleRef:
+  kind: Role
+  name: use-integration-tests-scc
+  apiGroup: rbac.authorization.k8s.io
+{% endif %}
