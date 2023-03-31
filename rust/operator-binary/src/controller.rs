@@ -10,6 +10,7 @@ use crate::{
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::cluster_resources::ClusterResourceApplyStrategy;
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -272,6 +273,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         OPERATOR_NAME,
         CONTROLLER_NAME,
         &trino.object_ref(&()),
+        ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
     )
     .context(CreateClusterResourcesSnafu)?;
 
@@ -303,7 +305,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let coordinator_role_service = build_coordinator_role_service(&trino, &resolved_product_image)?;
 
     cluster_resources
-        .add(client, &coordinator_role_service)
+        .add(client, coordinator_role_service)
         .await
         .context(ApplyRoleServiceSnafu)?;
 
@@ -351,28 +353,28 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             )?;
 
             cluster_resources
-                .add(client, &rg_service)
+                .add(client, rg_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
             cluster_resources
-                .add(client, &rg_configmap)
+                .add(client, rg_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
             cluster_resources
-                .add(client, &rg_catalog_configmap)
+                .add(client, rg_catalog_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
             cluster_resources
-                .add(client, &rg_stateful_set)
+                .add(client, rg_stateful_set)
                 .await
                 .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
                     rolegroup: rolegroup.clone(),

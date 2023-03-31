@@ -13,6 +13,7 @@ use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 
+use stackable_operator::commons::cluster_operation::ClusterOperation;
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
@@ -189,6 +190,8 @@ pub struct TrinoClusterSpec {
     /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfigFragment>>,
+    #[serde(default)]
+    pub cluster_operation: ClusterOperation,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
