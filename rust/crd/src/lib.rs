@@ -212,9 +212,6 @@ pub struct TrinoClusterConfig {
     /// Use with caution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub service_type: Option<ServiceType>,
-    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stopped: Option<bool>,
     /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,
