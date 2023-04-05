@@ -87,3 +87,6 @@ tests:
   - name: logging
     dimensions:
       - trino
+  - name: cluster-operation
+    dimensions:
+      - trino-latest

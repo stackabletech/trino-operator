@@ -120,10 +120,6 @@ spec:
                         - ClusterIP
                       nullable: true
                       type: string
-                    stopped:
-                      description: Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
-                      nullable: true
-                      type: boolean
                     tls:
                       default:
                         serverSecretClass: tls
@@ -152,6 +148,7 @@ spec:
                   default:
                     stopped: false
                     reconciliationPaused: false
+                  description: Cluster operations like pause reconciliation or cluster stop.
                   properties:
                     reconciliationPaused:
                       default: false

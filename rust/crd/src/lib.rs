@@ -184,14 +184,15 @@ pub struct TrinoClusterSpec {
     pub image: ProductImage,
     /// Trino cluster configuration options.
     pub cluster_config: TrinoClusterConfig,
+    /// Cluster operations like pause reconciliation or cluster stop.
+    #[serde(default)]
+    pub cluster_operation: ClusterOperation,
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfigFragment>>,
     /// Settings for the Worker Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfigFragment>>,
-    #[serde(default)]
-    pub cluster_operation: ClusterOperation,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -211,9 +212,6 @@ pub struct TrinoClusterConfig {
     /// Use with caution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub service_type: Option<ServiceType>,
-    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stopped: Option<bool>,
     /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,

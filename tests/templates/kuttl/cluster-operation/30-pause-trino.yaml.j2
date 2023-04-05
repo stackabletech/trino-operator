@@ -1,0 +1,31 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  image:
+    productVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[0] }}"
+    stackableVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[1] }}"
+  clusterConfig:
+    catalogLabelSelector: {}
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  clusterOperation:
+    stopped: false
+    reconciliationPaused: true
+  coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
