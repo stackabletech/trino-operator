@@ -16,6 +16,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
+        cluster_operation::ClusterOperation,
         opa::OpaConfig,
         product_image_selection::ProductImage,
         resources::{
@@ -183,6 +184,9 @@ pub struct TrinoClusterSpec {
     pub image: ProductImage,
     /// Trino cluster configuration options.
     pub cluster_config: TrinoClusterConfig,
+    /// Cluster operations like pause reconciliation or cluster stop.
+    #[serde(default)]
+    pub cluster_operation: ClusterOperation,
     /// Settings for the Coordinator Role/Process.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfigFragment>>,
@@ -208,9 +212,6 @@ pub struct TrinoClusterConfig {
     /// Use with caution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub service_type: Option<ServiceType>,
-    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stopped: Option<bool>,
     /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,
