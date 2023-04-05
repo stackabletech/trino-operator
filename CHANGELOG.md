@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Deploy default and support custom affinities ([#391]).
+- Openshift compatibility ([#404]).
 - Extend cluster resources for status and cluster operation (paused, stopped) ([#405])
 
 ### Changed
@@ -26,6 +27,7 @@ All notable changes to this project will be documented in this file.
 [#380]: https://github.com/stackabletech/trino-operator/pull/380
 [#391]: https://github.com/stackabletech/trino-operator/pull/391
 [#400]: https://github.com/stackabletech/trino-operator/pull/400
+[#404]: https://github.com/stackabletech/trino-operator/pull/404
 [#405]: https://github.com/stackabletech/trino-operator/pull/405
 
 ## [23.1.0] - 2023-01-23
