@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 
 - [BREAKING]: Moved top level config options (TLS, Authentication, Authorization etc.) to new top level field `clusterConfig` ([#400]).
 - [BREAKING]: Support specifying Service type by moving `serviceType` (which was an experimental feature) to `clusterConfig.listenerClass`.
-  This enables us to later switch non-breaking to using `ListenerClasses` for the exposition of Services ([#406]).
+  This enables us to later switch non-breaking to using `ListenerClasses` for the exposure of Services ([#406]).
 - `operator-rs` `0.31.0` -> `0.37.0` ([#378], [#380], [#400]).
 - Bumped stackable image versions to `23.4.0-rc2` ([#378], [#380]).
 - Fragmented `TrinoConfig` ([#379]).
