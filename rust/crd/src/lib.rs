@@ -207,6 +207,13 @@ pub struct TrinoClusterConfig {
     /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
     /// to include in the Trino instance.
     pub catalog_label_selector: LabelSelector,
+    /// TLS configuration options for server and internal communication.
+    #[serde(default)]
+    pub tls: TrinoTls,
+    /// Name of the Vector aggregator discovery ConfigMap.
+    /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vector_aggregator_config_map_name: Option<String>,
     /// In the future this setting will control, which ListenerClass <https://docs.stackable.tech/home/stable/listener-operator/listenerclass.html>
     /// will be used to expose the service.
     /// Currently only a subset of the ListenerClasses are supported by choosing the type of the created Services
@@ -220,16 +227,6 @@ pub struct TrinoClusterConfig {
     /// * external-stable: Use a LoadBalancer service
     #[serde(default)]
     pub listener_class: CurrentlySupportedListenerClasses,
-    /// Emergency stop button, if `true` then all pods are stopped without affecting configuration (as setting `replicas` to `0` would).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stopped: Option<bool>,
-    /// TLS configuration options for server and internal communication.
-    #[serde(default)]
-    pub tls: TrinoTls,
-    /// Name of the Vector aggregator discovery ConfigMap.
-    /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub vector_aggregator_config_map_name: Option<String>,
 }
 
 // TODO: Temporary solution until listener-operator is finished
