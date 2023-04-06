@@ -16,7 +16,7 @@ use stackable_operator::{
         SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
-    cluster_resources::ClusterResources,
+    cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
     commons::{opa::OpaApiVersion, product_image_selection::ResolvedProductImage},
     k8s_openapi::{
         api::{
@@ -54,20 +54,19 @@ use stackable_operator::{
     role_utils::RoleGroupRef,
     status::condition::{compute_conditions, statefulset::StatefulSetConditionBuilder},
 };
-use stackable_trino_crd::TrinoClusterStatus;
 use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    Container, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET,
-    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_HEAP_FACTOR,
-    LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES,
-    METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES,
-    PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
+    APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
+    ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
+    JVM_HEAP_FACTOR, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
+    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -278,6 +277,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         OPERATOR_NAME,
         CONTROLLER_NAME,
         &trino.object_ref(&()),
+        ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
     )
     .context(CreateClusterResourcesSnafu)?;
 
@@ -309,7 +309,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let coordinator_role_service = build_coordinator_role_service(&trino, &resolved_product_image)?;
 
     cluster_resources
-        .add(client, &coordinator_role_service)
+        .add(client, coordinator_role_service)
         .await
         .context(ApplyRoleServiceSnafu)?;
 
@@ -359,21 +359,21 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             )?;
 
             cluster_resources
-                .add(client, &rg_service)
+                .add(client, rg_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
             cluster_resources
-                .add(client, &rg_configmap)
+                .add(client, rg_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
                 })?;
 
             cluster_resources
-                .add(client, &rg_catalog_configmap)
+                .add(client, rg_catalog_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
                     rolegroup: rolegroup.clone(),
@@ -381,7 +381,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
             sts_cond_builder.add(
                 cluster_resources
-                    .add(client, &rg_stateful_set)
+                    .add(client, rg_stateful_set)
                     .await
                     .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
                         rolegroup: rolegroup.clone(),
@@ -944,11 +944,7 @@ fn build_rolegroup_statefulset(
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
-            replicas: if trino.spec.cluster_config.stopped.unwrap_or(false) {
-                Some(0)
-            } else {
-                rolegroup.replicas.map(i32::from)
-            },
+            replicas: rolegroup.replicas.map(i32::from),
             selector: LabelSelector {
                 match_labels: Some(role_group_selector_labels(
                     trino,
