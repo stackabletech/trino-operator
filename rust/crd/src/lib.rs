@@ -207,11 +207,6 @@ pub struct TrinoClusterConfig {
     /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
     /// to include in the Trino instance.
     pub catalog_label_selector: LabelSelector,
-    /// Specify the type of the created kubernetes service.
-    /// This attribute will be removed in a future release when listener-operator is finished.
-    /// Use with caution.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub service_type: Option<ServiceType>,
     /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,
@@ -219,19 +214,41 @@ pub struct TrinoClusterConfig {
     /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vector_aggregator_config_map_name: Option<String>,
+    /// In the future this setting will control, which ListenerClass <https://docs.stackable.tech/home/stable/listener-operator/listenerclass.html>
+    /// will be used to expose the service.
+    /// Currently only a subset of the ListenerClasses are supported by choosing the type of the created Services
+    /// by looking at the ListenerClass name specified,
+    /// In a future release support for custom ListenerClasses will be introduced without a breaking change:
+    ///
+    /// * cluster-internal: Use a ClusterIP service
+    ///
+    /// * external-unstable: Use a NodePort service
+    ///
+    /// * external-stable: Use a LoadBalancer service
+    #[serde(default)]
+    pub listener_class: CurrentlySupportedListenerClasses,
 }
 
 // TODO: Temporary solution until listener-operator is finished
-#[derive(Clone, Debug, Display, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Display, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
-pub enum ServiceType {
-    NodePort,
-    ClusterIP,
+pub enum CurrentlySupportedListenerClasses {
+    #[default]
+    #[serde(rename = "cluster-internal")]
+    ClusterInternal,
+    #[serde(rename = "external-unstable")]
+    ExternalUnstable,
+    #[serde(rename = "external-stable")]
+    ExternalStable,
 }
 
-impl Default for ServiceType {
-    fn default() -> Self {
-        Self::NodePort
+impl CurrentlySupportedListenerClasses {
+    pub fn k8s_service_type(&self) -> String {
+        match self {
+            CurrentlySupportedListenerClasses::ClusterInternal => "ClusterIP".to_string(),
+            CurrentlySupportedListenerClasses::ExternalUnstable => "NodePort".to_string(),
+            CurrentlySupportedListenerClasses::ExternalStable => "LoadBalancer".to_string(),
+        }
     }
 }
 
@@ -780,7 +797,7 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -796,7 +813,7 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector: {}
             tls:
               serverSecretClass: simple-trino-server-tls
@@ -814,9 +831,9 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          clusterConfig:    
+          clusterConfig:
             catalogLabelSelector: {}
-            tls: 
+            tls:
               serverSecretClass: null
               internalSecretClass: null
         "#;
@@ -854,7 +871,7 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector: {}
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
@@ -888,7 +905,7 @@ mod tests {
           image:
             productVersion: "396"
             stackableVersion: "23.4.0-rc2"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector: {}
             tls:
               serverSecretClass: simple-trino-server-tls

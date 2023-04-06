@@ -416,15 +416,7 @@ pub fn build_coordinator_role_service(
         spec: Some(ServiceSpec {
             ports: Some(service_ports(trino)),
             selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
-            type_: Some(
-                trino
-                    .spec
-                    .cluster_config
-                    .service_type
-                    .clone()
-                    .unwrap_or_default()
-                    .to_string(),
-            ),
+            type_: Some(trino.spec.cluster_config.listener_class.k8s_service_type()),
             ..ServiceSpec::default()
         }),
         status: None,
@@ -973,6 +965,8 @@ fn build_rolegroup_service(
             .with_label("prometheus.io/scrape", "true")
             .build(),
         spec: Some(ServiceSpec {
+            // Internal communication does not need to be exposed
+            type_: Some("ClusterIP".to_string()),
             cluster_ip: Some("None".to_string()),
             ports: Some(service_ports(trino)),
             selector: Some(role_group_selector_labels(
