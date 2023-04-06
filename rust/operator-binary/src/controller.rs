@@ -52,7 +52,10 @@ use stackable_operator::{
         },
     },
     role_utils::RoleGroupRef,
-    status::condition::{compute_conditions, statefulset::StatefulSetConditionBuilder},
+    status::condition::{
+        compute_conditions, operations::ClusterOperationsConditionBuilder,
+        statefulset::StatefulSetConditionBuilder,
+    },
 };
 use stackable_trino_crd::{
     authentication,
@@ -390,14 +393,20 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         }
     }
 
+    let cluster_operation_cond_builder =
+        ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
+
+    let status = TrinoClusterStatus {
+        conditions: compute_conditions(
+            trino.as_ref(),
+            &[&sts_cond_builder, &cluster_operation_cond_builder],
+        ),
+    };
+
     cluster_resources
         .delete_orphaned_resources(client)
         .await
         .context(DeleteOrphanedResourcesSnafu)?;
-
-    let status = TrinoClusterStatus {
-        conditions: compute_conditions(trino.as_ref(), &[&sts_cond_builder]),
-    };
     client
         .apply_patch_status(OPERATOR_NAME, &*trino, &status)
         .await
