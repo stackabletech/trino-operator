@@ -57,6 +57,7 @@ rules:
     resources:
       - statefulsets
     verbs:
+      - get
       - create
       - delete
       - list
