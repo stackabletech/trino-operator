@@ -14,8 +14,8 @@ All notable changes to this project will be documented in this file.
 - [BREAKING]: Support specifying Service type by moving `serviceType` (which was an experimental feature) to `clusterConfig.listenerClass`.
   This enables us to later switch non-breaking to using `ListenerClasses` for the exposure of Services.
   This change is breaking, because - for security reasons - we default to the `cluster-internal` `ListenerClass`.
-  If you need you cluster to be accessible from outside of Kubernetes you need to set `clusterConfig.listenerClass`
-  to either `external-unstable` or `external-stable` ([#406]).
+  If you need your cluster to be accessible from outside of Kubernetes you need to set `clusterConfig.listenerClass`
+  to `external-unstable` or `external-stable` ([#406]).
 - `operator-rs` `0.31.0` -> `0.37.0` ([#378], [#380], [#400]).
 - Bumped stackable image versions to `23.4.0-rc2` ([#378], [#380]).
 - Fragmented `TrinoConfig` ([#379]).
