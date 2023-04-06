@@ -27,3 +27,7 @@ spec:
           credentials:
             secretClass: minio-credentials
 ----
+
+== Connect to S3 store or HDFS
+The `iceberg` connector can connect to S3 or HDFS in the same way the xref:hive.adoc[hive] connector does.
+Please check that documentation on how to configure the access.
