@@ -18,10 +18,8 @@ spec:
   connector:
     # Specify hive here when defining a hive catalog
     hive:
-      # Configuration can be passed either as a configMap...
       metastore:
         configMap: simple-hive
-      #... or defined inline
       s3:
         inline:
           host: test-minio
@@ -33,6 +31,44 @@ spec:
   configOverrides:
     hive.metastore.username: trino
 ----
+
+== Connect to S3 store
+The hive connector can connect to an S3 store as follows:
+
+[source,yaml]
+----
+spec:
+  connector:
+    hive:
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+      # OR
+      s3:
+        reference: my-minio
+----
+
+See xref:concepts:s3.adoc[] for details about S3 connections.
+
+IMPORTANT: Please make sure that the underlying Hive metastore also has access to the S3 store, because it will e.g. check if the directory exists when creating tables.
+
+== Connect to HDFS cluster
+The hive connector can connect to an HDFS operated by Stackable as follows:
+
+[source,yaml]
+----
+spec:
+  connector:
+    hive:
+      hdfs:
+        configMap: simple-hdfs
+----
+
+IMPORTANT: Please make sure that the underlying Hive metastore also has access to the HDFS, because it will e.g. check if the directory exists when creating tables.
 
 == Adding unmanaged Hive clusters
 You can add connect Trino to Hive catalogs from systems that are not managed by Stackable, including Hive running on existing Hadoop clusters. Unmanaged Hive instances can be defined by creating a configMap containing the configuration for the remote Hive Metastore and HDFS or S3 storage services.
@@ -50,7 +86,8 @@ data:
 ----
 
 === Create a HDFS configMap
-When the Hive data is stored on HDFS you will need to provide a configMap containing the HDFS configuration. To do this take the `core-site.xml` and `hdfs-site.xml` from your Hadoop cluster and create a configMap with the keys `core-site.xml` and `hdfs-site.xml`.
+When the Hive data is stored on HDFS you will need to provide a configMap containing the HDFS configuration.
+To do this take the `core-site.xml` and `hdfs-site.xml` from your Hadoop cluster and create a configMap with the keys `core-site.xml` and `hdfs-site.xml`.
 
 [source,yaml]
 ----
