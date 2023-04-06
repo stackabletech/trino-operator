@@ -11,6 +11,7 @@
 ** xref:trino:usage_guide/log_aggregation.adoc[]
 ** xref:trino:usage_guide/query.adoc[]
 ** xref:trino:usage_guide/pod_placement.adoc[]
+** xref:trino:usage_guide/cluster_operations.adoc[]
 ** xref:trino:usage_guide/catalogs/index.adoc[]
 *** xref:trino:usage_guide/catalogs/black-hole.adoc[]
 *** xref:trino:usage_guide/catalogs/google-sheets.adoc[]
