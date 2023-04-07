@@ -36,6 +36,7 @@ use stackable_operator::{
     product_logging::spec::Logging,
     role_utils::{Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
+    status::condition::{ClusterCondition, HasStatusCondition},
 };
 use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -347,10 +348,6 @@ impl TrinoRole {
         roles
     }
 }
-
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TrinoClusterStatus {}
 
 #[derive(Clone, Debug, Default, JsonSchema, PartialEq, Fragment)]
 #[fragment_attrs(
@@ -779,6 +776,21 @@ impl TrinoCluster {
 
         tracing::debug!("Merged config: {:?}", conf_rolegroup);
         fragment::validate(conf_rolegroup).context(FragmentValidationFailureSnafu)
+    }
+}
+
+#[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrinoClusterStatus {
+    pub conditions: Vec<ClusterCondition>,
+}
+
+impl HasStatusCondition for TrinoCluster {
+    fn conditions(&self) -> Vec<ClusterCondition> {
+        match &self.status {
+            Some(status) => status.conditions.clone(),
+            None => vec![],
+        }
     }
 }
 

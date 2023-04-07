@@ -1,9 +1,9 @@
 ---
 apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
-metadata:
-  name: install-trino
-timeout: 1200
+timeout: 300
+commands:
+  - script: kubectl -n $NAMESPACE wait --for=condition=stopped trinoclusters.trino.stackable.tech/trino --timeout 301s
 ---
 apiVersion: apps/v1
 kind: StatefulSet
