@@ -1,0 +1,75 @@
+= Connect to Trino
+
+Trino offers an SQL endpoint via a HTTP API.
+An https://trino.io/docs/current/client/jdbc.html[open source JDBC driver] does exist as well as a proprietary https://docs.starburst.io/data-consumer/clients/odbc.html[ODBC driver].
+
+Multiple SQL clients can be used to connect to Trino as described below.
+
+== Perquisites
+The Trino server must be reachable from your local computer.
+It is typically secured via HTTPS with a certificated provided by a xref:secret-operator:secretclass.adoc[SecretClass].
+
+As most setups use a self-signed certificate, the easiest way is to disable the Trino cert validation as the following guide will do.
+A production-ready solution would be to extract the `ca.crt` from the SecretClass and provide it to the Trino client.
+
+== Connect with trino-cli
+Please have a look at the https://trino.io/docs/current/client/cli.html[official trino-cli docs].
+Please don't forget to specify the `--insecure` flag, so you command looks something like:
+
+[source,console]
+----
+java -jar ~/Downloads/trino-cli-403-executable.jar --server https://85.215.195.29:8443 --user admin --password --insecure
+----
+
+== Connect with DBeaver
+https://dbeaver.io[DBeaver] is a free multi-platform database tool for anyone who needs to work with databases.
+It is installed locally and can connect to Trino and offers a convenient UI to explore and work with Trino.
+
+First of you need to click on the `New Database Connection` icon, select `Other` -> `Trino`
+
+image::connect-with-dbeaver-1.png[]
+
+Afterwards you need to enter the `Host` and `Port` as well as `Username` and `Password`.
+
+image::connect-with-dbeaver-2.png[]
+
+After entering the details you need to switch to the tab called `Driver properties`.
+First action is to click on the `SSL` driver property and enter the value `true`.
+Additionally you need to click on the green plus icon in the bottom left corner to add a User Property called `SSLVerification`.
+Afterwards you need to set the value to `NONE`.
+
+image::connect-with-dbeaver-3.png[]
+
+As the last step you can click on `Finish` and start using the Trino connection normally.
+
+== Connect with Python
+
+Please have a look at the https://github.com/trinodb/trino-python-client[official trino-python-client docs].
+
+A sample code could look like follows:
+
+[source,python]
+----
+def get_connection():
+    connection = trino.dbapi.connect(
+        host="trino-coordinator-default.default.svc.cluster.local",
+        http_scheme="https",
+        verify=False, # For best security you can also provide a path to the trino root ca: "/stackable/secrets/trino-ca-cert/ca.crt",
+        port=8443,
+        user="admin",
+        auth=trino.auth.BasicAuthentication("admin", "adminadmin"),
+        catalog="hive",
+        schema="staging",
+    )
+    return connection
+
+def run_query(connection, query):
+    # print(f"[DEBUG] Executing query {query}")
+    cursor = connection.cursor()
+    cursor.execute(query)
+    return cursor.fetchall()
+
+connection = get_connection()
+
+run_query(connection, "show catalogs")
+----
