@@ -35,7 +35,7 @@ image::connect-with-dbeaver-2.png[]
 
 After entering the details you need to switch to the tab called `Driver properties`.
 First action is to click on the `SSL` driver property and enter the value `true`.
-Additionally you need to click on the green plus icon on the bottom left corner to add a User Property called `SSLVerification`.
+Additionally you need to click on the green plus icon in the bottom left corner to add a User Property called `SSLVerification`.
 Afterwards you need to set the value to `NONE`.
 
 image::connect-with-dbeaver-3.png[]
