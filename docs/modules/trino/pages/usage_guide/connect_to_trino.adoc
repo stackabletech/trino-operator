@@ -29,7 +29,7 @@ First of you need to click on the `New Database Connection` icon, select `Other`
 
 image::connect-with-dbeaver-1.png[]
 
-Afterwards you need to enter the `Host` as well as the `Port` as well as `Username` and `Password`.
+Afterwards you need to enter the `Host` and `Port` as well as `Username` and `Password`.
 
 image::connect-with-dbeaver-2.png[]
 
