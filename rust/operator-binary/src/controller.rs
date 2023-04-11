@@ -307,13 +307,14 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     )
     .context(BuildRbacResourcesSnafu)?;
 
-    cluster_resources
-        .add(client, rbac_sa.clone())
+
+    let rbac_sa = cluster_resources
+        .add(client, rbac_sa)
         .await
         .context(ApplyServiceAccountSnafu)?;
 
     cluster_resources
-        .add(client, rbac_rolebinding.clone())
+        .add(client, rbac_rolebinding)
         .await
         .context(ApplyRoleBindingSnafu)?;
 
