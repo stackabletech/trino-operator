@@ -60,7 +60,6 @@ rules:
       - get
       - create
       - delete
-      - get
       - list
       - patch
       - update
