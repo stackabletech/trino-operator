@@ -5,6 +5,7 @@
 * xref:trino:concepts.adoc[]
 * xref:trino:usage_guide/index.adoc[]
 ** xref:trino:usage_guide/cluster.adoc[]
+** xref:trino:usage_guide/connect_to_trino.adoc[]
 ** xref:trino:usage_guide/configuration.adoc[]
 ** xref:trino:usage_guide/security.adoc[]
 ** xref:trino:usage_guide/monitoring.adoc[]
@@ -19,4 +20,3 @@
 *** xref:trino:usage_guide/catalogs/iceberg.adoc[]
 *** xref:trino:usage_guide/catalogs/tpcds.adoc[]
 *** xref:trino:usage_guide/catalogs/tpch.adoc[]
-** xref:trino:usage_guide/connect_to_trino.adoc[]
