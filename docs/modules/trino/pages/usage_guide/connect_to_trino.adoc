@@ -22,7 +22,7 @@ java -jar ~/Downloads/trino-cli-403-executable.jar --server https://85.215.195.2
 ----
 
 == Connect with DBeaver
-https://dbeaver.io[DBeaver] is a free multi-platform database tool for all people who need to work with databases.
+https://dbeaver.io[DBeaver] is a free multi-platform database tool for anyone who needs to work with databases.
 It is installed locally and can connect to Trino and offers a convenient UI to explore and work with Trino.
 
 First of you need to click on the `New Database Connection` icon, select `Other` -> `Trino`
