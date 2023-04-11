@@ -1,6 +1,6 @@
 = Connect to Trino
 
-Trino offers a SQL endpoint via a HTTP Api.
+Trino offers an SQL endpoint via a HTTP API.
 A https://trino.io/docs/current/client/jdbc.html[Open source JDBC driver] does exist as well as a proprietary https://docs.starburst.io/data-consumer/clients/odbc.html[ODBC driver].
 
 Multiple SQL clients can be used to connect to Trino as described below.
