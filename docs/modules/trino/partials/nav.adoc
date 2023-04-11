@@ -19,3 +19,4 @@
 *** xref:trino:usage_guide/catalogs/iceberg.adoc[]
 *** xref:trino:usage_guide/catalogs/tpcds.adoc[]
 *** xref:trino:usage_guide/catalogs/tpch.adoc[]
+** xref:trino:usage_guide/connect_to_trino.adoc[]
