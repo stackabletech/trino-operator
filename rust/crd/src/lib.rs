@@ -13,10 +13,10 @@ use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 
-use stackable_operator::commons::cluster_operation::ClusterOperation;
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
+        cluster_operation::ClusterOperation,
         opa::OpaConfig,
         product_image_selection::ProductImage,
         resources::{

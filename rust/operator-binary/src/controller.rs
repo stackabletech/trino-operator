@@ -10,17 +10,17 @@ use crate::{
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::builder::PodSecurityContextBuilder;
-use stackable_operator::cluster_resources::ClusterResourceApplyStrategy;
-use stackable_operator::commons::rbac::build_rbac_resources;
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
-        SecretOperatorVolumeSourceBuilder, VolumeBuilder,
+        PodSecurityContextBuilder, SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
-    cluster_resources::ClusterResources,
-    commons::{opa::OpaApiVersion, product_image_selection::ResolvedProductImage},
+    cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
+    commons::{
+        opa::OpaApiVersion, product_image_selection::ResolvedProductImage,
+        rbac::build_rbac_resources,
+    },
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
