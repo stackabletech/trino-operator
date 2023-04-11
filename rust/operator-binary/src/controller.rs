@@ -224,18 +224,20 @@ pub enum Error {
         source: crate::product_logging::Error,
         cm_name: String,
     },
-    #[snafu(display("failed to patch service account: {source}"))]
+    #[snafu(display("failed to patch service account [{APP_NAME}-sa]"))]
     ApplyServiceAccount {
-        name: String,
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("failed to patch role binding: {source}"))]
+    #[snafu(display("failed to patch role binding [{APP_NAME}-rolebinding]"))]
     ApplyRoleBinding {
-        name: String,
         source: stackable_operator::error::Error,
     },
     #[snafu(display("failed to update status"))]
     ApplyStatus {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to build RBAC resources"))]
+    BuildRbacResources {
         source: stackable_operator::error::Error,
     },
 }
@@ -289,20 +291,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         &ctx.product_config,
     )?;
 
-    let (rbac_sa, rbac_rolebinding) = build_rbac_resources(trino.as_ref(), "trino");
-    client
-        .apply_patch(CONTROLLER_NAME, &rbac_sa, &rbac_sa)
-        .await
-        .with_context(|_| ApplyServiceAccountSnafu {
-            name: rbac_sa.name_unchecked(),
-        })?;
-    client
-        .apply_patch(CONTROLLER_NAME, &rbac_rolebinding, &rbac_rolebinding)
-        .await
-        .with_context(|_| ApplyRoleBindingSnafu {
-            name: rbac_rolebinding.name_unchecked(),
-        })?;
-
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
         OPERATOR_NAME,
@@ -312,19 +300,22 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     )
     .context(CreateClusterResourcesSnafu)?;
 
+    let (rbac_sa, rbac_rolebinding) = build_rbac_resources(
+        trino.as_ref(),
+        APP_NAME,
+        cluster_resources.get_required_labels(),
+    )
+    .context(BuildRbacResourcesSnafu)?;
+
     cluster_resources
         .add(client, rbac_sa.clone())
         .await
-        .with_context(|_| ApplyServiceAccountSnafu {
-            name: rbac_sa.name_any(),
-        })?;
+        .context(ApplyServiceAccountSnafu)?;
 
     cluster_resources
         .add(client, rbac_rolebinding.clone())
         .await
-        .with_context(|_| ApplyRoleBindingSnafu {
-            name: rbac_rolebinding.name_any(),
-        })?;
+        .context(ApplyRoleBindingSnafu)?;
 
     let authentication_config = user_authentication(&trino, client).await?;
 
