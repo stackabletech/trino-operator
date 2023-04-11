@@ -55,20 +55,24 @@ use stackable_operator::{
         },
     },
     role_utils::RoleGroupRef,
+    status::condition::{
+        compute_conditions, operations::ClusterOperationsConditionBuilder,
+        statefulset::StatefulSetConditionBuilder,
+    },
 };
 use stackable_trino_crd::{
     authentication,
     authentication::TrinoAuthenticationConfig,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    Container, TrinoCluster, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME,
-    CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET,
-    HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_HEAP_FACTOR,
-    LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES,
-    METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, PASSWORD_AUTHENTICATOR_PROPERTIES,
-    PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
+    APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
+    ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
+    JVM_HEAP_FACTOR, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
+    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -230,6 +234,10 @@ pub enum Error {
         name: String,
         source: stackable_operator::error::Error,
     },
+    #[snafu(display("failed to update status"))]
+    ApplyStatus {
+        source: stackable_operator::error::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -356,6 +364,8 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .await
         .context(ResolveVectorAggregatorAddressSnafu)?;
 
+    let mut sts_cond_builder = StatefulSetConditionBuilder::default();
+
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&role).context(FailedToParseRoleSnafu)?;
         for (role_group, config) in role_config {
@@ -415,19 +425,35 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                     rolegroup: rolegroup.clone(),
                 })?;
 
-            cluster_resources
-                .add(client, rg_stateful_set)
-                .await
-                .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
-                    rolegroup: rolegroup.clone(),
-                })?;
+            sts_cond_builder.add(
+                cluster_resources
+                    .add(client, rg_stateful_set)
+                    .await
+                    .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
+                        rolegroup: rolegroup.clone(),
+                    })?,
+            );
         }
     }
+
+    let cluster_operation_cond_builder =
+        ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
+
+    let status = TrinoClusterStatus {
+        conditions: compute_conditions(
+            trino.as_ref(),
+            &[&sts_cond_builder, &cluster_operation_cond_builder],
+        ),
+    };
 
     cluster_resources
         .delete_orphaned_resources(client)
         .await
         .context(DeleteOrphanedResourcesSnafu)?;
+    client
+        .apply_patch_status(OPERATOR_NAME, &*trino, &status)
+        .await
+        .context(ApplyStatusSnafu)?;
 
     Ok(Action::await_change())
 }
@@ -459,15 +485,7 @@ pub fn build_coordinator_role_service(
         spec: Some(ServiceSpec {
             ports: Some(service_ports(trino)),
             selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
-            type_: Some(
-                trino
-                    .spec
-                    .cluster_config
-                    .service_type
-                    .clone()
-                    .unwrap_or_default()
-                    .to_string(),
-            ),
+            type_: Some(trino.spec.cluster_config.listener_class.k8s_service_type()),
             ..ServiceSpec::default()
         }),
         status: None,
@@ -1019,6 +1037,8 @@ fn build_rolegroup_service(
             .with_label("prometheus.io/scrape", "true")
             .build(),
         spec: Some(ServiceSpec {
+            // Internal communication does not need to be exposed
+            type_: Some("ClusterIP".to_string()),
             cluster_ip: Some("None".to_string()),
             ports: Some(service_ports(trino)),
             selector: Some(role_group_selector_labels(

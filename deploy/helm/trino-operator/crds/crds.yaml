@@ -113,12 +113,20 @@ spec:
                           description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                           type: object
                       type: object
-                    serviceType:
-                      description: Specify the type of the created kubernetes service. This attribute will be removed in a future release when listener-operator is finished. Use with caution.
+                    listenerClass:
+                      default: cluster-internal
+                      description: |-
+                        In the future this setting will control, which ListenerClass <https://docs.stackable.tech/home/stable/listener-operator/listenerclass.html> will be used to expose the service. Currently only a subset of the ListenerClasses are supported by choosing the type of the created Services by looking at the ListenerClass name specified, In a future release support for custom ListenerClasses will be introduced without a breaking change:
+
+                        * cluster-internal: Use a ClusterIP service
+
+                        * external-unstable: Use a NodePort service
+
+                        * external-stable: Use a LoadBalancer service
                       enum:
-                        - NodePort
-                        - ClusterIP
-                      nullable: true
+                        - cluster-internal
+                        - external-unstable
+                        - external-stable
                       type: string
                     tls:
                       default:
@@ -2960,6 +2968,51 @@ spec:
               type: object
             status:
               nullable: true
+              properties:
+                conditions:
+                  items:
+                    properties:
+                      lastTransitionTime:
+                        description: Last time the condition transitioned from one status to another.
+                        format: date-time
+                        nullable: true
+                        type: string
+                      lastUpdateTime:
+                        description: The last time this condition was updated.
+                        format: date-time
+                        nullable: true
+                        type: string
+                      message:
+                        description: A human readable message indicating details about the transition.
+                        nullable: true
+                        type: string
+                      reason:
+                        description: The reason for the condition's last transition.
+                        nullable: true
+                        type: string
+                      status:
+                        description: Status of the condition, one of True, False, Unknown.
+                        enum:
+                          - 'True'
+                          - 'False'
+                          - Unknown
+                        type: string
+                      type:
+                        description: Type of deployment condition.
+                        enum:
+                          - Available
+                          - Degraded
+                          - Progressing
+                          - ReconciliationPaused
+                          - Stopped
+                        type: string
+                    required:
+                      - status
+                      - type
+                    type: object
+                  type: array
+              required:
+                - conditions
               type: object
           required:
             - spec
@@ -3044,7 +3097,7 @@ spec:
                     hive:
                       properties:
                         hdfs:
-                          description: Connection to an HDFS cluster
+                          description: Connection to an HDFS cluster. Please make sure that the underlying Hive metastore also has access to the HDFS.
                           nullable: true
                           properties:
                             configMap:
@@ -3054,7 +3107,7 @@ spec:
                             - configMap
                           type: object
                         metastore:
-                          description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata
+                          description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
                           properties:
                             configMap:
                               description: Name of the discovery-configmap providing information about the Hive metastore
@@ -3063,7 +3116,7 @@ spec:
                             - configMap
                           type: object
                         s3:
-                          description: Connection to an S3 store
+                          description: Connection to an S3 store. Please make sure that the underlying Hive metastore also has access to the S3 store.
                           nullable: true
                           oneOf:
                             - required:
@@ -3167,7 +3220,7 @@ spec:
                     iceberg:
                       properties:
                         hdfs:
-                          description: Connection to an HDFS cluster
+                          description: Connection to an HDFS cluster. Please make sure that the underlying Hive metastore also has access to the HDFS.
                           nullable: true
                           properties:
                             configMap:
@@ -3177,7 +3230,7 @@ spec:
                             - configMap
                           type: object
                         metastore:
-                          description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata
+                          description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
                           properties:
                             configMap:
                               description: Name of the discovery-configmap providing information about the Hive metastore
@@ -3186,7 +3239,7 @@ spec:
                             - configMap
                           type: object
                         s3:
-                          description: Connection to an S3 store
+                          description: Connection to an S3 store. Please make sure that the underlying Hive metastore also has access to the S3 store.
                           nullable: true
                           oneOf:
                             - required:
