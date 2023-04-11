@@ -248,20 +248,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let resolved_product_image: ResolvedProductImage =
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
 
-    let (rbac_sa, rbac_rolebinding) = build_rbac_resources(trino.as_ref(), "trino");
-    client
-        .apply_patch(CONTROLLER_NAME, &rbac_sa, &rbac_sa)
-        .await
-        .with_context(|_| ApplyServiceAccountSnafu {
-            name: rbac_sa.name_unchecked(),
-        })?;
-    client
-        .apply_patch(CONTROLLER_NAME, &rbac_rolebinding, &rbac_rolebinding)
-        .await
-        .with_context(|_| ApplyRoleBindingSnafu {
-            name: rbac_rolebinding.name_unchecked(),
-        })?;
-
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
             trino
@@ -295,6 +281,20 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         &ctx.product_config,
     )?;
 
+    let (rbac_sa, rbac_rolebinding) = build_rbac_resources(trino.as_ref(), "trino");
+    client
+        .apply_patch(CONTROLLER_NAME, &rbac_sa, &rbac_sa)
+        .await
+        .with_context(|_| ApplyServiceAccountSnafu {
+            name: rbac_sa.name_unchecked(),
+        })?;
+    client
+        .apply_patch(CONTROLLER_NAME, &rbac_rolebinding, &rbac_rolebinding)
+        .await
+        .with_context(|_| ApplyRoleBindingSnafu {
+            name: rbac_rolebinding.name_unchecked(),
+        })?;
+
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
         OPERATOR_NAME,
@@ -303,6 +303,20 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
     )
     .context(CreateClusterResourcesSnafu)?;
+
+    cluster_resources
+        .add(client, rbac_sa.clone())
+        .await
+        .with_context(|_| ApplyServiceAccountSnafu {
+            name: rbac_sa.name_any(),
+        })?;
+
+    cluster_resources
+        .add(client, rbac_rolebinding.clone())
+        .await
+        .with_context(|_| ApplyRoleBindingSnafu {
+            name: rbac_rolebinding.name_any(),
+        })?;
 
     let authentication_config = user_authentication(&trino, client).await?;
 
