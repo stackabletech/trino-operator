@@ -307,7 +307,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     )
     .context(BuildRbacResourcesSnafu)?;
 
-
     let rbac_sa = cluster_resources
         .add(client, rbac_sa)
         .await
