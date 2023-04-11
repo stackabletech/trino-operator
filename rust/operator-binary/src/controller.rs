@@ -224,11 +224,11 @@ pub enum Error {
         source: crate::product_logging::Error,
         cm_name: String,
     },
-    #[snafu(display("failed to patch service account [{APP_NAME}-sa]"))]
+    #[snafu(display("failed to patch service account"))]
     ApplyServiceAccount {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("failed to patch role binding [{APP_NAME}-rolebinding]"))]
+    #[snafu(display("failed to patch role binding"))]
     ApplyRoleBinding {
         source: stackable_operator::error::Error,
     },
