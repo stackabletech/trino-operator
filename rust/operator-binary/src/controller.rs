@@ -392,7 +392,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &merged_config,
                 authentication_config.as_ref(),
                 &catalogs,
-                &rbac_sa.name_unchecked(),
+                &rbac_sa.name_any(),
             )?;
 
             cluster_resources

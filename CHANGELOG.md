@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
   This change is breaking, because - for security reasons - we default to the `cluster-internal` `ListenerClass`.
   If you need your cluster to be accessible from outside of Kubernetes you need to set `clusterConfig.listenerClass`
   to `external-unstable` or `external-stable` ([#406]).
-- `operator-rs` `0.31.0` -> `0.40.1` ([#378], [#380], [#400], [#404], [#405]).
+- `operator-rs` `0.31.0` -> `0.40.2` ([#378], [#380], [#400], [#404], [#405]).
 - Bumped stackable image versions to `23.4.0-rc2` ([#378], [#380]).
 - Fragmented `TrinoConfig` ([#379]).
 - Enabled logging and log aggregation ([#380]).
