@@ -13,18 +13,21 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
-        SecretOperatorVolumeSourceBuilder, VolumeBuilder,
+        PodSecurityContextBuilder, SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
-    commons::{opa::OpaApiVersion, product_image_selection::ResolvedProductImage},
+    commons::{
+        opa::OpaApiVersion, product_image_selection::ResolvedProductImage,
+        rbac::build_rbac_resources,
+    },
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 ConfigMap, ConfigMapVolumeSource, ContainerPort, EmptyDirVolumeSource, EnvVar,
-                EnvVarSource, PodSecurityContext, Probe, Secret, SecretKeySelector, Service,
-                ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                EnvVarSource, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
+                TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
@@ -87,6 +90,7 @@ pub struct Ctx {
 
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
+pub const TRINO_UID: i64 = 1000;
 
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
@@ -220,8 +224,20 @@ pub enum Error {
         source: crate::product_logging::Error,
         cm_name: String,
     },
+    #[snafu(display("failed to patch service account"))]
+    ApplyServiceAccount {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to patch role binding"))]
+    ApplyRoleBinding {
+        source: stackable_operator::error::Error,
+    },
     #[snafu(display("failed to update status"))]
     ApplyStatus {
+        source: stackable_operator::error::Error,
+    },
+    #[snafu(display("failed to build RBAC resources"))]
+    BuildRbacResources {
         source: stackable_operator::error::Error,
     },
 }
@@ -283,6 +299,23 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
     )
     .context(CreateClusterResourcesSnafu)?;
+
+    let (rbac_sa, rbac_rolebinding) = build_rbac_resources(
+        trino.as_ref(),
+        APP_NAME,
+        cluster_resources.get_required_labels(),
+    )
+    .context(BuildRbacResourcesSnafu)?;
+
+    let rbac_sa = cluster_resources
+        .add(client, rbac_sa)
+        .await
+        .context(ApplyServiceAccountSnafu)?;
+
+    cluster_resources
+        .add(client, rbac_rolebinding)
+        .await
+        .context(ApplyRoleBindingSnafu)?;
 
     let authentication_config = user_authentication(&trino, client).await?;
 
@@ -359,6 +392,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &merged_config,
                 authentication_config.as_ref(),
                 &catalogs,
+                &rbac_sa.name_any(),
             )?;
 
             cluster_resources
@@ -737,6 +771,7 @@ fn build_rolegroup_statefulset(
     merged_config: &TrinoConfig,
     authentication_config: Option<&TrinoAuthenticationConfig>,
     catalogs: &[CatalogConfig],
+    sa_name: &str,
 ) -> Result<StatefulSet> {
     let rolegroup = trino
         .rolegroup(rolegroup_ref)
@@ -924,12 +959,14 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .security_context(PodSecurityContext {
-            run_as_user: Some(1000),
-            run_as_group: Some(1000),
-            fs_group: Some(1000),
-            ..PodSecurityContext::default()
-        });
+        .service_account_name(sa_name)
+        .security_context(
+            PodSecurityContextBuilder::new()
+                .run_as_user(TRINO_UID)
+                .run_as_group(0)
+                .fs_group(1000)
+                .build(),
+        );
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)

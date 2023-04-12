@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Deploy default and support custom affinities ([#391]).
 - Cluster status conditions ([#403])
+- Openshift compatibility ([#404]).
 - Extend cluster resources for status and cluster operation (paused, stopped) ([#405])
 
 ### Changed
@@ -18,10 +19,11 @@ All notable changes to this project will be documented in this file.
   This change is breaking, because - for security reasons - we default to the `cluster-internal` `ListenerClass`.
   If you need your cluster to be accessible from outside of Kubernetes you need to set `clusterConfig.listenerClass`
   to `external-unstable` or `external-stable` ([#406]).
-- `operator-rs` `0.31.0` -> `0.39.0` ([#378], [#380], [#400], [#405]).
+- `operator-rs` `0.31.0` -> `0.40.2` ([#378], [#380], [#400], [#404], [#405]).
 - Bumped stackable image versions to `23.4.0-rc2` ([#378], [#380]).
 - Fragmented `TrinoConfig` ([#379]).
 - Enabled logging and log aggregation ([#380]).
+- Use operator-rs `build_rbac_resources` method ([#404]).
 
 ### Removed
 
@@ -33,6 +35,7 @@ All notable changes to this project will be documented in this file.
 [#391]: https://github.com/stackabletech/trino-operator/pull/391
 [#400]: https://github.com/stackabletech/trino-operator/pull/400
 [#403]: https://github.com/stackabletech/trino-operator/pull/403
+[#404]: https://github.com/stackabletech/trino-operator/pull/404
 [#405]: https://github.com/stackabletech/trino-operator/pull/405
 [#406]: https://github.com/stackabletech/trino-operator/pull/406
 

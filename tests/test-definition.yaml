@@ -1,3 +1,14 @@
+# These tests can run against an OpenShift cluster, provided you note the following:
+#
+# 1. Set the "openshift" dimension below to "true" (with quotes)
+# 2. Comment out the "true" option in the "s3-use-tls" dimension
+#
+# Regarding point 2.: the bitnami chart is used for S3 on OpenShift as it correctly installs
+# a minio instance (the chart from minio does not correctly apply the service account to
+# the job that creates the bucket, and so the permissions are not sufficient). However, it
+# cannot correctly use self-signed TLS certificates due to a bug in libminioclient.sh: for
+# non-OpenShift clusters the minio chart is thus used instead.
+
 ---
 dimensions:
   - name: trino
@@ -43,6 +54,9 @@ dimensions:
     values:
       - "false"
       - "true"
+  - name: openshift
+    values:
+      - "false"
 tests:
   - name: smoke
     dimensions:
@@ -52,6 +66,7 @@ tests:
       - hdfs
       - zookeeper
       - s3-use-tls
+      - openshift
   - name: tls
     dimensions:
       - trino-latest
@@ -65,6 +80,7 @@ tests:
     dimensions:
       - trino-latest
       - ldap-use-tls
+      - openshift
   - name: orphaned-resources
     dimensions:
       - trino-latest

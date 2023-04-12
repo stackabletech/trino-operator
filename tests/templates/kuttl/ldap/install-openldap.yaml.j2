@@ -30,6 +30,7 @@ spec:
       labels:
         app.kubernetes.io/name: openldap
     spec:
+      serviceAccountName: "ldap-sa"
       containers:
         - name: openldap
           image: docker.io/bitnami/openldap:2.5
@@ -86,3 +87,36 @@ spec:
       targetPort: tls-ldap
   selector:
     app.kubernetes.io/name: openldap
+
+{% if test_scenario['values']['openshift'] == 'true' %}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: use-integration-tests-scc
+  namespace: $NAMESPACE
+rules:
+- apiGroups: ["security.openshift.io"]
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["privileged"]
+  verbs: ["use"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ldap-sa
+  namespace: $NAMESPACE
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: use-integration-tests-scc
+  namespace: $NAMESPACE
+subjects:
+  - kind: ServiceAccount
+    name: ldap-sa
+roleRef:
+  kind: Role
+  name: use-integration-tests-scc
+  apiGroup: rbac.authorization.k8s.io
+{% endif %}
