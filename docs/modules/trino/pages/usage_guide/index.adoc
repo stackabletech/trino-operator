@@ -6,8 +6,8 @@ This section will help you to use the Trino Stackable Operator. It will show you
 
 The following guides are available here:
 
-* xref:usage_guide/cluster.adoc[]
 * xref:usage_guide/catalogs/index.adoc[]
+* xref:usage_guide/s3.adoc[]
 * xref:usage_guide/configuration.adoc[]
 * xref:usage_guide/security.adoc[]
 * xref:usage_guide/monitoring.adoc[]
