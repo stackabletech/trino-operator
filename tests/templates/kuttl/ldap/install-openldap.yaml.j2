@@ -87,7 +87,12 @@ spec:
       targetPort: tls-ldap
   selector:
     app.kubernetes.io/name: openldap
-
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ldap-sa
+  namespace: $NAMESPACE
 {% if test_scenario['values']['openshift'] == 'true' %}
 ---
 kind: Role
@@ -100,12 +105,6 @@ rules:
   resources: ["securitycontextconstraints"]
   resourceNames: ["privileged"]
   verbs: ["use"]
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ldap-sa
-  namespace: $NAMESPACE
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
