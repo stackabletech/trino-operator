@@ -5,7 +5,7 @@ An https://trino.io/docs/current/client/jdbc.html[open source JDBC driver] does 
 
 Multiple SQL clients can be used to connect to Trino as described below.
 
-== Perquisites
+== Prerequisites
 The Trino server must be reachable from your local computer.
 It is typically secured via HTTPS with a certificated provided by a xref:secret-operator:secretclass.adoc[SecretClass].
 

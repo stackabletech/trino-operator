@@ -1,13 +1,13 @@
 = Concepts
 
-== Connectors
+== [[connectors]]Connectors
 
-https://trino.io/docs/current/overview/use-cases.html#what-trino-is[Trino] is a tool designed to efficiently query vast amounts of data using distributed queries. It is not a database with its own store but rather interacts with many types of store. Trino connects to these stores - or data sources - via https://trino.io/docs/current/connector.html[connectors].
-Each connector enables access to a specific underlying datasource such as a Hive warehouse, a PostgreSQL database or a Druid instance.
+https://trino.io/docs/current/overview/use-cases.html#what-trino-is[Trino] is a tool designed to efficiently query vast amounts of data using distributed queries. It is not a database with its own storage but rather interacts with many different data stores. Trino connects to these data stores - or data sources - via https://trino.io/docs/current/connector.html[connectors].
+Each connector enables access to a specific underlying data source such as a Hive warehouse, a PostgreSQL database or a Druid instance.
 
 A Trino cluster comprises two roles: the Coordinator, responsible for managing and monitoring work loads, and the Worker, which is responsible for executing specific tasks that together make up a work load. The workers fetch data from the connectors, execute tasks and share intermediate results. The coordinator collects and consolidates these results for the end-user.
 
-== Catalogs
+== [[catalogs]]Catalogs
 
 An instance of a connector is called a catalog.
 Think of a setup containing a large Hive warehouse running on HDFS.

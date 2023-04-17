@@ -1,18 +1,42 @@
 = Stackable Operator for Trino
+:description: The Stackable Operator for Trino is a Kubernetes operator that can manage Trino clusters. Learn about its features, resources, dependencies and demos, and see the list of supported Trino versions.
+:keywords: Stackable Operator, Trino, Kubernetes, k8s, operator, data science, data exploration, SQL, engineer, big data, CRD, StatefulSet, ConfigMap, Service, Druid, Trino, S3, Superset
 
 This is an operator for Kubernetes that can manage https://https://trino.io/[Trino] clusters.
+Trino is an open-source distributed SQL query engine that enables high-speed analytics of large datasets from multiple data sources using SQL queries. This operator enables you to manage your Trino instances on Kubernetes efficiently.
 
-WARNING: This operator only works with images from the https://repo.stackable.tech/#browse/browse:docker:v2%2Fstackable%2Ftrino[Stackable] repository
+== Getting started
+
+Follow the xref:getting_started/index.adoc[Getting started guide] to start using the Stackable Operator for Trino on your Kubernetes cluster. It will guide you through the installation process and help you run your first Trino queries on Kubernetes.
+
+== Operator model
+
+The Operator manages Kubernetes resources in sync with https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resources] defined by you, the user.
+
+=== Custom resources
+
+The Trino Operator manages two custom resources: The _TrinoCluster_ and xref:concepts.adoc#catalogs[_TrinoCatalogs_]. The TrinoCluster resource allows for the specification of a Trino cluster. Two xref:concepts:roles-and-role-groups.adoc[roles] are defined: `coordinators` and `workers`.
+
+To connect to data sources the TrinoCatalogs are used. Have a look at the xref:usage_guide/catalogs/index.adoc[catalog overview] to find out which types of data sources are supported by the Stackable platform.
+
+=== Resources
+
+To run the cluster on Kubernetes the Operator creates Kubernetes resources such as ConfigMaps, StatefulSets and Services.
+
+image::trino_overview.drawio.svg[A diagram depicting the Kubernetes resources created by the operator]
+
+== Demos
+
+The xref:stackablectl::demos/trino-taxi-data.adoc[] demo uses Trino together with xref:hive:index.adoc[Apache Hive] to access the prominent New York Taxi dataset. xref:superset:index.adoc[Apache Superset] is then used to read the data from the Trino instance via SQL and visualize it.
+
+The xref:stackablectl::demos/data-lakehouse-iceberg-trino-spark.adoc[] demo showcases a data Lakehouse with multiple datasets. Again Trino is used to enable SQL acces to the data. The xref:stackablectl::demos/trino-iceberg.adoc[] demo is a subset of the Lakehouse demo, focusing just on Apache Iceberg integration.
+
+The xref:stackablectl::demos/spark-k8s-anomaly-detection-taxi-data.adoc[] also uses Trino to enable SQL access to data but also shows xref:opa:index.adoc[OpenPolicyAgent] integration for xref:usage_guide/security.adoc#authorization[authorization].
+
+
 
 == Supported Versions
 
 The Stackable Operator for Trino currently supports the following versions of Trino:
 
 include::partial$supported-versions.adoc[]
-
-== Get Docker image
-
-[source]
-----
-docker pull docker.stackable.tech/stackable/trino:<version>
-----
