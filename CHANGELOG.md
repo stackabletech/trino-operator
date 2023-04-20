@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `operator-rs` `0.40.2` -> `0.41.0` ([#419]).
+
+[#419]: https://github.com/stackabletech/trino-operator/pull/419
+
 ## [23.4.0] - 2023-04-17
 
 ### Added
