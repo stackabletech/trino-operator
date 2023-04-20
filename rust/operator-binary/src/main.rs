@@ -15,8 +15,7 @@ use stackable_operator::{
         core::v1::{ConfigMap, Service},
     },
     kube::{
-        api::ListParams,
-        runtime::{reflector::ObjectRef, Controller},
+        runtime::{reflector::ObjectRef, watcher, Controller},
         ResourceExt,
     },
     logging::controller::report_controller_reconciled,
@@ -73,26 +72,26 @@ async fn main() -> anyhow::Result<()> {
 
             let cluster_controller = Controller::new(
                 watch_namespace.get_api::<TrinoCluster>(&client),
-                ListParams::default(),
+                watcher::Config::default(),
             );
             let cluster_store = cluster_controller.store();
             cluster_controller
                 .owns(
                     watch_namespace.get_api::<Service>(&client),
-                    ListParams::default(),
+                    watcher::Config::default(),
                 )
                 .owns(
                     watch_namespace.get_api::<StatefulSet>(&client),
-                    ListParams::default(),
+                    watcher::Config::default(),
                 )
                 .owns(
                     watch_namespace.get_api::<ConfigMap>(&client),
-                    ListParams::default(),
+                    watcher::Config::default(),
                 )
                 .shutdown_on_signal()
                 .watches(
                     watch_namespace.get_api::<TrinoCatalog>(&client),
-                    ListParams::default(),
+                    watcher::Config::default(),
                     move |catalog| {
                         // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles
                         cluster_store
