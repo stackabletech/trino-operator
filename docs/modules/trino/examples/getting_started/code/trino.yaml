@@ -8,6 +8,7 @@ spec:
     productVersion: "403"
     stackableVersion: "0.0.0-dev"
   clusterConfig:
+    listenerClass: external-unstable
     catalogLabelSelector:
       matchLabels:
         trino: simple-trino
