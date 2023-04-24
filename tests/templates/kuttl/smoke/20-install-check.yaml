@@ -17,5 +17,5 @@ spec:
     spec:
       containers:
         - name: trino-test-helper
-          image: docker.stackable.tech/stackable/testing-tools:0.1.0-stackable0.1.0
+          image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
           command: ["sleep", "infinity"]
