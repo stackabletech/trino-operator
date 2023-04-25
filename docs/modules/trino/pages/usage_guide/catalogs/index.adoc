@@ -71,7 +71,7 @@ metadata:
 spec:
   image:
     productVersion: "396"
-    stackableVersion: "23.4.0-rc2"
+    stackableVersion: "0.0.0-dev"
   catalogLabelSelector:
     matchLabels:
       trino: simple-trino

@@ -6,7 +6,7 @@ metadata:
 spec:
   image:
     productVersion: "396"
-    stackableVersion: "23.4.0-rc2"
+    stackableVersion: "0.0.0-dev"
   clusterConfig:
     authentication:
       method:
@@ -49,7 +49,7 @@ metadata:
 spec:
   image:
     productVersion: 0.45.0
-    stackableVersion: "23.4.0-rc1"
+    stackableVersion: "0.0.0-dev"
   servers:
     roleGroups:
       default: {}
@@ -108,7 +108,7 @@ metadata:
 spec:
   image:
     productVersion: 3.1.3
-    stackableVersion: "23.4.0-rc1"
+    stackableVersion: "0.0.0-dev"
   clusterConfig:
     database:
       connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
