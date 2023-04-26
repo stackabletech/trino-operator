@@ -665,7 +665,7 @@ fn build_rolegroup_config_map(
                 cm_conf_data.insert(file_name.to_string(), "".to_string());
             }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
-                let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent-0.16.1.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
+                let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
             }
             _ => {}
         }
