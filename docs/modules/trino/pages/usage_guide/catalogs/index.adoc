@@ -70,7 +70,7 @@ metadata:
   name: simple-trino
 spec:
   image:
-    productVersion: "396"
+    productVersion: "414"
     stackableVersion: "0.0.0-dev"
   catalogLabelSelector:
     matchLabels:
