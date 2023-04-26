@@ -807,8 +807,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -823,8 +823,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -841,8 +841,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -860,8 +860,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -881,8 +881,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -897,8 +897,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -915,8 +915,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.4.0-rc2"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:

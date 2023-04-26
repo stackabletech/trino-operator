@@ -105,8 +105,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.1"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:  
             catalogLabelSelector:
               matchLabels:
@@ -195,8 +195,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.1"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:  
             catalogLabelSelector:
               matchLabels:
@@ -414,8 +414,8 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "396"
-            stackableVersion: "23.1"
+            productVersion: "414"
+            stackableVersion: "0.0.0-dev"
           clusterConfig:  
             catalogLabelSelector:
               matchLabels:
