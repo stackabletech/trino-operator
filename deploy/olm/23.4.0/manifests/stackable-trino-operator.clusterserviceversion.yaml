@@ -2,7 +2,7 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
-  name: superset-operator.v23.4.0
+  name: trino-operator.v23.4.0
 spec:
   annotations:
     support: stackable.tech

@@ -5,7 +5,7 @@
 set -euo pipefail
 set -x
 
-OPERATOR_NAME="superset-operator"
+OPERATOR_NAME="trino-operator"
 
 bundle-clean() {
 	rm -rf "deploy/olm/${VERSION}/bundle"
