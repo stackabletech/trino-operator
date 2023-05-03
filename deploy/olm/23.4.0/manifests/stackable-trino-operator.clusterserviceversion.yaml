@@ -90,7 +90,7 @@ spec:
       clusterPermissions:
         - serviceAccountName: trino-operator
           rules:
-          - apiGroups:
+            - apiGroups:
                 - opa.stackable.tech
               resources:
                 - regorules
