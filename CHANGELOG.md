@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Generate OLM bundle for Release 23.4.0 ([#424]).
+
 ### Changed
 
 - `operator-rs` `0.40.2` -> `0.41.0` ([#419]).
@@ -12,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 [#419]: https://github.com/stackabletech/trino-operator/pull/419
 [#421]: https://github.com/stackabletech/trino-operator/pull/421
+[#424]: https://github.com/stackabletech/trino-operator/pull/424
 
 ## [23.4.0] - 2023-04-17
 
