@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [23.4.1] - 2023-05-17
+
+### Added
+
+- Missing CRD defaults for `status.conditions` field ([#425]).
+
+[#425]: https://github.com/stackabletech/trino-operator/pull/425
+
 ## [23.4.0] - 2023-04-17
 
 ### Added
