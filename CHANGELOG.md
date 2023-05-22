@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Support for Trino v414 ([#422]).
+- Support for Trino v414 ([#423]).
 
 ### Changed
 
