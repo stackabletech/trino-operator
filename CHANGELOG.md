@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 
 [#419]: https://github.com/stackabletech/trino-operator/pull/419
 [#421]: https://github.com/stackabletech/trino-operator/pull/421
-[#422]: https://github.com/stackabletech/trino-operator/pull/422
+[#423]: https://github.com/stackabletech/trino-operator/pull/423
 
 ## [23.4.0] - 2023-04-17
 
