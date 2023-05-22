@@ -782,6 +782,7 @@ impl TrinoCluster {
 #[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterStatus {
+    #[serde(default)]
     pub conditions: Vec<ClusterCondition>,
 }
 
