@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Support for Trino v414 ([#423]).
 - Generate OLM bundle for Release 23.4.0 ([#424]).
 - Missing CRD defaults for `status.conditions` field ([#425]).
 
@@ -17,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 [#419]: https://github.com/stackabletech/trino-operator/pull/419
 [#421]: https://github.com/stackabletech/trino-operator/pull/421
+[#423]: https://github.com/stackabletech/trino-operator/pull/423
 [#424]: https://github.com/stackabletech/trino-operator/pull/424
 [#425]: https://github.com/stackabletech/trino-operator/pull/425
 
