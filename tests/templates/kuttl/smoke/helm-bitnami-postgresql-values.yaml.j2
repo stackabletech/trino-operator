@@ -15,7 +15,13 @@ primary:
 {% endif %}
   containerSecurityContext:
     enabled: false
-
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "512m"
+    limits:
+      memory: "128Mi"
+      cpu: "1"
 auth:
   username: hive
   password: hive

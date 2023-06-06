@@ -12,6 +12,13 @@ spec:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
   servers:
+    config:
+      resources:
+        cpu:
+          max: '1'
+          min: '300m'
+        memory:
+          limit: '512Mi'
     roleGroups:
       default:
         selector:

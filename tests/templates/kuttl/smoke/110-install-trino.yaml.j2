@@ -27,6 +27,12 @@ spec:
     config:
       logging:
         enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+      resources:
+        cpu:
+          max: '1'
+          min: '300m'
+        memory:
+          limit: '512Mi'
     roleGroups:
       default:
         replicas: 1
@@ -35,6 +41,12 @@ spec:
     config:
       logging:
         enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+      resources:
+        cpu:
+          max: '1'
+          min: '300m'
+        memory:
+          limit: '512Mi'
     roleGroups:
       default:
         replicas: 1

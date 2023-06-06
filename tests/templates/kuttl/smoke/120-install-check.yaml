@@ -19,3 +19,10 @@ spec:
         - name: trino-test-helper
           image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
           command: ["sleep", "infinity"]
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "512m"
+            limits:
+              memory: "128Mi"
+              cpu: "1"

@@ -16,6 +16,12 @@ spec:
     config:
       logging:
         enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+      resources:
+        cpu:
+          max: '500m'
+          min: '250m'
+        memory:
+          limit: '0.5Gi'
     roleGroups:
       default:
         replicas: 1
