@@ -3,10 +3,7 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use crate::{
-    authentication::{TrinoAuthentication, TrinoAuthenticationMethod},
-    discovery::TrinoPodRef,
-};
+use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
 
 use affinity::get_affinity;
 use catalog::TrinoCatalog;
@@ -200,8 +197,8 @@ pub struct TrinoClusterSpec {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterConfig {
     /// Authentication options for Trino.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication: Option<TrinoAuthentication>,
+    #[serde(default)]
+    pub authentication: TrinoAuthentication,
     /// Authorization options for Trino.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization: Option<TrinoAuthorization>,
@@ -472,7 +469,7 @@ impl Configuration for TrinoConfigFragment {
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
-        let authentication: Option<&TrinoAuthentication> = resource.get_authentication();
+        let authentication_enabled = resource.authentication_enabled();
         let server_tls_enabled: bool = resource.get_server_tls().is_some();
         let internal_tls_enabled: bool = resource.get_internal_tls().is_some();
 
@@ -520,7 +517,7 @@ impl Configuration for TrinoConfigFragment {
                 // If authentication is enabled and client tls is explicitly deactivated we error out
                 // Therefore from here on we can use resource.get_server_tls() as the only source
                 // of truth when enabling client TLS.
-                if authentication.is_some() && !server_tls_enabled {
+                if authentication_enabled && !server_tls_enabled {
                     return Err(ConfigError::InvalidConfiguration {
                         reason:
                             "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
@@ -528,21 +525,22 @@ impl Configuration for TrinoConfigFragment {
                     });
                 }
 
-                if let Some(auth) = authentication {
-                    match &auth.method {
-                        // For Authentication we have to differentiate several options here:
-                        // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
-                        TrinoAuthenticationMethod::MultiUser { .. }
-                        | TrinoAuthenticationMethod::Ldap { .. } => {
-                            if role_name == TrinoRole::Coordinator.to_string() {
-                                result.insert(
-                                    HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                                    Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                                );
-                            }
-                        }
-                    }
-                }
+                // TODO: remove, this is done in authentication.rs
+                // if let Some(auth) = authentication {
+                //     match &auth.method {
+                //         // For Authentication we have to differentiate several options here:
+                //         // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
+                //         TrinoAuthenticationMethod::MultiUser { .. }
+                //         | TrinoAuthenticationMethod::Ldap { .. } => {
+                //             if role_name == TrinoRole::Coordinator.to_string() {
+                //                 result.insert(
+                //                     HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                //                     Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
+                //                 );
+                //             }
+                //         }
+                //     }
+                // }
 
                 if server_tls_enabled || internal_tls_enabled {
                     // enable TLS
@@ -705,9 +703,9 @@ impl TrinoCluster {
     }
 
     /// Returns user provided authentication settings
-    pub fn get_authentication(&self) -> Option<&TrinoAuthentication> {
+    pub fn authentication_enabled(&self) -> bool {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.cluster_config.authentication.as_ref()
+        spec.cluster_config.authentication.authentication_enabled()
     }
 
     /// Return user provided server TLS settings
@@ -718,7 +716,7 @@ impl TrinoCluster {
 
     /// Return if client TLS should be set depending on settings for authentication and client TLS.
     pub fn tls_enabled(&self) -> bool {
-        self.get_authentication().is_some() || self.get_server_tls().is_some()
+        self.authentication_enabled() || self.get_server_tls().is_some()
     }
 
     /// Return user provided internal TLS settings.

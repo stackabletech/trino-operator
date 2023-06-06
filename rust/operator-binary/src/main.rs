@@ -1,6 +1,6 @@
+mod authentication;
 mod catalog;
 mod command;
-mod config;
 mod controller;
 mod product_logging;
 
