@@ -1,0 +1,27 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  image:
+    productVersion: "414"
+    stackableVersion: "0.0.0-dev"
+  clusterConfig:
+    catalogLabelSelector: {}
+  coordinators:
+    podOverrides:
+      spec:
+        containers: []
+        tolerations:
+          - key: "key1"
+            operator: "Equal"
+            value: "value1"
+            effect: "NoSchedule"
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
