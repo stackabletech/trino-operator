@@ -3,13 +3,14 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use crate::{authentication::TrinoAuthentication, discovery::TrinoPodRef};
+use crate::discovery::TrinoPodRef;
 
 use affinity::get_affinity;
 use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 
+use crate::authentication::TrinoAuthenticationClassRef;
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
@@ -198,7 +199,7 @@ pub struct TrinoClusterSpec {
 pub struct TrinoClusterConfig {
     /// Authentication options for Trino.
     #[serde(default)]
-    pub authentication: TrinoAuthentication,
+    pub authentication: Vec<TrinoAuthenticationClassRef>,
     /// Authorization options for Trino.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization: Option<TrinoAuthorization>,
@@ -705,7 +706,7 @@ impl TrinoCluster {
     /// Returns user provided authentication settings
     pub fn authentication_enabled(&self) -> bool {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.cluster_config.authentication.authentication_enabled()
+        !spec.cluster_config.authentication.is_empty()
     }
 
     /// Return user provided server TLS settings

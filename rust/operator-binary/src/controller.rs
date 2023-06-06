@@ -58,6 +58,7 @@ use stackable_operator::{
         statefulset::StatefulSetConditionBuilder,
     },
 };
+use stackable_trino_crd::authentication::resolve_authentication_classes;
 use stackable_trino_crd::{
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
@@ -259,11 +260,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
 
     let trino_authenticator_config = TrinoAuthenticatorConfig::try_from(
-        trino
-            .spec
-            .cluster_config
-            .authentication
-            .resolve_all(client)
+        resolve_authentication_classes(client, &trino.spec.cluster_config.authentication)
             .await
             .context(AuthenticationClassRetrievalSnafu)?,
     )
