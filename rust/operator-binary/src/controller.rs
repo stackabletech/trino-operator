@@ -26,13 +26,14 @@ use stackable_operator::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 ConfigMap, ConfigMapVolumeSource, ContainerPort, EmptyDirVolumeSource, EnvVar,
-                EnvVarSource, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
-                TCPSocketAction, Volume,
+                EnvVarSource, PodTemplateSpec, Probe, Secret, SecretKeySelector, Service,
+                ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
             api::resource::Quantity, apis::meta::v1::LabelSelector, util::intstr::IntOrString,
         },
+        DeepMerge,
     },
     kube::{
         runtime::{controller::Action, reflector::ObjectRef},
@@ -387,6 +388,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
                 &resolved_product_image,
+                &trino_role,
                 &rolegroup,
                 &config,
                 &merged_config,
@@ -766,6 +768,7 @@ fn build_rolegroup_catalog_config_map(
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
+    trino_role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
@@ -773,6 +776,9 @@ fn build_rolegroup_statefulset(
     catalogs: &[CatalogConfig],
     sa_name: &str,
 ) -> Result<StatefulSet> {
+    let role = trino
+        .role(trino_role)
+        .context(InternalOperatorFailureSnafu)?;
     let rolegroup = trino
         .rolegroup(rolegroup_ref)
         .context(InternalOperatorFailureSnafu)?;
@@ -967,6 +973,11 @@ fn build_rolegroup_statefulset(
                 .fs_group(1000)
                 .build(),
         );
+
+    let mut pod_template: PodTemplateSpec = pod_builder.build_template();
+    pod_template.merge_from(role.config.pod_overrides.clone());
+    pod_template.merge_from(rolegroup.config.pod_overrides.clone());
+
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
@@ -993,7 +1004,7 @@ fn build_rolegroup_statefulset(
                 ..LabelSelector::default()
             },
             service_name: rolegroup_ref.object_name(),
-            template: pod_builder.build_template(),
+            template: pod_template,
             volume_claim_templates: Some(vec![merged_config
                 .resources
                 .storage

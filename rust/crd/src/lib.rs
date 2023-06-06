@@ -664,7 +664,7 @@ impl TrinoCluster {
     pub fn rolegroup(
         &self,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    ) -> Result<RoleGroup<TrinoConfigFragment>, Error> {
+    ) -> Result<&RoleGroup<TrinoConfigFragment>, Error> {
         let role_variant =
             TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
                 role: rolegroup_ref.role.to_owned(),
@@ -676,7 +676,6 @@ impl TrinoCluster {
             .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
                 role_group: rolegroup_ref.role_group.to_owned(),
             })
-            .cloned()
     }
 
     /// List all coordinator pods expected to form the cluster
@@ -753,7 +752,7 @@ impl TrinoCluster {
         let mut conf_role = role.config.config.to_owned();
 
         // Retrieve rolegroup specific resource config
-        let mut conf_rolegroup = self.rolegroup(rolegroup_ref)?.config.config;
+        let mut conf_rolegroup = self.rolegroup(rolegroup_ref)?.config.config.clone();
 
         if let Some(RoleGroup {
             selector: Some(selector),
