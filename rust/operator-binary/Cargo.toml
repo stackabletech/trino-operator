@@ -10,7 +10,8 @@ version = "0.0.0-dev"
 publish = false
 
 [dependencies]
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.41.0" }
+#stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.41.0" }
+stackable-operator = { path = "../../../operator-rs" }
 stackable-trino-crd = { path = "../crd" }
 
 anyhow = "1.0"
@@ -28,5 +29,6 @@ tracing = "0.1"
 
 [build-dependencies]
 built = { version =  "0.6", features = ["chrono", "git2"] }
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.41.0" }
+#stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.41.0" }
+stackable-operator = { path = "../../../operator-rs" }
 stackable-trino-crd = { path = "../crd" }
