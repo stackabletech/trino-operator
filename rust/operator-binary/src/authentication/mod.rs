@@ -3,6 +3,7 @@ mod password;
 use crate::authentication::password::{TrinoPasswordAuthenticator, TrinoPasswordAuthenticatorType};
 
 use snafu::{ResultExt, Snafu};
+use stackable_operator::k8s_openapi::api::core::v1::Container;
 use stackable_operator::{
     commons::authentication::{AuthenticationClass, AuthenticationClassProvider},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
@@ -58,6 +59,8 @@ impl TrinoAuthenticatorConfig {
         let mut password_authenticator_config_files = vec![];
         // Additional config files to create in the etc folder for the authenticator configuration
         let mut config_files = BTreeMap::new();
+        // Additional sidecar containers
+        let mut sidecar_containers = vec![];
 
         for authenticator in &self.authenticators {
             // The authenticator name (e.g. PASSWORD)
@@ -80,6 +83,10 @@ impl TrinoAuthenticatorConfig {
                             .java_properties_string()
                             .context(InvalidPasswordAuthenticationConfigSnafu)?,
                     );
+                    // add sidecar container to poll mounted user credentials and collect
+                    // in a password data file.
+                    // TODO: finish
+                    sidecar_containers.push(Container::default());
                 }
             }
         }
@@ -111,6 +118,7 @@ impl TrinoAuthenticatorConfig {
         Ok(TrinoAuthenticationProperties {
             trino_config_properties: config,
             config_files,
+            sidecar_containers,
         })
     }
 }
@@ -151,6 +159,7 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticatorConfig {
 pub struct TrinoAuthenticationProperties {
     trino_config_properties: BTreeMap<String, String>,
     config_files: BTreeMap<String, String>,
+    sidecar_containers: Vec<Container>,
     // init_containers: ...
     // command line args: ...
     // env vars ...

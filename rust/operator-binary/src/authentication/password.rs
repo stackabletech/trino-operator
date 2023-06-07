@@ -6,10 +6,13 @@ use stackable_operator::{
 use std::collections::BTreeMap;
 use tracing::debug;
 
+// where the password db file is located
+pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
+// file handling
 const AUTHENTICATOR_FILE_SUFFIX: &str = ".properties";
+const PASSWORD_DB_FILE_NAME: &str = "password.db";
 const PASSWORD_DB_FILE_SUFFIX: &str = ".db";
-
-const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
+// properties
 const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 // file
 const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
@@ -66,8 +69,8 @@ impl TrinoPasswordAuthenticator {
 
     fn password_db_file_path(&self) -> String {
         format!(
-            "{USER_PASSWORD_DATA_DIR_NAME}/{file_name}",
-            file_name = self.password_db_file_name()
+            "{USER_PASSWORD_DATA_DIR_NAME}/{db_file_name}",
+            db_file_name = self.password_db_file_name()
         )
     }
 
@@ -166,12 +169,13 @@ pub enum TrinoPasswordAuthenticatorType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stackable_operator::commons::authentication::static_::UserCredentialsSecretRef;
-    use stackable_operator::commons::authentication::tls::{
-        CaCert, Tls, TlsServerVerification, TlsVerification,
+    use stackable_operator::commons::{
+        authentication::{
+            static_::UserCredentialsSecretRef,
+            tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
+        },
+        secret_class::SecretClassVolume,
     };
-    use stackable_operator::commons::secret_class::SecretClassVolume;
-    use USER_PASSWORD_DATA_DIR_NAME;
 
     #[test]
     fn test_file_password_authenticator() {
@@ -246,51 +250,4 @@ mod tests {
             Some("${ENV:LDAP_PASSWORD}".to_string()).as_ref()
         );
     }
-
-    // #[test]
-    // fn test() {
-    //     assert_eq!(
-    //         trino_config_properties
-    //             .config_files
-    //             .get(&format!("{AUTH_CLASS_0_FILE_1}{FILE_SUFFIX}"))
-    //             .unwrap()
-    //             .get(PASSWORD_AUTHENTICATOR_NAME)
-    //             .unwrap()
-    //             .as_deref(),
-    //         Some(FILE_AUTHENTICATOR_NAME)
-    //     );
-    //
-    //     assert_eq!(
-    //         trino_config_properties
-    //             .config_files
-    //             .get(&format!("{AUTH_CLASS_1_LDAP_1}{FILE_SUFFIX}"))
-    //             .unwrap()
-    //             .get(PASSWORD_AUTHENTICATOR_NAME)
-    //             .unwrap()
-    //             .as_deref(),
-    //         Some(LDAP_AUTHENTICATOR_NAME)
-    //     );
-    //
-    //     assert_eq!(
-    //         trino_config_properties
-    //             .config_files
-    //             .get(&format!("{AUTH_CLASS_1_LDAP_1}{FILE_SUFFIX}"))
-    //             .unwrap()
-    //             .get(LDAP_USER_BASE_DN)
-    //             .unwrap()
-    //             .as_deref(),
-    //         Some(LDAP_SEARCH_BASE)
-    //     );
-    //
-    //     assert_eq!(
-    //         trino_config_properties
-    //             .config_files
-    //             .get(&format!("{AUTH_CLASS_2_FILE_2}{FILE_SUFFIX}"))
-    //             .unwrap()
-    //             .get(PASSWORD_AUTHENTICATOR_NAME)
-    //             .unwrap()
-    //             .as_deref(),
-    //         Some(FILE_AUTHENTICATOR_NAME)
-    //     );
-    // }
 }

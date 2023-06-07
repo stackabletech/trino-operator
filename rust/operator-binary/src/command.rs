@@ -38,7 +38,6 @@ pub fn container_prepare_args(
         ));
     }
 
-    // User password data
     if trino.tls_enabled() {
         args.extend(create_key_and_trust_store(
             STACKABLE_MOUNT_SERVER_TLS_DIR,
@@ -93,6 +92,8 @@ pub fn container_trino_args(
             conf = CONFIG_DIR_NAME,
             rw_conf = RW_CONFIG_DIR_NAME
         ),
+        // TODO: test
+        "echo 'admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i' > /stackable/users/static-test.db".to_string()
     ];
 
     // TODO: Fix

@@ -798,6 +798,12 @@ fn build_rolegroup_statefulset(
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
+    // TODO: remove test
+    cb_prepare.add_volume_mount("users", "/stackable/users");
+    cb_trino.add_volume_mount("users", "/stackable/users");
+    pod_builder.add_empty_dir_volume("users", None);
+    //ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
+
     // TODO: fix
     // we need to mount ldap bind credentials from the secret as env vars
     // if let Some(auth) = authentication_config {
