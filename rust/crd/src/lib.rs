@@ -53,8 +53,6 @@ pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
-pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
-pub const PASSWORD_DB: &str = "password.db";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
@@ -88,22 +86,6 @@ pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
 // - authentication
 pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
-// password-authenticator.properties
-pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
-// file
-pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
-pub const FILE_PASSWORD_FILE: &str = "file.password-file";
-// ldap
-pub const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";
-pub const LDAP_URL: &str = "ldap.url";
-pub const LDAP_BIND_DN: &str = "ldap.bind-dn";
-pub const LDAP_BIND_PASSWORD: &str = "ldap.bind-password";
-pub const LDAP_USER_BASE_DN: &str = "ldap.user-base-dn";
-pub const LDAP_GROUP_AUTH_PATTERN: &str = "ldap.group-auth-pattern";
-pub const LDAP_ALLOW_INSECURE: &str = "ldap.allow-insecure";
-pub const LDAP_SSL_TRUST_STORE_PATH: &str = "ldap.ssl.truststore.path";
-pub const LDAP_USER_ENV: &str = "LDAP_USER";
-pub const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -112,7 +94,6 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
-pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 pub const STACKABLE_SERVER_TLS_DIR: &str = "/stackable/server_tls";
 pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
@@ -612,10 +593,6 @@ impl Configuration for TrinoConfigFragment {
                         Some(NODE_INTERNAL_ADDRESS_SOURCE_FQDN.to_string()),
                     );
                 }
-            }
-            PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                // This is filled in rust/operator-binary/src/config.rs due to required resolving
-                // of the AuthenticationClass
             }
             LOG_PROPERTIES => {}
             _ => {}

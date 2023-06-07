@@ -78,7 +78,7 @@ pub fn container_prepare_args(
 }
 
 pub fn container_trino_args(
-    user_authentication: &TrinoAuthenticatorConfig,
+    _user_authentication: &TrinoAuthenticatorConfig,
     catalogs: &[CatalogConfig],
 ) -> Vec<String> {
     let mut args = vec![

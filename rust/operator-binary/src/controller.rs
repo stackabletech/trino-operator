@@ -66,10 +66,9 @@ use stackable_trino_crd::{
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
     JVM_HEAP_FACTOR, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
-    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
-    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
+    STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -521,6 +520,11 @@ fn build_rolegroup_config_map(
     .scale_to(memory_unit)
         * JVM_HEAP_FACTOR;
 
+    let authentication_config_properties = trino_authenticator_config
+        .additional_trino_config_properties()
+        .context(InvalidAuthenticationConfigSnafu)?;
+    cm_conf_data.extend(authentication_config_properties.get_authenticator_config_files());
+
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
     let mut jvm_config = formatdoc!(
@@ -570,6 +574,13 @@ fn build_rolegroup_config_map(
 
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
+                if *role == TrinoRole::Coordinator {
+                    // Add authentication properties (only required for the Coordinator)
+                    dynamic_resolved_config.extend(
+                        authentication_config_properties.get_config_properties_for_product_config(),
+                    );
+                }
+
                 let protocol = if trino.get_internal_tls().is_some() {
                     TrinoDiscoveryProtocol::Https
                 } else {
@@ -645,34 +656,6 @@ fn build_rolegroup_config_map(
                         vector_toml,
                     );
                 }
-            }
-            // authentication is coordinator only
-            PropertyNameKind::File(file_name)
-                if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES
-                    && *role == TrinoRole::Coordinator =>
-            {
-                // TODO: remove, not required anymore
-                // // depending on authentication we need to add more properties
-                // if let Some(auth) = authentication_config {
-                //     password_authenticator_properties(&mut dynamic_resolved_config, auth)
-                //         .context(InvalidTrinoConfigSnafu)?;
-                // }
-                //
-                // // Add static properties and overrides
-                // dynamic_resolved_config.extend(transformed_config);
-                //
-                // let pw_authenticator_properties =
-                //     product_config::writer::to_java_properties_string(
-                //         dynamic_resolved_config.iter(),
-                //     )
-                //     .context(FailedToWriteJavaPropertiesSnafu)?;
-                //
-                // cm_conf_data.insert(file_name.to_string(), pw_authenticator_properties);
-            }
-            PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
-                // TODO: remove, not required anymore
-                // make sure password db is created to fill it via container command scripts
-                //cm_conf_data.insert(file_name.to_string(), "".to_string());
             }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                 let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
@@ -1059,29 +1042,6 @@ pub fn error_policy(_obj: Arc<TrinoCluster>, _error: &Error, _ctx: Arc<Ctx>) -> 
     Action::requeue(Duration::from_secs(5))
 }
 
-// TODO: remove?
-// async fn user_authentication(
-//     trino: &TrinoCluster,
-//     client: &Client,
-// ) -> Result<Option<TrinoAuthenticationConfig>> {
-//     Ok(match &trino.get_authentication() {
-//         Some(authentication) => Some(
-//             authentication
-//                 .method
-//                 .materialize(
-//                     client,
-//                     trino
-//                         .namespace()
-//                         .as_deref()
-//                         .context(ObjectHasNoNamespaceSnafu)?,
-//                 )
-//                 .await
-//                 .context(FailedProcessingAuthenticationSnafu)?,
-//         ),
-//         _ => None,
-//     })
-// }
-
 /// Give a secret name and an optional key in the secret to use.
 /// The value from the key will be set into the given env var name.
 /// If not secret key is given, the env var name will be used as the secret key.
@@ -1121,7 +1081,6 @@ fn validated_product_config(
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-        PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
     ];
 
     roles.insert(
