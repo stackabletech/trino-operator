@@ -1,18 +1,21 @@
 mod password;
 
-use crate::authentication::password::{TrinoPasswordAuthenticator, TrinoPasswordAuthenticatorType};
-
-use snafu::{ResultExt, Snafu};
-use stackable_operator::k8s_openapi::api::core::v1::Container;
+use crate::authentication::password::{
+    TrinoPasswordAuthentication, TrinoPasswordAuthenticationBuilder,
+};
+use snafu::Snafu;
 use stackable_operator::{
     commons::authentication::{AuthenticationClass, AuthenticationClassProvider},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
 };
-use stackable_trino_crd::{HTTP_SERVER_AUTHENTICATION_TYPE, RW_CONFIG_DIR_NAME};
+use stackable_trino_crd::{Container, TrinoRole};
 use std::collections::BTreeMap;
 use tracing::debug;
 
-const PASSWORD_AUTHENTICATOR_CONFIG_FILES: &str = "password-authenticator.config-files";
+pub(crate) type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
+
+// trino properties
+const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -21,19 +24,31 @@ pub enum Error {
         authentication_class_provider: String,
         authentication_class: ObjectRef<AuthenticationClass>,
     },
-    #[snafu(display("Invalid authentication configuration"))]
+    #[snafu(display("Invalid password authentication configuration"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
 }
 
-type Result<T, E = Error> = std::result::Result<T, E>;
+trait HasTrinoConfigProperties {
+    fn config_properties(&self) -> BTreeMap<String, String>;
+}
 
-#[derive(Clone, Debug)]
-pub struct TrinoAuthenticatorConfig {
-    authenticators: Vec<TrinoAuthenticator>,
+trait HasTrinoConfigFiles {
+    fn config_files(&self) -> Result<Vec<Box<dyn TrinoConfigFile>>>;
+}
+
+trait TrinoConfigFile {
+    fn file_name(&self) -> String;
+    fn role(&self) -> TrinoRole {
+        TrinoRole::Coordinator
+    }
+    fn container(&self) -> Container {
+        Container::Trino
+    }
+    fn content(&self) -> Result<String>;
 }
 
 #[derive(Clone, Debug, strum::Display)]
-pub enum TrinoAuthenticator {
+pub enum TrinoAuthenticationType {
     // #[strum(serialize = "CERTIFICATE")]
     // Certificate,
     // #[strum(serialize = "HEADER")]
@@ -45,104 +60,96 @@ pub enum TrinoAuthenticator {
     // #[strum(serialize = "OAUTH2")]
     // Oauth2,
     #[strum(serialize = "PASSWORD")]
-    Password(TrinoPasswordAuthenticator),
+    Password(TrinoPasswordAuthentication),
 }
 
-impl TrinoAuthenticatorConfig {
-    pub fn additional_trino_config_properties(&self) -> Result<TrinoAuthenticationProperties> {
+#[derive(Clone, Debug, Default)]
+pub struct TrinoAuthenticationConfig {
+    // All authentication classes sorted into the Trino interpretation
+    authentication_types: Vec<TrinoAuthenticationType>,
+}
+
+impl TrinoAuthenticationConfig {
+    pub fn additional_config_properties(&self) -> BTreeMap<String, String> {
         let mut config = BTreeMap::new();
-        // The vec is to have only unique authentication types in the "http-server.authentication.type"
-        // property, but to preserve the order of the provided authentication classes.
-        // (This will be the order Trino will try to authenticate against as well)
+
+        // Represents properties of "http-server.authentication.type".
+        // Must be maintained at top level to keep the order of the provided authentication classes.
+        // Since Trino will check the authentication types in the order they were provided, the first
+        // provided authentication class should also be the the first to be evaluated by Trino.
         let mut http_server_authentication_types = vec![];
-        // The vec is to store all file paths for password authenticators
-        let mut password_authenticator_config_files = vec![];
-        // Additional config files to create in the etc folder for the authenticator configuration
-        let mut config_files = BTreeMap::new();
-        // Additional sidecar containers
-        let mut sidecar_containers = vec![];
 
-        for authenticator in &self.authenticators {
-            // The authenticator name (e.g. PASSWORD)
-            let authenticator_name = authenticator.to_string();
-            // Keep the authenticator types uniquely
-            if !http_server_authentication_types.contains(&authenticator_name) {
-                http_server_authentication_types.push(authenticator_name)
-            }
+        for auth_type in &self.authentication_types {
+            // collect and add later
+            http_server_authentication_types.push(auth_type.to_string());
 
-            match authenticator {
-                TrinoAuthenticator::Password(password_authenticator) => {
-                    let file_name = password_authenticator.file_name();
-                    // collect password authenticator config files paths
-                    password_authenticator_config_files
-                        .push(format!("{RW_CONFIG_DIR_NAME}/{file_name}"));
-                    // collect required authenticator properties
-                    config_files.insert(
-                        file_name,
-                        password_authenticator
-                            .java_properties_string()
-                            .context(InvalidPasswordAuthenticationConfigSnafu)?,
-                    );
-                    // add sidecar container to poll mounted user credentials and collect
-                    // in a password data file.
-                    // TODO: finish
-                    sidecar_containers.push(Container::default());
+            match auth_type {
+                TrinoAuthenticationType::Password(password_auth) => {
+                    config.extend(password_auth.config_properties());
                 }
             }
         }
 
-        if !http_server_authentication_types.is_empty() {
-            debug!(
-                "Final [{HTTP_SERVER_AUTHENTICATION_TYPE}]: {:?}.",
-                http_server_authentication_types
-            );
-            // http-server.authentication.type=PASSWORD,CERTIFICATE,...
-            config.insert(
-                HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                http_server_authentication_types.join(","),
-            );
+        // http-server.authentication.type=PASSWORD,CERTIFICATE,...
+        config.insert(
+            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+            http_server_authentication_types.join(","),
+        );
+
+        debug!("Final authentication config properties: {:?}", config);
+
+        config
+    }
+
+    pub fn additional_config_files(
+        &self,
+        role: TrinoRole,
+        container: Container,
+    ) -> Result<BTreeMap<String, String>> {
+        let mut filtered_config_files = BTreeMap::new();
+
+        for file in self.config_files()? {
+            // filter role and container
+            if role == file.role() && container == file.container() {
+                filtered_config_files.insert(file.file_name(), file.content()?);
+            }
+        }
+        Ok(filtered_config_files)
+    }
+
+    fn config_files(&self) -> Result<Vec<Box<dyn TrinoConfigFile>>> {
+        let mut files = vec![];
+        for auth_type in &self.authentication_types {
+            match auth_type {
+                TrinoAuthenticationType::Password(password_auth) => {
+                    files.extend(password_auth.config_files()?);
+                }
+            }
         }
 
-        if !password_authenticator_config_files.is_empty() {
-            debug!(
-                "Final [{PASSWORD_AUTHENTICATOR_CONFIG_FILES}]: {:?}.",
-                password_authenticator_config_files
-            );
-            // password-authenticator.config-files=/stackable/.../etc/file.properties,/stackable/.../etc/ldap.properties,...
-            config.insert(
-                PASSWORD_AUTHENTICATOR_CONFIG_FILES.to_string(),
-                password_authenticator_config_files.join(","),
-            );
-        }
-
-        Ok(TrinoAuthenticationProperties {
-            trino_config_properties: config,
-            config_files,
-            sidecar_containers,
-        })
+        Ok(files)
     }
 }
 
-impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticatorConfig {
+impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationConfig {
     type Error = Error;
 
     fn try_from(auth_classes: Vec<AuthenticationClass>) -> std::result::Result<Self, Self::Error> {
-        let mut authenticators = vec![];
+        let mut authentication_types = vec![];
+
+        let mut password_auth_builder: TrinoPasswordAuthenticationBuilder =
+            TrinoPasswordAuthenticationBuilder::new();
+
         for auth_class in auth_classes {
             let auth_class_name = auth_class.name_any();
             match auth_class.spec.provider {
-                AuthenticationClassProvider::Static(provider) => authenticators.push(
-                    TrinoAuthenticator::Password(TrinoPasswordAuthenticator::new(
-                        auth_class_name,
-                        TrinoPasswordAuthenticatorType::File(provider),
-                    )),
-                ),
-                AuthenticationClassProvider::Ldap(provider) => authenticators.push(
-                    TrinoAuthenticator::Password(TrinoPasswordAuthenticator::new(
-                        auth_class_name,
-                        TrinoPasswordAuthenticatorType::Ldap(provider),
-                    )),
-                ),
+                AuthenticationClassProvider::Static(provider) => {
+                    password_auth_builder.add_file_authenticator(provider);
+                }
+
+                AuthenticationClassProvider::Ldap(provider) => {
+                    password_auth_builder.add_ldap_authenticator(auth_class_name, provider);
+                }
                 _ => AuthenticationClassProviderNotSupportedSnafu {
                     authentication_class_provider: auth_class.spec.provider.to_string(),
                     authentication_class: ObjectRef::<AuthenticationClass>::from_obj(&auth_class),
@@ -151,39 +158,23 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticatorConfig {
             }
         }
 
-        Ok(TrinoAuthenticatorConfig { authenticators })
+        let password_authentication = password_auth_builder.build();
+        if password_authentication.is_required() {
+            authentication_types.push(TrinoAuthenticationType::Password(password_authentication));
+        }
+
+        Ok(TrinoAuthenticationConfig {
+            authentication_types,
+        })
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct TrinoAuthenticationProperties {
-    trino_config_properties: BTreeMap<String, String>,
-    config_files: BTreeMap<String, String>,
-    sidecar_containers: Vec<Container>,
-    // init_containers: ...
-    // command line args: ...
-    // env vars ...
-    //
-}
-
-impl TrinoAuthenticationProperties {
-    /// Return the trino config properties as used in the ConfigMap creation in the controller
-    pub fn get_config_properties_for_product_config(&self) -> BTreeMap<String, Option<String>> {
-        self.trino_config_properties
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(v.clone())))
-            .collect()
-    }
-
-    /// Return the trino config properties as used in the ConfigMap creation in the controller
-    pub fn get_authenticator_config_files(&self) -> BTreeMap<String, String> {
-        self.config_files.clone()
-    }
-}
+///////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use password::PASSWORD_CONFIG_FILE_NAME_SUFFIX;
     use stackable_operator::{
         commons::authentication::{
             static_::UserCredentialsSecretRef, AuthenticationClassSpec, LdapAuthenticationProvider,
@@ -193,86 +184,93 @@ mod tests {
     };
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
 
-    const AUTH_CLASS_0_FILE_1: &str = "file-1";
-    const AUTH_CLASS_1_LDAP_1: &str = "ldap-1";
-    const AUTH_CLASS_2_FILE_2: &str = "file-2";
-    const FILE_SUFFIX: &str = ".properties";
-    const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
+    const FILE_AUTH_CLASS_1: &str = "file-auth-1";
+    const FILE_AUTH_CLASS_2: &str = "file-auth-2";
+    const LDAP_AUTH_CLASS_1: &str = "ldap-auth-1";
+    const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
+
+    fn setup_file_auth_class(name: &str) -> AuthenticationClass {
+        AuthenticationClass {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                ..ObjectMeta::default()
+            },
+            spec: AuthenticationClassSpec {
+                provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
+                    user_credentials_secret: UserCredentialsSecretRef {
+                        name: format!("{name}-secret"),
+                    },
+                }),
+            },
+        }
+    }
+
+    fn setup_ldap_auth_class(name: &str) -> AuthenticationClass {
+        AuthenticationClass {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                ..ObjectMeta::default()
+            },
+            spec: AuthenticationClassSpec {
+                provider: AuthenticationClassProvider::Ldap(LdapAuthenticationProvider {
+                    hostname: "".to_string(),
+                    port: None,
+                    search_base: "".to_string(),
+                    search_filter: "".to_string(),
+                    ldap_field_names: Default::default(),
+                    bind_credentials: None,
+                    tls: None,
+                }),
+            },
+        }
+    }
 
     fn setup_authentication_classes() -> Vec<AuthenticationClass> {
         vec![
-            AuthenticationClass {
-                metadata: ObjectMeta {
-                    name: Some(AUTH_CLASS_0_FILE_1.to_string()),
-                    ..ObjectMeta::default()
-                },
-                spec: AuthenticationClassSpec {
-                    provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
-                        user_credentials_secret: UserCredentialsSecretRef {
-                            name: "user-credential-secret".to_string(),
-                        },
-                    }),
-                },
-            },
-            AuthenticationClass {
-                metadata: ObjectMeta {
-                    name: Some(AUTH_CLASS_1_LDAP_1.to_string()),
-                    ..ObjectMeta::default()
-                },
-                spec: AuthenticationClassSpec {
-                    provider: AuthenticationClassProvider::Ldap(LdapAuthenticationProvider {
-                        hostname: "ldap.default.svc.cluster.local".to_string(),
-                        port: Some(1389),
-                        search_base: LDAP_SEARCH_BASE.to_string(),
-                        search_filter: "".to_string(),
-                        ldap_field_names: Default::default(),
-                        bind_credentials: None,
-                        tls: None,
-                    }),
-                },
-            },
-            AuthenticationClass {
-                metadata: ObjectMeta {
-                    name: Some(AUTH_CLASS_2_FILE_2.to_string()),
-                    ..ObjectMeta::default()
-                },
-                spec: AuthenticationClassSpec {
-                    provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
-                        user_credentials_secret: UserCredentialsSecretRef {
-                            name: "user-credential-secret-2".to_string(),
-                        },
-                    }),
-                },
-            },
+            setup_file_auth_class(FILE_AUTH_CLASS_1),
+            setup_file_auth_class(FILE_AUTH_CLASS_2),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_1),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_2),
         ]
     }
 
     #[test]
-    fn test_trino_authenticator() {
-        let trino_auth_config =
-            TrinoAuthenticatorConfig::try_from(setup_authentication_classes()).unwrap();
-
-        let trino_config_properties = trino_auth_config
-            .additional_trino_config_properties()
-            .unwrap();
+    fn test_trino_password_authenticator_config_properties() {
+        let trino_config_properties =
+            TrinoAuthenticationConfig::try_from(setup_authentication_classes())
+                .unwrap()
+                .additional_config_properties();
 
         assert_eq!(
-            trino_config_properties
-                .trino_config_properties
-                .get(HTTP_SERVER_AUTHENTICATION_TYPE),
+            trino_config_properties.get(HTTP_SERVER_AUTHENTICATION_TYPE),
             Some("PASSWORD".to_string()).as_ref(),
+        );
+        assert!(trino_config_properties
+            .get(password::PASSWORD_AUTHENTICATOR_CONFIG_FILES)
+            .is_some());
+    }
+
+    #[test]
+    fn test_trino_password_authenticator_config_files() {
+        let trino_config_files =
+            TrinoAuthenticationConfig::try_from(setup_authentication_classes())
+                .unwrap()
+                .additional_config_files(TrinoRole::Coordinator, Container::Trino)
+                .unwrap();
+
+        assert_eq!(
+            trino_config_files.get("file-authenticator.properties"),
+            Some("file.password-file=/stackable/users/password.db\npassword-authenticator.name=file\n".to_string()).as_ref()
         );
 
         assert_eq!(
-            trino_config_properties
-                .trino_config_properties
-                .get(PASSWORD_AUTHENTICATOR_CONFIG_FILES),
-            Some(format!(
-                "{RW_CONFIG_DIR_NAME}/{AUTH_CLASS_0_FILE_1}{FILE_SUFFIX},\
-                 {RW_CONFIG_DIR_NAME}/{AUTH_CLASS_1_LDAP_1}{FILE_SUFFIX},\
-                 {RW_CONFIG_DIR_NAME}/{AUTH_CLASS_2_FILE_2}{FILE_SUFFIX}",
-            ))
-            .as_ref()
+            trino_config_files.get("ldap-auth-1-ldap-authenticator.properties"),
+            Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://\\:389\nldap.user-base-dn=\"\"\npassword-authenticator.name=ldap\n".to_string()).as_ref()
+        );
+
+        assert_eq!(
+            trino_config_files.get("ldap-auth-2-ldap-authenticator.properties"),
+            Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://\\:389\nldap.user-base-dn=\"\"\npassword-authenticator.name=ldap\n".to_string()).as_ref()
         );
     }
 }

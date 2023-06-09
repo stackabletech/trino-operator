@@ -1,5 +1,5 @@
 use crate::{
-    authentication::TrinoAuthenticatorConfig, catalog::config::CatalogConfig,
+    authentication::TrinoAuthenticationConfig, catalog::config::CatalogConfig,
     controller::STACKABLE_LOG_CONFIG_DIR,
 };
 
@@ -77,7 +77,7 @@ pub fn container_prepare_args(
 }
 
 pub fn container_trino_args(
-    _user_authentication: &TrinoAuthenticatorConfig,
+    _user_authentication: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
 ) -> Vec<String> {
     let mut args = vec![
@@ -93,7 +93,7 @@ pub fn container_trino_args(
             rw_conf = RW_CONFIG_DIR_NAME
         ),
         // TODO: test
-        "echo 'admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i' > /stackable/users/static-test.db".to_string()
+        //"echo 'admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i' > /stackable/users/password.db".to_string()
     ];
 
     // TODO: Fix

@@ -1,11 +1,11 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
-    authentication::TrinoAuthenticatorConfig,
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
 };
 
+use crate::authentication::TrinoAuthenticationConfig;
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -258,8 +258,8 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let resolved_product_image: ResolvedProductImage =
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
 
-    let trino_authenticator_config = TrinoAuthenticatorConfig::try_from(
-        resolve_authentication_classes(client, &trino.spec.cluster_config.authentication)
+    let trino_authenticator_config = TrinoAuthenticationConfig::try_from(
+        resolve_authentication_classes(client, trino.get_authentication())
             .await
             .context(AuthenticationClassRetrievalSnafu)?,
     )
@@ -499,7 +499,7 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    trino_authenticator_config: &TrinoAuthenticatorConfig,
+    trino_authenticator_config: &TrinoAuthenticationConfig,
     opa_connect_string: Option<&str>,
     vector_aggregator_address: Option<&str>,
 ) -> Result<ConfigMap> {
@@ -520,10 +520,10 @@ fn build_rolegroup_config_map(
     .scale_to(memory_unit)
         * JVM_HEAP_FACTOR;
 
-    let authentication_config_properties = trino_authenticator_config
-        .additional_trino_config_properties()
-        .context(InvalidAuthenticationConfigSnafu)?;
-    cm_conf_data.extend(authentication_config_properties.get_authenticator_config_files());
+    //let authentication_config_properties = trino_authenticator_config
+    //     .config_file_properties()
+    //     .context(InvalidAuthenticationConfigSnafu)?;
+    // cm_conf_data.extend(authentication_config_properties.get_authenticator_config_files());
 
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
@@ -576,9 +576,10 @@ fn build_rolegroup_config_map(
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
                 if *role == TrinoRole::Coordinator {
                     // Add authentication properties (only required for the Coordinator)
-                    dynamic_resolved_config.extend(
-                        authentication_config_properties.get_config_properties_for_product_config(),
-                    );
+                    // TODO:
+                    // dynamic_resolved_config.extend(
+                    //     authentication_config_properties.get_config_properties_for_product_config(),
+                    // );
                 }
 
                 let protocol = if trino.get_internal_tls().is_some() {
@@ -762,7 +763,7 @@ fn build_rolegroup_statefulset(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    trino_authenticator_config: &TrinoAuthenticatorConfig,
+    trino_authenticator_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     sa_name: &str,
 ) -> Result<StatefulSet> {
@@ -798,10 +799,17 @@ fn build_rolegroup_statefulset(
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
+    // trino_authenticator_config.pod_template_volume_and_volume_mounts(
+    //     resolved_product_image,
+    //     &mut pod_builder,
+    //     &mut cb_prepare,
+    //     &mut cb_trino,
+    // );
+
     // TODO: remove test
-    cb_prepare.add_volume_mount("users", "/stackable/users");
-    cb_trino.add_volume_mount("users", "/stackable/users");
-    pod_builder.add_empty_dir_volume("users", None);
+    //cb_prepare.add_volume_mount("users", "/stackable/users");
+    //cb_trino.add_volume_mount("users", "/stackable/users");
+    //pod_builder.add_empty_dir_volume("users", None);
     //ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
 
     // TODO: fix

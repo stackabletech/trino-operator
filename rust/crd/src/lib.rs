@@ -83,9 +83,6 @@ pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY: &str =
     "internal-communication.https.truststore.key";
 pub const NODE_INTERNAL_ADDRESS_SOURCE: &str = "node.internal-address-source";
 pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
-// - authentication
-pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
-pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -363,8 +360,13 @@ pub struct TrinoStorageConfig {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Container {
+    // init
     Prepare,
+    // sidecar
     Vector,
+    // sidecar
+    PasswordFileUpdater,
+    // main
     Trino,
 }
 
@@ -681,6 +683,11 @@ impl TrinoCluster {
     }
 
     /// Returns user provided authentication settings
+    pub fn get_authentication(&self) -> &Vec<TrinoAuthenticationClassRef> {
+        &self.spec.cluster_config.authentication
+    }
+
+    /// Check if any authentication settings are provided
     pub fn authentication_enabled(&self) -> bool {
         let spec: &TrinoClusterSpec = &self.spec;
         !spec.cluster_config.authentication.is_empty()
