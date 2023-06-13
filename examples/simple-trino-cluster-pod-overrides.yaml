@@ -12,7 +12,6 @@ spec:
   coordinators:
     podOverrides:
       spec:
-        containers: []
         tolerations:
           - key: "key1"
             operator: "Equal"

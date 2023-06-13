@@ -5311,8 +5311,6 @@ spec:
                                   - name
                                 type: object
                               type: array
-                          required:
-                            - containers
                           type: object
                       type: object
                     roleGroups:
@@ -10458,8 +10456,6 @@ spec:
                                         - name
                                       type: object
                                     type: array
-                                required:
-                                  - containers
                                 type: object
                             type: object
                           replicas:
@@ -15690,8 +15686,6 @@ spec:
                                   - name
                                 type: object
                               type: array
-                          required:
-                            - containers
                           type: object
                       type: object
                     roleGroups:
@@ -20837,8 +20831,6 @@ spec:
                                         - name
                                       type: object
                                     type: array
-                                required:
-                                  - containers
                                 type: object
                             type: object
                           replicas:

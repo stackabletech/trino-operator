@@ -107,7 +107,7 @@ mod tests {
           image:
             productVersion: "414"
             stackableVersion: "0.0.0-dev"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino
@@ -197,7 +197,7 @@ mod tests {
           image:
             productVersion: "414"
             stackableVersion: "0.0.0-dev"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino
@@ -416,7 +416,7 @@ mod tests {
           image:
             productVersion: "414"
             stackableVersion: "0.0.0-dev"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino
