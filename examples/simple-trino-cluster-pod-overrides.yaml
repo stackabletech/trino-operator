@@ -10,7 +10,7 @@ spec:
   clusterConfig:
     catalogLabelSelector: {}
   coordinators:
-    podOverrides:
+    podOverrides: # on role level
       spec:
         tolerations:
           - key: "key1"
@@ -19,6 +19,10 @@ spec:
             effect: "NoSchedule"
     roleGroups:
       default:
+        podOverrides: # on rolegroup level, takes precedence over the ones specified at role level
+          metadata:
+            labels:
+              my-custom-label: super-important-label
         replicas: 1
   workers:
     roleGroups:
