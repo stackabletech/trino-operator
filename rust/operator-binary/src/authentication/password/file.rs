@@ -1,22 +1,17 @@
-use crate::authentication::{
-    password::{self, CONFIG_FILE_NAME_SUFFIX, PASSWORD_AUTHENTICATOR_NAME},
-    Result,
-};
+use crate::authentication::password::{CONFIG_FILE_NAME_SUFFIX, PASSWORD_AUTHENTICATOR_NAME};
 
+use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use stackable_operator::{
     builder::{ContainerBuilder, VolumeBuilder, VolumeMountBuilder},
     commons::authentication::StaticAuthenticationProvider,
-    k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
+    k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
-use std::{
-    collections::{BTreeMap, HashMap},
-    hash::Hash,
-};
+use std::collections::HashMap;
 
 // mounts
 const PASSWORD_DB_VOLUME_NAME: &str = "users";
-const PASSWORD_DB_VOLUME_MOUNT_PATH: &str = "/stackable/users";
-const PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH: &str = "/stackable/auth-secrets";
+pub const PASSWORD_DB_VOLUME_MOUNT_PATH: &str = "/stackable/users";
+pub const PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH: &str = "/stackable/auth-secrets";
 // trino properties
 const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
 const FILE_PASSWORD_FILE: &str = "file.password-file";
@@ -72,52 +67,10 @@ impl FileAuthenticator {
         VolumeMountBuilder::new(PASSWORD_DB_VOLUME_NAME, PASSWORD_DB_VOLUME_MOUNT_PATH).build()
     }
 
-    pub fn file_update_container() -> Container {
-        ContainerBuilder::new(&stackable_trino_crd::Container::PasswordFileUpdater.to_string())
-            .unwrap()
-            // TODO: add image
-            //.image_from_product_image(&resolved_product_image)
-            .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-            .args(vec![format!(
-                r###"
-echo '
-#!/bin/bash
-
-poll_interval_seconds=5
-
-while true
-do
-  echo "Start password file authenticator secrets..."
-  for secret in ${{{stackable_auth_secret_dir}}}/*; do
-    credentials=""
-    secret_name="$(basename ${{secret}})"
-    echo "Processing secret [$secret_name] ..."
-
-    for user in ${{secret}}/*; do
-      user_name=$(basename ${{user}})
-      password=$(cat ${{user}})
-      credentials+="$(htpasswd -nbBC 10 ${{user_name}} ${{password}})\n"
-    done
-
-    echo "$credentials" > "${{{stackable_password_db_dir}}}/${{secret_name}}-password.db"
-  done
-
-  echo "All done. Next round in {poll_interval}!"
-  sleep {poll_interval}
-done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/build_password_db.sh
-"###,
-                stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
-                stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
-                poll_interval = 5
-            )])
-            //.add_volume_mount("auth-secrets", "/stackable/auth-secrets")
-            .add_volume_mount("file-auth-users", "/stackable/users")
-            .build()
-    }
-
     fn password_file_name(&self) -> String {
         format!(
-            "{credentials}-password.db",
+            "{auth_class}-{credentials}-pw-file-auth-password.db",
+            auth_class = self.name,
             credentials = self.file.user_credentials_secret.name
         )
     }
@@ -145,6 +98,50 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
             volume_name = self.secret_volume_name()
         )
     }
+}
+
+pub fn extend_password_file_update_container_builder(
+    cb_file_updater: &mut ContainerBuilder,
+    resolved_product_image: &ResolvedProductImage,
+) {
+    cb_file_updater
+        .image_from_product_image(resolved_product_image)
+        .command(vec!["/bin/bash".to_string(), "-c".to_string()])
+        .args(vec![format!(
+            r###"
+echo '
+#!/bin/bash
+
+poll_interval_seconds=5
+
+while true
+do
+  echo "Start password file authenticator secrets..."
+  for secret in {stackable_auth_secret_dir}/*; do
+    credentials=""
+    secret_name="$(basename ${{secret}})"
+    echo "Processing secret [$secret_name] ..."
+
+    for user in ${{secret}}/*; do
+      user_name=$(basename ${{user}})
+      password=$(cat ${{user}})
+      credentials+="$(htpasswd -nbBC 10 ${{user_name}} ${{password}})"
+      credentials+=" "
+    done
+    
+    echo "${{credentials}}" | tr " " "\n" > "{stackable_password_db_dir}/${{secret_name}}-password.db"
+  done
+
+  echo "All done. Next round in {poll_interval} seconds!"
+  echo ""
+  
+  sleep {poll_interval}
+done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/build_password_db.sh
+"###,
+            stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
+            stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
+            poll_interval = 5
+        )]);
 }
 
 #[cfg(test)]

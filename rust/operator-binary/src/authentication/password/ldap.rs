@@ -2,7 +2,7 @@ use crate::authentication::password::{self, CONFIG_FILE_NAME_SUFFIX};
 
 use snafu::Snafu;
 use stackable_operator::commons::authentication::LdapAuthenticationProvider;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 // ldap
 const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";
@@ -38,10 +38,6 @@ impl LdapAuthenticator {
 }
 
 impl LdapAuthenticator {
-    fn name(&self) -> &str {
-        self.name.as_str()
-    }
-
     pub fn config_file_name(&self) -> String {
         format!(
             "{name}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",

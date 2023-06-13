@@ -1,5 +1,6 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
+    authentication,
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
@@ -779,27 +780,32 @@ fn build_rolegroup_statefulset(
         .rolegroup(rolegroup_ref)
         .context(InternalOperatorFailureSnafu)?;
 
+    let mut pod_builder = PodBuilder::new();
+
     let prepare_container_name = Container::Prepare.to_string();
     let mut cb_prepare = ContainerBuilder::new(&prepare_container_name).with_context(|_| {
         IllegalContainerNameSnafu {
             container_name: prepare_container_name.clone(),
         }
     })?;
+
     let trino_container_name = Container::Trino.to_string();
     let mut cb_trino = ContainerBuilder::new(&trino_container_name).with_context(|_| {
         IllegalContainerNameSnafu {
             container_name: trino_container_name.clone(),
         }
     })?;
+
     let pw_file_updater_container_name = Container::PasswordFileUpdater.to_string();
-    let mut cb_file_updater =
-        ContainerBuilder::new(&pw_file_updater_container_name).with_context(|_| {
-            IllegalContainerNameSnafu {
-                container_name: pw_file_updater_container_name.clone(),
-            }
+    let mut cb_pw_file_updater = ContainerBuilder::new(&pw_file_updater_container_name)
+        .with_context(|_| IllegalContainerNameSnafu {
+            container_name: pw_file_updater_container_name.clone(),
         })?;
 
-    let mut pod_builder = PodBuilder::new();
+    authentication::password::file::extend_password_file_update_container_builder(
+        &mut cb_pw_file_updater,
+        resolved_product_image,
+    );
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -820,15 +826,13 @@ fn build_rolegroup_statefulset(
         &mut pod_builder,
         &mut cb_prepare,
         &mut cb_trino,
-        &mut cb_file_updater,
+        &mut cb_pw_file_updater,
     );
 
-    pod_builder.add_volume(
-        VolumeBuilder::new("auth-secrets")
-            .with_empty_dir(None::<String>, None)
-            .build(),
-    );
-
+    // TODO: Automate
+    if role == &TrinoRole::Coordinator {
+        pod_builder.add_container(cb_pw_file_updater.build());
+    }
     // TODO: remove test
     //ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
 

@@ -1,9 +1,8 @@
 use crate::{
-    authentication::TrinoAuthenticationTypes, catalog::config::CatalogConfig,
+    authentication::TrinoAuthenticationConfig, catalog::config::CatalogConfig,
     controller::STACKABLE_LOG_CONFIG_DIR,
 };
 
-use crate::authentication::TrinoAuthenticationConfig;
 use stackable_operator::product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice};
 use stackable_trino_crd::{
     Container, TrinoCluster, TrinoConfig, CONFIG_DIR_NAME, DATA_DIR_NAME, LOG_PROPERTIES,

@@ -1,4 +1,4 @@
-mod password;
+pub(crate) mod password;
 
 use crate::authentication::password::{
     file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
@@ -6,16 +6,15 @@ use crate::authentication::password::{
 };
 
 use snafu::{ResultExt, Snafu};
-use stackable_operator::k8s_openapi::api::core::v1::{Container, Volume, VolumeMount};
-use stackable_operator::schemars::_private::NoSerialize;
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     commons::authentication::{AuthenticationClass, AuthenticationClassProvider},
+    k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
     product_config,
 };
 use stackable_trino_crd::TrinoRole;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use strum::IntoEnumIterator;
 use tracing::debug;
 
@@ -61,9 +60,20 @@ impl TrinoAuthenticationConfig {
         pod_builder.add_volumes(self.volumes());
         // volume mounts
         for container in stackable_trino_crd::Container::iter() {
-            prepare_builder.add_volume_mounts(self.volume_mounts(&role, &container));
-            trino_builder.add_volume_mounts(self.volume_mounts(&role, &container));
-            file_updater_builder.add_volume_mounts(self.volume_mounts(&role, &container));
+            let volume_mounts = self.volume_mounts(&role, &container);
+
+            match container {
+                stackable_trino_crd::Container::Prepare => {
+                    prepare_builder.add_volume_mounts(volume_mounts);
+                }
+                stackable_trino_crd::Container::PasswordFileUpdater => {
+                    file_updater_builder.add_volume_mounts(volume_mounts);
+                }
+                stackable_trino_crd::Container::Trino => {
+                    trino_builder.add_volume_mounts(volume_mounts);
+                }
+                stackable_trino_crd::Container::Vector => {}
+            }
         }
     }
 
@@ -98,11 +108,11 @@ impl TrinoAuthenticationConfig {
         container: stackable_trino_crd::Container,
         volume_mount: VolumeMount,
     ) {
-        let mut current_volume_mounts = self
+        let current_volume_mounts = self
             .volume_mounts
-            .entry(role)
+            .entry(role.clone())
             .or_insert_with(HashMap::new)
-            .entry(container)
+            .entry(container.clone())
             .or_insert_with(Vec::new);
 
         if !current_volume_mounts.contains(&volume_mount) {

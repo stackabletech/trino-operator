@@ -7,15 +7,9 @@ use crate::authentication::{
 };
 
 use snafu::{ResultExt, Snafu};
-use stackable_operator::builder::ContainerBuilder;
-use stackable_operator::{
-    builder::{VolumeBuilder, VolumeMountBuilder},
-    k8s_openapi::api::core::v1::{Volume, VolumeMount},
-    product_config,
-};
-use stackable_trino_crd::TrinoRole::Coordinator;
+use stackable_operator::product_config;
 use stackable_trino_crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use tracing::debug;
 
 // Trino properties
@@ -23,7 +17,6 @@ const PASSWORD_AUTHENTICATOR_CONFIG_FILES: &str = "password-authenticator.config
 const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 // file handling
 const CONFIG_FILE_NAME_SUFFIX: &str = ".properties";
-const USER_PASSWORD_DB_MOUNT_NAME: &str = "file-auth-users";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -46,26 +39,11 @@ pub enum TrinoPasswordAuthenticator {
     Ldap(LdapAuthenticator),
 }
 
-impl TrinoPasswordAuthenticator {
-    pub fn config_file_name(&self) -> String {
-        match &self {
-            TrinoPasswordAuthenticator::File(file_authenticator) => {
-                file_authenticator.config_file_name()
-            }
-            TrinoPasswordAuthenticator::Ldap(ldap_authenticator) => {
-                ldap_authenticator.config_file_name()
-            }
-        }
-    }
-}
-
 impl TrinoPasswordAuthentication {
     pub fn new(authenticators: Vec<TrinoPasswordAuthenticator>) -> Self {
         Self { authenticators }
     }
-}
 
-impl TrinoPasswordAuthentication {
     pub fn password_authentication_config(&self) -> Result<TrinoAuthenticationConfig, Error> {
         let mut password_authentication_config = TrinoAuthenticationConfig::default();
         // Represents password-authenticator.config-files property
@@ -78,7 +56,7 @@ impl TrinoPasswordAuthentication {
                     let config_file_name = file_authenticator.config_file_name();
                     // config file name to trino config properties (see end of method)
                     password_authenticator_config_file_names
-                        .push(format!("{RW_CONFIG_DIR_NAME}/{config_file_name}",));
+                        .push(format!("{RW_CONFIG_DIR_NAME}/{config_file_name}"));
 
                     // authenticator property file
                     password_authentication_config.add_config_file(
@@ -106,6 +84,7 @@ impl TrinoPasswordAuthentication {
                         Container::PasswordFileUpdater,
                         file_authenticator.secret_volume_mount(),
                     );
+
                     let password_db_volume_mount = FileAuthenticator::password_db_volume_mount();
                     // password file empty dir mount for file updater
                     password_authentication_config.add_volume_mount(
@@ -120,11 +99,11 @@ impl TrinoPasswordAuthentication {
                         password_db_volume_mount,
                     );
 
-                    // required containers
-                    password_authentication_config.add_sidecar_container(
-                        TrinoRole::Coordinator,
-                        FileAuthenticator::file_update_container(),
-                    );
+                    // TODO: required containers
+                    // password_authentication_config.add_sidecar_container(
+                    //     TrinoRole::Coordinator,
+                    //     FileAuthenticator::file_update_container(),
+                    // );
                 }
                 TrinoPasswordAuthenticator::Ldap(ldap_authenticator) => {
                     let config_file_name = ldap_authenticator.config_file_name();
@@ -174,8 +153,9 @@ impl TrinoPasswordAuthentication {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use file::FILE_AUTHENTICATOR_PROPERTIES_NAME;
-    use stackable_operator::commons::authentication::static_::UserCredentialsSecretRef;
+    use stackable_operator::commons::authentication::{
+        static_::UserCredentialsSecretRef, LdapAuthenticationProvider, StaticAuthenticationProvider,
+    };
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
     const FILE_AUTH_CLASS_2: &str = "file-auth-2";
@@ -237,9 +217,10 @@ mod tests {
                 .config_properties()
                 .get(PASSWORD_AUTHENTICATOR_CONFIG_FILES),
             Some(format!(
-                "{RW_CONFIG_DIR_NAME}/{FILE_AUTHENTICATOR_PROPERTIES_NAME}{PASSWORD_CONFIG_FILE_NAME_SUFFIX},\
-                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_1}-ldap-authenticator{PASSWORD_CONFIG_FILE_NAME_SUFFIX},\
-                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_2}-ldap-authenticator{PASSWORD_CONFIG_FILE_NAME_SUFFIX}",
+                "{RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_1}-password-file-auth{CONFIG_FILE_NAME_SUFFIX},\
+                 {RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_2}-password-file-auth{CONFIG_FILE_NAME_SUFFIX},\
+                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_1}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX},\
+                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",
             ))
             .as_ref()
         );
@@ -250,27 +231,30 @@ mod tests {
         let password_authentication = setup();
         let config_files = password_authentication.config_files().unwrap();
 
-        // We expect 3 config files (1 for file-authenticator (1 filtered out), 2 for ldap-authenticator)
-        assert_eq!(config_files.len(), 3);
+        // We expect 4 config files (2 for file-authenticator, 2 for ldap-authenticator)
+        assert_eq!(config_files.len(), 4);
         // First element should be the file authentication
         assert_eq!(
             config_files.get(0).unwrap().name(),
-            FileAuthenticator::new(StaticAuthenticationProvider {
-                user_credentials_secret: UserCredentialsSecretRef {
-                    name: "".to_string()
+            FileAuthenticator::new(
+                "test".to_string(),
+                StaticAuthenticationProvider {
+                    user_credentials_secret: UserCredentialsSecretRef {
+                        name: "".to_string()
+                    }
                 }
-            })
+            )
             .config_file_name()
         );
         // Second element should be ldap authentication
         assert_eq!(
-            config_files.get(1).unwrap().name(),
-            format!("{LDAP_AUTH_CLASS_1}-ldap-authenticator{PASSWORD_CONFIG_FILE_NAME_SUFFIX}")
+            config_files.get(2).unwrap().name(),
+            format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}")
         );
         // Third element should be ldap authentication
         assert_eq!(
-            config_files.get(2).unwrap().name(),
-            format!("{LDAP_AUTH_CLASS_2}-ldap-authenticator{PASSWORD_CONFIG_FILE_NAME_SUFFIX}")
+            config_files.get(3).unwrap().name(),
+            format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}")
         );
     }
 }
