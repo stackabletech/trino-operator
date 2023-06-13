@@ -1,8 +1,9 @@
 use crate::{
-    authentication::TrinoAuthenticationConfig, catalog::config::CatalogConfig,
+    authentication::TrinoAuthenticationTypes, catalog::config::CatalogConfig,
     controller::STACKABLE_LOG_CONFIG_DIR,
 };
 
+use crate::authentication::TrinoAuthenticationConfig;
 use stackable_operator::product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice};
 use stackable_trino_crd::{
     Container, TrinoCluster, TrinoConfig, CONFIG_DIR_NAME, DATA_DIR_NAME, LOG_PROPERTIES,
@@ -92,8 +93,6 @@ pub fn container_trino_args(
             conf = CONFIG_DIR_NAME,
             rw_conf = RW_CONFIG_DIR_NAME
         ),
-        // TODO: test
-        //"echo 'admin:$2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i' > /stackable/users/password.db".to_string()
     ];
 
     // TODO: Fix

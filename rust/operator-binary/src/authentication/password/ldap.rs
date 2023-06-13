@@ -1,10 +1,8 @@
-use crate::authentication::password::{
-    PasswordAuthenticator, Result, PASSWORD_CONFIG_FILE_NAME_SUFFIX,
-};
+use crate::authentication::password::{self, CONFIG_FILE_NAME_SUFFIX};
 
 use snafu::Snafu;
 use stackable_operator::commons::authentication::LdapAuthenticationProvider;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 // ldap
 const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";
@@ -39,15 +37,22 @@ impl LdapAuthenticator {
     }
 }
 
-impl PasswordAuthenticator for LdapAuthenticator {
+impl LdapAuthenticator {
     fn name(&self) -> &str {
         self.name.as_str()
     }
 
-    fn config_file_content(&self) -> Result<BTreeMap<String, String>> {
-        let mut config_data = BTreeMap::new();
+    pub fn config_file_name(&self) -> String {
+        format!(
+            "{name}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",
+            name = self.name
+        )
+    }
+
+    pub fn config_file_data(&self) -> Result<HashMap<String, String>, Error> {
+        let mut config_data = HashMap::new();
         config_data.insert(
-            crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME.to_string(),
+            password::PASSWORD_AUTHENTICATOR_NAME.to_string(),
             PASSWORD_AUTHENTICATOR_NAME_LDAP.to_string(),
         );
         config_data.insert(
@@ -87,7 +92,7 @@ impl PasswordAuthenticator for LdapAuthenticator {
         if self.ldap.use_tls() {
             if !self.ldap.use_tls_verification() {
                 // Use TLS but don't verify LDAP server ca => not supported
-                return Err(Box::new(Error::UnverifiedLdapTlsConnectionNotSupported));
+                return Err(Error::UnverifiedLdapTlsConnectionNotSupported);
             }
             // If there is a custom certificate, configure it.
             // There might also be TLS verification using web PKI
@@ -100,13 +105,6 @@ impl PasswordAuthenticator for LdapAuthenticator {
         }
 
         Ok(config_data)
-    }
-
-    fn config_file_name(&self) -> String {
-        format!(
-            "{name}-ldap-authenticator{PASSWORD_CONFIG_FILE_NAME_SUFFIX}",
-            name = self.name
-        )
     }
 }
 

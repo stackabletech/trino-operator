@@ -1,50 +1,237 @@
 mod password;
 
 use crate::authentication::password::{
-    TrinoPasswordAuthentication, TrinoPasswordAuthenticationBuilder,
+    file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
+    TrinoPasswordAuthenticator,
 };
-use snafu::Snafu;
+
+use snafu::{ResultExt, Snafu};
+use stackable_operator::k8s_openapi::api::core::v1::{Container, Volume, VolumeMount};
+use stackable_operator::schemars::_private::NoSerialize;
 use stackable_operator::{
+    builder::{ContainerBuilder, PodBuilder},
     commons::authentication::{AuthenticationClass, AuthenticationClassProvider},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
+    product_config,
 };
-use stackable_trino_crd::{Container, TrinoRole};
-use std::collections::BTreeMap;
+use stackable_trino_crd::TrinoRole;
+use std::collections::{BTreeMap, HashMap};
+use strum::IntoEnumIterator;
 use tracing::debug;
-
-pub(crate) type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
 
 // trino properties
 const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("The Trino Operator does not support the AuthenticationClass provider {authentication_class_provider} from AuthenticationClass {authentication_class} yet."))]
+    #[snafu(display("The Trino Operator does not support the AuthenticationClass provider [{authentication_class_provider}] from AuthenticationClass [{authentication_class}]."))]
     AuthenticationClassProviderNotSupported {
         authentication_class_provider: String,
         authentication_class: ObjectRef<AuthenticationClass>,
     },
-    #[snafu(display("Invalid password authentication configuration"))]
+    #[snafu(display("Failed to format trino authentication java properties"))]
+    FailedToWriteJavaProperties {
+        source: product_config::writer::PropertiesWriterError,
+    },
+    #[snafu(display("Failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
 }
 
-trait HasTrinoConfigProperties {
-    fn config_properties(&self) -> BTreeMap<String, String>;
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Clone, Debug, Default)]
+pub struct TrinoAuthenticationConfig {
+    config_properties: HashMap<TrinoRole, HashMap<String, String>>,
+    config_files: HashMap<TrinoRole, HashMap<String, String>>,
+    volumes: Vec<Volume>,
+    volume_mounts: HashMap<TrinoRole, HashMap<stackable_trino_crd::Container, Vec<VolumeMount>>>,
+    sidecar_containers: HashMap<TrinoRole, Vec<Container>>,
 }
 
-trait HasTrinoConfigFiles {
-    fn config_files(&self) -> Result<Vec<Box<dyn TrinoConfigFile>>>;
+impl TrinoAuthenticationConfig {
+    pub fn add_authentication_config(
+        &self,
+        role: TrinoRole,
+        pod_builder: &mut PodBuilder,
+        prepare_builder: &mut ContainerBuilder,
+        trino_builder: &mut ContainerBuilder,
+        file_updater_builder: &mut ContainerBuilder,
+    ) {
+        // volumes
+        pod_builder.add_volumes(self.volumes());
+        // volume mounts
+        for container in stackable_trino_crd::Container::iter() {
+            prepare_builder.add_volume_mounts(self.volume_mounts(&role, &container));
+            trino_builder.add_volume_mounts(self.volume_mounts(&role, &container));
+            file_updater_builder.add_volume_mounts(self.volume_mounts(&role, &container));
+        }
+    }
+
+    pub fn add_config_property(
+        &mut self,
+        role: TrinoRole,
+        property_name: String,
+        property_value: String,
+    ) {
+        self.config_properties
+            .entry(role)
+            .or_insert(HashMap::new())
+            .insert(property_name, property_value);
+    }
+
+    pub fn add_config_file(&mut self, role: TrinoRole, file_name: String, file_content: String) {
+        self.config_files
+            .entry(role)
+            .or_insert(HashMap::new())
+            .insert(file_name, file_content);
+    }
+
+    pub fn add_volume(&mut self, volume: Volume) {
+        if !self.volumes.contains(&volume) {
+            self.volumes.push(volume);
+        }
+    }
+
+    pub fn add_volume_mount(
+        &mut self,
+        role: TrinoRole,
+        container: stackable_trino_crd::Container,
+        volume_mount: VolumeMount,
+    ) {
+        let mut current_volume_mounts = self
+            .volume_mounts
+            .entry(role)
+            .or_insert_with(HashMap::new)
+            .entry(container)
+            .or_insert_with(Vec::new);
+
+        if !current_volume_mounts.contains(&volume_mount) {
+            current_volume_mounts.push(volume_mount);
+        }
+    }
+
+    pub fn add_sidecar_container(&mut self, role: TrinoRole, container: Container) {
+        let containers_for_role = self.sidecar_containers.entry(role).or_insert_with(Vec::new);
+
+        if !containers_for_role.contains(&container) {
+            containers_for_role.push(container);
+        }
+    }
+
+    pub fn config_properties(&self, role: &TrinoRole) -> HashMap<String, String> {
+        self.config_properties
+            .get(role)
+            .cloned()
+            .unwrap_or_else(HashMap::new)
+    }
+
+    pub fn config_files(&self, role: &TrinoRole) -> HashMap<String, String> {
+        self.config_files
+            .get(role)
+            .cloned()
+            .unwrap_or_else(HashMap::new)
+    }
+
+    pub fn volumes(&self) -> Vec<Volume> {
+        self.volumes.clone()
+    }
+
+    pub fn volume_mounts(
+        &self,
+        role: &TrinoRole,
+        container: &stackable_trino_crd::Container,
+    ) -> Vec<VolumeMount> {
+        if let Some(volume_mounts) = self.volume_mounts.get(role) {
+            volume_mounts
+                .get(container)
+                .cloned()
+                .unwrap_or_else(Vec::new)
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub fn sidecar_containers(&self, role: &TrinoRole) -> Vec<Container> {
+        self.sidecar_containers
+            .get(role)
+            .cloned()
+            .unwrap_or_else(Vec::new)
+    }
+
+    fn extend(&mut self, other: Self) {
+        for (role, data) in other.config_properties {
+            self.config_properties
+                .entry(role)
+                .or_insert_with(HashMap::new)
+                .extend(data)
+        }
+
+        for (role, data) in other.config_files {
+            self.config_files
+                .entry(role)
+                .or_insert_with(HashMap::new)
+                .extend(data)
+        }
+
+        self.volumes.extend(other.volumes);
+
+        for (role, containers) in other.volume_mounts {
+            for (container, data) in containers {
+                self.volume_mounts
+                    .entry(role.clone())
+                    .or_insert_with(HashMap::new)
+                    .entry(container)
+                    .or_insert_with(Vec::new)
+                    .extend(data)
+            }
+        }
+
+        for (role, data) in other.sidecar_containers {
+            self.sidecar_containers
+                .entry(role)
+                .or_insert_with(Vec::new)
+                .extend(data)
+        }
+    }
 }
 
-trait TrinoConfigFile {
-    fn file_name(&self) -> String;
-    fn role(&self) -> TrinoRole {
-        TrinoRole::Coordinator
+impl TryFrom<TrinoAuthenticationTypes> for TrinoAuthenticationConfig {
+    type Error = Error;
+
+    fn try_from(trino_auth: TrinoAuthenticationTypes) -> Result<Self, Self::Error> {
+        let mut authentication_config = TrinoAuthenticationConfig::default();
+        // Represents properties of "http-server.authentication.type".
+        let mut http_server_authentication_types = vec![];
+
+        for auth_type in &trino_auth.authentication_types {
+            // Properties like PASSWORD, CERTIFICATE are only added once and the order is important
+            // due to Trino starting to evaluate the authenticators depending on the given order
+            if !http_server_authentication_types.contains(&auth_type.to_string()) {
+                http_server_authentication_types.push(auth_type.to_string());
+            }
+
+            match auth_type {
+                TrinoAuthenticationType::Password(password_auth) => authentication_config.extend(
+                    password_auth
+                        .password_authentication_config()
+                        .context(InvalidPasswordAuthenticationConfigSnafu)?,
+                ),
+            }
+        }
+
+        authentication_config.add_config_property(
+            TrinoRole::Coordinator,
+            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+            http_server_authentication_types.join(","),
+        );
+
+        debug!(
+            "Final Trino authentication config: {:?}",
+            authentication_config
+        );
+
+        Ok(authentication_config)
     }
-    fn container(&self) -> Container {
-        Container::Trino
-    }
-    fn content(&self) -> Result<String>;
 }
 
 #[derive(Clone, Debug, strum::Display)]
@@ -64,91 +251,30 @@ pub enum TrinoAuthenticationType {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct TrinoAuthenticationConfig {
+pub struct TrinoAuthenticationTypes {
     // All authentication classes sorted into the Trino interpretation
     authentication_types: Vec<TrinoAuthenticationType>,
 }
 
-impl TrinoAuthenticationConfig {
-    pub fn additional_config_properties(&self) -> BTreeMap<String, String> {
-        let mut config = BTreeMap::new();
-
-        // Represents properties of "http-server.authentication.type".
-        // Must be maintained at top level to keep the order of the provided authentication classes.
-        // Since Trino will check the authentication types in the order they were provided, the first
-        // provided authentication class should also be the the first to be evaluated by Trino.
-        let mut http_server_authentication_types = vec![];
-
-        for auth_type in &self.authentication_types {
-            // collect and add later
-            http_server_authentication_types.push(auth_type.to_string());
-
-            match auth_type {
-                TrinoAuthenticationType::Password(password_auth) => {
-                    config.extend(password_auth.config_properties());
-                }
-            }
-        }
-
-        // http-server.authentication.type=PASSWORD,CERTIFICATE,...
-        config.insert(
-            HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-            http_server_authentication_types.join(","),
-        );
-
-        debug!("Final authentication config properties: {:?}", config);
-
-        config
-    }
-
-    pub fn additional_config_files(
-        &self,
-        role: TrinoRole,
-        container: Container,
-    ) -> Result<BTreeMap<String, String>> {
-        let mut filtered_config_files = BTreeMap::new();
-
-        for file in self.config_files()? {
-            // filter role and container
-            if role == file.role() && container == file.container() {
-                filtered_config_files.insert(file.file_name(), file.content()?);
-            }
-        }
-        Ok(filtered_config_files)
-    }
-
-    fn config_files(&self) -> Result<Vec<Box<dyn TrinoConfigFile>>> {
-        let mut files = vec![];
-        for auth_type in &self.authentication_types {
-            match auth_type {
-                TrinoAuthenticationType::Password(password_auth) => {
-                    files.extend(password_auth.config_files()?);
-                }
-            }
-        }
-
-        Ok(files)
-    }
-}
-
-impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationConfig {
+impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
     type Error = Error;
 
     fn try_from(auth_classes: Vec<AuthenticationClass>) -> std::result::Result<Self, Self::Error> {
         let mut authentication_types = vec![];
-
-        let mut password_auth_builder: TrinoPasswordAuthenticationBuilder =
-            TrinoPasswordAuthenticationBuilder::new();
+        let mut password_authenticators = vec![];
 
         for auth_class in auth_classes {
             let auth_class_name = auth_class.name_any();
             match auth_class.spec.provider {
                 AuthenticationClassProvider::Static(provider) => {
-                    password_auth_builder.add_file_authenticator(provider);
+                    password_authenticators.push(TrinoPasswordAuthenticator::File(
+                        FileAuthenticator::new(auth_class_name, provider),
+                    ));
                 }
-
                 AuthenticationClassProvider::Ldap(provider) => {
-                    password_auth_builder.add_ldap_authenticator(auth_class_name, provider);
+                    password_authenticators.push(TrinoPasswordAuthenticator::Ldap(
+                        LdapAuthenticator::new(auth_class_name, provider),
+                    ));
                 }
                 _ => AuthenticationClassProviderNotSupportedSnafu {
                     authentication_class_provider: auth_class.spec.provider.to_string(),
@@ -158,23 +284,22 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationConfig {
             }
         }
 
-        let password_authentication = password_auth_builder.build();
-        if password_authentication.is_required() {
-            authentication_types.push(TrinoAuthenticationType::Password(password_authentication));
+        // Any password authenticators available?
+        if !password_authenticators.is_empty() {
+            authentication_types.push(TrinoAuthenticationType::Password(
+                TrinoPasswordAuthentication::new(password_authenticators),
+            ));
         }
 
-        Ok(TrinoAuthenticationConfig {
+        Ok(TrinoAuthenticationTypes {
             authentication_types,
         })
     }
 }
 
-///////////////////////////////////////////////////////////////////////
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use password::PASSWORD_CONFIG_FILE_NAME_SUFFIX;
     use stackable_operator::{
         commons::authentication::{
             static_::UserCredentialsSecretRef, AuthenticationClassSpec, LdapAuthenticationProvider,
@@ -237,9 +362,9 @@ mod tests {
     #[test]
     fn test_trino_password_authenticator_config_properties() {
         let trino_config_properties =
-            TrinoAuthenticationConfig::try_from(setup_authentication_classes())
+            TrinoAuthenticationTypes::try_from(setup_authentication_classes())
                 .unwrap()
-                .additional_config_properties();
+                .additional_config_properties(&TrinoRole::Coordinator);
 
         assert_eq!(
             trino_config_properties.get(HTTP_SERVER_AUTHENTICATION_TYPE),
@@ -252,11 +377,10 @@ mod tests {
 
     #[test]
     fn test_trino_password_authenticator_config_files() {
-        let trino_config_files =
-            TrinoAuthenticationConfig::try_from(setup_authentication_classes())
-                .unwrap()
-                .additional_config_files(TrinoRole::Coordinator, Container::Trino)
-                .unwrap();
+        let trino_config_files = TrinoAuthenticationTypes::try_from(setup_authentication_classes())
+            .unwrap()
+            .additional_config_files(&TrinoRole::Coordinator)
+            .unwrap();
 
         assert_eq!(
             trino_config_files.get("file-authenticator.properties"),

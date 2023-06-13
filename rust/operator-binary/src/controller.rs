@@ -5,7 +5,7 @@ use crate::{
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
 };
 
-use crate::authentication::TrinoAuthenticationConfig;
+use crate::authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes};
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -232,13 +232,17 @@ pub enum Error {
     BuildRbacResources {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("Invalid Trino authentication config"))]
-    InvalidAuthenticationConfig {
-        source: crate::authentication::Error,
-    },
     #[snafu(display("Failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
         source: stackable_trino_crd::authentication::Error,
+    },
+    #[snafu(display("Unsupported Trino authentication"))]
+    UnsupportedAuthenticationConfig {
+        source: crate::authentication::Error,
+    },
+    #[snafu(display("Invalid Trino authentication"))]
+    InvalidAuthenticationConfig {
+        source: crate::authentication::Error,
     },
 }
 
@@ -258,10 +262,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let resolved_product_image: ResolvedProductImage =
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
 
-    let trino_authenticator_config = TrinoAuthenticationConfig::try_from(
-        resolve_authentication_classes(client, trino.get_authentication())
-            .await
-            .context(AuthenticationClassRetrievalSnafu)?,
+    let trino_authentication_config = TrinoAuthenticationConfig::try_from(
+        TrinoAuthenticationTypes::try_from(
+            resolve_authentication_classes(client, trino.get_authentication())
+                .await
+                .context(AuthenticationClassRetrievalSnafu)?,
+        )
+        .context(UnsupportedAuthenticationConfigSnafu)?,
     )
     .context(InvalidAuthenticationConfigSnafu)?;
 
@@ -381,7 +388,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &rolegroup,
                 &config,
                 &merged_config,
-                &trino_authenticator_config,
+                &trino_authentication_config,
                 opa_connect_string.as_deref(),
                 vector_aggregator_address.as_deref(),
             )?;
@@ -393,11 +400,12 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
+                &trino_role,
                 &resolved_product_image,
                 &rolegroup,
                 &config,
                 &merged_config,
-                &trino_authenticator_config,
+                &trino_authentication_config,
                 &catalogs,
                 &rbac_sa.name_any(),
             )?;
@@ -499,7 +507,7 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    trino_authenticator_config: &TrinoAuthenticationConfig,
+    trino_authentication_config: &TrinoAuthenticationConfig,
     opa_connect_string: Option<&str>,
     vector_aggregator_address: Option<&str>,
 ) -> Result<ConfigMap> {
@@ -519,11 +527,6 @@ fn build_rolegroup_config_map(
     })?
     .scale_to(memory_unit)
         * JVM_HEAP_FACTOR;
-
-    //let authentication_config_properties = trino_authenticator_config
-    //     .config_file_properties()
-    //     .context(InvalidAuthenticationConfigSnafu)?;
-    // cm_conf_data.extend(authentication_config_properties.get_authenticator_config_files());
 
     // TODO: create via product config?
     // from https://trino.io/docs/current/installation/deployment.html#jvm-config
@@ -561,6 +564,9 @@ fn build_rolegroup_config_map(
         .next()
         .context(MissingCoordinatorPodsSnafu)?;
 
+    // Add additional config files fore authentication
+    cm_conf_data.extend(trino_authentication_config.config_files(role));
+
     for (property_name_kind, config) in config {
         // We used this temporary map to add all dynamically resolved (e.g. discovery config maps)
         // properties. This will be extended with the merged role group properties (transformed_config)
@@ -574,13 +580,14 @@ fn build_rolegroup_config_map(
 
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
-                if *role == TrinoRole::Coordinator {
-                    // Add authentication properties (only required for the Coordinator)
-                    // TODO:
-                    // dynamic_resolved_config.extend(
-                    //     authentication_config_properties.get_config_properties_for_product_config(),
-                    // );
-                }
+                // Add authentication properties (only required for the Coordinator)
+                dynamic_resolved_config.extend(
+                    trino_authentication_config
+                        .config_properties(role)
+                        .into_iter()
+                        .map(|(k, v)| (k, Some(v)))
+                        .collect::<BTreeMap<String, Option<String>>>(),
+                );
 
                 let protocol = if trino.get_internal_tls().is_some() {
                     TrinoDiscoveryProtocol::Https
@@ -759,11 +766,12 @@ fn build_rolegroup_catalog_config_map(
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
+    role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    trino_authenticator_config: &TrinoAuthenticationConfig,
+    trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     sa_name: &str,
 ) -> Result<StatefulSet> {
@@ -771,18 +779,26 @@ fn build_rolegroup_statefulset(
         .rolegroup(rolegroup_ref)
         .context(InternalOperatorFailureSnafu)?;
 
-    let trino_container_name = Container::Trino.to_string();
-    let mut cb_trino = ContainerBuilder::new(&trino_container_name).with_context(|_| {
-        IllegalContainerNameSnafu {
-            container_name: trino_container_name.clone(),
-        }
-    })?;
     let prepare_container_name = Container::Prepare.to_string();
     let mut cb_prepare = ContainerBuilder::new(&prepare_container_name).with_context(|_| {
         IllegalContainerNameSnafu {
             container_name: prepare_container_name.clone(),
         }
     })?;
+    let trino_container_name = Container::Trino.to_string();
+    let mut cb_trino = ContainerBuilder::new(&trino_container_name).with_context(|_| {
+        IllegalContainerNameSnafu {
+            container_name: trino_container_name.clone(),
+        }
+    })?;
+    let pw_file_updater_container_name = Container::PasswordFileUpdater.to_string();
+    let mut cb_file_updater =
+        ContainerBuilder::new(&pw_file_updater_container_name).with_context(|_| {
+            IllegalContainerNameSnafu {
+                container_name: pw_file_updater_container_name.clone(),
+            }
+        })?;
+
     let mut pod_builder = PodBuilder::new();
 
     let mut env = config
@@ -799,17 +815,21 @@ fn build_rolegroup_statefulset(
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
-    // trino_authenticator_config.pod_template_volume_and_volume_mounts(
-    //     resolved_product_image,
-    //     &mut pod_builder,
-    //     &mut cb_prepare,
-    //     &mut cb_trino,
-    // );
+    trino_authentication_config.add_authentication_config(
+        role.clone(),
+        &mut pod_builder,
+        &mut cb_prepare,
+        &mut cb_trino,
+        &mut cb_file_updater,
+    );
+
+    pod_builder.add_volume(
+        VolumeBuilder::new("auth-secrets")
+            .with_empty_dir(None::<String>, None)
+            .build(),
+    );
 
     // TODO: remove test
-    //cb_prepare.add_volume_mount("users", "/stackable/users");
-    //cb_trino.add_volume_mount("users", "/stackable/users");
-    //pod_builder.add_empty_dir_volume("users", None);
     //ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
 
     // TODO: fix
@@ -876,7 +896,7 @@ fn build_rolegroup_statefulset(
         .image_from_product_image(resolved_product_image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(command::container_trino_args(
-            trino_authenticator_config,
+            trino_authentication_config,
             catalogs,
         ))
         .add_env_vars(env)

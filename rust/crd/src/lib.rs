@@ -351,6 +351,7 @@ pub struct TrinoStorageConfig {
     Display,
     Eq,
     EnumIter,
+    Hash,
     JsonSchema,
     Ord,
     PartialEq,
@@ -508,23 +509,6 @@ impl Configuration for TrinoConfigFragment {
                              Please set 'spec.config.tls.secretClass' or use the provided default value.".to_string(),
                     });
                 }
-
-                // TODO: remove, this is done in authentication.rs
-                // if let Some(auth) = authentication {
-                //     match &auth.method {
-                //         // For Authentication we have to differentiate several options here:
-                //         // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
-                //         TrinoAuthenticationMethod::MultiUser { .. }
-                //         | TrinoAuthenticationMethod::Ldap { .. } => {
-                //             if role_name == TrinoRole::Coordinator.to_string() {
-                //                 result.insert(
-                //                     HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                //                     Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                //                 );
-                //             }
-                //         }
-                //     }
-                // }
 
                 if server_tls_enabled || internal_tls_enabled {
                     // enable TLS
