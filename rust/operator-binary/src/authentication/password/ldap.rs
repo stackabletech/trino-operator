@@ -137,14 +137,14 @@ mod tests {
     }
 
     #[test]
-    fn test_file_authenticator() {
+    fn test_ldap_authenticator() {
         let ldap_authenticator = setup_test_authenticator(Some(Tls {
             verification: TlsVerification::Server(TlsServerVerification {
                 ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
             }),
         }));
 
-        let config = ldap_authenticator.config_file_content().unwrap();
+        let config = ldap_authenticator.config_file_data().unwrap();
         assert!(config.get(LDAP_BIND_DN).is_some());
         assert_eq!(
             config.get(LDAP_USER_BASE_DN),

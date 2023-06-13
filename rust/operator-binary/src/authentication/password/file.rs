@@ -1,10 +1,10 @@
 use crate::authentication::password::{CONFIG_FILE_NAME_SUFFIX, PASSWORD_AUTHENTICATOR_NAME};
 
-use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use stackable_operator::{
     builder::{ContainerBuilder, VolumeBuilder, VolumeMountBuilder},
     commons::authentication::StaticAuthenticationProvider,
-    k8s_openapi::api::core::v1::{Volume, VolumeMount},
+    commons::product_image_selection::ResolvedProductImage,
+    k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
 };
 use std::collections::HashMap;
 
@@ -48,13 +48,13 @@ impl FileAuthenticator {
     }
 
     pub fn secret_volume(&self) -> Volume {
-        VolumeBuilder::new(&self.secret_volume_name())
+        VolumeBuilder::new(self.secret_volume_name())
             .with_secret(&self.file.user_credentials_secret.name, false)
             .build()
     }
 
     pub fn secret_volume_mount(&self) -> VolumeMount {
-        VolumeMountBuilder::new(&self.secret_volume_name(), self.secret_class_mount_path()).build()
+        VolumeMountBuilder::new(self.secret_volume_name(), self.secret_class_mount_path()).build()
     }
 
     pub fn password_db_volume() -> Volume {
@@ -100,12 +100,18 @@ impl FileAuthenticator {
     }
 }
 
-pub fn extend_password_file_update_container_builder(
-    cb_file_updater: &mut ContainerBuilder,
+pub fn build_password_file_update_container(
     resolved_product_image: &ResolvedProductImage,
-) {
-    cb_file_updater
+    volume_mounts: Vec<VolumeMount>,
+) -> Container {
+    // unwrap is save due to the fixed name
+    let mut cb_pw_file_updater =
+        ContainerBuilder::new(&stackable_trino_crd::Container::PasswordFileUpdater.to_string())
+            .unwrap();
+
+    cb_pw_file_updater
         .image_from_product_image(resolved_product_image)
+        .add_volume_mounts(volume_mounts)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(vec![format!(
             r###"
@@ -116,7 +122,7 @@ poll_interval_seconds=5
 
 while true
 do
-  echo "Start password file authenticator secrets..."
+  echo "Create user password database from secrets..."
   for secret in {stackable_auth_secret_dir}/*; do
     credentials=""
     secret_name="$(basename ${{secret}})"
@@ -141,7 +147,7 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
             stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
             stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
             poll_interval = 5
-        )]);
+        )]).build()
 }
 
 #[cfg(test)]
@@ -162,14 +168,14 @@ mod tests {
 
         assert_eq!(
             authenticator
-                .config_file_content()
+                .config_file_data()
                 .get(PASSWORD_AUTHENTICATOR_NAME),
             Some(PASSWORD_AUTHENTICATOR_NAME_FILE.to_string()).as_ref()
         );
 
         assert_eq!(
-            authenticator.config_file_content().get(FILE_PASSWORD_FILE),
-            Some(authenticator.password_db_file_path()).as_ref()
+            authenticator.config_file_data().get(FILE_PASSWORD_FILE),
+            Some(authenticator.password_file_path()).as_ref()
         );
     }
 }

@@ -1,12 +1,11 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
-    authentication,
+    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
 };
 
-use crate::authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes};
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -263,13 +262,14 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let resolved_product_image: ResolvedProductImage =
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
 
-    let trino_authentication_config = TrinoAuthenticationConfig::try_from(
-        TrinoAuthenticationTypes::try_from(
-            resolve_authentication_classes(client, trino.get_authentication())
-                .await
-                .context(AuthenticationClassRetrievalSnafu)?,
-        )
-        .context(UnsupportedAuthenticationConfigSnafu)?,
+    let resolved_authentication_classes =
+        resolve_authentication_classes(client, trino.get_authentication())
+            .await
+            .context(AuthenticationClassRetrievalSnafu)?;
+    let trino_authentication_config = TrinoAuthenticationConfig::new(
+        &resolved_product_image,
+        TrinoAuthenticationTypes::try_from(resolved_authentication_classes)
+            .context(UnsupportedAuthenticationConfigSnafu)?,
     )
     .context(InvalidAuthenticationConfigSnafu)?;
 
@@ -331,8 +331,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .add(client, rbac_rolebinding)
         .await
         .context(ApplyRoleBindingSnafu)?;
-
-    //let authentication_config = user_authentication(&trino, client).await?;
 
     // Assemble the OPA connection string from the discovery and the given path if provided
     let opa_connect_string = if let Some(opa_config) = trino
@@ -796,17 +794,6 @@ fn build_rolegroup_statefulset(
         }
     })?;
 
-    let pw_file_updater_container_name = Container::PasswordFileUpdater.to_string();
-    let mut cb_pw_file_updater = ContainerBuilder::new(&pw_file_updater_container_name)
-        .with_context(|_| IllegalContainerNameSnafu {
-            container_name: pw_file_updater_container_name.clone(),
-        })?;
-
-    authentication::password::file::extend_password_file_update_container_builder(
-        &mut cb_pw_file_updater,
-        resolved_product_image,
-    );
-
     let mut env = config
         .get(&PropertyNameKind::Env)
         .iter()
@@ -821,18 +808,13 @@ fn build_rolegroup_statefulset(
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
-    trino_authentication_config.add_authentication_config(
+    trino_authentication_config.add_authentication_pod_and_volume_config(
         role.clone(),
         &mut pod_builder,
         &mut cb_prepare,
         &mut cb_trino,
-        &mut cb_pw_file_updater,
     );
 
-    // TODO: Automate
-    if role == &TrinoRole::Coordinator {
-        pod_builder.add_container(cb_pw_file_updater.build());
-    }
     // TODO: remove test
     //ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
 
