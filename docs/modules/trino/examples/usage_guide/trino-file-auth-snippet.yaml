@@ -9,14 +9,14 @@ spec:
   provider:
     static:
       userCredentialsSecret:
-        name: simple-trino-users-secret
+        name: simple-trino-users
 # end::authentication_class[]
 ---
 # tag::secret[]
 apiVersion: v1
 kind: Secret
 metadata:
-  name: simple-trino-users-secret
+  name: simple-trino-users
 type: kubernetes.io/opaque
 stringData:
   admin: admin
@@ -33,4 +33,5 @@ spec:
   clusterConfig:
     authentication:
       - authenticationClass: simple-trino-file-auth
+      - authenticationClass: ...
 # end::trino[]

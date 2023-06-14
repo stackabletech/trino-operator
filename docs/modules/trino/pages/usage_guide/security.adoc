@@ -6,6 +6,8 @@ This page covers <<Authentication>> and <<Authorization>>.
 
 Trino supports several https://trino.io/docs/current/security/authentication-types.html[authentication types].
 
+Different authentication types can be used in parallel.
+
 === Password
 
 The Trino operator currently supports the following `PASSWORD` authenticators.
@@ -21,12 +23,31 @@ include::example$usage_guide/trino-file-auth-snippet.yaml[tag=secret]
 
 This contains username and password pairs as shown in the previous snippet. The username and password combinations are provided in the `stringData` field.
 
-Then reference the secret in your TrinoCluster definition:
+The Secret is referenced in an `AuthenticationClass`.
+
+[source,yaml]
+----
+include::example$usage_guide/trino-file-auth-snippet.yaml[tag=authentication_class]
+----
+
+Then reference the `AuthenticationClass` in your TrinoCluster definition:
 
 [source,yaml]
 ----
 include::example$usage_guide/trino-file-auth-snippet.yaml[tag=trino]
 ----
+
+Multiple authentication classes with different user secrets can be provided.
+
+The operator never reads secrets directly, but mounts them directly into the `Pod`. Volume mount names can not exceed *63* characters due to Kubernetes restrictions.
+
+For uniqueness, the volume mount is internally build up of the name of the `AuthenticationClass` and the name of the referenced `Secret` concatenated with a "-" character (e.g. "simple-trino-file-auth-simple-trino-users" for the example above). This means the `AuthenticationClass` and `Secret` names combined must be smaller than *62* characters.
+
+IMPORTANT: Due to Kubernetes restrictions, the concatenated names of the AuthenticationClass and its referenced Secret must not exceed *62* characters
+
+Changes to the referenced user `Secret` (e.g. adding or removing a user) are updated in Trino without restarts but after a small delay. This heavily depends on Kubernetes and may take a couple of minutes.
+
+Adding or removing an `AuthenticationClass` will however result in a `Pod` restart.
 
 === LDAP
 
@@ -34,7 +55,7 @@ The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDA
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=authclass]
+include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=authentication_class]
 ----
 
 NOTE: You can follow the xref:home:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
