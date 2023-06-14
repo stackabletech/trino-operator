@@ -23,13 +23,10 @@ spec:
     tls:
       serverSecretClass: trino-tls # <1>
     authentication:
-      method:
-        multiUser:
-          userCredentialsSecret:
-            name: trino-users # <2>
+      - authenticationClass: trino-file-auth # <3>
     catalogLabelSelector:
       matchLabels:
-        trino: simple-trino # <3>
+        trino: simple-trino # <5>
   coordinators:
     roleGroups:
       default:
@@ -45,21 +42,30 @@ metadata:
   name: trino-tls # <1>
 spec:
   backend:
-    autoTls: # <4>
+    autoTls: # <6>
       ca:
         secret:
-          name: secret-provisioner-trino-tls-ca
+          name: secret-provisioner-trino-tls-ca # <2>
           namespace: default
         autoGenerate: true
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: trino-file-auth # <3>
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: trino-users # <4>
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: trino-users # <2>
+  name: trino-users # <4>
 type: kubernetes.io/opaque
 stringData:
-  # admin:admin
-  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
+  admin: admin
 ---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster

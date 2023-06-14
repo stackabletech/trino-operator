@@ -19,12 +19,7 @@ The https://trino.io/docs/current/security/password-file.html[file based authent
 include::example$usage_guide/trino-file-auth-snippet.yaml[tag=secret]
 ----
 
-This contains username and password pairs as shown in the previous snippet. The username and password combinations are provided in the `stringData` field. The hashes are created using bcrypt with 10 rounds:
-
-[source]
-----
-htpasswd -nbBC 10 admin admin
-----
+This contains username and password pairs as shown in the previous snippet. The username and password combinations are provided in the `stringData` field.
 
 Then reference the secret in your TrinoCluster definition:
 
@@ -44,7 +39,7 @@ include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=authclass]
 
 NOTE: You can follow the xref:home:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
 
-With an AuthenticationClass ready, `PASSWORD` authentication using LDAP is done by referincing the LDAP AuthenticationClass: 
+With an AuthenticationClass ready, `PASSWORD` authentication using LDAP is done by referencing the LDAP AuthenticationClass:
 
 [source,yaml]
 ----
@@ -85,8 +80,10 @@ include::example$usage_guide/trino-secure-tls.yaml[]
 
 <1> The name of (and reference to) the `SecretClass`
 <2> The name of (and reference to) the `Secret`
-<3> `TrinoCatalog` reference
-<4> TLS mechanism
+<3> The `AuthenticationClass` for file based user control
+<4> The `Secret` containing user and password combinations in plaintext
+<5> `TrinoCatalog` reference
+<6> TLS mechanism
 
 The CLI now requires that a path to the keystore and a password be provided:
 
@@ -127,7 +124,9 @@ include::example$usage_guide/trino-secure-internal-tls.yaml[]
 
 <1> The name of (and reference to) the `SecretClass`
 <2> The name of (and reference to) the `Secret`
-<3> TLS mechanism
+<3> The `AuthenticationClass` for file based user control
+<4> The `Secret` containing user and password combinations in plaintext
+<5> TLS mechanism
 
 Since Trino has internal and external communications running over a single port, this will enable the HTTPS port but not expose it. Cluster access is only possible via HTTP.
 

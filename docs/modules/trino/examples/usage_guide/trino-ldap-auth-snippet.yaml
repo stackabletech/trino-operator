@@ -6,19 +6,20 @@ kind: TrinoCluster
 metadata:
   name: trino-with-ldap
 spec:
-  ...
   clusterConfig:
     authentication:
-      method:
-        ldap:
-          authenticationClass: my-ldap
-  ...
+      - authenticationClass: my-ldap
 # end::trino[]
 ---
-# tag::authclass[]
+# tag::authentication_class[]
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
   name: my-ldap
+spec:
+  provider:
+    ldap:
+      hostname: openldap.default.svc.cluster.local
+      searchBase: ou=users,dc=example,dc=org
 ...
-# end::authclass[]
+# end::authentication_class[]
