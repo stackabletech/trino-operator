@@ -41,7 +41,7 @@ Multiple authentication classes with different user secrets can be provided.
 
 The operator never reads secrets directly, but mounts them directly into the `Pod`. Volume mount names can not exceed *63* characters due to Kubernetes restrictions.
 
-For uniqueness, the volume mount is internally build up of the name of the `AuthenticationClass` and the name of the referenced `Secret` concatenated with a "-" character (e.g. "simple-trino-file-auth-simple-trino-users" for the example above). This means the `AuthenticationClass` and `Secret` names combined must be smaller than *62* characters.
+For uniqueness, the volume mount name is internally build up of the name of the `AuthenticationClass` and the name of the referenced `Secret` concatenated with a "-" character (e.g. "simple-trino-file-auth-simple-trino-users" for the example above). This means the `AuthenticationClass` and `Secret` names combined must be smaller than *62* characters.
 
 IMPORTANT: Due to Kubernetes restrictions, the concatenated names of the AuthenticationClass and its referenced Secret must not exceed *62* characters
 
