@@ -815,21 +815,6 @@ fn build_rolegroup_statefulset(
         &mut cb_trino,
     );
 
-    // TODO: fix
-    // we need to mount ldap bind credentials from the secret as env vars
-    // if let Some(auth) = authentication_config {
-    //     match auth {
-    //         TrinoAuthenticationConfig::MultiUser { .. } => {
-    //             cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-    //             cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-    //             pod_builder.add_empty_dir_volume("users", None);
-    //         }
-    //         TrinoAuthenticationConfig::Ldap(ldap) => {
-    //             ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
-    //         }
-    //     }
-    // }
-
     // Add the needed stuff for catalogs
     env.extend(
         catalogs
