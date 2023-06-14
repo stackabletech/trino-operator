@@ -1,13 +1,22 @@
 {% if test_scenario['values']['use-authentication'] == 'true' %}
 ---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: trino-users-auth
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: trino-users
+---
 apiVersion: v1
 kind: Secret
 metadata:
   name: trino-users
 type: kubernetes.io/opaque
 stringData:
-  # admin:admin
-  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
+  admin: admin
 {% endif %}
 {% if test_scenario['values']['use-tls'] == 'true' %}
 ---
@@ -66,10 +75,7 @@ spec:
 {% endif %}
 {% if test_scenario['values']['use-authentication'] == 'true' and test_scenario['values']['use-tls'] == 'true' %}
     authentication:
-      method:
-        multiUser:
-          userCredentialsSecret:
-            name: trino-users
+      - authenticationClass: trino-users-auth
 {% endif %}
   coordinators:
     config:
