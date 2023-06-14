@@ -5,8 +5,8 @@ use crate::{
 
 use stackable_operator::product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice};
 use stackable_trino_crd::{
-    Container, TrinoCluster, TrinoConfig, CONFIG_DIR_NAME, DATA_DIR_NAME, LOG_PROPERTIES,
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+    Container, TrinoCluster, TrinoConfig, TrinoRole, CONFIG_DIR_NAME, DATA_DIR_NAME,
+    LOG_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
     STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
 };
@@ -77,7 +77,7 @@ pub fn container_prepare_args(
 }
 
 pub fn container_trino_args(
-    _user_authentication: &TrinoAuthenticationConfig,
+    authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
 ) -> Vec<String> {
     let mut args = vec![
@@ -94,33 +94,8 @@ pub fn container_trino_args(
         ),
     ];
 
-    // TODO: Fix
-    // match user_authentication {
-    //     Some(TrinoAuthenticationConfig::MultiUser { user_credentials }) => {
-    //         // Write an extra password file if MultiUser auth requested
-    //         let user_data = user_credentials
-    //             .iter()
-    //             .map(|(user, password)| format!("{}:{}", user, password))
-    //             .collect::<Vec<_>>()
-    //             .join("\n");
-    //
-    //         // FIXME: When we switch to AuthenticationClass static we need to fix this to not have credentials in the Pod manifest (for now they are hashes).
-    //         args.push(format!(
-    //             "echo '{data}' > {path}/{db}",
-    //             data = user_data,
-    //             path = USER_PASSWORD_DATA_DIR_NAME,
-    //             db = PASSWORD_DB
-    //         ));
-    //     }
-    //     Some(TrinoAuthenticationConfig::Ldap(ldap)) => {
-    //         // Set the env vars from the mounted secrets, we read them later in the config (see config.rs)
-    //         if let Some((user_path, password_path)) = ldap.bind_credentials_mount_paths() {
-    //             args.push(format!("export {LDAP_USER_ENV}=$(cat {user_path})"));
-    //             args.push(format!("export {LDAP_PASSWORD_ENV}=$(cat {password_path})"));
-    //         }
-    //     }
-    //     None => (),
-    // }
+    // add required authentication commands
+    args.extend(authentication_config.commands(&TrinoRole::Coordinator, &Container::Trino));
 
     // Add the commands that are needed to set up the catalogs
     catalogs.iter().for_each(|catalog| {

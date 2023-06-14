@@ -1,7 +1,18 @@
 use crate::authentication::password::{self, CONFIG_FILE_NAME_SUFFIX};
 
 use snafu::Snafu;
-use stackable_operator::commons::authentication::LdapAuthenticationProvider;
+use stackable_operator::{
+    builder::VolumeMountBuilder,
+    commons::{
+        authentication::{
+            ldap::SECRET_BASE_PATH,
+            tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
+            LdapAuthenticationProvider,
+        },
+        secret_class::SecretClassVolume,
+    },
+    k8s_openapi::api::core::v1::{Volume, VolumeMount},
+};
 use std::collections::HashMap;
 
 // ldap
@@ -35,9 +46,7 @@ impl LdapAuthenticator {
             ldap: provider,
         }
     }
-}
 
-impl LdapAuthenticator {
     pub fn config_file_name(&self) -> String {
         format!(
             "{name}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",
@@ -73,15 +82,20 @@ impl LdapAuthenticator {
 
         // If bind credentials provided we have to mount the secret volume into env variables
         // in the container and reference the DN and password in the config
-        // TODO: adapt to multiple ldaps
         if self.ldap.bind_credentials.is_some() {
             config_data.insert(
                 LDAP_BIND_DN.to_string(),
-                format!("${{ENV:{user}}}", user = LDAP_USER_ENV),
+                format!(
+                    "${{ENV:{user}}}",
+                    user = self.build_bind_credentials_env_var(LDAP_USER_ENV)
+                ),
             );
             config_data.insert(
                 LDAP_BIND_PASSWORD.to_string(),
-                format!("${{ENV:{pw}}}", pw = LDAP_PASSWORD_ENV),
+                format!(
+                    "${{ENV:{pw}}}",
+                    pw = self.build_bind_credentials_env_var(LDAP_PASSWORD_ENV)
+                ),
             );
         }
 
@@ -101,6 +115,67 @@ impl LdapAuthenticator {
         }
 
         Ok(config_data)
+    }
+
+    pub fn commands(&self) -> Vec<String> {
+        let mut commands = vec![];
+
+        if let Some((user_path, pw_path)) = self.ldap.bind_credentials_mount_paths() {
+            commands.push(format!(
+                "export {user}=$(cat {user_path}",
+                user = self.build_bind_credentials_env_var(LDAP_USER_ENV)
+            ));
+            commands.push(format!(
+                "export {pw}=$(cat {pw_path}",
+                pw = self.build_bind_credentials_env_var(LDAP_PASSWORD_ENV)
+            ));
+        }
+
+        commands
+    }
+
+    pub fn volumes_and_mounts(&self) -> (Vec<Volume>, Vec<VolumeMount>) {
+        let mut volumes = vec![];
+        let mut mounts: Vec<(String, String)> = vec![];
+        if let Some(bind_credentials) = &self.ldap.bind_credentials {
+            let secret_class = bind_credentials.secret_class.to_owned();
+            let volume_name = format!("{secret_class}-bind-credentials");
+            volumes.push(bind_credentials.to_volume(&volume_name));
+            mounts.push((volume_name, secret_class));
+        }
+        if let Some(Tls {
+            verification:
+                TlsVerification::Server(TlsServerVerification {
+                    ca_cert: CaCert::SecretClass(secret_class),
+                }),
+        }) = &self.ldap.tls
+        {
+            let volume_name = format!("{secret_class}-ca-cert");
+            let volume = SecretClassVolume {
+                secret_class: secret_class.to_string(),
+                scope: None,
+            }
+            .to_volume(&volume_name);
+
+            volumes.push(volume);
+            mounts.push((volume_name, secret_class.to_string()));
+        }
+
+        let volume_mounts = mounts
+            .into_iter()
+            .map(|(mount_name, secret)| {
+                VolumeMountBuilder::new(mount_name, format!("{SECRET_BASE_PATH}/{secret}")).build()
+            })
+            .collect::<Vec<VolumeMount>>();
+
+        (volumes, volume_mounts)
+    }
+
+    fn build_bind_credentials_env_var(&self, prefix: &str) -> String {
+        format!(
+            "{prefix}-{auth_class}",
+            auth_class = self.name.to_uppercase().replace("-", "_")
+        )
     }
 }
 

@@ -42,12 +42,55 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub struct TrinoAuthenticationConfig {
     config_properties: HashMap<TrinoRole, HashMap<String, String>>,
     config_files: HashMap<TrinoRole, HashMap<String, String>>,
+    commands: HashMap<TrinoRole, HashMap<stackable_trino_crd::Container, Vec<String>>>,
     volumes: Vec<Volume>,
     volume_mounts: HashMap<TrinoRole, HashMap<stackable_trino_crd::Container, Vec<VolumeMount>>>,
     sidecar_containers: HashMap<TrinoRole, Vec<Container>>,
 }
 
 impl TrinoAuthenticationConfig {
+    pub fn new(
+        resolved_product_image: &ResolvedProductImage,
+        trino_auth: TrinoAuthenticationTypes,
+    ) -> Result<Self, Error> {
+        let mut authentication_config = TrinoAuthenticationConfig::default();
+        // Represents properties of "http-server.authentication.type".
+        // Properties like PASSWORD, CERTIFICATE are only added once and the order is important
+        // due to Trino starting to evaluate the authenticators depending on the given order
+        let mut http_server_authentication_types = vec![];
+
+        for auth_type in &trino_auth.authentication_types {
+            match auth_type {
+                TrinoAuthenticationType::Password(password_auth) => {
+                    if !http_server_authentication_types.contains(&auth_type.to_string()) {
+                        http_server_authentication_types.push(auth_type.to_string());
+                    }
+
+                    authentication_config.extend(
+                        password_auth
+                            .password_authentication_config(resolved_product_image)
+                            .context(InvalidPasswordAuthenticationConfigSnafu)?,
+                    )
+                }
+            }
+        }
+
+        if !http_server_authentication_types.is_empty() {
+            authentication_config.add_config_property(
+                TrinoRole::Coordinator,
+                HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
+                http_server_authentication_types.join(","),
+            );
+        }
+
+        debug!(
+            "Final Trino authentication config: {:?}",
+            authentication_config
+        );
+
+        Ok(authentication_config)
+    }
+
     pub fn add_authentication_pod_and_volume_config(
         &self,
         role: TrinoRole,
@@ -106,6 +149,20 @@ impl TrinoAuthenticationConfig {
             .insert(file_name, file_content);
     }
 
+    pub fn add_commands(
+        &mut self,
+        role: TrinoRole,
+        container: stackable_trino_crd::Container,
+        commands: Vec<String>,
+    ) {
+        self.commands
+            .entry(role)
+            .or_insert(HashMap::new())
+            .entry(container)
+            .or_insert(Vec::new())
+            .extend(commands)
+    }
+
     pub fn add_volume(&mut self, volume: Volume) {
         if !self.volumes.contains(&volume) {
             self.volumes.push(volume);
@@ -149,6 +206,20 @@ impl TrinoAuthenticationConfig {
         self.config_files.get(role).cloned().unwrap_or_default()
     }
 
+    pub fn commands(
+        &self,
+        role: &TrinoRole,
+        container: &stackable_trino_crd::Container,
+    ) -> Vec<String> {
+        self.commands
+            .get(role)
+            .cloned()
+            .unwrap_or_default()
+            .get(container)
+            .cloned()
+            .unwrap_or_default()
+    }
+
     fn volumes(&self) -> Vec<Volume> {
         self.volumes.clone()
     }
@@ -189,6 +260,17 @@ impl TrinoAuthenticationConfig {
 
         self.volumes.extend(other.volumes);
 
+        for (role, containers) in other.commands {
+            for (container, commands) in containers {
+                self.commands
+                    .entry(role.clone())
+                    .or_insert_with(HashMap::new)
+                    .entry(container)
+                    .or_insert_with(Vec::new)
+                    .extend(commands)
+            }
+        }
+
         for (role, containers) in other.volume_mounts {
             for (container, data) in containers {
                 self.volume_mounts
@@ -206,48 +288,6 @@ impl TrinoAuthenticationConfig {
                 .or_insert_with(Vec::new)
                 .extend(data)
         }
-    }
-
-    pub fn new(
-        resolved_product_image: &ResolvedProductImage,
-        trino_auth: TrinoAuthenticationTypes,
-    ) -> Result<Self, Error> {
-        let mut authentication_config = TrinoAuthenticationConfig::default();
-        // Represents properties of "http-server.authentication.type".
-        // Properties like PASSWORD, CERTIFICATE are only added once and the order is important
-        // due to Trino starting to evaluate the authenticators depending on the given order
-        let mut http_server_authentication_types = vec![];
-
-        for auth_type in &trino_auth.authentication_types {
-            match auth_type {
-                TrinoAuthenticationType::Password(password_auth) => {
-                    if !http_server_authentication_types.contains(&auth_type.to_string()) {
-                        http_server_authentication_types.push(auth_type.to_string());
-                    }
-
-                    authentication_config.extend(
-                        password_auth
-                            .password_authentication_config(resolved_product_image)
-                            .context(InvalidPasswordAuthenticationConfigSnafu)?,
-                    )
-                }
-            }
-        }
-
-        if !http_server_authentication_types.is_empty() {
-            authentication_config.add_config_property(
-                TrinoRole::Coordinator,
-                HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                http_server_authentication_types.join(","),
-            );
-        }
-
-        debug!(
-            "Final Trino authentication config: {:?}",
-            authentication_config
-        );
-
-        Ok(authentication_config)
     }
 }
 

@@ -122,15 +122,37 @@ impl TrinoPasswordAuthentication {
                         .context(FailedToWritePasswordAuthenticationFileSnafu)?,
                     );
 
-                    // TODO: fixme
+                    // extra commands
+                    password_authentication_config.add_commands(
+                        TrinoRole::Coordinator,
+                        stackable_trino_crd::Container::Trino,
+                        ldap_authenticator.commands(),
+                    );
+
+                    let (volumes, volume_mounts) = ldap_authenticator.volumes_and_mounts();
                     // required volumes
+                    for volume in volumes {
+                        password_authentication_config.add_volume(volume)
+                    }
 
                     // required volume mounts
+                    for volume_mount in volume_mounts {
+                        password_authentication_config.add_volume_mount(
+                            TrinoRole::Coordinator,
+                            stackable_trino_crd::Container::Trino,
+                            volume_mount.clone(),
+                        );
+                        password_authentication_config.add_volume_mount(
+                            TrinoRole::Coordinator,
+                            stackable_trino_crd::Container::Prepare,
+                            volume_mount.clone(),
+                        );
+                    }
                 }
             }
         }
 
-        // add file authenticaiton password db update container if required
+        // add file authentication password db update container if required
         if has_file_authenticator {
             password_authentication_config.add_sidecar_container(
                 TrinoRole::Coordinator,

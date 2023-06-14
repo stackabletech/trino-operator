@@ -815,9 +815,6 @@ fn build_rolegroup_statefulset(
         &mut cb_trino,
     );
 
-    // TODO: remove test
-    //ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
-
     // TODO: fix
     // we need to mount ldap bind credentials from the secret as env vars
     // if let Some(auth) = authentication_config {
