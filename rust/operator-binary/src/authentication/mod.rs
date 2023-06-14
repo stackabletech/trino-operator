@@ -15,7 +15,7 @@ use stackable_operator::{
     product_config,
 };
 use stackable_trino_crd::TrinoRole;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use tracing::debug;
 
 // trino properties
@@ -40,11 +40,11 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Clone, Debug, Default)]
 pub struct TrinoAuthenticationConfig {
-    config_properties: HashMap<TrinoRole, HashMap<String, String>>,
-    config_files: HashMap<TrinoRole, HashMap<String, String>>,
-    commands: HashMap<TrinoRole, HashMap<stackable_trino_crd::Container, Vec<String>>>,
+    config_properties: HashMap<TrinoRole, BTreeMap<String, String>>,
+    config_files: HashMap<TrinoRole, BTreeMap<String, String>>,
+    commands: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<String>>>,
     volumes: Vec<Volume>,
-    volume_mounts: HashMap<TrinoRole, HashMap<stackable_trino_crd::Container, Vec<VolumeMount>>>,
+    volume_mounts: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<VolumeMount>>>,
     sidecar_containers: HashMap<TrinoRole, Vec<Container>>,
 }
 
@@ -138,14 +138,14 @@ impl TrinoAuthenticationConfig {
     ) {
         self.config_properties
             .entry(role)
-            .or_insert(HashMap::new())
+            .or_insert(BTreeMap::new())
             .insert(property_name, property_value);
     }
 
     pub fn add_config_file(&mut self, role: TrinoRole, file_name: String, file_content: String) {
         self.config_files
             .entry(role)
-            .or_insert(HashMap::new())
+            .or_insert(BTreeMap::new())
             .insert(file_name, file_content);
     }
 
@@ -157,7 +157,7 @@ impl TrinoAuthenticationConfig {
     ) {
         self.commands
             .entry(role)
-            .or_insert(HashMap::new())
+            .or_insert(BTreeMap::new())
             .entry(container)
             .or_insert(Vec::new())
             .extend(commands)
@@ -178,7 +178,7 @@ impl TrinoAuthenticationConfig {
         let current_volume_mounts = self
             .volume_mounts
             .entry(role)
-            .or_insert_with(HashMap::new)
+            .or_insert_with(BTreeMap::new)
             .entry(container)
             .or_insert_with(Vec::new);
 
@@ -195,14 +195,14 @@ impl TrinoAuthenticationConfig {
         }
     }
 
-    pub fn config_properties(&self, role: &TrinoRole) -> HashMap<String, String> {
+    pub fn config_properties(&self, role: &TrinoRole) -> BTreeMap<String, String> {
         self.config_properties
             .get(role)
             .cloned()
             .unwrap_or_default()
     }
 
-    pub fn config_files(&self, role: &TrinoRole) -> HashMap<String, String> {
+    pub fn config_files(&self, role: &TrinoRole) -> BTreeMap<String, String> {
         self.config_files.get(role).cloned().unwrap_or_default()
     }
 
@@ -247,14 +247,14 @@ impl TrinoAuthenticationConfig {
         for (role, data) in other.config_properties {
             self.config_properties
                 .entry(role)
-                .or_insert_with(HashMap::new)
+                .or_insert_with(BTreeMap::new)
                 .extend(data)
         }
 
         for (role, data) in other.config_files {
             self.config_files
                 .entry(role)
-                .or_insert_with(HashMap::new)
+                .or_insert_with(BTreeMap::new)
                 .extend(data)
         }
 
@@ -264,7 +264,7 @@ impl TrinoAuthenticationConfig {
             for (container, commands) in containers {
                 self.commands
                     .entry(role.clone())
-                    .or_insert_with(HashMap::new)
+                    .or_insert_with(BTreeMap::new)
                     .entry(container)
                     .or_insert_with(Vec::new)
                     .extend(commands)
@@ -275,7 +275,7 @@ impl TrinoAuthenticationConfig {
             for (container, data) in containers {
                 self.volume_mounts
                     .entry(role.clone())
-                    .or_insert_with(HashMap::new)
+                    .or_insert_with(BTreeMap::new)
                     .entry(container)
                     .or_insert_with(Vec::new)
                     .extend(data)

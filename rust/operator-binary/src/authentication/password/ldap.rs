@@ -13,7 +13,7 @@ use stackable_operator::{
     },
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 // ldap
 const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";
@@ -54,8 +54,8 @@ impl LdapAuthenticator {
         )
     }
 
-    pub fn config_file_data(&self) -> Result<HashMap<String, String>, Error> {
-        let mut config_data = HashMap::new();
+    pub fn config_file_data(&self) -> Result<BTreeMap<String, String>, Error> {
+        let mut config_data = BTreeMap::new();
         config_data.insert(
             password::PASSWORD_AUTHENTICATOR_NAME.to_string(),
             PASSWORD_AUTHENTICATOR_NAME_LDAP.to_string(),
@@ -122,11 +122,11 @@ impl LdapAuthenticator {
 
         if let Some((user_path, pw_path)) = self.ldap.bind_credentials_mount_paths() {
             commands.push(format!(
-                "export {user}=$(cat {user_path}",
+                "export {user}=$(cat {user_path})",
                 user = self.build_bind_credentials_env_var(LDAP_USER_ENV)
             ));
             commands.push(format!(
-                "export {pw}=$(cat {pw_path}",
+                "export {pw}=$(cat {pw_path})",
                 pw = self.build_bind_credentials_env_var(LDAP_PASSWORD_ENV)
             ));
         }
@@ -173,8 +173,8 @@ impl LdapAuthenticator {
 
     fn build_bind_credentials_env_var(&self, prefix: &str) -> String {
         format!(
-            "{prefix}-{auth_class}",
-            auth_class = self.name.to_uppercase().replace("-", "_")
+            "{prefix}_{auth_class}",
+            auth_class = self.name.to_uppercase().replace('-', "_")
         )
     }
 }

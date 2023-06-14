@@ -7,10 +7,9 @@ use crate::authentication::{
 };
 
 use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::product_image_selection::ResolvedProductImage;
-use stackable_operator::product_config;
+use stackable_operator::{commons::product_image_selection::ResolvedProductImage, product_config};
 use stackable_trino_crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tracing::debug;
 
 // Trino properties
@@ -78,7 +77,7 @@ impl TrinoPasswordAuthentication {
                                 .config_file_data()
                                 .into_iter()
                                 .map(|(k, v)| (k, Some(v)))
-                                .collect::<HashMap<String, Option<String>>>()
+                                .collect::<BTreeMap<String, Option<String>>>()
                                 .iter(),
                         )
                         .context(FailedToWritePasswordAuthenticationFileSnafu)?,
@@ -116,7 +115,7 @@ impl TrinoPasswordAuthentication {
                                 .context(InvalidLdapAuthenticationConfigurationSnafu)?
                                 .into_iter()
                                 .map(|(k, v)| (k, Some(v)))
-                                .collect::<HashMap<String, Option<String>>>()
+                                .collect::<BTreeMap<String, Option<String>>>()
                                 .iter(),
                         )
                         .context(FailedToWritePasswordAuthenticationFileSnafu)?,

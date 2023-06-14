@@ -6,7 +6,7 @@ use stackable_operator::{
     commons::product_image_selection::ResolvedProductImage,
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
 };
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 // mounts
 const PASSWORD_DB_VOLUME_NAME: &str = "users";
@@ -37,8 +37,8 @@ impl FileAuthenticator {
         )
     }
 
-    pub fn config_file_data(&self) -> HashMap<String, String> {
-        let mut config_data = HashMap::new();
+    pub fn config_file_data(&self) -> BTreeMap<String, String> {
+        let mut config_data = BTreeMap::new();
         config_data.insert(
             PASSWORD_AUTHENTICATOR_NAME.to_string(),
             PASSWORD_AUTHENTICATOR_NAME_FILE.to_string(),
@@ -68,8 +68,9 @@ impl FileAuthenticator {
     }
 
     fn password_file_name(&self) -> String {
+        // TODO: document max volume mount size of 63 characters: (auth_class + secret_name + 1) < 63
         format!(
-            "{auth_class}-{credentials}-pw-file-auth-password.db",
+            "{auth_class}-{credentials}.db",
             auth_class = self.name,
             credentials = self.file.user_credentials_secret.name
         )
@@ -84,9 +85,10 @@ impl FileAuthenticator {
     }
 
     fn secret_volume_name(&self) -> String {
+        // TODO: document max volume mount size of 63 characters: (auth_class + secret_name + 1) < 63
         // auth class + secret name for uniqueness
         format!(
-            "{auth_class}-{secret_name}-pw-file-auth",
+            "{auth_class}-{secret_name}",
             auth_class = self.name,
             secret_name = self.file.user_credentials_secret.name
         )
@@ -135,7 +137,7 @@ do
       credentials+=" "
     done
     
-    echo "${{credentials}}" | tr " " "\n" > "{stackable_password_db_dir}/${{secret_name}}-password.db"
+    echo "${{credentials}}" | tr " " "\n" > "{stackable_password_db_dir}/${{secret_name}}.db"
   done
 
   echo "All done. Next round in {poll_interval} seconds!"
@@ -147,7 +149,8 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
             stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
             stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
             poll_interval = 5
-        )]).build()
+        )])
+        .build()
 }
 
 #[cfg(test)]
