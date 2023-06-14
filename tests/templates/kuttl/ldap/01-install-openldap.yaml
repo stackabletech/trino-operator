@@ -4,3 +4,4 @@ kind: TestStep
 commands:
   # We need to replace $NAMESPACE (by KUTTL) in the install-openldap.yaml
   - script: eval "echo \"$(cat install-openldap.yaml)\"" | kubectl apply -f -
+  - script: eval "echo \"$(cat install-openldap-other.yaml)\"" | kubectl apply -f -

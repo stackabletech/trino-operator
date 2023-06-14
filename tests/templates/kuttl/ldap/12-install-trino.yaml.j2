@@ -23,13 +23,14 @@ spec:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
     authentication:
-      method:
+      - authenticationClass: password-file-auth
+      - authenticationClass: password-file-auth-other
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-        ldap:
-          authenticationClass: ldap-without-tls
+      - authenticationClass: ldap-without-tls
+      - authenticationClass: ldap-without-tls-other
 {% else  %}
-        ldap:
-          authenticationClass: ldap-with-tls
+      - authenticationClass: ldap-with-tls
+      - authenticationClass: ldap-with-tls-other
 {% endif %}
   coordinators:
     config:
