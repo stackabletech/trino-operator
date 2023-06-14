@@ -76,7 +76,7 @@ tests:
   - name: resources
     dimensions:
       - trino-latest
-  - name: ldap
+  - name: authentication
     dimensions:
       - trino-latest
       - ldap-use-tls
