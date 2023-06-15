@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: password-file-users
+  namespace: $NAMESPACE
+stringData:
+  test_user_1: test_user_1
+  test_user_2: test_user_2
