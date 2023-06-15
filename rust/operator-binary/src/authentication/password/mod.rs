@@ -1,3 +1,13 @@
+//! This module computes all resources required for Trino PASSWORD authentication.
+//!
+//! This includes file based authentication and LDAP.
+//!
+//! Computes a `TrinoAuthenticationConfig` containing all required resources like
+//! - config properties
+//! - config files
+//! - volume and volume mounts
+//! - extra containers and commands
+//!
 pub mod file;
 pub mod ldap;
 
@@ -13,10 +23,10 @@ use std::collections::BTreeMap;
 use tracing::debug;
 
 // Trino properties
-const PASSWORD_AUTHENTICATOR_CONFIG_FILES: &str = "password-authenticator.config-files";
+pub(crate) const PASSWORD_AUTHENTICATOR_CONFIG_FILES: &str = "password-authenticator.config-files";
 const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 // file handling
-const CONFIG_FILE_NAME_SUFFIX: &str = ".properties";
+pub(crate) const CONFIG_FILE_NAME_SUFFIX: &str = ".properties";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -44,6 +54,8 @@ impl TrinoPasswordAuthentication {
         Self { authenticators }
     }
 
+    /// Return a `TrinoAuthenticationConfig` containing all required resources for each
+    /// PASSWORD authenticator.
     pub fn password_authentication_config(
         &self,
         resolved_product_image: &ResolvedProductImage,
@@ -263,45 +275,42 @@ mod tests {
 
     #[test]
     fn test_password_authentication_config_files() {
+        let file_auth_1 = FileAuthenticator::new(
+            FILE_AUTH_CLASS_1.to_string(),
+            StaticAuthenticationProvider {
+                user_credentials_secret: UserCredentialsSecretRef {
+                    name: FILE_AUTH_CLASS_1.to_string(),
+                },
+            },
+        );
+        let ldap_auth_1 = LdapAuthenticator::new(LDAP_AUTH_CLASS_1.to_string(), ldap_provider());
+
         let auth_config = setup();
         let config_files = auth_config.config_files(&TrinoRole::Coordinator);
 
         // We expect 4 config files (2 for file-authenticator, 2 for ldap-authenticator)
         assert_eq!(config_files.len(), 4);
-        // First element should be the file authentication
+        // check file auth
         assert_eq!(
-            config_files
-                .get(&format!(
-                    "{FILE_AUTH_CLASS_1}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}"
-                ))
-                .unwrap(),
-            &FileAuthenticator::new(
-                FILE_AUTH_CLASS_1.to_string(),
-                StaticAuthenticationProvider {
-                    user_credentials_secret: UserCredentialsSecretRef {
-                        name: "".to_string()
-                    }
-                }
-            )
-            .config_file_name()
+            config_files.get(&file_auth_1.config_file_name()).unwrap(),
+            &format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}-{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n")
         );
-        // Second element should be ldap authentication
-        assert_eq!(
-            config_files
-                .get(&format!(
-                    "{FILE_AUTH_CLASS_1}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}"
-                ))
-                .unwrap(),
-            &format!("{FILE_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}")
-        );
-        // Third element should be ldap authentication
-        assert_eq!(
-            config_files
-                .get(&format!(
-                    "{LDAP_AUTH_CLASS_1}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}"
-                ))
-                .unwrap(),
-            &format!("{FILE_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}")
-        );
+        // check ldap
+        assert!(config_files
+            .get(&ldap_auth_1.config_file_name())
+            .unwrap()
+            .contains("password-authenticator.name=ldap"));
+
+        // Coordinator
+        assert!(!auth_config
+            .volume_mounts(&TrinoRole::Coordinator, &Container::Trino)
+            .is_empty());
+        assert!(!auth_config.volumes().is_empty());
+
+        // Nothing to be set for workers
+        assert!(auth_config
+            .volume_mounts(&TrinoRole::Worker, &Container::Trino)
+            .is_empty());
+        assert!(auth_config.config_files(&TrinoRole::Worker).is_empty());
     }
 }

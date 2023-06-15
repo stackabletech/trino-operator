@@ -47,6 +47,7 @@ impl LdapAuthenticator {
         }
     }
 
+    /// Return the name of the authenticator config file to register with Trino
     pub fn config_file_name(&self) -> String {
         format!(
             "{name}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",
@@ -54,6 +55,7 @@ impl LdapAuthenticator {
         )
     }
 
+    /// Return the content of the authenticator config file to register with Trino
     pub fn config_file_data(&self) -> Result<BTreeMap<String, String>, Error> {
         let mut config_data = BTreeMap::new();
         config_data.insert(
@@ -117,6 +119,7 @@ impl LdapAuthenticator {
         Ok(config_data)
     }
 
+    /// Return additional commands for Trino
     pub fn commands(&self) -> Vec<String> {
         let mut commands = vec![];
 
@@ -134,6 +137,7 @@ impl LdapAuthenticator {
         commands
     }
 
+    /// Required LDAP authenticator volume amd volume mounts.
     pub fn volumes_and_mounts(&self) -> (Vec<Volume>, Vec<VolumeMount>) {
         let mut volumes = vec![];
         let mut mounts: Vec<(String, String)> = vec![];
@@ -171,6 +175,8 @@ impl LdapAuthenticator {
         (volumes, volume_mounts)
     }
 
+    /// Convert the provided authentication class name into an ENV variable.
+    /// This means uppercase and replacing any '-' with '_' characters.
     fn build_bind_credentials_env_var(&self, prefix: &str) -> String {
         format!(
             "{prefix}_{auth_class}",
@@ -193,7 +199,7 @@ mod tests {
     const LDAP_HOST_NAME: &str = "openldap.default.svc.cluster.local";
     const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
 
-    fn setup_test_authenticator(tls: Option<Tls>) -> LdapAuthenticator {
+    fn setup_test_authenticator() -> LdapAuthenticator {
         LdapAuthenticator::new(
             AUTH_CLASS_NAME.to_string(),
             LdapAuthenticationProvider {
@@ -206,18 +212,24 @@ mod tests {
                     secret_class: "test".to_string(),
                     scope: None,
                 }),
-                tls,
+                tls: Some(Tls {
+                    verification: TlsVerification::Server(TlsServerVerification {
+                        ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
+                    }),
+                }),
             },
         )
     }
 
     #[test]
     fn test_ldap_authenticator() {
-        let ldap_authenticator = setup_test_authenticator(Some(Tls {
-            verification: TlsVerification::Server(TlsServerVerification {
-                ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
-            }),
-        }));
+        let ldap_authenticator = setup_test_authenticator();
+
+        let file_name = ldap_authenticator.config_file_name();
+        assert_eq!(
+            file_name,
+            format!("{AUTH_CLASS_NAME}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",)
+        );
 
         let config = ldap_authenticator.config_file_data().unwrap();
         assert!(config.get(LDAP_BIND_DN).is_some());

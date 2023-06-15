@@ -30,6 +30,7 @@ impl FileAuthenticator {
         }
     }
 
+    /// Return the name of the authenticator config file to register with Trino
     pub fn config_file_name(&self) -> String {
         format!(
             "{name}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}",
@@ -37,6 +38,7 @@ impl FileAuthenticator {
         )
     }
 
+    /// Return the content of the authenticator config file to register with Trino
     pub fn config_file_data(&self) -> BTreeMap<String, String> {
         let mut config_data = BTreeMap::new();
         config_data.insert(
@@ -47,28 +49,31 @@ impl FileAuthenticator {
         config_data
     }
 
+    /// Build the volume for the user secret
     pub fn secret_volume(&self) -> Volume {
         VolumeBuilder::new(self.secret_volume_name())
             .with_secret(&self.file.user_credentials_secret.name, false)
             .build()
     }
 
+    /// Build the volume mount for the user secret
     pub fn secret_volume_mount(&self) -> VolumeMount {
         VolumeMountBuilder::new(self.secret_volume_name(), self.secret_class_mount_path()).build()
     }
 
+    /// Build the volume for the user password db
     pub fn password_db_volume() -> Volume {
         VolumeBuilder::new(PASSWORD_DB_VOLUME_NAME)
             .with_empty_dir(None::<String>, None)
             .build()
     }
 
+    /// Build the volume mount for the user password db
     pub fn password_db_volume_mount() -> VolumeMount {
         VolumeMountBuilder::new(PASSWORD_DB_VOLUME_NAME, PASSWORD_DB_VOLUME_MOUNT_PATH).build()
     }
 
     fn password_file_name(&self) -> String {
-        // TODO: document max volume mount size of 63 characters: (auth_class + secret_name + 1) < 63
         format!(
             "{auth_class}-{credentials}.db",
             auth_class = self.name,
@@ -85,8 +90,6 @@ impl FileAuthenticator {
     }
 
     fn secret_volume_name(&self) -> String {
-        // TODO: document max volume mount size of 63 characters: (auth_class + secret_name + 1) < 63
-        // auth class + secret name for uniqueness
         format!(
             "{auth_class}-{secret_name}",
             auth_class = self.name,
@@ -133,7 +136,7 @@ do
     for user in ${{secret}}/*; do
       user_name=$(basename ${{user}})
       password=$(cat ${{user}})
-      credentials+="$(htpasswd -nbBC 10 ${{user_name}} ${{password}})"
+      credentials+="$(htpasswd -nbBC 12 ${{user_name}} ${{password}})"
       credentials+=" "
     done
     
@@ -148,7 +151,7 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
 "###,
             stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
             stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
-            poll_interval = 5
+            poll_interval = 10
         )])
         .build()
 }
@@ -158,15 +161,23 @@ mod tests {
     use super::*;
     use stackable_operator::commons::authentication::static_::UserCredentialsSecretRef;
 
+    const AUTH_CLASS_NAME: &str = "test-auth";
+
     #[test]
     fn test_file_authenticator() {
         let authenticator = FileAuthenticator::new(
-            "test".to_string(),
+            AUTH_CLASS_NAME.to_string(),
             StaticAuthenticationProvider {
                 user_credentials_secret: UserCredentialsSecretRef {
                     name: "user_credentials".to_string(),
                 },
             },
+        );
+
+        let file_name = authenticator.config_file_name();
+        assert_eq!(
+            file_name,
+            format!("{AUTH_CLASS_NAME}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}",)
         );
 
         assert_eq!(
