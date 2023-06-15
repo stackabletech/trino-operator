@@ -1,5 +1,7 @@
 use crate::authentication::password::{CONFIG_FILE_NAME_SUFFIX, PASSWORD_AUTHENTICATOR_NAME};
 
+use stackable_operator::k8s_openapi::api::core::v1::ResourceRequirements;
+use stackable_operator::k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use stackable_operator::{
     builder::{ContainerBuilder, VolumeBuilder, VolumeMountBuilder},
     commons::authentication::StaticAuthenticationProvider,
@@ -114,9 +116,21 @@ pub fn build_password_file_update_container(
         ContainerBuilder::new(&stackable_trino_crd::Container::PasswordFileUpdater.to_string())
             .unwrap();
 
+    let resources = [
+        ("cpu".to_string(), Quantity("10m".to_string())),
+        ("memory".to_string(), Quantity("32Mi".to_string())),
+    ]
+    .into_iter()
+    .collect::<BTreeMap<String, Quantity>>();
+
     cb_pw_file_updater
         .image_from_product_image(resolved_product_image)
         .add_volume_mounts(volume_mounts)
+        .resources(ResourceRequirements {
+            requests: Some(resources.clone()),
+            limits: Some(resources),
+            ..ResourceRequirements::default()
+        })
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(vec![format!(
             r###"
@@ -151,7 +165,7 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
 "###,
             stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
             stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
-            poll_interval = 10
+            poll_interval = 15
         )])
         .build()
 }
