@@ -397,6 +397,7 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
 mod tests {
     use super::*;
     use password::CONFIG_FILE_NAME_SUFFIX;
+    use stackable_operator::commons::secret_class::SecretClassVolume;
     use stackable_operator::{
         commons::authentication::{
             static_::UserCredentialsSecretRef, AuthenticationClassSpec, LdapAuthenticationProvider,
@@ -427,7 +428,10 @@ mod tests {
         }
     }
 
-    fn setup_ldap_auth_class(name: &str) -> AuthenticationClass {
+    fn setup_ldap_auth_class(
+        name: &str,
+        bind_credentials: Option<SecretClassVolume>,
+    ) -> AuthenticationClass {
         AuthenticationClass {
             metadata: ObjectMeta {
                 name: Some(name.to_string()),
@@ -440,7 +444,7 @@ mod tests {
                     search_base: "".to_string(),
                     search_filter: "".to_string(),
                     ldap_field_names: Default::default(),
-                    bind_credentials: None,
+                    bind_credentials,
                     tls: None,
                 }),
             },
@@ -461,8 +465,28 @@ mod tests {
         let auth_classes = vec![
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_1),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_2),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, None),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, None),
+        ];
+
+        TrinoAuthenticationConfig::new(
+            &resolved_product_image(),
+            TrinoAuthenticationTypes::try_from(auth_classes).unwrap(),
+        )
+        .unwrap()
+    }
+
+    fn setup_authentication_config_bind_credentials() -> TrinoAuthenticationConfig {
+        let bind_credentials = SecretClassVolume {
+            secret_class: "secret_class".to_string(),
+            scope: None,
+        };
+
+        let auth_classes = vec![
+            setup_file_auth_class(FILE_AUTH_CLASS_1),
+            setup_file_auth_class(FILE_AUTH_CLASS_2),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, Some(bind_credentials.clone())),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, Some(bind_credentials)),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -503,6 +527,7 @@ mod tests {
             .config_files(&TrinoRole::Worker)
             .is_empty());
 
+        // coordinators
         let config_files = setup_authentication_config().config_files(&TrinoRole::Coordinator);
 
         assert_eq!(
@@ -524,5 +549,106 @@ mod tests {
             config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}")),
                 Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\"\"\npassword-authenticator.name=ldap\n".to_string()).as_ref()
             );
+    }
+
+    #[test]
+    fn test_trino_password_authenticator_volumes() {
+        // coordinators
+        let volumes = setup_authentication_config().volumes();
+
+        assert!(!volumes.is_empty());
+
+        // One user password db volume
+        assert_eq!(
+            volumes
+                .iter()
+                .filter(|v| &v.name == "users")
+                .collect::<Vec<&Volume>>()
+                .len(),
+            1
+        );
+
+        // 2 file auth secret mounts
+        assert_eq!(
+            volumes
+                .iter()
+                .filter(
+                    |v| v.name == format!("{FILE_AUTH_CLASS_1}-{FILE_AUTH_CLASS_1}")
+                        || v.name == format!("{FILE_AUTH_CLASS_2}-{FILE_AUTH_CLASS_2}")
+                )
+                .collect::<Vec<&Volume>>()
+                .len(),
+            2
+        );
+    }
+
+    #[test]
+    fn test_trino_password_authenticator_volume_mounts() {
+        // nothing for workers
+        assert!(setup_authentication_config()
+            .volume_mounts(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino,)
+            .is_empty());
+        assert!(setup_authentication_config()
+            .volume_mounts(&TrinoRole::Worker, &stackable_trino_crd::Container::Prepare,)
+            .is_empty());
+
+        // coordinator - main container
+        let coordinator_main_mounts = setup_authentication_config().volume_mounts(
+            &TrinoRole::Coordinator,
+            &stackable_trino_crd::Container::Trino,
+        );
+
+        // we expect one user password db mount
+        assert_eq!(coordinator_main_mounts.len(), 1);
+        assert_eq!(coordinator_main_mounts.get(0).unwrap().name, "users");
+        assert_eq!(
+            coordinator_main_mounts.get(0).unwrap().mount_path,
+            "/stackable/users"
+        );
+
+        println!("{:?}", coordinator_main_mounts);
+    }
+
+    #[test]
+    fn test_trino_password_authenticator_commands() {
+        let auth_config = setup_authentication_config();
+        let auth_config_with_ldap_bind = setup_authentication_config_bind_credentials();
+
+        // nothing for workers
+        assert!(auth_config
+            .commands(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino)
+            .is_empty());
+        assert!(auth_config_with_ldap_bind
+            .commands(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino)
+            .is_empty());
+
+        // we expect 0 entries because no bind credentials env export
+        assert_eq!(
+            auth_config
+                .commands(
+                    &TrinoRole::Coordinator,
+                    &stackable_trino_crd::Container::Trino
+                )
+                .len(),
+            0
+        );
+
+        // we expect 4 entries because of 2x user:password bind credential env export
+        assert_eq!(
+            auth_config_with_ldap_bind
+                .commands(
+                    &TrinoRole::Coordinator,
+                    &stackable_trino_crd::Container::Trino
+                )
+                .len(),
+            4
+        );
+    }
+
+    #[test]
+    fn test_trino_password_authenticator_sidecar_containers() {
+        let auth_config = setup_authentication_config();
+        // expect one file user password db update container
+        assert_eq!(auth_config.sidecar_containers.len(), 1);
     }
 }

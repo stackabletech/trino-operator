@@ -44,6 +44,7 @@ pub struct TrinoPasswordAuthentication {
 }
 
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum TrinoPasswordAuthenticator {
     File(FileAuthenticator),
     Ldap(LdapAuthenticator),
@@ -214,36 +215,32 @@ mod tests {
     }
 
     fn setup() -> TrinoAuthenticationConfig {
-        let mut authenticators = vec![];
-
-        authenticators.push(TrinoPasswordAuthenticator::File(FileAuthenticator::new(
-            FILE_AUTH_CLASS_1.to_string(),
-            StaticAuthenticationProvider {
-                user_credentials_secret: UserCredentialsSecretRef {
-                    name: FILE_AUTH_CLASS_1.to_string(),
+        let authenticators = vec![
+            TrinoPasswordAuthenticator::File(FileAuthenticator::new(
+                FILE_AUTH_CLASS_1.to_string(),
+                StaticAuthenticationProvider {
+                    user_credentials_secret: UserCredentialsSecretRef {
+                        name: FILE_AUTH_CLASS_1.to_string(),
+                    },
                 },
-            },
-        )));
-
-        authenticators.push(TrinoPasswordAuthenticator::File(FileAuthenticator::new(
-            FILE_AUTH_CLASS_2.to_string(),
-            StaticAuthenticationProvider {
-                user_credentials_secret: UserCredentialsSecretRef {
-                    name: FILE_AUTH_CLASS_2.to_string(),
+            )),
+            TrinoPasswordAuthenticator::File(FileAuthenticator::new(
+                FILE_AUTH_CLASS_2.to_string(),
+                StaticAuthenticationProvider {
+                    user_credentials_secret: UserCredentialsSecretRef {
+                        name: FILE_AUTH_CLASS_2.to_string(),
+                    },
                 },
-            },
-        )));
-
-        authenticators.push(TrinoPasswordAuthenticator::Ldap(LdapAuthenticator::new(
-            LDAP_AUTH_CLASS_1.to_string(),
-            ldap_provider(),
-        )));
-
-        authenticators.push(TrinoPasswordAuthenticator::Ldap(LdapAuthenticator::new(
-            LDAP_AUTH_CLASS_2.to_string(),
-            ldap_provider(),
-        )));
-
+            )),
+            TrinoPasswordAuthenticator::Ldap(LdapAuthenticator::new(
+                LDAP_AUTH_CLASS_1.to_string(),
+                ldap_provider(),
+            )),
+            TrinoPasswordAuthenticator::Ldap(LdapAuthenticator::new(
+                LDAP_AUTH_CLASS_2.to_string(),
+                ldap_provider(),
+            )),
+        ];
         TrinoPasswordAuthentication::new(authenticators)
             .password_authentication_config(&ResolvedProductImage {
                 product_version: "".to_string(),
