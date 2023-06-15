@@ -117,7 +117,7 @@ pub fn build_password_file_update_container(
             .unwrap();
 
     let resources = [
-        ("cpu".to_string(), Quantity("10m".to_string())),
+        ("cpu".to_string(), Quantity("200m".to_string())),
         ("memory".to_string(), Quantity("32Mi".to_string())),
     ]
     .into_iter()
@@ -137,15 +137,13 @@ pub fn build_password_file_update_container(
 echo '
 #!/bin/bash
 
-poll_interval_seconds=5
-
-while true
-do
-  echo "Create user password database from secrets..."
-  for secret in {stackable_auth_secret_dir}/*; do
+build_user_dbs() {{
+  echo "[$(date --utc +%FT%T.%3NZ)] Detected changes. Start recreating user password databases from secrets..."
+  for secret in {stackable_auth_secret_dir}/*; 
+  do
     credentials=""
     secret_name="$(basename ${{secret}})"
-    echo "Processing secret [$secret_name] ..."
+    echo "[$(date --utc +%FT%T.%3NZ)] Processing secret [$secret_name] ..."
 
     for user in ${{secret}}/*; do
       user_name=$(basename ${{user}})
@@ -156,16 +154,19 @@ do
     
     echo "${{credentials}}" | tr " " "\n" > "{stackable_password_db_dir}/${{secret_name}}.db"
   done
+}}
 
-  echo "All done. Next round in {poll_interval} seconds!"
-  echo ""
-  
-  sleep {poll_interval}
+# Once initial run after start / restart 
+build_user_dbs
+
+while inotifywait -s -r -e create -e delete -e modify {stackable_auth_secret_dir};
+do
+  build_user_dbs
+  echo "[$(date --utc +%FT%T.%3NZ)] All databases recreated. Waiting for changes..."
 done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/build_password_db.sh
 "###,
             stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
             stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
-            poll_interval = 15
         )])
         .build()
 }
