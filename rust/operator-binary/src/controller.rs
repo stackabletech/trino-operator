@@ -24,8 +24,8 @@ use stackable_operator::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 ConfigMap, ConfigMapVolumeSource, ContainerPort, EmptyDirVolumeSource, EnvVar,
-                EnvVarSource, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
-                TCPSocketAction, Volume,
+                EnvVarSource, Probe, ResourceRequirements, Secret, SecretKeySelector, Service,
+                ServicePort, ServiceSpec, TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
@@ -850,6 +850,13 @@ fn build_rolegroup_statefulset(
         merged_config,
     ));
 
+    let container_prepare_resources = [
+        ("cpu".to_string(), Quantity("500m".to_string())),
+        ("memory".to_string(), Quantity("128Mi".to_string())),
+    ]
+    .into_iter()
+    .collect::<BTreeMap<String, Quantity>>();
+
     let container_prepare = cb_prepare
         .image_from_product_image(resolved_product_image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
@@ -858,6 +865,12 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
         .add_volume_mount("log", STACKABLE_LOG_DIR)
+        // TODO: resources?
+        .resources(ResourceRequirements {
+            requests: Some(container_prepare_resources.clone()),
+            limits: Some(container_prepare_resources),
+            ..ResourceRequirements::default()
+        })
         .build();
 
     let container_trino = cb_trino
@@ -914,6 +927,7 @@ fn build_rolegroup_statefulset(
             "config",
             "log",
             merged_config.logging.containers.get(&Container::Vector),
+            ResourceRequirements::default(),
         ));
     }
 
