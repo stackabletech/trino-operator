@@ -605,8 +605,6 @@ mod tests {
             coordinator_main_mounts.get(0).unwrap().mount_path,
             "/stackable/users"
         );
-
-        println!("{:?}", coordinator_main_mounts);
     }
 
     #[test]
