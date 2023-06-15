@@ -9,4 +9,3 @@ commands:
   # ldap
   - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-active-workers.py -u integrationtest -p integrationtest -n $NAMESPACE -w 1
   - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-active-workers.py -u integrationtest-other -p integrationtest-other -n $NAMESPACE -w 1
-
