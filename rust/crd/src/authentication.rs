@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::ldap::LdapAuthenticationProvider;
+use stackable_operator::commons::authentication::ldap::LdapAuthenticationProvider;
 use stackable_operator::{
     client::Client,
     commons::authentication::{AuthenticationClass, AuthenticationClassProvider},

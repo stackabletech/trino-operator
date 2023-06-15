@@ -10,6 +10,7 @@ use crate::{
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::builder::resources::ResourceRequirementsBuilder;
 use stackable_operator::{
     builder::{
         ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
@@ -925,6 +926,12 @@ fn build_rolegroup_statefulset(
             "config",
             "log",
             merged_config.logging.containers.get(&Container::Vector),
+            ResourceRequirementsBuilder::new()
+                .with_cpu_request("20m")
+                .with_cpu_limit("50m")
+                .with_memory_request("64Mi")
+                .with_memory_limit("64Mi")
+                .build(),
         ));
     }
 
