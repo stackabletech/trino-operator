@@ -8,6 +8,23 @@ data:
    io.trino=info
    io.trino.server=debug
 ---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: password-file-auth
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: test-users
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-users
+stringData:
+  admin: admin
+---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
@@ -19,6 +36,9 @@ spec:
   clusterConfig:
     catalogLabelSelector: {}
     vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
+    # in order to add the password-file-updater container
+    authentication:
+      - authenticationClass: password-file-auth
   coordinators:
     roleGroups:
       automatic-log-config:
@@ -30,6 +50,14 @@ spec:
               trino:
                 loggers:
                   io.trino:
+                    level: INFO
+              password-file-updater:
+                console:
+                  level: INFO
+                file:
+                  level: INFO
+                loggers:
+                  ROOT:
                     level: INFO
               vector:
                 console:

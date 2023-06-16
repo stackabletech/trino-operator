@@ -1,12 +1,15 @@
 use crate::authentication::password::{CONFIG_FILE_NAME_SUFFIX, PASSWORD_AUTHENTICATOR_NAME};
+use crate::controller::STACKABLE_LOG_DIR;
 
-use stackable_operator::k8s_openapi::api::core::v1::ResourceRequirements;
-use stackable_operator::k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use stackable_operator::{
     builder::{ContainerBuilder, VolumeBuilder, VolumeMountBuilder},
     commons::authentication::StaticAuthenticationProvider,
     commons::product_image_selection::ResolvedProductImage,
-    k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
+    k8s_openapi::{
+        api::core::v1::{Container, ResourceRequirements, Volume, VolumeMount},
+        apimachinery::pkg::api::resource::Quantity,
+    },
+    product_logging::{self, spec::AutomaticContainerLogConfig},
 };
 use std::collections::BTreeMap;
 
@@ -123,23 +126,23 @@ pub fn build_password_file_update_container(
     .into_iter()
     .collect::<BTreeMap<String, Quantity>>();
 
-    cb_pw_file_updater
-        .image_from_product_image(resolved_product_image)
-        .add_volume_mounts(volume_mounts)
-        .resources(ResourceRequirements {
-            requests: Some(resources.clone()),
-            limits: Some(resources),
-            ..ResourceRequirements::default()
-        })
-        .command(vec!["/bin/bash".to_string(), "-c".to_string()])
-        .args(vec![format!(
-            r###"
+    let mut commands = vec![];
+
+    commands.push(product_logging::framework::capture_shell_output(
+        STACKABLE_LOG_DIR,
+        &stackable_trino_crd::Container::PasswordFileUpdater.to_string(),
+        // we do not access any of the crd config options for this and just log it to file
+        &AutomaticContainerLogConfig::default(),
+    ));
+
+    commands.push(format!(
+        r###"
 echo '
 #!/bin/bash
 
 build_user_dbs() {{
   echo "[$(date --utc +%FT%T.%3NZ)] Detected changes. Start recreating user password databases from secrets..."
-  for secret in {stackable_auth_secret_dir}/*; 
+  for secret in {stackable_auth_secret_dir}/*;
   do
     credentials=""
     secret_name="$(basename ${{secret}})"
@@ -151,12 +154,12 @@ build_user_dbs() {{
       credentials+="$(htpasswd -nbBC 12 ${{user_name}} ${{password}})"
       credentials+=" "
     done
-    
+
     echo "${{credentials}}" | tr " " "\n" > "{stackable_password_db_dir}/${{secret_name}}.db"
   done
 }}
 
-# Once initial run after start / restart 
+# Once initial run after start / restart
 build_user_dbs
 
 while inotifywait -s -r -e create -e delete -e modify {stackable_auth_secret_dir};
@@ -165,9 +168,23 @@ do
   echo "[$(date --utc +%FT%T.%3NZ)] All databases recreated. Waiting for changes..."
 done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/build_password_db.sh
 "###,
-            stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
-            stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
-        )])
+        stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
+        stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
+    ));
+
+    cb_pw_file_updater
+        .image_from_product_image(resolved_product_image)
+        // calculated mounts
+        .add_volume_mounts(volume_mounts)
+        // fixed
+        .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .resources(ResourceRequirements {
+            requests: Some(resources.clone()),
+            limits: Some(resources),
+            ..ResourceRequirements::default()
+        })
+        .command(vec!["/bin/bash".to_string(), "-c".to_string()])
+        .args(vec![commands.join(" && ")])
         .build()
 }
 
