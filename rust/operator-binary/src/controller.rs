@@ -926,9 +926,11 @@ fn build_rolegroup_statefulset(
             "config",
             "log",
             merged_config.logging.containers.get(&Container::Vector),
+            // FIXME: Change to desired value when implementing proper ResourceRequirements for all containers.
+            // As of now we set them to the resources we have decided together.
             ResourceRequirementsBuilder::new()
-                .with_cpu_request("20m")
-                .with_cpu_limit("50m")
+                .with_cpu_request("100m")
+                .with_cpu_limit("200m")
                 .with_memory_request("64Mi")
                 .with_memory_limit("64Mi")
                 .build(),
