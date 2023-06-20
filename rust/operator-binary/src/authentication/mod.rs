@@ -567,7 +567,7 @@ mod tests {
                         || v.name == format!("{FILE_AUTH_CLASS_2}-{FILE_AUTH_CLASS_2}")
                 )
                 .count(),
-            1
+            2
         );
     }
 
