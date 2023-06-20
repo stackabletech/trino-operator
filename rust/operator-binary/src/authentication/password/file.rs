@@ -114,10 +114,9 @@ pub fn build_password_file_update_container(
     resolved_product_image: &ResolvedProductImage,
     volume_mounts: Vec<VolumeMount>,
 ) -> Container {
-    // unwrap is save due to the fixed name
     let mut cb_pw_file_updater =
         ContainerBuilder::new(&stackable_trino_crd::Container::PasswordFileUpdater.to_string())
-            .unwrap();
+            .expect("Invalid container name. This should not happen, as the container name is fixed");
 
     let resources = [
         ("cpu".to_string(), Quantity("200m".to_string())),

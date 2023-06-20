@@ -6,7 +6,7 @@ This page covers <<Authentication>> and <<Authorization>>.
 
 Trino supports several https://trino.io/docs/current/security/authentication-types.html[authentication types].
 
-Different authentication types can be used in parallel.
+Different authentication types can be used simultaneously.
 
 === Password
 

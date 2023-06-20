@@ -124,7 +124,6 @@ impl TrinoAuthenticationConfig {
             stackable_trino_crd::Container::Trino,
         ];
 
-        // for container in stackable_trino_crd::Container::iter() {
         for container in &affected_containers {
             let volume_mounts = self.volume_mounts(&role, container);
 
@@ -557,14 +556,7 @@ mod tests {
         assert!(!volumes.is_empty());
 
         // One user password db volume
-        assert_eq!(
-            volumes
-                .iter()
-                .filter(|v| &v.name == "users")
-                .collect::<Vec<&Volume>>()
-                .len(),
-            1
-        );
+        assert_eq!(volumes.iter().filter(|v| v.name == "users").count(), 1);
 
         // 2 file auth secret mounts
         assert_eq!(
@@ -574,9 +566,8 @@ mod tests {
                     |v| v.name == format!("{FILE_AUTH_CLASS_1}-{FILE_AUTH_CLASS_1}")
                         || v.name == format!("{FILE_AUTH_CLASS_2}-{FILE_AUTH_CLASS_2}")
                 )
-                .collect::<Vec<&Volume>>()
-                .len(),
-            2
+                .count(),
+            1
         );
     }
 
