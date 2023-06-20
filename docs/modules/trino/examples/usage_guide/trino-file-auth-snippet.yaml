@@ -21,7 +21,7 @@ type: kubernetes.io/opaque
 stringData:
   admin: admin
   alice: alice
-  bob: alice
+  bob: bob
 # end::secret[]
 ---
 # tag::trino[]
