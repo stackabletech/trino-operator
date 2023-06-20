@@ -78,18 +78,16 @@ impl TrinoAuthenticationConfig {
         let mut http_server_authentication_types = vec![];
 
         for auth_type in &trino_auth.authentication_types {
-            match auth_type {
-                TrinoAuthenticationType::Password(password_auth) => {
-                    if !http_server_authentication_types.contains(&auth_type.to_string()) {
-                        http_server_authentication_types.push(auth_type.to_string());
-                    }
+            if !http_server_authentication_types.contains(&auth_type.to_string()) {
+                http_server_authentication_types.push(auth_type.to_string());
+            }
 
-                    authentication_config.extend(
-                        password_auth
-                            .password_authentication_config(resolved_product_image)
-                            .context(InvalidPasswordAuthenticationConfigSnafu)?,
-                    )
-                }
+            match auth_type {
+                TrinoAuthenticationType::Password(password_auth) => authentication_config.extend(
+                    password_auth
+                        .password_authentication_config(resolved_product_image)
+                        .context(InvalidPasswordAuthenticationConfigSnafu)?,
+                ),
             }
         }
 
