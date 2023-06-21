@@ -2,7 +2,7 @@
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: password-file-auth
+  name: password-file-auth-$NAMESPACE
 spec:
   provider:
     static:
@@ -21,7 +21,7 @@ stringData:
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: password-file-auth-other
+  name: password-file-auth-other-$NAMESPACE
 spec:
   provider:
     static:
@@ -41,9 +41,9 @@ apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-  name: ldap-without-tls
+  name: ldap-without-tls-$NAMESPACE
 {% else  %}
-  name: ldap-with-tls
+  name: ldap-with-tls-$NAMESPACE
 {% endif %}
 spec:
   provider:
@@ -51,7 +51,7 @@ spec:
       hostname: openldap.$NAMESPACE.svc.cluster.local
       searchBase: ou=users,dc=example,dc=org
       bindCredentials:
-        secretClass: trino-with-ldap-bind
+        secretClass: trino-with-ldap-bind-$NAMESPACE
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
       port: 1389
 {% else %}
@@ -60,13 +60,13 @@ spec:
         verification:
           server:
             caCert:
-              secretClass: openldap-tls
+              secretClass: openldap-tls-$NAMESPACE
 {% endif %}
 ---
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: trino-with-ldap-bind
+  name: trino-with-ldap-bind-$NAMESPACE
 spec:
   backend:
     k8sSearch:
@@ -77,9 +77,9 @@ apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-  name: ldap-without-tls-other
+  name: ldap-without-tls-other-$NAMESPACE
 {% else  %}
-  name: ldap-with-tls-other
+  name: ldap-with-tls-other-$NAMESPACE
 {% endif %}
 spec:
   provider:
@@ -87,7 +87,7 @@ spec:
       hostname: openldap-other.$NAMESPACE.svc.cluster.local
       searchBase: ou=users,dc=example,dc=org
       bindCredentials:
-        secretClass: trino-with-ldap-bind
+        secretClass: trino-with-ldap-bind-$NAMESPACE
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
       port: 1389
 {% else %}
@@ -96,5 +96,5 @@ spec:
         verification:
           server:
             caCert:
-              secretClass: openldap-other-tls
+              secretClass: openldap-other-tls-$NAMESPACE
 {% endif %}

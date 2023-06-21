@@ -3,8 +3,9 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: trino-with-ldap-bind-secret
+  namespace: $NAMESPACE
   labels:
-    secrets.stackable.tech/class: trino-with-ldap-bind
+    secrets.stackable.tech/class: trino-with-ldap-bind-$NAMESPACE
 stringData:
   user: cn=admin,dc=example,dc=org
   password: admin
@@ -13,24 +14,25 @@ apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:
   name: trino
+  namespace: $NAMESPACE
 spec:
   image:
-    productVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[0] }}"
-    stackableVersion: "{{ test_scenario['values']['trino-latest'].split('-stackable')[1] }}"
+    productVersion: \"{{ test_scenario['values']['trino-latest'].split('-stackable')[0] }}\"
+    stackableVersion: \"{{ test_scenario['values']['trino-latest'].split('-stackable')[1] }}\"
   clusterConfig:
     catalogLabelSelector: {}
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
     authentication:
-      - authenticationClass: password-file-auth
-      - authenticationClass: password-file-auth-other
+      - authenticationClass: password-file-auth-$NAMESPACE
+      - authenticationClass: password-file-auth-other-$NAMESPACE
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-      - authenticationClass: ldap-without-tls
-      - authenticationClass: ldap-without-tls-other
+      - authenticationClass: ldap-without-tls-$NAMESPACE
+      - authenticationClass: ldap-without-tls-other-$NAMESPACE
 {% else  %}
-      - authenticationClass: ldap-with-tls
-      - authenticationClass: ldap-with-tls-other
+      - authenticationClass: ldap-with-tls-$NAMESPACE
+      - authenticationClass: ldap-with-tls-other-$NAMESPACE
 {% endif %}
   coordinators:
     config:

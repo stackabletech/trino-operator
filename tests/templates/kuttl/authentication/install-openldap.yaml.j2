@@ -2,14 +2,14 @@
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: openldap-tls
+  name: openldap-tls-$NAMESPACE
 spec:
   backend:
     autoTls:
       ca:
         autoGenerate: true
         secret:
-          name: openldap-tls-ca
+          name: openldap-tls-ca-$NAMESPACE
           namespace: $NAMESPACE
 ---
 apiVersion: apps/v1
@@ -66,7 +66,7 @@ spec:
           csi:
             driver: secrets.stackable.tech
             volumeAttributes:
-              secrets.stackable.tech/class: openldap-tls
+              secrets.stackable.tech/class: openldap-tls-$NAMESPACE
               secrets.stackable.tech/scope: pod
 ---
 apiVersion: v1

@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+metadata:
+  name: create-trino-cluster
+commands:
+  # We need to replace $NAMESPACE (by KUTTL) in the create-trino-cluster.yaml(.j2)
+  - script: eval "echo \"$(cat create-trino-cluster.yaml)\"" | kubectl apply -f -
