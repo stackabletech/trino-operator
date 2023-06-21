@@ -1,5 +1,4 @@
-use crate::authentication::password::{self, CONFIG_FILE_NAME_SUFFIX};
-
+use crate::authentication::password;
 use snafu::Snafu;
 use stackable_operator::{
     builder::VolumeMountBuilder,
@@ -49,10 +48,7 @@ impl LdapAuthenticator {
 
     /// Return the name of the authenticator config file to register with Trino
     pub fn config_file_name(&self) -> String {
-        format!(
-            "{name}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",
-            name = self.name
-        )
+        format!("{name}-password-ldap-auth.properties", name = self.name)
     }
 
     /// Return the content of the authenticator config file to register with Trino
@@ -228,7 +224,7 @@ mod tests {
         let file_name = ldap_authenticator.config_file_name();
         assert_eq!(
             file_name,
-            format!("{AUTH_CLASS_NAME}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",)
+            format!("{AUTH_CLASS_NAME}-password-ldap-auth.properties",)
         );
 
         let config = ldap_authenticator.config_file_data().unwrap();

@@ -1,4 +1,4 @@
-use crate::authentication::password::{CONFIG_FILE_NAME_SUFFIX, PASSWORD_AUTHENTICATOR_NAME};
+use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
 use crate::controller::STACKABLE_LOG_DIR;
 
 use stackable_operator::{
@@ -37,10 +37,7 @@ impl FileAuthenticator {
 
     /// Return the name of the authenticator config file to register with Trino
     pub fn config_file_name(&self) -> String {
-        format!(
-            "{name}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}",
-            name = self.name
-        )
+        format!("{name}-password-file-auth.properties", name = self.name)
     }
 
     /// Return the content of the authenticator config file to register with Trino
@@ -79,11 +76,7 @@ impl FileAuthenticator {
     }
 
     fn password_file_name(&self) -> String {
-        format!(
-            "{auth_class}-{credentials}.db",
-            auth_class = self.name,
-            credentials = self.file.user_credentials_secret.name
-        )
+        format!("{auth_class}.db", auth_class = self.name,)
     }
 
     fn password_file_path(&self) -> String {
@@ -95,11 +88,7 @@ impl FileAuthenticator {
     }
 
     fn secret_volume_name(&self) -> String {
-        format!(
-            "{auth_class}-{secret_name}",
-            auth_class = self.name,
-            secret_name = self.file.user_credentials_secret.name
-        )
+        format!("{auth_class}", auth_class = self.name)
     }
 
     fn secret_class_mount_path(&self) -> String {
@@ -210,7 +199,7 @@ mod tests {
         let file_name = authenticator.config_file_name();
         assert_eq!(
             file_name,
-            format!("{AUTH_CLASS_NAME}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}",)
+            format!("{AUTH_CLASS_NAME}-password-file-auth.properties",)
         );
 
         assert_eq!(

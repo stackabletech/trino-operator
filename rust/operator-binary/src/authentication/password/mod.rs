@@ -25,8 +25,6 @@ use tracing::debug;
 // Trino properties
 pub(crate) const PASSWORD_AUTHENTICATOR_CONFIG_FILES: &str = "password-authenticator.config-files";
 const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
-// file handling
-pub(crate) const CONFIG_FILE_NAME_SUFFIX: &str = ".properties";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -261,10 +259,10 @@ mod tests {
                 .config_properties(&TrinoRole::Coordinator)
                 .get(PASSWORD_AUTHENTICATOR_CONFIG_FILES),
             Some(format!(
-                "{RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_1}-password-file-auth{CONFIG_FILE_NAME_SUFFIX},\
-                 {RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_2}-password-file-auth{CONFIG_FILE_NAME_SUFFIX},\
-                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_1}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX},\
-                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}",
+                "{RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_1}-password-file-auth.properties,\
+                 {RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_2}-password-file-auth.properties,\
+                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties,\
+                 {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties",
             ))
             .as_ref()
         );
@@ -290,7 +288,7 @@ mod tests {
         // check file auth
         assert_eq!(
             config_files.get(&file_auth_1.config_file_name()).unwrap(),
-            &format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}-{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n")
+            &format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n")
         );
         // check ldap
         assert!(config_files

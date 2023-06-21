@@ -393,7 +393,6 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use password::CONFIG_FILE_NAME_SUFFIX;
     use stackable_operator::commons::secret_class::SecretClassVolume;
     use stackable_operator::{
         commons::authentication::{
@@ -505,10 +504,10 @@ mod tests {
 
         let expected_config_file_names = format!(
             "\
-        {RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_1}-password-file-auth{CONFIG_FILE_NAME_SUFFIX},\
-        {RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_2}-password-file-auth{CONFIG_FILE_NAME_SUFFIX},\
-        {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_1}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX},\
-        {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}"
+        {RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_1}-password-file-auth.properties,\
+        {RW_CONFIG_DIR_NAME}/{FILE_AUTH_CLASS_2}-password-file-auth.properties,\
+        {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties,\
+        {RW_CONFIG_DIR_NAME}/{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties"
         );
 
         assert_eq!(
@@ -528,22 +527,22 @@ mod tests {
         let config_files = setup_authentication_config().config_files(&TrinoRole::Coordinator);
 
         assert_eq!(
-            config_files.get(&format!("{FILE_AUTH_CLASS_1}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}")),
-                Some(format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}-{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n")).as_ref()
+            config_files.get(&format!("{FILE_AUTH_CLASS_1}-password-file-auth.properties")),
+                Some(format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n")).as_ref()
             );
 
         assert_eq!(
-            config_files.get(&format!("{FILE_AUTH_CLASS_2}-password-file-auth{CONFIG_FILE_NAME_SUFFIX}")),
-            Some(format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_2}-{FILE_AUTH_CLASS_2}.db\npassword-authenticator.name=file\n")).as_ref()
+            config_files.get(&format!("{FILE_AUTH_CLASS_2}-password-file-auth.properties")),
+            Some(format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_2}.db\npassword-authenticator.name=file\n")).as_ref()
         );
 
         assert_eq!(
-                config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}")),
+                config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
                 Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\"\"\npassword-authenticator.name=ldap\n".to_string()).as_ref()
             );
 
         assert_eq!(
-            config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth{CONFIG_FILE_NAME_SUFFIX}")),
+            config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
                 Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\"\"\npassword-authenticator.name=ldap\n".to_string()).as_ref()
             );
     }
@@ -562,10 +561,8 @@ mod tests {
         assert_eq!(
             volumes
                 .iter()
-                .filter(
-                    |v| v.name == format!("{FILE_AUTH_CLASS_1}-{FILE_AUTH_CLASS_1}")
-                        || v.name == format!("{FILE_AUTH_CLASS_2}-{FILE_AUTH_CLASS_2}")
-                )
+                .filter(|v| v.name == format!("{FILE_AUTH_CLASS_1}")
+                    || v.name == format!("{FILE_AUTH_CLASS_2}"))
                 .count(),
             2
         );
