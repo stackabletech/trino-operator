@@ -10,8 +10,9 @@ use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
-        ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
-        PodSecurityContextBuilder, SecretOperatorVolumeSourceBuilder, VolumeBuilder,
+        resources::ResourceRequirementsBuilder, ConfigMapBuilder, ContainerBuilder,
+        ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
+        SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
@@ -850,13 +851,6 @@ fn build_rolegroup_statefulset(
         merged_config,
     ));
 
-    let container_prepare_resources = [
-        ("cpu".to_string(), Quantity("500m".to_string())),
-        ("memory".to_string(), Quantity("128Mi".to_string())),
-    ]
-    .into_iter()
-    .collect::<BTreeMap<String, Quantity>>();
-
     let container_prepare = cb_prepare
         .image_from_product_image(resolved_product_image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
@@ -865,12 +859,14 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
         .add_volume_mount("log", STACKABLE_LOG_DIR)
-        // TODO: resources?
-        .resources(ResourceRequirements {
-            requests: Some(container_prepare_resources.clone()),
-            limits: Some(container_prepare_resources),
-            ..ResourceRequirements::default()
-        })
+        .resources(
+            ResourceRequirementsBuilder::new()
+                .with_cpu_request("100m")
+                .with_cpu_limit("500")
+                .with_memory_request("128Mi")
+                .with_memory_limit("128Mi")
+                .build(),
+        )
         .build();
 
     let container_trino = cb_trino

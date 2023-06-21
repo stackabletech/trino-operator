@@ -2,13 +2,12 @@ use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
 use crate::controller::STACKABLE_LOG_DIR;
 
 use stackable_operator::{
-    builder::{ContainerBuilder, VolumeBuilder, VolumeMountBuilder},
+    builder::{
+        resources::ResourceRequirementsBuilder, ContainerBuilder, VolumeBuilder, VolumeMountBuilder,
+    },
     commons::authentication::StaticAuthenticationProvider,
     commons::product_image_selection::ResolvedProductImage,
-    k8s_openapi::{
-        api::core::v1::{Container, ResourceRequirements, Volume, VolumeMount},
-        apimachinery::pkg::api::resource::Quantity,
-    },
+    k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     product_logging::{self, spec::AutomaticContainerLogConfig},
 };
 use std::collections::BTreeMap;
@@ -109,13 +108,6 @@ pub fn build_password_file_update_container(
                 "Invalid container name. This should not happen, as the container name is fixed",
             );
 
-    let resources = [
-        ("cpu".to_string(), Quantity("200m".to_string())),
-        ("memory".to_string(), Quantity("32Mi".to_string())),
-    ]
-    .into_iter()
-    .collect::<BTreeMap<String, Quantity>>();
-
     let mut commands = vec![];
 
     commands.push(product_logging::framework::capture_shell_output(
@@ -168,11 +160,14 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
         .add_volume_mounts(volume_mounts)
         // fixed
         .add_volume_mount("log", STACKABLE_LOG_DIR)
-        .resources(ResourceRequirements {
-            requests: Some(resources.clone()),
-            limits: Some(resources),
-            ..ResourceRequirements::default()
-        })
+        .resources(
+            ResourceRequirementsBuilder::new()
+                .with_cpu_request("100m")
+                .with_cpu_limit("200m")
+                .with_memory_request("32Mi")
+                .with_memory_limit("32Mi")
+                .build(),
+        )
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(vec![commands.join(" && ")])
         .build()
