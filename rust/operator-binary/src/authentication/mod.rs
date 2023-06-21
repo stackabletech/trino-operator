@@ -49,6 +49,9 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// This is the final product after iterating through all authenticators.
 /// Contains all relevant information about config files, volumes etc. to enable authentication.
+/// The `TrinoRole` map key is actually not required here since all authentication settings are
+/// done in the coordinator. However, this implementation aims for a general implementation that
+/// may be in parts reused in other operators.  
 #[derive(Clone, Debug, Default)]
 pub struct TrinoAuthenticationConfig {
     /// All config properties that have to be added to the `config.properties` of the given role
