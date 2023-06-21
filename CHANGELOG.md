@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Missing CRD defaults for `status.conditions` field ([#425]).
+- Fixed always adding `query.max-memory-per-node` with a fixed value of 1GB (which also didn't work with the new resource defaults). Instead let Trino do it's `(JVM max memory * 0.3)` thing ([#434]).
 
 ### Changed
 
