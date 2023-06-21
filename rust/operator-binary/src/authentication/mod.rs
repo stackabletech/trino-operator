@@ -15,10 +15,12 @@ use crate::authentication::password::{
 };
 
 use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
-    commons::authentication::{AuthenticationClass, AuthenticationClassProvider},
+    commons::{
+        authentication::{AuthenticationClass, AuthenticationClassProvider},
+        product_image_selection::ResolvedProductImage,
+    },
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
     product_config,
@@ -189,7 +191,13 @@ impl TrinoAuthenticationConfig {
 
     /// Add an additional volume for the pod builder.
     pub fn add_volume(&mut self, volume: Volume) {
-        if !self.volumes.contains(&volume) {
+        if self
+            .volumes
+            .iter()
+            .filter(|r| r.name == volume.name)
+            .count()
+            == 0
+        {
             self.volumes.push(volume);
         }
     }
@@ -209,7 +217,12 @@ impl TrinoAuthenticationConfig {
             .entry(container)
             .or_insert_with(Vec::new);
 
-        if !current_volume_mounts.contains(&volume_mount) {
+        if current_volume_mounts
+            .iter()
+            .filter(|r| r.name == volume_mount.name)
+            .count()
+            == 0
+        {
             current_volume_mounts.push(volume_mount);
         }
     }
@@ -218,7 +231,12 @@ impl TrinoAuthenticationConfig {
     pub fn add_sidecar_container(&mut self, role: TrinoRole, container: Container) {
         let containers_for_role = self.sidecar_containers.entry(role).or_insert_with(Vec::new);
 
-        if !containers_for_role.contains(&container) {
+        if containers_for_role
+            .iter()
+            .filter(|r| r.name == container.name)
+            .count()
+            == 0
+        {
             containers_for_role.push(container);
         }
     }
@@ -564,7 +582,7 @@ mod tests {
         assert_eq!(
             volumes
                 .iter()
-                .filter(|v| &v.name == FILE_AUTH_CLASS_1 || &v.name == FILE_AUTH_CLASS_2)
+                .filter(|v| v.name == FILE_AUTH_CLASS_1 || v.name == FILE_AUTH_CLASS_2)
                 .count(),
             2
         );
