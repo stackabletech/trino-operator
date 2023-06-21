@@ -564,8 +564,7 @@ mod tests {
         assert_eq!(
             volumes
                 .iter()
-                .filter(|v| v.name == format!("{FILE_AUTH_CLASS_1}")
-                    || v.name == format!("{FILE_AUTH_CLASS_2}"))
+                .filter(|v| &v.name == FILE_AUTH_CLASS_1 || &v.name == FILE_AUTH_CLASS_2)
                 .count(),
             2
         );

@@ -88,7 +88,7 @@ impl FileAuthenticator {
     }
 
     fn secret_volume_name(&self) -> String {
-        format!("{auth_class}", auth_class = self.name)
+        self.name.to_string()
     }
 
     fn secret_class_mount_path(&self) -> String {
