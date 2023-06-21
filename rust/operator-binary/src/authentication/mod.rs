@@ -211,11 +211,9 @@ impl TrinoAuthenticationConfig {
             .entry(container)
             .or_insert_with(Vec::new);
 
-        if current_volume_mounts
+        if !current_volume_mounts
             .iter()
-            .filter(|r| r.name == volume_mount.name)
-            .count()
-            == 0
+            .any(|vm| vm.name == volume_mount.name)
         {
             current_volume_mounts.push(volume_mount);
         }
