@@ -406,11 +406,11 @@ impl TrinoConfig {
         let resources = match role {
             TrinoRole::Coordinator => ResourcesFragment {
                 cpu: CpuLimitsFragment {
-                    min: Some(Quantity("200m".to_owned())),
-                    max: Some(Quantity("800m".to_owned())),
+                    min: Some(Quantity("500m".to_owned())),
+                    max: Some(Quantity("2000m".to_owned())),
                 },
                 memory: MemoryLimitsFragment {
-                    limit: Some(Quantity("1024Mi".to_owned())),
+                    limit: Some(Quantity("2048Mi".to_owned())),
                     runtime_limits: NoRuntimeLimitsFragment {},
                 },
                 storage: TrinoStorageConfigFragment {
@@ -423,11 +423,11 @@ impl TrinoConfig {
             },
             TrinoRole::Worker => ResourcesFragment {
                 cpu: CpuLimitsFragment {
-                    min: Some(Quantity("200m".to_owned())),
-                    max: Some(Quantity("800m".to_owned())),
+                    min: Some(Quantity("1000m".to_owned())),
+                    max: Some(Quantity("4000m".to_owned())),
                 },
                 memory: MemoryLimitsFragment {
-                    limit: Some(Quantity("2048Mi".to_owned())),
+                    limit: Some(Quantity("3072Mi".to_owned())),
                     runtime_limits: NoRuntimeLimitsFragment {},
                 },
                 storage: TrinoStorageConfigFragment {

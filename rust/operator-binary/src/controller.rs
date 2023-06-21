@@ -861,10 +861,10 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("log", STACKABLE_LOG_DIR)
         .resources(
             ResourceRequirementsBuilder::new()
-                .with_cpu_request("200m")
-                .with_cpu_limit("800m")
-                .with_memory_request("1024Mi")
-                .with_memory_limit("1024Mi")
+                .with_cpu_request("500m")
+                .with_cpu_limit("2000m")
+                .with_memory_request("2048Mi")
+                .with_memory_limit("2048Mi")
                 .build(),
         )
         .build();
@@ -924,8 +924,8 @@ fn build_rolegroup_statefulset(
             "log",
             merged_config.logging.containers.get(&Container::Vector),
             ResourceRequirementsBuilder::new()
-                .with_cpu_request("100m")
-                .with_cpu_limit("200m")
+                .with_cpu_request("200m")
+                .with_cpu_limit("400m")
                 .with_memory_request("64Mi")
                 .with_memory_limit("64Mi")
                 .build(),
