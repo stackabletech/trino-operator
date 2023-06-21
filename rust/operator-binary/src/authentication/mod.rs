@@ -191,13 +191,7 @@ impl TrinoAuthenticationConfig {
 
     /// Add an additional volume for the pod builder.
     pub fn add_volume(&mut self, volume: Volume) {
-        if self
-            .volumes
-            .iter()
-            .filter(|r| r.name == volume.name)
-            .count()
-            == 0
-        {
+        if !self.volumes.iter().any(|v| v.name == volume.name) {
             self.volumes.push(volume);
         }
     }
