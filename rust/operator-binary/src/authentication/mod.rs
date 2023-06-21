@@ -223,12 +223,7 @@ impl TrinoAuthenticationConfig {
     pub fn add_sidecar_container(&mut self, role: TrinoRole, container: Container) {
         let containers_for_role = self.sidecar_containers.entry(role).or_insert_with(Vec::new);
 
-        if containers_for_role
-            .iter()
-            .filter(|r| r.name == container.name)
-            .count()
-            == 0
-        {
+        if !containers_for_role.iter().any(|c| c.name == container.name) {
             containers_for_role.push(container);
         }
     }
