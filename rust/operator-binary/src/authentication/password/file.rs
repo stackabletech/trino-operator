@@ -168,7 +168,13 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
                 .with_memory_limit("32Mi")
                 .build(),
         )
-        .command(vec!["/bin/bash".to_string(), "-c".to_string()])
+        .command(vec![
+            "/bin/bash".to_string(),
+            "-x".to_string(),
+            "-euo".to_string(),
+            "pipefail".to_string(),
+            "-c".to_string(),
+        ])
         .args(vec![commands.join(" && ")])
         .build()
 }
