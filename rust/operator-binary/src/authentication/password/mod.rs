@@ -20,7 +20,7 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{commons::product_image_selection::ResolvedProductImage, product_config};
 use stackable_trino_crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME};
 use std::collections::BTreeMap;
-use tracing::debug;
+use tracing::trace;
 
 // Trino properties
 pub(crate) const PASSWORD_AUTHENTICATOR_CONFIG_FILES: &str = "password-authenticator.config-files";
@@ -179,7 +179,7 @@ impl TrinoPasswordAuthentication {
             password_authenticator_config_file_names.join(","),
         );
 
-        debug!(
+        trace!(
             "Final Password authentication config: {:?}",
             password_authentication_config
         );

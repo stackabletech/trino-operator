@@ -25,7 +25,7 @@ use stackable_operator::{
 };
 use stackable_trino_crd::TrinoRole;
 use std::collections::{BTreeMap, HashMap};
-use tracing::debug;
+use tracing::trace;
 
 // trino properties
 const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
@@ -102,7 +102,7 @@ impl TrinoAuthenticationConfig {
             );
         }
 
-        debug!(
+        trace!(
             "Final Trino authentication config: {:?}",
             authentication_config
         );
