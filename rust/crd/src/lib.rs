@@ -403,25 +403,45 @@ impl TrinoConfig {
         role: &TrinoRole,
         trino_catalogs: &[TrinoCatalog],
     ) -> TrinoConfigFragment {
-        TrinoConfigFragment {
-            logging: product_logging::spec::default_logging(),
-            resources: ResourcesFragment {
+        let resources = match role {
+            TrinoRole::Coordinator => ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity("200m".to_owned())),
-                    max: Some(Quantity("4".to_owned())),
+                    max: Some(Quantity("800m".to_owned())),
                 },
                 memory: MemoryLimitsFragment {
-                    limit: Some(Quantity("2Gi".to_owned())),
+                    limit: Some(Quantity("1024Mi".to_owned())),
                     runtime_limits: NoRuntimeLimitsFragment {},
                 },
                 storage: TrinoStorageConfigFragment {
                     data: PvcConfigFragment {
-                        capacity: Some(Quantity("2Gi".to_owned())),
+                        capacity: Some(Quantity("500Mi".to_owned())),
                         storage_class: None,
                         selectors: None,
                     },
                 },
             },
+            TrinoRole::Worker => ResourcesFragment {
+                cpu: CpuLimitsFragment {
+                    min: Some(Quantity("200m".to_owned())),
+                    max: Some(Quantity("800m".to_owned())),
+                },
+                memory: MemoryLimitsFragment {
+                    limit: Some(Quantity("2048Mi".to_owned())),
+                    runtime_limits: NoRuntimeLimitsFragment {},
+                },
+                storage: TrinoStorageConfigFragment {
+                    data: PvcConfigFragment {
+                        capacity: Some(Quantity("500Mi".to_owned())),
+                        storage_class: None,
+                        selectors: None,
+                    },
+                },
+            },
+        };
+        TrinoConfigFragment {
+            logging: product_logging::spec::default_logging(),
+            resources,
             affinity: get_affinity(cluster_name, role, trino_catalogs),
             ..TrinoConfigFragment::default()
         }

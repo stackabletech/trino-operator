@@ -6,7 +6,7 @@ commands:
   - script: >-
       helm upgrade postgresql
       --install
-      --version=12.1.5
+      --version=12.5.6
       --namespace $NAMESPACE
       -f helm-bitnami-postgresql-values.yaml
       --repo https://charts.bitnami.com/bitnami postgresql

@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Support for Trino v414 ([#423]).
 - Generate OLM bundle for Release 23.4.0 ([#424]).
+- Set explicit resources on all containers ([#434]).
+
+### Fixed
+
 - Missing CRD defaults for `status.conditions` field ([#425]).
 
 ### Changed

@@ -16,8 +16,14 @@ spec:
       command: ["bash", "-c", "sleep infinity"]
       stdin: true
       tty: true
+      resources:
+        requests:
+          cpu: 250m
+          memory: 128Mi
+        limits:
+          cpu: 1000m
+          memory: 128Mi
       env:
-{% if test_scenario['values']['openshift'] == 'true' %}
         - name: MINIO_SERVER_ACCESS_KEY
           valueFrom:
             secretKeyRef:
@@ -30,14 +36,12 @@ spec:
               name: minio-credentials
               key: root-password
               optional: false
-{% endif %}
         - name: MINIO_SERVER_HOST
           value: minio
         - name: MINIO_SERVER_PORT_NUMBER
           value: "9000"
         - name: MINIO_SERVER_SCHEME
           value: http
-
 ---
 apiVersion: s3.stackable.tech/v1alpha1
 kind: S3Connection

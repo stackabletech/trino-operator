@@ -4,17 +4,11 @@ kind: TestStep
 commands:
   # give minio enough time to start
   - command: sleep 5
-{% if test_scenario['values']['openshift'] == 'true' %}
-  - command: kubectl exec -n $NAMESPACE minio-client -- sh -c 'mc --insecure alias set minio http://minio:9000 $$MINIO_SERVER_ACCESS_KEY $$MINIO_SERVER_SECRET_KEY'
-  - command: kubectl exec -n $NAMESPACE minio-client -- mc mb minio/trino
-  - command: kubectl exec -n $NAMESPACE minio-client -- mc admin user add minio trino trinotrino
-  - command: kubectl exec -n $NAMESPACE minio-client -- mc admin policy set minio readwrite user=trino
-{% else %}
 {% if test_scenario['values']['s3-use-tls'] == 'true' %}
-  - command: kubectl exec -n $NAMESPACE minio-client -- sh -c 'mc --insecure alias set minio https://minio:9000 trino trinotrino'
+  - command: kubectl exec -n $NAMESPACE minio-client -- sh -c 'mc --insecure alias set minio https://minio:9000 $$MINIO_SERVER_ACCESS_KEY $$MINIO_SERVER_SECRET_KEY'
 {% else %}
-  - command: kubectl exec -n $NAMESPACE minio-client -- sh -c 'mc --insecure alias set minio http://minio:9000 trino trinotrino'
+  - command: kubectl exec -n $NAMESPACE minio-client -- sh -c 'mc --insecure alias set minio http://minio:9000 $$MINIO_SERVER_ACCESS_KEY $$MINIO_SERVER_SECRET_KEY'
 {% endif %}
-{% endif %}
+  - command: kubectl exec -n $NAMESPACE minio-client -- mc mb minio/trino
   - command: kubectl cp -n $NAMESPACE yellow_tripdata_2021-07.csv minio-client:/tmp
   - command: kubectl exec -n $NAMESPACE minio-client -- mc --insecure cp /tmp/yellow_tripdata_2021-07.csv minio/trino
