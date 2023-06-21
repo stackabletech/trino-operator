@@ -25,8 +25,8 @@ use stackable_operator::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 ConfigMap, ConfigMapVolumeSource, ContainerPort, EmptyDirVolumeSource, EnvVar,
-                EnvVarSource, Probe, ResourceRequirements, Secret, SecretKeySelector, Service,
-                ServicePort, ServiceSpec, TCPSocketAction, Volume,
+                EnvVarSource, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
+                TCPSocketAction, Volume,
             },
         },
         apimachinery::pkg::{
