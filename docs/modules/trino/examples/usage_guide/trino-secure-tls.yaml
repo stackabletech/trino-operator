@@ -23,7 +23,7 @@ spec:
     tls:
       serverSecretClass: trino-tls # <1>
     authentication:
-      - authenticationClass: trino-file-auth # <3>
+      - authenticationClass: trino-users # <3>
     catalogLabelSelector:
       matchLabels:
         trino: simple-trino # <5>
@@ -52,7 +52,7 @@ spec:
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: trino-file-auth # <3>
+  name: trino-users # <3>
 spec:
   provider:
     static:

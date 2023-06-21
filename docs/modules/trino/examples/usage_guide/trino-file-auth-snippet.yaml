@@ -4,19 +4,19 @@
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: simple-trino-file-auth
+  name: simple-trino-users
 spec:
   provider:
     static:
       userCredentialsSecret:
-        name: simple-trino-users
+        name: trino-users
 # end::authentication_class[]
 ---
 # tag::secret[]
 apiVersion: v1
 kind: Secret
 metadata:
-  name: simple-trino-users
+  name: trino-users
 type: kubernetes.io/opaque
 stringData:
   admin: admin
@@ -32,6 +32,6 @@ metadata:
 spec:
   clusterConfig:
     authentication:
-      - authenticationClass: simple-trino-file-auth
+      - authenticationClass: simple-trino-users
       - authenticationClass: ...
 # end::trino[]

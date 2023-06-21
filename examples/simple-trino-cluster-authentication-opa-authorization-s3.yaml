@@ -9,7 +9,7 @@ spec:
     stackableVersion: "0.0.0-dev"
   clusterConfig:
     authentication:
-      - authenticationClass: simple-trino-users-auth
+      - authenticationClass: simple-trino-users
     authorization:
       opa:
         configMapName: simple-opa
@@ -29,7 +29,7 @@ spec:
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: simple-trino-users-auth
+  name: simple-trino-users
 spec:
   provider:
     static:
