@@ -45,3 +45,6 @@ stringData:
 In some cases you don't want to add sensitive data (such as PostgreSQL credentials) to a `TrinoCatalog`.
 You can than use `propertiesFromSecret` or `propertiesFromConfigMap` to pull in properties securely.
 An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
+
+== Add additional contents
+In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:nightly@home:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
