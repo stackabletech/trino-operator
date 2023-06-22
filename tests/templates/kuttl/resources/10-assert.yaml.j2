@@ -14,10 +14,10 @@ spec:
         - name: trino
           resources:
             requests:
-              cpu: 200m
+              cpu: 500m
               memory: 2Gi
             limits:
-              cpu: "4"
+              cpu: "2"
               memory: 2Gi
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
         - name: vector
@@ -35,12 +35,12 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 2Gi
+      storage: 500Mi
 status:
   accessModes:
     - ReadWriteOnce
   capacity:
-    storage: 2Gi
+    storage: 500Mi
   phase: Bound
 ---
 apiVersion: apps/v1

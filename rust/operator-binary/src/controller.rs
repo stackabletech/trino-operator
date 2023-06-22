@@ -924,10 +924,10 @@ fn build_rolegroup_statefulset(
             "log",
             merged_config.logging.containers.get(&Container::Vector),
             ResourceRequirementsBuilder::new()
-                .with_cpu_request("200m")
-                .with_cpu_limit("400m")
-                .with_memory_request("64Mi")
-                .with_memory_limit("64Mi")
+                .with_cpu_request("250m")
+                .with_cpu_limit("500m")
+                .with_memory_request("128Mi")
+                .with_memory_limit("128Mi")
                 .build(),
         ));
     }
@@ -939,7 +939,9 @@ fn build_rolegroup_statefulset(
                 &resolved_product_image.app_version_label,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
-            ))
+            ));
+            // This is actually used by some kuttl tests (as they don't specify the container explicitly)
+            m.with_annotation("kubectl.kubernetes.io/default-container", "trino")
         })
         .image_pull_secrets_from_product_image(resolved_product_image)
         .affinity(&merged_config.affinity)
