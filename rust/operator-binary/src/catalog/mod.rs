@@ -1,6 +1,7 @@
 pub mod black_hole;
 pub mod commons;
 pub mod config;
+pub mod generic;
 pub mod google_sheet;
 pub mod hive;
 pub mod iceberg;

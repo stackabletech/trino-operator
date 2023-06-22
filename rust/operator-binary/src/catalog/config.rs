@@ -1,6 +1,8 @@
 use stackable_operator::{
     client::Client,
-    k8s_openapi::api::core::v1::{EnvVar, Volume, VolumeMount},
+    k8s_openapi::api::core::v1::{
+        ConfigMapKeySelector, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
+    },
     kube::{Resource, ResourceExt},
 };
 use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
@@ -57,6 +59,42 @@ impl CatalogConfig {
         self.load_env_from_files.insert(env_name, file_name.into());
     }
 
+    pub fn add_env_property_from_secret(
+        &mut self,
+        property: impl Into<String>,
+        secret_key_selector: SecretKeySelector,
+    ) {
+        let property = property.into();
+        let env_name = calculate_env_name(&self.name, &property);
+        self.env_bindings.push(EnvVar {
+            name: env_name.clone(),
+            value_from: Some(EnvVarSource {
+                secret_key_ref: Some(secret_key_selector),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        self.add_property(&property, format!("${{ENV:{env_name}}}"));
+    }
+
+    pub fn add_env_property_from_config_map(
+        &mut self,
+        property: impl Into<String>,
+        config_map_key_selector: ConfigMapKeySelector,
+    ) {
+        let property = property.into();
+        let env_name = calculate_env_name(&self.name, &property);
+        self.env_bindings.push(EnvVar {
+            name: env_name.clone(),
+            value_from: Some(EnvVarSource {
+                config_map_key_ref: Some(config_map_key_selector),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        self.add_property(&property, format!("${{ENV:{env_name}}}"));
+    }
+
     pub async fn from_catalog(
         catalog: &TrinoCatalog,
         client: &Client,
@@ -75,6 +113,11 @@ impl CatalogConfig {
                     .await
             }
             TrinoCatalogConnector::GoogleSheet(connector) => {
+                connector
+                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .await
+            }
+            TrinoCatalogConnector::Generic(connector) => {
                 connector
                     .to_catalog_config(&catalog_name, catalog_namespace, client)
                     .await
