@@ -14,14 +14,15 @@ impl ToCatalogConfig for GenericConnector {
         let connector_name = &self.connector_name;
         let mut config = CatalogConfig::new(catalog_name.to_string(), connector_name);
 
-        for (property, value) in &self.properties {
-            config.add_property(property, value);
+        // Using this order, so that more important come later
+        for (property, config_map_key_selector) in &self.properties_from_config_map {
+            config.add_env_property_from_config_map(property, config_map_key_selector.clone());
         }
         for (property, secret_key_selector) in &self.properties_from_secret {
             config.add_env_property_from_secret(property, secret_key_selector.clone());
         }
-        for (property, config_map_key_selector) in &self.properties_from_config_map {
-            config.add_env_property_from_config_map(property, config_map_key_selector.clone());
+        for (property, value) in &self.properties {
+            config.add_property(property, value);
         }
 
         Ok(config)
