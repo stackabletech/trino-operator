@@ -1,9 +1,11 @@
 = Catalogs
 
-Trino does not have a built-in catalog and instead `provides` connectors to external data sources. This allows Trino to connect to, read from and join a wide variety of data sources.
+Trino does not have a built-in catalog and instead `provides` connectors to external data sources.
+This allows Trino to connect to, read from and join a wide variety of data sources.
 
 == Using catalogs
-Catalogues are defined in their own resources and referenced from cluster objects. See the xref:concepts.adoc[] page for more details.
+Catalogs are defined in their own resources and referenced from cluster objects.
+See the xref:concepts.adoc[] page for more details.
 
 === Create a catalog
 
@@ -83,3 +85,8 @@ The `spec.catalogLabelSelector` is used to fetch the list of `TrinoCatalogs` use
 In this case the `hive` and `iceberg` catalogs will be used as they both match the `catalogLabelSelector` value `simple-trino`.
 
 A `TrinoCluster` can, once created, detect and use new catalogs that have been subsequently created with a matching label. This also means that it is possible to reuse a `TrinoCatalog` within multiple `TrinoClusters`.
+
+=== Generic fallback connector
+As Trino supports a lots of different connectors, we can't possible cover all the available connectors.
+In case the trino-operator does not support a specific connector we offer a fallback mechanism:
+The xref:generic.adoc[].
