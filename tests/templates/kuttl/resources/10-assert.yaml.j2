@@ -36,12 +36,6 @@ spec:
   resources:
     requests:
       storage: 500Mi
-status:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 500Mi
-  phase: Bound
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -76,12 +70,6 @@ spec:
   resources:
     requests:
       storage: 3Gi
-status:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 3Gi
-  phase: Bound
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -116,9 +104,3 @@ spec:
   resources:
     requests:
       storage: 4Gi
-status:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 4Gi
-  phase: Bound
