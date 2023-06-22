@@ -3058,6 +3058,8 @@ spec:
                     - required:
                         - googleSheet
                     - required:
+                        - generic
+                    - required:
                         - hive
                     - required:
                         - iceberg
@@ -3067,6 +3069,58 @@ spec:
                         - tpch
                   properties:
                     blackHole:
+                      type: object
+                    generic:
+                      properties:
+                        connectorName:
+                          description: Name of the Trino connector. Will end in `connector.name`
+                          type: string
+                        properties:
+                          additionalProperties:
+                            type: string
+                          default: {}
+                          description: A map of properties to put in the connector configuration file
+                          type: object
+                        propertiesFromConfigMap:
+                          additionalProperties:
+                            description: Selects a key from a ConfigMap.
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                type: string
+                              optional:
+                                description: Specify whether the ConfigMap or its key must be defined
+                                type: boolean
+                            required:
+                              - key
+                            type: object
+                          default: {}
+                          description: A map of properties pulled from a ConfigMap /// Values must be a `ConfigMapKeySelector`
+                          type: object
+                        propertiesFromSecret:
+                          additionalProperties:
+                            description: SecretKeySelector selects a key of a Secret.
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must be a valid secret key.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key must be defined
+                                type: boolean
+                            required:
+                              - key
+                            type: object
+                          default: {}
+                          description: A map of properties pulled from a Secret. Values must be a `SecretKeySelector`
+                          type: object
+                      required:
+                        - connectorName
                       type: object
                     googleSheet:
                       properties:

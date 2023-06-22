@@ -6,7 +6,7 @@ You are one you own figuring out how to configure and use this connector and we 
 
 With this out of the way, this is how you can e.g. use the https://trino.io/docs/current/connector/postgresql.html[PostgreSQL connector]:
 
-== Example generic catalog configuration
+== Example generic catalog properties
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1
@@ -21,20 +21,27 @@ spec:
   connector:
     generic:
       connectorName: postgresql
-      configuration: # optional
+      properties: # optional
         connection-url: jdbc:postgresql://example.net:5432/database
         connection-user: root
-      configurationFromSecret: # optional
+      propertiesFromSecret: # optional
         connection-password:
           name: my-postgresql-credentials-secret
           key: password
-      # configurationFromConfigMap: # optional
+      # propertiesFromConfigMap: # optional
       #   connection-user:
       #   name: my-postgresql-credentials-configmap
       #   key: user
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgresql-credentials-secret
+stringData:
+  password: rootroot
 ----
 
 == Add contents from Secrets or ConfigMaps
 In some cases you don't want to add sensitive data (such as PostgreSQL credentials) to a `TrinoCatalog`.
-You can than use `configurationFromSecret` or `configurationFromConfigMap` to pull in configurations securely.
+You can than use `propertiesFromSecret` or `propertiesFromConfigMap` to pull in properties securely.
 An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.

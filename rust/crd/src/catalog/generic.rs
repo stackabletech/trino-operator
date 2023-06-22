@@ -13,11 +13,14 @@ pub struct GenericConnector {
     /// Will end in `connector.name`
     pub connector_name: String,
     /// A map of properties to put in the connector configuration file
+    #[serde(default)]
     pub properties: BTreeMap<String, String>,
     /// A map of properties pulled from a Secret.
     /// Values must be a `SecretKeySelector`
+    #[serde(default)]
     pub properties_from_secret: BTreeMap<String, SecretKeySelector>,
     /// A map of properties pulled from a ConfigMap
     /// /// Values must be a `ConfigMapKeySelector`
+    #[serde(default)]
     pub properties_from_config_map: BTreeMap<String, ConfigMapKeySelector>,
 }
