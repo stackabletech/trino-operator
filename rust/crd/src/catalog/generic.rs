@@ -20,7 +20,7 @@ pub struct GenericConnector {
     #[serde(default)]
     pub properties_from_secret: BTreeMap<String, SecretKeySelector>,
     /// A map of properties pulled from a ConfigMap
-    /// /// Values must be a `ConfigMapKeySelector`
+    /// Values must be a `ConfigMapKeySelector`
     #[serde(default)]
     pub properties_from_config_map: BTreeMap<String, ConfigMapKeySelector>,
 }
