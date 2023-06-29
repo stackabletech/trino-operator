@@ -28,7 +28,7 @@ pub enum Property {
         #[serde(flatten)]
         secret_key_selector: SecretKeySelector,
     },
-    // Read property value from a ConfigMap by specifying a `SecretKeySelector`.
+    // Read property value from a ConfigMap by specifying a `ConfigMapKeySelector`.
     ValueFromConfigMap {
         #[serde(flatten)]
         config_map_key_selector: ConfigMapKeySelector,
