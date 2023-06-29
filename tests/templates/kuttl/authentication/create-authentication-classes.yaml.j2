@@ -2,7 +2,7 @@
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: password-file-auth-$NAMESPACE
+  name: password-$NAMESPACE
 spec:
   provider:
     static:
@@ -21,7 +21,7 @@ stringData:
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: password-file-auth-other-$NAMESPACE
+  name: password-other-$NAMESPACE
 spec:
   provider:
     static:
@@ -40,18 +40,14 @@ stringData:
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-{% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-  name: ldap-without-tls-$NAMESPACE
-{% else  %}
-  name: ldap-with-tls-$NAMESPACE
-{% endif %}
+  name: ldap-$NAMESPACE
 spec:
   provider:
     ldap:
       hostname: openldap.$NAMESPACE.svc.cluster.local
       searchBase: ou=users,dc=example,dc=org
       bindCredentials:
-        secretClass: trino-with-ldap-bind-$NAMESPACE
+        secretClass: trino-ldap-bind-$NAMESPACE
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
       port: 1389
 {% else %}
@@ -66,7 +62,7 @@ spec:
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: trino-with-ldap-bind-$NAMESPACE
+  name: trino-ldap-bind-$NAMESPACE
 spec:
   backend:
     k8sSearch:
@@ -76,18 +72,14 @@ spec:
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-{% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-  name: ldap-without-tls-other-$NAMESPACE
-{% else  %}
-  name: ldap-with-tls-other-$NAMESPACE
-{% endif %}
+  name: ldap-other-$NAMESPACE
 spec:
   provider:
     ldap:
       hostname: openldap-other.$NAMESPACE.svc.cluster.local
       searchBase: ou=users,dc=example,dc=org
       bindCredentials:
-        secretClass: trino-with-ldap-bind-$NAMESPACE
+        secretClass: trino-ldap-bind-$NAMESPACE
 {% if test_scenario['values']['ldap-use-tls'] == 'false' %}
       port: 1389
 {% else %}

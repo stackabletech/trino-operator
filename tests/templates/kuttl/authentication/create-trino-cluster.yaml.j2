@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: trino-with-ldap-bind-secret
+  name: trino-ldap-bind-secret
   namespace: $NAMESPACE
   labels:
-    secrets.stackable.tech/class: trino-with-ldap-bind-$NAMESPACE
+    secrets.stackable.tech/class: trino-ldap-bind-$NAMESPACE
 stringData:
   user: cn=admin,dc=example,dc=org
   password: admin
@@ -25,15 +25,10 @@ spec:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
     authentication:
-      - authenticationClass: password-file-auth-$NAMESPACE
-      - authenticationClass: password-file-auth-other-$NAMESPACE
-{% if test_scenario['values']['ldap-use-tls'] == 'false' %}
-      - authenticationClass: ldap-without-tls-$NAMESPACE
-      - authenticationClass: ldap-without-tls-other-$NAMESPACE
-{% else  %}
-      - authenticationClass: ldap-with-tls-$NAMESPACE
-      - authenticationClass: ldap-with-tls-other-$NAMESPACE
-{% endif %}
+      - authenticationClass: password-$NAMESPACE
+      - authenticationClass: password-other-$NAMESPACE
+      - authenticationClass: ldap-$NAMESPACE
+      - authenticationClass: ldap-other-$NAMESPACE
   coordinators:
     config:
       logging:

@@ -11,7 +11,7 @@ data:
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
-  name: password-file-auth
+  name: password
 spec:
   provider:
     static:
@@ -38,7 +38,7 @@ spec:
     vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
     # in order to add the password-file-updater container
     authentication:
-      - authenticationClass: password-file-auth
+      - authenticationClass: password
   coordinators:
     roleGroups:
       automatic-log-config:
