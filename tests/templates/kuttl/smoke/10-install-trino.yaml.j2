@@ -84,3 +84,44 @@ spec:
         reference: minio
       hdfs:
         configMap: hdfs
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: tpch
+  labels:
+    trino: trino
+spec:
+  connector:
+    tpch: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: postgresgeneric
+  labels:
+    trino: trino
+spec:
+  connector:
+    # Even when we start supporting PostgreSQL natively, please leave this in to test the generic connector
+    generic:
+      connectorName: postgresql
+      properties: # optional
+        connection-url:
+          value: jdbc:postgresql://postgresql:5432/hive
+        connection-user:
+          valueFromSecret:
+            name: my-postgresql-credentials-secret
+            key: user
+        connection-password:
+          valueFromSecret:
+            name: my-postgresql-credentials-secret
+            key: password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgresql-credentials-secret
+stringData:
+  user: hive
+  password: hive
