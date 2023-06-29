@@ -403,46 +403,31 @@ impl TrinoConfig {
         role: &TrinoRole,
         trino_catalogs: &[TrinoCatalog],
     ) -> TrinoConfigFragment {
-        let resources = match role {
-            TrinoRole::Coordinator => ResourcesFragment {
-                cpu: CpuLimitsFragment {
-                    min: Some(Quantity("500m".to_owned())),
-                    max: Some(Quantity("2000m".to_owned())),
-                },
-                memory: MemoryLimitsFragment {
-                    limit: Some(Quantity("2048Mi".to_owned())),
-                    runtime_limits: NoRuntimeLimitsFragment {},
-                },
-                storage: TrinoStorageConfigFragment {
-                    data: PvcConfigFragment {
-                        capacity: Some(Quantity("1Gi".to_owned())),
-                        storage_class: None,
-                        selectors: None,
-                    },
-                },
-            },
-            TrinoRole::Worker => ResourcesFragment {
-                cpu: CpuLimitsFragment {
-                    min: Some(Quantity("1000m".to_owned())),
-                    max: Some(Quantity("4000m".to_owned())),
-                },
-                memory: MemoryLimitsFragment {
-                    limit: Some(Quantity("3072Mi".to_owned())),
-                    runtime_limits: NoRuntimeLimitsFragment {},
-                },
-                storage: TrinoStorageConfigFragment {
-                    data: PvcConfigFragment {
-                        capacity: Some(Quantity("1Gi".to_owned())),
-                        storage_class: None,
-                        selectors: None,
-                    },
-                },
-            },
+        let (cpu_min, cpu_max, memory) = match role {
+            TrinoRole::Coordinator => ("500m", "2", "4Gi"),
+            TrinoRole::Worker => ("1", "4", "4Gi"),
         };
+
         TrinoConfigFragment {
             logging: product_logging::spec::default_logging(),
-            resources,
             affinity: get_affinity(cluster_name, role, trino_catalogs),
+            resources: ResourcesFragment {
+                cpu: CpuLimitsFragment {
+                    min: Some(Quantity(cpu_min.to_string())),
+                    max: Some(Quantity(cpu_max.to_string())),
+                },
+                memory: MemoryLimitsFragment {
+                    limit: Some(Quantity(memory.to_string())),
+                    runtime_limits: NoRuntimeLimitsFragment {},
+                },
+                storage: TrinoStorageConfigFragment {
+                    data: PvcConfigFragment {
+                        capacity: Some(Quantity("1Gi".to_owned())),
+                        storage_class: None,
+                        selectors: None,
+                    },
+                },
+            },
             ..TrinoConfigFragment::default()
         }
     }

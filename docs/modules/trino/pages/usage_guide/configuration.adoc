@@ -108,41 +108,38 @@ include::home:concepts:stackable_resource_requests.adoc[]
 
 A minimal HA setup consisting of 1 coordinator and 2 worker instances has the following https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/[resource requirements]:
 
-* `2800m` CPU request
-* `10600m` CPU limit
-* `8384m` memory request and limit
-* `1500Mi` persistent storage
+* `3250m` CPU request
+* `11500m` CPU limit
+* `12672m` memory request and limit
+* `3072Mi` persistent storage
 
 Corresponding to the values above, the operator uses the following resource defaults:
 
 [source,yaml]
 ----
-coordinators:
-  roleGroups:
-    default:
-      config:
-        resources:
-          cpu:
-            min: '200m'
-            max: '800m'
-          memory:
-            limit: '1024Mi'
-          storage:
-            data:
-              capacity: '500Mi'
-workers:
-  roleGroups:
-    default:
-      config:
-        resources:
-          cpu:
-            min: '200m'
-            max: '800m'
-          memory:
-            limit: '2048Mi'
-          storage:
-            data:
-              capacity: '500Mi'
+spec:
+  coordinators:
+    config:
+      resources:
+        cpu:
+          min: '500m'
+          max: '2000m'
+        memory:
+          limit: '4Gi'
+        storage:
+          data:
+            capacity: '1Gi'
+  workers:
+    config:
+      resources:
+        cpu:
+          min: '1000m'
+          max: '4000m'
+        memory:
+          limit: '4Gi'
+        storage:
+          data:
+            capacity: '1Gi'
 ----
 
 WARNING: The default values are _most likely_ not sufficient to run a proper cluster in production. Please adapt according to your requirements.
