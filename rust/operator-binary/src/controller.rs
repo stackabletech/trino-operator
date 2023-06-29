@@ -863,8 +863,8 @@ fn build_rolegroup_statefulset(
             ResourceRequirementsBuilder::new()
                 .with_cpu_request("500m")
                 .with_cpu_limit("2000m")
-                .with_memory_request("2048Mi")
-                .with_memory_limit("2048Mi")
+                .with_memory_request("4Gi")
+                .with_memory_limit("4Gi")
                 .build(),
         )
         .build();

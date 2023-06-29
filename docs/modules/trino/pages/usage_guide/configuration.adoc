@@ -108,9 +108,9 @@ include::home:concepts:stackable_resource_requests.adoc[]
 
 A minimal HA setup consisting of 1 coordinator and 2 worker instances has the following https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/[resource requirements]:
 
-* `3250m` CPU request
-* `11500m` CPU limit
-* `12672m` memory request and limit
+* `3350m` CPU request
+* `11700m` CPU limit
+* `12704m` memory request and limit
 * `3072Mi` persistent storage
 
 Corresponding to the values above, the operator uses the following resource defaults:
