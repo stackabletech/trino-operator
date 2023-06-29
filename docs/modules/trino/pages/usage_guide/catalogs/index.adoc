@@ -1,6 +1,6 @@
 = Catalogs
 
-Trino does not have a built-in catalog and instead `provides` connectors to external data sources.
+Trino does not have a built-in catalog and instead provides connectors to external data sources.
 This allows Trino to connect to, read from and join a wide variety of data sources.
 
 == Using catalogs
