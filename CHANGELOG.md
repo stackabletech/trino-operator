@@ -17,9 +17,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.40.2` -> `0.42.1` ([#419], [#434]).
+- `operator-rs` `0.40.2` -> `0.41.0` ([#419]).
 - Use 0.0.0-dev product images for testing ([#421]).
 - Use testing-tools 0.2.0 (with new trino client version) ([#421]).
+- Added kuttl test suites ([#437]).
 - [BREAKING]: Reworked authentication mechanism: The`clusterConfig.authentication` now requires a list of `AuthenticationClass` references instead of the `MultiUser` and `LDAP` separation ([#434]).
 
 [#419]: https://github.com/stackabletech/trino-operator/pull/419
@@ -28,6 +29,7 @@ All notable changes to this project will be documented in this file.
 [#424]: https://github.com/stackabletech/trino-operator/pull/424
 [#425]: https://github.com/stackabletech/trino-operator/pull/425
 [#434]: https://github.com/stackabletech/trino-operator/pull/434
+[#437]: https://github.com/stackabletech/trino-operator/pull/437
 
 ## [23.4.0] - 2023-04-17
 
