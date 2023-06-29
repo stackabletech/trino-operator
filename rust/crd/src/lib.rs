@@ -511,7 +511,7 @@ impl Configuration for TrinoConfigFragment {
                     return Err(ConfigError::InvalidConfiguration {
                         reason:
                             "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
-                             Please set 'spec.config.tls.secretClass' or use the provided default value.".to_string(),
+                             Please set 'spec.clusterConfig.tls.secretClass' or use the provided default value.".to_string(),
                     });
                 }
 
