@@ -1,7 +1,7 @@
 use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 use async_trait::async_trait;
 use stackable_operator::client::Client;
-use stackable_trino_crd::catalog::generic::GenericConnector;
+use stackable_trino_crd::catalog::generic::{GenericConnector, Property};
 
 #[async_trait]
 impl ToCatalogConfig for GenericConnector {
@@ -14,15 +14,21 @@ impl ToCatalogConfig for GenericConnector {
         let connector_name = &self.connector_name;
         let mut config = CatalogConfig::new(catalog_name.to_string(), connector_name);
 
-        // Using this order, so that more important come later
-        for (property, config_map_key_selector) in &self.properties_from_config_map {
-            config.add_env_property_from_config_map(property, config_map_key_selector.clone());
-        }
-        for (property, secret_key_selector) in &self.properties_from_secret {
-            config.add_env_property_from_secret(property, secret_key_selector.clone());
-        }
-        for (property, value) in &self.properties {
-            config.add_property(property, value);
+        for (property_name, property) in &self.properties {
+            match property {
+                Property::Value(value) => config.add_property(property_name, value),
+                Property::ValueFromSecret {
+                    secret_key_selector,
+                } => {
+                    config.add_env_property_from_secret(property_name, secret_key_selector.clone())
+                }
+                Property::ValueFromConfigMap {
+                    config_map_key_selector,
+                } => config.add_env_property_from_config_map(
+                    property_name,
+                    config_map_key_selector.clone(),
+                ),
+            }
         }
 
         Ok(config)

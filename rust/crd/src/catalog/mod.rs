@@ -53,3 +53,15 @@ pub enum TrinoCatalogConnector {
     Tpcds(TpcdsConnector),
     Tpch(TpchConnector),
 }
+
+#[cfg(test)]
+mod tests {
+    use stackable_operator::kube::CustomResourceExt;
+
+    use super::*;
+
+    #[test]
+    fn test_crd_generation() {
+        TrinoCatalog::crd();
+    }
+}

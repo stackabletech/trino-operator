@@ -22,28 +22,33 @@ spec:
     generic:
       connectorName: postgresql
       properties: # optional
-        connection-url: jdbc:postgresql://example.net:5432/database
-        connection-user: root
-      propertiesFromSecret: # optional
+        connection-url:
+          value: jdbc:postgresql://example.net:5432/database
+        connection-user:
+          valueFromSecret:
+            name: my-postgresql-credentials-secret
+            key: user
         connection-password:
-          name: my-postgresql-credentials-secret
-          key: password
-      # propertiesFromConfigMap: # optional
-      #   connection-user:
-      #   name: my-postgresql-credentials-configmap
-      #   key: user
+          valueFromSecret:
+            name: my-postgresql-credentials-secret
+            key: password
+#         extra-property-from-configmap:
+#           valueFromConfigMap:
+#             name: my-configmap
+#             key: my-key
 ---
 apiVersion: v1
 kind: Secret
 metadata:
   name: my-postgresql-credentials-secret
 stringData:
+  user: root
   password: rootroot
 ----
 
 == Add contents from Secrets or ConfigMaps
 In some cases you don't want to add sensitive data (such as PostgreSQL credentials) to a `TrinoCatalog`.
-You can than use `propertiesFromSecret` or `propertiesFromConfigMap` to pull in properties securely.
+You can than use `valueFromSecret` or `valueFromSecret` to pull in properties securely.
 An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
 
 == Add additional contents
