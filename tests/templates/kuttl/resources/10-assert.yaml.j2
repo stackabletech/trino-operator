@@ -15,10 +15,10 @@ spec:
           resources:
             requests:
               cpu: 500m
-              memory: 2Gi
+              memory: 4Gi
             limits:
               cpu: "2"
-              memory: 2Gi
+              memory: 4Gi
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
         - name: vector
 {% endif %}
@@ -35,7 +35,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 500Mi
+      storage: 1Gi
 ---
 apiVersion: apps/v1
 kind: StatefulSet
