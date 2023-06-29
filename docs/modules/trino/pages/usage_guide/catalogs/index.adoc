@@ -87,6 +87,7 @@ In this case the `hive` and `iceberg` catalogs will be used as they both match t
 A `TrinoCluster` can, once created, detect and use new catalogs that have been subsequently created with a matching label. This also means that it is possible to reuse a `TrinoCatalog` within multiple `TrinoClusters`.
 
 === Generic fallback connector
-As Trino supports a lots of different connectors, we can't possible cover all the available connectors.
-In case the trino-operator does not support a specific connector we offer a fallback mechanism:
+
+Trino supports lots of different connectors and we can not cover all the available connectors.
+In case the Trino operator does not support a specific connector, there is a fallback mechanism:
 The xref:generic.adoc[].
