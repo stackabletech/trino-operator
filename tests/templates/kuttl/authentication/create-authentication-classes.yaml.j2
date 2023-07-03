@@ -1,0 +1,92 @@
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: password-$NAMESPACE
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: password-file-users
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: password-file-users
+  namespace: $NAMESPACE
+stringData:
+  test_user_1: test_user_1
+  test_user_2: test_user_2
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: password-other-$NAMESPACE
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: password-file-users-other
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: password-file-users-other
+  namespace: $NAMESPACE
+stringData:
+  test_user_1_other: test_user_1_other
+  test_user_2_other: test_user_2_other
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: ldap-$NAMESPACE
+spec:
+  provider:
+    ldap:
+      hostname: openldap.$NAMESPACE.svc.cluster.local
+      searchBase: ou=users,dc=example,dc=org
+      bindCredentials:
+        secretClass: trino-ldap-bind-$NAMESPACE
+{% if test_scenario['values']['ldap-use-tls'] == 'false' %}
+      port: 1389
+{% else %}
+      port: 1636
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: openldap-tls-$NAMESPACE
+{% endif %}
+---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: trino-ldap-bind-$NAMESPACE
+spec:
+  backend:
+    k8sSearch:
+      searchNamespace:
+        pod: {}
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: ldap-other-$NAMESPACE
+spec:
+  provider:
+    ldap:
+      hostname: openldap-other.$NAMESPACE.svc.cluster.local
+      searchBase: ou=users,dc=example,dc=org
+      bindCredentials:
+        secretClass: trino-ldap-bind-$NAMESPACE
+{% if test_scenario['values']['ldap-use-tls'] == 'false' %}
+      port: 1389
+{% else %}
+      port: 1636
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: openldap-other-tls-$NAMESPACE
+{% endif %}

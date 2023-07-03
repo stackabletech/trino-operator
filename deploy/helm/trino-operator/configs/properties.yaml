@@ -140,14 +140,11 @@ properties:
       datatype:
         type: "string"
         unit: *unitMemory
-      defaultValues:
-        - fromVersion: "0.0.0"
-          value: "1GB"
       roles:
         - name: "coordinator"
-          required: true
+          required: false
         - name: "worker"
-          required: true
+          required: false
       asOfVersion: "0.0.0"
 
   - property: &httpServerAuthenticationType
@@ -162,40 +159,6 @@ properties:
         - name: "coordinator"
           required: false
       asOfVersion: "0.0.0"
-
-###################################################################################################
-# password-authenticator.properties
-###################################################################################################
-
-  - property: &passwordAuthenticatorName
-      propertyNames:
-        - name: "password-authenticator.name"
-          kind:
-            type: "file"
-            file: "password-authenticator.properties"
-      datatype:
-        type: "string"
-      allowedValues:
-        - "file"
-        - "ldap"
-      roles:
-        - name: "coordinator"
-          required: false
-      asOfVersion: "0.0.0"
-
-  - property: &passwordAuthenticatorName
-      propertyNames:
-        - name: "file.password-file"
-          kind:
-            type: "file"
-            file: "password-authenticator.properties"
-      datatype:
-        type: "string"
-      roles:
-        - name: "coordinator"
-          required: false
-      asOfVersion: "0.0.0"
-
 
 ###################################################################################################
 # jvm.config

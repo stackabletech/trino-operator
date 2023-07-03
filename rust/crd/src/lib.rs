@@ -3,16 +3,14 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use crate::{
-    authentication::{TrinoAuthentication, TrinoAuthenticationMethod},
-    discovery::TrinoPodRef,
-};
+use crate::discovery::TrinoPodRef;
 
 use affinity::get_affinity;
 use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 
+use crate::authentication::TrinoAuthenticationClassRef;
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
@@ -55,8 +53,6 @@ pub const CONFIG_PROPERTIES: &str = "config.properties";
 pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
-pub const PASSWORD_AUTHENTICATOR_PROPERTIES: &str = "password-authenticator.properties";
-pub const PASSWORD_DB: &str = "password.db";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
@@ -87,25 +83,6 @@ pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY: &str =
     "internal-communication.https.truststore.key";
 pub const NODE_INTERNAL_ADDRESS_SOURCE: &str = "node.internal-address-source";
 pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
-// - authentication
-pub const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
-pub const HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD: &str = "PASSWORD";
-// password-authenticator.properties
-pub const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
-// file
-pub const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
-pub const FILE_PASSWORD_FILE: &str = "file.password-file";
-// ldap
-pub const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";
-pub const LDAP_URL: &str = "ldap.url";
-pub const LDAP_BIND_DN: &str = "ldap.bind-dn";
-pub const LDAP_BIND_PASSWORD: &str = "ldap.bind-password";
-pub const LDAP_USER_BASE_DN: &str = "ldap.user-base-dn";
-pub const LDAP_GROUP_AUTH_PATTERN: &str = "ldap.group-auth-pattern";
-pub const LDAP_ALLOW_INSECURE: &str = "ldap.allow-insecure";
-pub const LDAP_SSL_TRUST_STORE_PATH: &str = "ldap.ssl.truststore.path";
-pub const LDAP_USER_ENV: &str = "LDAP_USER";
-pub const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 // log.properties
 pub const IO_TRINO: &str = "io.trino";
 // jvm.config
@@ -114,7 +91,6 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
-pub const USER_PASSWORD_DATA_DIR_NAME: &str = "/stackable/users";
 pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 pub const STACKABLE_SERVER_TLS_DIR: &str = "/stackable/server_tls";
 pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
@@ -200,8 +176,8 @@ pub struct TrinoClusterSpec {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterConfig {
     /// Authentication options for Trino.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub authentication: Option<TrinoAuthentication>,
+    #[serde(default)]
+    pub authentication: Vec<TrinoAuthenticationClassRef>,
     /// Authorization options for Trino.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization: Option<TrinoAuthorization>,
@@ -375,6 +351,7 @@ pub struct TrinoStorageConfig {
     Display,
     Eq,
     EnumIter,
+    Hash,
     JsonSchema,
     Ord,
     PartialEq,
@@ -384,8 +361,13 @@ pub struct TrinoStorageConfig {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Container {
+    // init
     Prepare,
+    // sidecar
     Vector,
+    // sidecar
+    PasswordFileUpdater,
+    // main
     Trino,
 }
 
@@ -421,26 +403,31 @@ impl TrinoConfig {
         role: &TrinoRole,
         trino_catalogs: &[TrinoCatalog],
     ) -> TrinoConfigFragment {
+        let (cpu_min, cpu_max, memory) = match role {
+            TrinoRole::Coordinator => ("500m", "2", "4Gi"),
+            TrinoRole::Worker => ("1", "4", "4Gi"),
+        };
+
         TrinoConfigFragment {
             logging: product_logging::spec::default_logging(),
+            affinity: get_affinity(cluster_name, role, trino_catalogs),
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
-                    min: Some(Quantity("200m".to_owned())),
-                    max: Some(Quantity("4".to_owned())),
+                    min: Some(Quantity(cpu_min.to_string())),
+                    max: Some(Quantity(cpu_max.to_string())),
                 },
                 memory: MemoryLimitsFragment {
-                    limit: Some(Quantity("2Gi".to_owned())),
+                    limit: Some(Quantity(memory.to_string())),
                     runtime_limits: NoRuntimeLimitsFragment {},
                 },
                 storage: TrinoStorageConfigFragment {
                     data: PvcConfigFragment {
-                        capacity: Some(Quantity("2Gi".to_owned())),
+                        capacity: Some(Quantity("1Gi".to_owned())),
                         storage_class: None,
                         selectors: None,
                     },
                 },
             },
-            affinity: get_affinity(cluster_name, role, trino_catalogs),
             ..TrinoConfigFragment::default()
         }
     }
@@ -472,7 +459,7 @@ impl Configuration for TrinoConfigFragment {
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
         let mut result = BTreeMap::new();
-        let authentication: Option<&TrinoAuthentication> = resource.get_authentication();
+        let authentication_enabled = resource.authentication_enabled();
         let server_tls_enabled: bool = resource.get_server_tls().is_some();
         let internal_tls_enabled: bool = resource.get_internal_tls().is_some();
 
@@ -520,28 +507,12 @@ impl Configuration for TrinoConfigFragment {
                 // If authentication is enabled and client tls is explicitly deactivated we error out
                 // Therefore from here on we can use resource.get_server_tls() as the only source
                 // of truth when enabling client TLS.
-                if authentication.is_some() && !server_tls_enabled {
+                if authentication_enabled && !server_tls_enabled {
                     return Err(ConfigError::InvalidConfiguration {
                         reason:
                             "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
-                             Please set 'spec.config.tls.secretClass' or use the provided default value.".to_string(),
+                             Please set 'spec.clusterConfig.tls.secretClass' or use the provided default value.".to_string(),
                     });
-                }
-
-                if let Some(auth) = authentication {
-                    match &auth.method {
-                        // For Authentication we have to differentiate several options here:
-                        // - Authentication PASSWORD: FILE | LDAP (works only with HTTPS enabled)
-                        TrinoAuthenticationMethod::MultiUser { .. }
-                        | TrinoAuthenticationMethod::Ldap { .. } => {
-                            if role_name == TrinoRole::Coordinator.to_string() {
-                                result.insert(
-                                    HTTP_SERVER_AUTHENTICATION_TYPE.to_string(),
-                                    Some(HTTP_SERVER_AUTHENTICATION_TYPE_PASSWORD.to_string()),
-                                );
-                            }
-                        }
-                    }
                 }
 
                 if server_tls_enabled || internal_tls_enabled {
@@ -613,10 +584,6 @@ impl Configuration for TrinoConfigFragment {
                         Some(NODE_INTERNAL_ADDRESS_SOURCE_FQDN.to_string()),
                     );
                 }
-            }
-            PASSWORD_AUTHENTICATOR_PROPERTIES => {
-                // This is filled in rust/operator-binary/src/config.rs due to required resolving
-                // of the AuthenticationClass
             }
             LOG_PROPERTIES => {}
             _ => {}
@@ -705,9 +672,14 @@ impl TrinoCluster {
     }
 
     /// Returns user provided authentication settings
-    pub fn get_authentication(&self) -> Option<&TrinoAuthentication> {
+    pub fn get_authentication(&self) -> &Vec<TrinoAuthenticationClassRef> {
+        &self.spec.cluster_config.authentication
+    }
+
+    /// Check if any authentication settings are provided
+    pub fn authentication_enabled(&self) -> bool {
         let spec: &TrinoClusterSpec = &self.spec;
-        spec.cluster_config.authentication.as_ref()
+        !spec.cluster_config.authentication.is_empty()
     }
 
     /// Return user provided server TLS settings
@@ -718,7 +690,7 @@ impl TrinoCluster {
 
     /// Return if client TLS should be set depending on settings for authentication and client TLS.
     pub fn tls_enabled(&self) -> bool {
-        self.get_authentication().is_some() || self.get_server_tls().is_some()
+        self.authentication_enabled() || self.get_server_tls().is_some()
     }
 
     /// Return user provided internal TLS settings.

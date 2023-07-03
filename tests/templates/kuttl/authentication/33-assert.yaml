@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 600
+commands:
+  # We use the check-active-workers script for the login. Since we do want to wait until we cannot log in anymore
+  # we flip the return value in the end.
+  - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-active-workers.py -u hot_reloaded -p hot_reloaded -n $NAMESPACE -w 1; if [ $? -eq 0 ]; then exit 1; fi

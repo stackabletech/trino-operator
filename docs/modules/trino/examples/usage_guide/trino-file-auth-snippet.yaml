@@ -1,15 +1,27 @@
 # yamllint disable-file
 ---
+# tag::authentication_class[]
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: simple-trino-users
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: trino-users
+# end::authentication_class[]
+---
 # tag::secret[]
 apiVersion: v1
 kind: Secret
 metadata:
-  name: simple-trino-users-secret
+  name: trino-users
 type: kubernetes.io/opaque
 stringData:
-  admin: $2y$10$89xReovvDLacVzRGpjOyAOONnayOgDAyIS2nW9bs5DJT98q17Dy5i
-  alice: $2y$10$HcCa4k9v2DRrD/g7e5vEz.Bk.1xg00YTEHOZjPX7oK3KqMSt2xT8W
-  bob: $2y$10$xVRXtYZnYuQu66SmruijPO8WHFM/UK5QPHTr.Nzf4JMcZSqt3W.2.
+  admin: admin
+  alice: alice
+  bob: bob
 # end::secret[]
 ---
 # tag::trino[]
@@ -18,12 +30,8 @@ kind: TrinoCluster
 metadata:
   name: simple-trino
 spec:
-  ...
   clusterConfig:
     authentication:
-      method:
-        multiUser:
-          userCredentialsSecret:
-            name: simple-trino-users-secret
-  ...
+      - authenticationClass: simple-trino-users
+      - authenticationClass: ...
 # end::trino[]

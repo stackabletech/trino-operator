@@ -14,11 +14,11 @@ spec:
         - name: trino
           resources:
             requests:
-              cpu: 200m
-              memory: 2Gi
+              cpu: 500m
+              memory: 4Gi
             limits:
-              cpu: "4"
-              memory: 2Gi
+              cpu: "2"
+              memory: 4Gi
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
         - name: vector
 {% endif %}
@@ -35,13 +35,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 2Gi
-status:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 2Gi
-  phase: Bound
+      storage: 1Gi
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -76,12 +70,6 @@ spec:
   resources:
     requests:
       storage: 3Gi
-status:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 3Gi
-  phase: Bound
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -116,9 +104,3 @@ spec:
   resources:
     requests:
       storage: 4Gi
-status:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 4Gi
-  phase: Bound

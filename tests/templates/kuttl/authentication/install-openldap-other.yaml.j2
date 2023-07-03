@@ -2,37 +2,37 @@
 apiVersion: secrets.stackable.tech/v1alpha1
 kind: SecretClass
 metadata:
-  name: openldap-tls
+  name: openldap-other-tls-$NAMESPACE
 spec:
   backend:
     autoTls:
       ca:
         autoGenerate: true
         secret:
-          name: openldap-tls-ca
+          name: openldap-other-tls-ca-$NAMESPACE
           namespace: $NAMESPACE
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: openldap
+  name: openldap-other
   namespace: $NAMESPACE
   labels:
-    app.kubernetes.io/name: openldap
+    app.kubernetes.io/name: openldap-other
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: openldap
-  serviceName: openldap
+      app.kubernetes.io/name: openldap-other
+  serviceName: openldap-other
   replicas: 1
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: openldap
+        app.kubernetes.io/name: openldap-other
     spec:
       serviceAccountName: "ldap-sa"
       containers:
-        - name: openldap
+        - name: openldap-other
           image: docker.io/bitnami/openldap:2.5
           env:
             - name: LDAP_ADMIN_USERNAME
@@ -66,16 +66,16 @@ spec:
           csi:
             driver: secrets.stackable.tech
             volumeAttributes:
-              secrets.stackable.tech/class: openldap-tls
+              secrets.stackable.tech/class: openldap-other-tls-$NAMESPACE
               secrets.stackable.tech/scope: pod
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: openldap
+  name: openldap-other
   namespace: $NAMESPACE
   labels:
-    app.kubernetes.io/name: openldap
+    app.kubernetes.io/name: openldap-other
 spec:
   type: ClusterIP
   ports:
@@ -86,7 +86,7 @@ spec:
       port: 1636
       targetPort: tls-ldap
   selector:
-    app.kubernetes.io/name: openldap
+    app.kubernetes.io/name: openldap-other
 ---
 apiVersion: v1
 kind: ServiceAccount

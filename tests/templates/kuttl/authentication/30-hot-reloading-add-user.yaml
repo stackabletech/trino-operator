@@ -1,0 +1,6 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  # We need to replace $NAMESPACE (by KUTTL) in the add_user.yaml(.j2)
+  - script: eval "echo \"$(cat add_user.yaml)\"" | kubectl replace -f -

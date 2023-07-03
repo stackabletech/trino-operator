@@ -1,24 +1,4 @@
 ---
-apiVersion: secrets.stackable.tech/v1alpha1
-kind: SecretClass
-metadata:
-  name: s3-credentials
-spec:
-  backend:
-    k8sSearch:
-      searchNamespace:
-        pod: {}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: s3-credentials
-  labels:
-    secrets.stackable.tech/class: s3-credentials
-stringData:
-  accessKey: trino
-  secretKey: trinotrino
----
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
 metadata:

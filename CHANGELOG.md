@@ -8,21 +8,28 @@ All notable changes to this project will be documented in this file.
 
 - Support for Trino v414 ([#423]).
 - Generate OLM bundle for Release 23.4.0 ([#424]).
-- Missing CRD defaults for `status.conditions` field ([#425]).
+- Set explicit resources on all containers ([#434]).
 - Support arbitrary connectors using the `generic` connector. This allows you to e.g. access your PostgreSQL ([#436]).
+
+### Fixed
+
+- Missing CRD defaults for `status.conditions` field ([#425]).
+- Fixed always adding `query.max-memory-per-node` with a fixed value of 1GB (which also didn't work with the new resource defaults). Instead let Trino do it's `(JVM max memory * 0.3)` thing ([#434]).
 
 ### Changed
 
 - `operator-rs` `0.40.2` -> `0.41.0` ([#419]).
-- Use 0.0.0-dev product images for testing ([#421])
-- Use testing-tools 0.2.0 (with new trino client version) ([#421])
-- Added kuttl test suites ([#437])
+- Use 0.0.0-dev product images for testing ([#421]).
+- Use testing-tools 0.2.0 (with new trino client version) ([#421]).
+- Added kuttl test suites ([#437]).
+- [BREAKING]: Reworked authentication mechanism: The`clusterConfig.authentication` now requires a list of `AuthenticationClass` references instead of the `MultiUser` and `LDAP` separation ([#434]).
 
 [#419]: https://github.com/stackabletech/trino-operator/pull/419
 [#421]: https://github.com/stackabletech/trino-operator/pull/421
 [#423]: https://github.com/stackabletech/trino-operator/pull/423
 [#424]: https://github.com/stackabletech/trino-operator/pull/424
 [#425]: https://github.com/stackabletech/trino-operator/pull/425
+[#434]: https://github.com/stackabletech/trino-operator/pull/434
 [#436]: https://github.com/stackabletech/trino-operator/pull/436
 [#437]: https://github.com/stackabletech/trino-operator/pull/437
 

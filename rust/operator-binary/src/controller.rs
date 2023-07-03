@@ -1,19 +1,18 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
-use crate::product_logging::{
-    get_log_properties, get_vector_toml, resolve_vector_aggregator_address,
-};
 use crate::{
+    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
-    command, config,
-    config::password_authenticator_properties,
+    command,
+    product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
 };
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
-        ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, PodBuilder,
-        PodSecurityContextBuilder, SecretOperatorVolumeSourceBuilder, VolumeBuilder,
+        resources::ResourceRequirementsBuilder, ConfigMapBuilder, ContainerBuilder,
+        ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
+        SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
@@ -60,19 +59,17 @@ use stackable_operator::{
         statefulset::StatefulSetConditionBuilder,
     },
 };
+use stackable_trino_crd::authentication::resolve_authentication_classes;
 use stackable_trino_crd::{
-    authentication,
-    authentication::TrinoAuthenticationConfig,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
     JVM_HEAP_FACTOR, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    PASSWORD_AUTHENTICATOR_PROPERTIES, PASSWORD_DB, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
-    STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR,
-    STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, USER_PASSWORD_DATA_DIR_NAME,
+    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
+    STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -165,8 +162,6 @@ pub enum Error {
     FailedToWriteJavaProperties {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
     },
-    #[snafu(display("failed to processing authentication config element from k8s"))]
-    FailedProcessingAuthentication { source: authentication::Error },
     #[snafu(display("failed to parse role: {source}"))]
     FailedToParseRole { source: strum::ParseError },
     #[snafu(display("internal operator failure: {source}"))]
@@ -207,8 +202,6 @@ pub enum Error {
         source: stackable_operator::error::Error,
         container_name: String,
     },
-    #[snafu(display("invalid trino config"))]
-    InvalidTrinoConfig { source: config::ConfigError },
     #[snafu(display("failed to retrieve secret for internal communications"))]
     FailedToRetrieveInternalSecret {
         source: stackable_operator::error::Error,
@@ -240,6 +233,18 @@ pub enum Error {
     BuildRbacResources {
         source: stackable_operator::error::Error,
     },
+    #[snafu(display("Failed to retrieve AuthenticationClass"))]
+    AuthenticationClassRetrieval {
+        source: stackable_trino_crd::authentication::Error,
+    },
+    #[snafu(display("Unsupported Trino authentication"))]
+    UnsupportedAuthenticationConfig {
+        source: crate::authentication::Error,
+    },
+    #[snafu(display("Invalid Trino authentication"))]
+    InvalidAuthenticationConfig {
+        source: crate::authentication::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -257,6 +262,17 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let resolved_product_image: ResolvedProductImage =
         trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
+
+    let resolved_authentication_classes =
+        resolve_authentication_classes(client, trino.get_authentication())
+            .await
+            .context(AuthenticationClassRetrievalSnafu)?;
+    let trino_authentication_config = TrinoAuthenticationConfig::new(
+        &resolved_product_image,
+        TrinoAuthenticationTypes::try_from(resolved_authentication_classes)
+            .context(UnsupportedAuthenticationConfigSnafu)?,
+    )
+    .context(InvalidAuthenticationConfigSnafu)?;
 
     let catalog_definitions = client
         .list_with_label_selector::<TrinoCatalog>(
@@ -317,8 +333,6 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .await
         .context(ApplyRoleBindingSnafu)?;
 
-    let authentication_config = user_authentication(&trino, client).await?;
-
     // Assemble the OPA connection string from the discovery and the given path if provided
     let opa_connect_string = if let Some(opa_config) = trino
         .spec
@@ -374,7 +388,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &rolegroup,
                 &config,
                 &merged_config,
-                authentication_config.as_ref(),
+                &trino_authentication_config,
                 opa_connect_string.as_deref(),
                 vector_aggregator_address.as_deref(),
             )?;
@@ -386,11 +400,12 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 &trino,
+                &trino_role,
                 &resolved_product_image,
                 &rolegroup,
                 &config,
                 &merged_config,
-                authentication_config.as_ref(),
+                &trino_authentication_config,
                 &catalogs,
                 &rbac_sa.name_any(),
             )?;
@@ -492,7 +507,7 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    authentication_config: Option<&TrinoAuthenticationConfig>,
+    trino_authentication_config: &TrinoAuthenticationConfig,
     opa_connect_string: Option<&str>,
     vector_aggregator_address: Option<&str>,
 ) -> Result<ConfigMap> {
@@ -549,6 +564,9 @@ fn build_rolegroup_config_map(
         .next()
         .context(MissingCoordinatorPodsSnafu)?;
 
+    // Add additional config files fore authentication
+    cm_conf_data.extend(trino_authentication_config.config_files(role));
+
     for (property_name_kind, config) in config {
         // We used this temporary map to add all dynamically resolved (e.g. discovery config maps)
         // properties. This will be extended with the merged role group properties (transformed_config)
@@ -562,6 +580,15 @@ fn build_rolegroup_config_map(
 
         match property_name_kind {
             PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
+                // Add authentication properties (only required for the Coordinator)
+                dynamic_resolved_config.extend(
+                    trino_authentication_config
+                        .config_properties(role)
+                        .into_iter()
+                        .map(|(k, v)| (k, Some(v)))
+                        .collect::<BTreeMap<String, Option<String>>>(),
+                );
+
                 let protocol = if trino.get_internal_tls().is_some() {
                     TrinoDiscoveryProtocol::Https
                 } else {
@@ -637,32 +664,6 @@ fn build_rolegroup_config_map(
                         vector_toml,
                     );
                 }
-            }
-            // authentication is coordinator only
-            PropertyNameKind::File(file_name)
-                if file_name == PASSWORD_AUTHENTICATOR_PROPERTIES
-                    && *role == TrinoRole::Coordinator =>
-            {
-                // depending on authentication we need to add more properties
-                if let Some(auth) = authentication_config {
-                    password_authenticator_properties(&mut dynamic_resolved_config, auth)
-                        .context(InvalidTrinoConfigSnafu)?;
-                }
-
-                // Add static properties and overrides
-                dynamic_resolved_config.extend(transformed_config);
-
-                let pw_authenticator_properties =
-                    product_config::writer::to_java_properties_string(
-                        dynamic_resolved_config.iter(),
-                    )
-                    .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                cm_conf_data.insert(file_name.to_string(), pw_authenticator_properties);
-            }
-            PropertyNameKind::File(file_name) if file_name == PASSWORD_DB => {
-                // make sure password db is created to fill it via container command scripts
-                cm_conf_data.insert(file_name.to_string(), "".to_string());
             }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
                 let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
@@ -765,11 +766,12 @@ fn build_rolegroup_catalog_config_map(
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
+    role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    authentication_config: Option<&TrinoAuthenticationConfig>,
+    trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     sa_name: &str,
 ) -> Result<StatefulSet> {
@@ -777,20 +779,21 @@ fn build_rolegroup_statefulset(
         .rolegroup(rolegroup_ref)
         .context(InternalOperatorFailureSnafu)?;
 
-    let trino_container_name = Container::Trino.to_string();
-    let mut cb_trino = ContainerBuilder::new(&trino_container_name).with_context(|_| {
-        IllegalContainerNameSnafu {
-            container_name: trino_container_name.clone(),
-        }
-    })?;
+    let mut pod_builder = PodBuilder::new();
+
     let prepare_container_name = Container::Prepare.to_string();
     let mut cb_prepare = ContainerBuilder::new(&prepare_container_name).with_context(|_| {
         IllegalContainerNameSnafu {
             container_name: prepare_container_name.clone(),
         }
     })?;
-    let mut pod_builder = PodBuilder::new();
-    pod_builder.affinity(&merged_config.affinity);
+
+    let trino_container_name = Container::Trino.to_string();
+    let mut cb_trino = ContainerBuilder::new(&trino_container_name).with_context(|_| {
+        IllegalContainerNameSnafu {
+            container_name: trino_container_name.clone(),
+        }
+    })?;
 
     let mut env = config
         .get(&PropertyNameKind::Env)
@@ -806,19 +809,12 @@ fn build_rolegroup_statefulset(
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
-    // we need to mount ldap bind credentials from the secret as env vars
-    if let Some(auth) = authentication_config {
-        match auth {
-            TrinoAuthenticationConfig::MultiUser { .. } => {
-                cb_prepare.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-                cb_trino.add_volume_mount("users", USER_PASSWORD_DATA_DIR_NAME);
-                pod_builder.add_empty_dir_volume("users", None);
-            }
-            TrinoAuthenticationConfig::Ldap(ldap) => {
-                ldap.add_volumes_and_mounts(&mut pod_builder, vec![&mut cb_prepare, &mut cb_trino]);
-            }
-        }
-    }
+    trino_authentication_config.add_authentication_pod_and_volume_config(
+        role.clone(),
+        &mut pod_builder,
+        &mut cb_prepare,
+        &mut cb_trino,
+    );
 
     // Add the needed stuff for catalogs
     env.extend(
@@ -863,13 +859,21 @@ fn build_rolegroup_statefulset(
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
         .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .resources(
+            ResourceRequirementsBuilder::new()
+                .with_cpu_request("500m")
+                .with_cpu_limit("2000m")
+                .with_memory_request("4Gi")
+                .with_memory_limit("4Gi")
+                .build(),
+        )
         .build();
 
     let container_trino = cb_trino
         .image_from_product_image(resolved_product_image)
         .command(vec!["/bin/bash".to_string(), "-c".to_string()])
         .args(command::container_trino_args(
-            authentication_config,
+            trino_authentication_config,
             catalogs,
         ))
         .add_env_vars(env)
@@ -919,6 +923,12 @@ fn build_rolegroup_statefulset(
             "config",
             "log",
             merged_config.logging.containers.get(&Container::Vector),
+            ResourceRequirementsBuilder::new()
+                .with_cpu_request("250m")
+                .with_cpu_limit("500m")
+                .with_memory_request("128Mi")
+                .with_memory_limit("128Mi")
+                .build(),
         ));
     }
 
@@ -929,7 +939,9 @@ fn build_rolegroup_statefulset(
                 &resolved_product_image.app_version_label,
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
-            ))
+            ));
+            // This is actually used by some kuttl tests (as they don't specify the container explicitly)
+            m.with_annotation("kubectl.kubernetes.io/default-container", "trino")
         })
         .image_pull_secrets_from_product_image(resolved_product_image)
         .affinity(&merged_config.affinity)
@@ -1049,28 +1061,6 @@ pub fn error_policy(_obj: Arc<TrinoCluster>, _error: &Error, _ctx: Arc<Ctx>) -> 
     Action::requeue(Duration::from_secs(5))
 }
 
-async fn user_authentication(
-    trino: &TrinoCluster,
-    client: &Client,
-) -> Result<Option<TrinoAuthenticationConfig>> {
-    Ok(match &trino.get_authentication() {
-        Some(authentication) => Some(
-            authentication
-                .method
-                .materialize(
-                    client,
-                    trino
-                        .namespace()
-                        .as_deref()
-                        .context(ObjectHasNoNamespaceSnafu)?,
-                )
-                .await
-                .context(FailedProcessingAuthenticationSnafu)?,
-        ),
-        _ => None,
-    })
-}
-
 /// Give a secret name and an optional key in the secret to use.
 /// The value from the key will be set into the given env var name.
 /// If not secret key is given, the env var name will be used as the secret key.
@@ -1110,7 +1100,6 @@ fn validated_product_config(
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-        PropertyNameKind::File(PASSWORD_AUTHENTICATOR_PROPERTIES.to_string()),
     ];
 
     roles.insert(
