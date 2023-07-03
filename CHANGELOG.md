@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Support for Trino v414 ([#423]).
 - Generate OLM bundle for Release 23.4.0 ([#424]).
 - Missing CRD defaults for `status.conditions` field ([#425]).
+- Support arbitrary connectors using the `generic` connector. This allows you to e.g. access your PostgreSQL ([#436]).
 
 ### Changed
 
@@ -22,6 +23,7 @@ All notable changes to this project will be documented in this file.
 [#423]: https://github.com/stackabletech/trino-operator/pull/423
 [#424]: https://github.com/stackabletech/trino-operator/pull/424
 [#425]: https://github.com/stackabletech/trino-operator/pull/425
+[#436]: https://github.com/stackabletech/trino-operator/pull/436
 [#437]: https://github.com/stackabletech/trino-operator/pull/437
 
 ## [23.4.0] - 2023-04-17

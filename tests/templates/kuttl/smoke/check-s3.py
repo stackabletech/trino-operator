@@ -133,4 +133,10 @@ AS SELECT * FROM hive.minio.taxi_data
 
     # Test could be improved by also testing update and deletes
 
+    # Test postgres connection
+    run_query(connection, 'SHOW SCHEMAS IN postgresgeneric')
+    run_query(connection, 'CREATE SCHEMA IF NOT EXISTS postgresgeneric.tpch')
+    run_query(connection, 'CREATE TABLE IF NOT EXISTS postgresgeneric.tpch.nation AS SELECT * FROM tpch.tiny.nation')
+    assert run_query(connection, "SELECT COUNT(*) FROM postgresgeneric.tpch.nation")[0][0] == 25
+
     print("[SUCCESS] All tests in check-s3.py succeeded!")

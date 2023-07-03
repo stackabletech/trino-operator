@@ -1,5 +1,6 @@
 pub mod black_hole;
 pub mod commons;
+pub mod generic;
 pub mod google_sheet;
 pub mod hive;
 pub mod iceberg;
@@ -14,13 +15,14 @@ use stackable_operator::{
 use std::collections::HashMap;
 
 use black_hole::BlackHoleConnector;
+use generic::GenericConnector;
 use google_sheet::GoogleSheetConnector;
 use hive::HiveConnector;
 use iceberg::IcebergConnector;
 use tpcds::TpcdsConnector;
 use tpch::TpchConnector;
 
-#[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "trino.stackable.tech",
     version = "v1alpha1",
@@ -40,13 +42,26 @@ pub struct TrinoCatalogSpec {
     pub config_overrides: HashMap<String, String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TrinoCatalogConnector {
     BlackHole(BlackHoleConnector),
     GoogleSheet(GoogleSheetConnector),
+    Generic(GenericConnector),
     Hive(HiveConnector),
     Iceberg(IcebergConnector),
     Tpcds(TpcdsConnector),
     Tpch(TpchConnector),
+}
+
+#[cfg(test)]
+mod tests {
+    use stackable_operator::kube::CustomResourceExt;
+
+    use super::*;
+
+    #[test]
+    fn test_crd_generation() {
+        TrinoCatalog::crd();
+    }
 }

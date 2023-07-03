@@ -1,0 +1,56 @@
+= Generic
+
+Trino supports lots of different connectors and we cannot cover all the available connectors.
+In case the trino-operator does not support a specific connector you can use this connector to pull in https://trino.io/docs/current/connector.html[any connector Trino supports}.
+
+This is how you can e.g. use the https://trino.io/docs/current/connector/postgresql.html[PostgreSQL connector]:
+
+== Example generic catalog properties
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  # The name of the catalog as it will appear in Trino
+  name: postgres
+  # TrinoCluster can use these labels to select which catalogs to include
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    generic:
+      connectorName: postgresql
+      properties: # optional
+        connection-url:
+          value: jdbc:postgresql://example.net:5432/database
+        connection-user:
+          valueFromSecret:
+            name: my-postgresql-credentials-secret
+            key: user
+        connection-password:
+          valueFromSecret:
+            name: my-postgresql-credentials-secret
+            key: password
+#         extra-property-from-configmap:
+#           valueFromConfigMap:
+#             name: my-configmap
+#             key: my-key
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgresql-credentials-secret
+stringData:
+  user: root
+  password: rootroot
+----
+
+== Add contents from Secrets or ConfigMaps
+
+In some cases you don't want to add sensitive data (such as PostgreSQL credentials) to a `TrinoCatalog`.
+You can then use `valueFromSecret` or `valueFromSecret` to pull in properties securely.
+An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
+
+== Add additional contents
+
+In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:nightly@home:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
