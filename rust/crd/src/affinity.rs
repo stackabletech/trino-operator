@@ -21,6 +21,7 @@ pub fn get_affinity(
                 TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
                 TrinoCatalogConnector::Iceberg(iceberg) => Some(&iceberg.metastore.config_map),
                 TrinoCatalogConnector::BlackHole(_)
+                | TrinoCatalogConnector::Generic(_)
                 | TrinoCatalogConnector::GoogleSheet(_)
                 | TrinoCatalogConnector::Tpcds(_)
                 | TrinoCatalogConnector::Tpch(_) => None,
@@ -44,6 +45,7 @@ pub fn get_affinity(
                     iceberg.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
                 }
                 TrinoCatalogConnector::BlackHole(_)
+                | TrinoCatalogConnector::Generic(_)
                 | TrinoCatalogConnector::GoogleSheet(_)
                 | TrinoCatalogConnector::Tpcds(_)
                 | TrinoCatalogConnector::Tpch(_) => None,
@@ -107,7 +109,7 @@ mod tests {
           image:
             productVersion: "414"
             stackableVersion: "0.0.0-dev"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino
@@ -197,7 +199,7 @@ mod tests {
           image:
             productVersion: "414"
             stackableVersion: "0.0.0-dev"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino
@@ -416,7 +418,7 @@ mod tests {
           image:
             productVersion: "414"
             stackableVersion: "0.0.0-dev"
-          clusterConfig:  
+          clusterConfig:
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino

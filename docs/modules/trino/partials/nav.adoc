@@ -15,6 +15,7 @@
 ** xref:trino:usage_guide/query.adoc[]
 ** xref:trino:usage_guide/catalogs/index.adoc[]
 *** xref:trino:usage_guide/catalogs/black-hole.adoc[]
+*** xref:trino:usage_guide/catalogs/generic.adoc[]
 *** xref:trino:usage_guide/catalogs/google-sheets.adoc[]
 *** xref:trino:usage_guide/catalogs/hive.adoc[]
 *** xref:trino:usage_guide/catalogs/iceberg.adoc[]
