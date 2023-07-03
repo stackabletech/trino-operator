@@ -91,17 +91,38 @@ tests:
     dimensions:
       - trino-latest
 suites:
-  - name: latest
+  - name: nightly
+    # Run with the latest product versions and tls true and false to cover different tls code paths.
+    patch:
+      - dimensions:
+          - name: trino
+            expr: last
+          - name: hive
+            expr: last
+          - name: opa
+            expr: last
+          - name: zookeeper
+            expr: last
+          - name: s3-use-tls
+            expr: "true"
+  - name: smoke-latest
+    # Useful during development
+    select:
+      - smoke
     patch:
       - dimensions:
           - expr: last
-  - name: smoke
-    select:
-      - smoke
   - name: openshift
+    # Run with the openshift and all tls dimensions set to true
     patch:
       - dimensions:
           - expr: last
       - dimensions:
           - name: openshift
+            expr: "true"
+          - name: s3-use-tls
+            expr: "true"
+          - name: use-tls
+            expr: "true"
+          - name: use-internal-tls
             expr: "true"
