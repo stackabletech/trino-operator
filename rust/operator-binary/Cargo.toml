@@ -18,7 +18,7 @@ async-trait = "0.1"
 clap = "4.3"
 futures = { version = "0.3", features = ["compat"] }
 indoc = "1.0.7"
-openssl = "0.10.42"
+openssl = "0.10.55"
 pin-project = "1.0"
 semver = "1.0"
 snafu = "0.7"
