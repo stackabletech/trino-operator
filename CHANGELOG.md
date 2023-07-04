@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Generate OLM bundle for Release 23.4.0 ([#424]).
 - Set explicit resources on all containers ([#434]).
 - Support arbitrary connectors using the `generic` connector. This allows you to e.g. access your PostgreSQL ([#436]).
+- Support `podOverride` ([#440]).
 
 ### Fixed
 
@@ -32,6 +33,7 @@ All notable changes to this project will be documented in this file.
 [#434]: https://github.com/stackabletech/trino-operator/pull/434
 [#436]: https://github.com/stackabletech/trino-operator/pull/436
 [#437]: https://github.com/stackabletech/trino-operator/pull/437
+[#440]: https://github.com/stackabletech/trino-operator/pull/440
 
 ## [23.4.0] - 2023-04-17
 
