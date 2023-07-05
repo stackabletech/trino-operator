@@ -47,3 +47,13 @@ spec:
               max: 800m
             memory:
               limit: 4Gi
+      resources-from-pod-overrides:
+        podOverrides:
+          spec:
+            containers:
+              - name: trino
+                resources:
+                  requests:
+                    cpu: 310m
+                  limits:
+                    cpu: 610m

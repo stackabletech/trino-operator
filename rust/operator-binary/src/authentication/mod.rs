@@ -53,7 +53,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// Contains all relevant information about config files, volumes etc. to enable authentication.
 /// The `TrinoRole` map key is actually not required here since all authentication settings are
 /// done in the coordinator. However, this implementation aims for a general implementation that
-/// may be in parts reused in other operators.  
+/// may be in parts reused in other operators.
 #[derive(Clone, Debug, Default)]
 pub struct TrinoAuthenticationConfig {
     /// All config properties that have to be added to the `config.properties` of the given role
@@ -116,7 +116,7 @@ impl TrinoAuthenticationConfig {
     /// the respective pod / container builders.
     pub fn add_authentication_pod_and_volume_config(
         &self,
-        role: TrinoRole,
+        role: &TrinoRole,
         pod_builder: &mut PodBuilder,
         prepare_builder: &mut ContainerBuilder,
         trino_builder: &mut ContainerBuilder,
@@ -130,7 +130,7 @@ impl TrinoAuthenticationConfig {
         ];
 
         for container in &affected_containers {
-            let volume_mounts = self.volume_mounts(&role, container);
+            let volume_mounts = self.volume_mounts(role, container);
 
             match container {
                 stackable_trino_crd::Container::Prepare => {
@@ -147,7 +147,7 @@ impl TrinoAuthenticationConfig {
         }
 
         // containers
-        for container in self.sidecar_containers(&role) {
+        for container in self.sidecar_containers(role) {
             pod_builder.add_container(container);
         }
     }

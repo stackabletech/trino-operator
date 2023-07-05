@@ -32,6 +32,7 @@ use stackable_operator::{
         apimachinery::pkg::{
             api::resource::Quantity, apis::meta::v1::LabelSelector, util::intstr::IntOrString,
         },
+        DeepMerge,
     },
     kube::{
         runtime::{controller::Action, reflector::ObjectRef},
@@ -766,7 +767,7 @@ fn build_rolegroup_catalog_config_map(
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &TrinoCluster,
-    role: &TrinoRole,
+    trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
@@ -775,6 +776,9 @@ fn build_rolegroup_statefulset(
     catalogs: &[CatalogConfig],
     sa_name: &str,
 ) -> Result<StatefulSet> {
+    let role = trino
+        .role(trino_role)
+        .context(InternalOperatorFailureSnafu)?;
     let rolegroup = trino
         .rolegroup(rolegroup_ref)
         .context(InternalOperatorFailureSnafu)?;
@@ -810,7 +814,7 @@ fn build_rolegroup_statefulset(
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
     trino_authentication_config.add_authentication_pod_and_volume_config(
-        role.clone(),
+        trino_role,
         &mut pod_builder,
         &mut cb_prepare,
         &mut cb_trino,
@@ -979,6 +983,11 @@ fn build_rolegroup_statefulset(
                 .fs_group(1000)
                 .build(),
         );
+
+    let mut pod_template = pod_builder.build_template();
+    pod_template.merge_from(role.config.pod_overrides.clone());
+    pod_template.merge_from(rolegroup.config.pod_overrides.clone());
+
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
@@ -1005,7 +1014,7 @@ fn build_rolegroup_statefulset(
                 ..LabelSelector::default()
             },
             service_name: rolegroup_ref.object_name(),
-            template: pod_builder.build_template(),
+            template: pod_template,
             volume_claim_templates: Some(vec![merged_config
                 .resources
                 .storage
