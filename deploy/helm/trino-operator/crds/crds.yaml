@@ -7052,7 +7052,6 @@ spec:
                         - productVersion
                     - required:
                         - productVersion
-                        - stackableVersion
                   description: Trino product image to use.
                   properties:
                     custom:
@@ -7085,7 +7084,8 @@ spec:
                       nullable: true
                       type: string
                     stackableVersion:
-                      description: Stackable version of the product, e.g. 2.1.0
+                      description: Stackable version of the product, e.g. 2.1.0. If not specified, the operator will use the same version as he has (e.g. `23.4.1` or `0.0.0-dev`)
+                      nullable: true
                       type: string
                   type: object
                 workers:
