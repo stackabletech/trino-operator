@@ -1,4 +1,5 @@
 mod authentication;
+mod authorization;
 mod catalog;
 mod command;
 mod controller;

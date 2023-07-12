@@ -1,6 +1,7 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
+    authorization::opa::TrinoOpaConfig,
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
@@ -16,10 +17,7 @@ use stackable_operator::{
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
-    commons::{
-        opa::OpaApiVersion, product_image_selection::ResolvedProductImage,
-        rbac::build_rbac_resources,
-    },
+    commons::{product_image_selection::ResolvedProductImage, rbac::build_rbac_resources},
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -334,27 +332,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .await
         .context(ApplyRoleBindingSnafu)?;
 
-    // Assemble the OPA connection string from the discovery and the given path if provided
-    let opa_connect_string = if let Some(opa_config) = trino
-        .spec
-        .cluster_config
-        .authorization
-        .as_ref()
-        .and_then(|authz| authz.opa.as_ref())
-    {
-        Some(
-            opa_config
-                .full_document_url_from_config_map(
-                    client,
-                    &*trino,
-                    Some("allow"),
-                    OpaApiVersion::V1,
-                )
+    let trino_opa_config = match trino.get_opa_config() {
+        Some(opa_config) => Some(
+            TrinoOpaConfig::from_opa_config(client, &trino, opa_config)
                 .await
                 .context(InvalidOpaConfigSnafu)?,
-        )
-    } else {
-        None
+        ),
+        None => None,
     };
 
     let coordinator_role_service = build_coordinator_role_service(&trino, &resolved_product_image)?;
@@ -390,7 +374,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &config,
                 &merged_config,
                 &trino_authentication_config,
-                opa_connect_string.as_deref(),
+                &trino_opa_config,
                 vector_aggregator_address.as_deref(),
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
@@ -509,7 +493,7 @@ fn build_rolegroup_config_map(
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
-    opa_connect_string: Option<&str>,
+    trino_opa_config: &Option<TrinoOpaConfig>,
     vector_aggregator_address: Option<&str>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
@@ -673,17 +657,10 @@ fn build_rolegroup_config_map(
         }
     }
 
-    if let Some(opa_connect) = opa_connect_string {
-        let mut opa_config = BTreeMap::new();
-        opa_config.insert(
-            "access-control.name".to_string(),
-            Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
-        );
-        opa_config.insert("opa.policy.uri".to_string(), Some(opa_connect.to_string()));
-
-        let config_properties =
-            product_config::writer::to_java_properties_string(opa_config.iter())
-                .context(FailedToWriteJavaPropertiesSnafu)?;
+    if let Some(trino_opa_config) = trino_opa_config {
+        let config = trino_opa_config.as_config();
+        let config_properties = product_config::writer::to_java_properties_string(config.iter())
+            .context(FailedToWriteJavaPropertiesSnafu)?;
 
         cm_conf_data.insert(ACCESS_CONTROL_PROPERTIES.to_string(), config_properties);
     }
