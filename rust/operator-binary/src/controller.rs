@@ -24,14 +24,12 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, ContainerPort, EmptyDirVolumeSource, EnvVar,
-                EnvVarSource, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
-                TCPSocketAction, Volume,
+                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, Probe,
+                Secret, SecretKeySelector, Service, ServicePort, ServiceSpec, TCPSocketAction,
+                Volume,
             },
         },
-        apimachinery::pkg::{
-            api::resource::Quantity, apis::meta::v1::LabelSelector, util::intstr::IntOrString,
-        },
+        apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
         DeepMerge,
     },
     kube::{
@@ -75,6 +73,7 @@ use stackable_trino_crd::{
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Write,
+    ops::Div,
     str::FromStr,
     sync::Arc,
     time::Duration,
@@ -93,13 +92,15 @@ pub const TRINO_UID: i64 = 1000;
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
 
-const TRINO_LOG_FILE_SIZE_IN_MIB: u32 = TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB / 2;
-const TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB: u32 = 10;
-const MAX_PREPARE_LOG_FILE_SIZE_IN_MIB: u32 = 1;
-// Additional buffer space is not needed, as the `prepare` container already has sufficient buffer
-// space and all containers share a single volume.
-const LOG_VOLUME_SIZE_IN_MIB: u32 =
-    TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB + MAX_PREPARE_LOG_FILE_SIZE_IN_MIB;
+const LOG_FILE_COUNT: u32 = 2;
+pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+    value: 10.0,
+    unit: BinaryMultiple::Mebi,
+};
+pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
+    value: 1.0,
+    unit: BinaryMultiple::Mebi,
+};
 
 const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 
@@ -616,12 +617,27 @@ fn build_rolegroup_config_map(
                 // The size of one log file
                 dynamic_resolved_config.insert(
                     LOG_MAX_SIZE.to_string(),
-                    Some(format!("{TRINO_LOG_FILE_SIZE_IN_MIB}MB")),
+                    Some(format!(
+                        // Trino uses the unit "MB" for MiB.
+                        "{}MB",
+                        MAX_TRINO_LOG_FILES_SIZE
+                            .scale_to(BinaryMultiple::Mebi)
+                            .div(LOG_FILE_COUNT as f32)
+                            .ceil()
+                            .value,
+                    )),
                 );
                 // The maximum size of all logfiles combined
                 dynamic_resolved_config.insert(
                     LOG_MAX_TOTAL_SIZE.to_string(),
-                    Some(format!("{TRINO_LOG_FILE_TOTAL_SIZE_IN_MIB}MB")),
+                    Some(format!(
+                        // Trino uses the unit "MB" for MiB.
+                        "{}MB",
+                        MAX_TRINO_LOG_FILES_SIZE
+                            .scale_to(BinaryMultiple::Mebi)
+                            .ceil()
+                            .value,
+                    )),
                 );
 
                 // Add static properties and overrides
@@ -967,14 +983,12 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .add_volume(Volume {
-            name: "log".to_string(),
-            empty_dir: Some(EmptyDirVolumeSource {
-                medium: None,
-                size_limit: Some(Quantity(format!("{LOG_VOLUME_SIZE_IN_MIB}Mi"))),
-            }),
-            ..Volume::default()
-        })
+        .add_empty_dir_volume(
+            "log",
+            Some(product_logging::framework::calculate_log_volume_size_limit(
+                &[MAX_TRINO_LOG_FILES_SIZE, MAX_PREPARE_LOG_FILE_SIZE],
+            )),
+        )
         .service_account_name(sa_name)
         .security_context(
             PodSecurityContextBuilder::new()

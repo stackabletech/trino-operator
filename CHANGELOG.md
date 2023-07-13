@@ -16,10 +16,11 @@ All notable changes to this project will be documented in this file.
 
 - Missing CRD defaults for `status.conditions` field ([#425]).
 - Fixed always adding `query.max-memory-per-node` with a fixed value of 1GB (which also didn't work with the new resource defaults). Instead let Trino do it's `(JVM max memory * 0.3)` thing ([#434]).
+- Increase the size limit of the log volume ([#445]).
 
 ### Changed
 
-- `operator-rs` `0.40.2` -> `0.41.0` ([#419]).
+- `operator-rs` `0.40.2` -> `0.44.0` ([#419], [#445]).
 - Use 0.0.0-dev product images for testing ([#421]).
 - Use testing-tools 0.2.0 (with new trino client version) ([#421]).
 - Added kuttl test suites ([#437]).
@@ -34,6 +35,7 @@ All notable changes to this project will be documented in this file.
 [#436]: https://github.com/stackabletech/trino-operator/pull/436
 [#437]: https://github.com/stackabletech/trino-operator/pull/437
 [#440]: https://github.com/stackabletech/trino-operator/pull/440
+[#445]: https://github.com/stackabletech/trino-operator/pull/445
 
 ## [23.4.0] - 2023-04-17
 
