@@ -17,10 +17,10 @@ dimensions:
       - 395-stackable0.0.0-dev
       - 396-stackable0.0.0-dev
       - 403-stackable0.0.0-dev
-      - 414-stackable0.0.0-dev
+      - 414-stackable0.0.0-dev-with-opa
   - name: trino-latest
     values:
-      - 414-stackable0.0.0-dev
+      - 414-stackable0.0.0-dev-with-opa
   - name: hive
     values:
       - 2.3.9-stackable0.0.0-dev
