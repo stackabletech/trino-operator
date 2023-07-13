@@ -25,6 +25,35 @@ metadata:
   labels:
     opa.stackable.tech/bundle: "trino"
 data:
+{% if test_scenario['values']['trino'].split('-stackable')[0] in ['377', '387', '395', '396', '403'] %}
+  trino.rego: |
+    package trino
+
+    import future.keywords.in
+
+    default allow = false
+
+    allow {
+      is_admin
+    }
+
+    allow {
+      is_bob
+      can_be_accessed_by_bob
+    }
+
+    is_admin() {
+      input.context.identity.user == "admin"
+    }
+
+    is_bob() {
+      input.context.identity.user == "bob"
+    }
+
+    can_be_accessed_by_bob() {
+      input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
+    }
+{% else %}
   trino.rego: |
     package trino
 
@@ -59,3 +88,4 @@ data:
     is_bob() {
       input.context.identity.user == "bob"
     }
+{% endif %}

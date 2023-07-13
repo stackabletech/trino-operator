@@ -334,7 +334,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let trino_opa_config = match trino.get_opa_config() {
         Some(opa_config) => Some(
-            TrinoOpaConfig::from_opa_config(client, &trino, opa_config)
+            TrinoOpaConfig::from_opa_config(client, &trino, &resolved_product_image, opa_config)
                 .await
                 .context(InvalidOpaConfigSnafu)?,
         ),
