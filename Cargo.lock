@@ -1937,7 +1937,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-crd"
-version = "0.0.0-dev"
+version = "23.7.0"
 dependencies = [
  "indoc",
  "rstest",
@@ -1953,7 +1953,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-operator"
-version = "0.0.0-dev"
+version = "23.7.0"
 dependencies = [
  "anyhow",
  "async-trait",
