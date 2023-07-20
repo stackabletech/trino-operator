@@ -1913,7 +1913,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator"
 version = "0.44.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/stackable-version#ab26fcf02d5e48b3eb99be057f7c06eaebdcd4ce"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/stackable-version#8aac715d2cc7bbd8074f25b5aacafa1659855032"
 dependencies = [
  "chrono",
  "clap",
@@ -1931,6 +1931,7 @@ dependencies = [
  "rand",
  "regex",
  "schemars",
+ "semver",
  "serde",
  "serde_json",
  "serde_yaml 0.9.24",
@@ -1947,7 +1948,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator-derive"
 version = "0.44.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/stackable-version#ab26fcf02d5e48b3eb99be057f7c06eaebdcd4ce"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/stackable-version#8aac715d2cc7bbd8074f25b5aacafa1659855032"
 dependencies = [
  "darling 0.20.3",
  "proc-macro2",
@@ -2241,9 +2242,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ac8060a61f8758a61562f6fb53ba3cbe1ca906f001df2e53cccddcdbee91e7c"
+checksum = "55ae70283aba8d2a8b411c695c437fe25b8b5e44e23e780662002fc72fb47a82"
 dependencies = [
  "base64 0.21.2",
  "bitflags 2.3.3",
