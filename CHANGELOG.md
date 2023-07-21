@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Let controller watch `AuthenticationClasses` ([#XXX]).
+
 ## [23.7.0] - 2023-07-14
 
 ### Added
