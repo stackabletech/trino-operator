@@ -75,8 +75,8 @@ async fn main() -> anyhow::Result<()> {
                 watch_namespace.get_api::<TrinoCluster>(&client),
                 watcher::Config::default(),
             );
-            let cluster_store_1 = Arc::new(cluster_controller.store());
-            let cluster_store_2 = cluster_store_1.clone();
+            let catalog_cluster_store = Arc::new(cluster_controller.store());
+            let authentication_class_cluster_store = catalog_cluster_store.clone();
 
             cluster_controller
                 .owns(
@@ -97,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
                     watcher::Config::default(),
                     move |catalog| {
                         // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles
-                        cluster_store_1
+                        catalog_cluster_store
                             .state()
                             .into_iter()
                             // Catalogs can only be referenced within namespaces
@@ -109,7 +109,7 @@ async fn main() -> anyhow::Result<()> {
                     client.get_api::<AuthenticationClass>(&()),
                     watcher::Config::default(),
                     move |authentication_class| {
-                        cluster_store_2
+                        authentication_class_cluster_store
                             .state()
                             .into_iter()
                             .filter(move |trino: &Arc<TrinoCluster>| {
