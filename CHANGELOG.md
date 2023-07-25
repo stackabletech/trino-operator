@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Let controller watch `AuthenticationClasses` ([#449]).
+
+[#449]: https://github.com/stackabletech/trino-operator/pull/449
+
 ## [23.7.0] - 2023-07-14
 
 ### Added
