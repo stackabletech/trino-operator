@@ -19,7 +19,7 @@ clap = "4.3"
 futures = { version = "0.3", features = ["compat"] }
 indoc = "1.0.7"
 openssl = "0.10.42"
-pin-project = "1.0"
+pin-project = "1.1"
 semver = "1.0"
 snafu = "0.7"
 strum = { version = "0.24", features = ["derive"] }
