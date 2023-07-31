@@ -10,11 +10,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.44.0` -> `0.45.0` ([#xxx]).
-- `vector` `0.26.0` -> `0.31.0` ([#xxx]).
+- `operator-rs` `0.44.0` -> `0.45.0` ([#452]).
+- `vector` `0.26.0` -> `0.31.0` ([#452]).
 
 [#449]: https://github.com/stackabletech/trino-operator/pull/449
-[#xxx]: https://github.com/stackabletech/trino-operator/pull/xxx
+[#452]: https://github.com/stackabletech/trino-operator/pull/452
 
 ## [23.7.0] - 2023-07-14
 
