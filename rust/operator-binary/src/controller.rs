@@ -262,8 +262,10 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let client = &ctx.client;
 
-    let resolved_product_image: ResolvedProductImage =
-        trino.spec.image.resolve(DOCKER_IMAGE_BASE_NAME);
+    let resolved_product_image: ResolvedProductImage = trino
+        .spec
+        .image
+        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::CARGO_PKG_VERSION);
 
     let resolved_authentication_classes =
         resolve_authentication_classes(client, trino.get_authentication())
