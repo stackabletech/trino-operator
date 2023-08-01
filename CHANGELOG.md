@@ -4,15 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Default stackableVersion to operator version ([#441]).
+
 ### Fixed
 
 - Let controller watch `AuthenticationClasses` ([#449]).
 
 ### Changed
 
-- `operator-rs` `0.44.0` -> `0.45.0` ([#453]).
+- `operator-rs` `0.44.0` -> `0.45.1` ([#441], [#453]).
 - `vector` `0.26.0` -> `0.31.0` ([#453]).
 
+[#441]: https://github.com/stackabletech/trino-operator/pull/441
 [#449]: https://github.com/stackabletech/trino-operator/pull/449
 [#453]: https://github.com/stackabletech/trino-operator/pull/453
 
