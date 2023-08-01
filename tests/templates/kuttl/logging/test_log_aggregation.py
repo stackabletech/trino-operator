@@ -2,7 +2,7 @@
 import requests
 
 
-def check_received_events():
+def check_sent_events():
     response = requests.post(
         'http://trino-vector-aggregator:8686/graphql',
         json={
@@ -12,8 +12,8 @@ def check_received_events():
                         nodes {
                             componentId
                             metrics {
-                                receivedEventsTotal {
-                                    receivedEventsTotal
+                                sentEventsTotal {
+                                    sentEventsTotal
                                 }
                             }
                         }
@@ -30,12 +30,19 @@ def check_received_events():
 
     transforms = result['data']['transforms']['nodes']
     for transform in transforms:
-        receivedEvents = transform['metrics']['receivedEventsTotal']['receivedEventsTotal']
+        sentEvents = transform['metrics']['sentEventsTotal']
         componentId = transform['componentId']
-        assert receivedEvents > 0, \
-            f'No events were received in "{componentId}".'
+
+        if componentId == 'filteredInvalidEvents':
+            assert sentEvents is None or \
+                sentEvents['sentEventsTotal'] == 0, \
+                'Invalid log events were sent.'
+        else:
+            assert sentEvents is not None and \
+                sentEvents['sentEventsTotal'] > 0, \
+                f'No events were sent in "{componentId}".'
 
 
 if __name__ == '__main__':
-    check_received_events()
+    check_sent_events()
     print('Test successful!')
