@@ -178,10 +178,6 @@ pub enum Error {
     ResolveS3Connection {
         source: stackable_operator::error::Error,
     },
-    #[snafu(display("failed to resolve product image"))]
-    ResolveProductImage {
-        source: stackable_operator::error::Error,
-    },
     #[snafu(display("failed to get associated TrinoCatalogs"))]
     GetCatalogs {
         source: stackable_operator::error::Error,
@@ -269,8 +265,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let resolved_product_image: ResolvedProductImage = trino
         .spec
         .image
-        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::CARGO_PKG_VERSION)
-        .context(ResolveProductImageSnafu)?;
+        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::CARGO_PKG_VERSION);
 
     let resolved_authentication_classes =
         resolve_authentication_classes(client, trino.get_authentication())
