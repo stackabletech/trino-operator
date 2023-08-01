@@ -8,7 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Default stackableVersion to operator version ([#441]).
 
+### Fixed
+
+- Let controller watch `AuthenticationClasses` ([#449]).
+
 [#441]: https://github.com/stackabletech/trino-operator/pull/441
+[#449]: https://github.com/stackabletech/trino-operator/pull/449
 
 ## [23.7.0] - 2023-07-14
 

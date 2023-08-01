@@ -10,6 +10,7 @@ use clap::{crate_description, crate_version, Parser};
 use futures::stream::StreamExt;
 use stackable_operator::{
     cli::{Command, ProductOperatorRun},
+    commons::authentication::AuthenticationClass,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service},
@@ -75,7 +76,9 @@ async fn main() -> anyhow::Result<()> {
                 watch_namespace.get_api::<TrinoCluster>(&client),
                 watcher::Config::default(),
             );
-            let cluster_store = cluster_controller.store();
+            let catalog_cluster_store = Arc::new(cluster_controller.store());
+            let authentication_class_cluster_store = catalog_cluster_store.clone();
+
             cluster_controller
                 .owns(
                     watch_namespace.get_api::<Service>(&client),
@@ -95,12 +98,25 @@ async fn main() -> anyhow::Result<()> {
                     watcher::Config::default(),
                     move |catalog| {
                         // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles
-                        cluster_store
+                        catalog_cluster_store
                             .state()
                             .into_iter()
                             // Catalogs can only be referenced within namespaces
                             .filter(move |cluster| cluster.namespace() == catalog.namespace())
                             .map(|cluster| ObjectRef::from_obj(&*cluster))
+                    },
+                )
+                .watches(
+                    client.get_api::<AuthenticationClass>(&()),
+                    watcher::Config::default(),
+                    move |authentication_class| {
+                        authentication_class_cluster_store
+                            .state()
+                            .into_iter()
+                            .filter(move |trino: &Arc<TrinoCluster>| {
+                                references_authentication_class(trino, &authentication_class)
+                            })
+                            .map(|trino| ObjectRef::from_obj(&*trino))
                     },
                 )
                 .run(
@@ -124,4 +140,17 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn references_authentication_class(
+    trino: &TrinoCluster,
+    authentication_class: &AuthenticationClass,
+) -> bool {
+    let authentication_class_name = authentication_class.name_any();
+    trino
+        .spec
+        .cluster_config
+        .authentication
+        .iter()
+        .any(|a| a.authentication_class == authentication_class_name)
 }

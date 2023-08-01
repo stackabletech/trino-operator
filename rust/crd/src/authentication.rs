@@ -21,7 +21,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoAuthenticationClassRef {
-    authentication_class: String,
+    pub authentication_class: String,
 }
 
 /// Retrieve all provided `AuthenticationClass` references.
