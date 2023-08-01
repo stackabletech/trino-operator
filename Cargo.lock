@@ -1912,8 +1912,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.45.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=fix/stackable-version#32f394bc541ff1fd4af23d9bd311561c64510297"
+version = "0.45.1"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.45.1#94141b9cd2142050e8c976d98c56c568dc85a5bd"
 dependencies = [
  "chrono",
  "clap",
@@ -1946,8 +1946,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator-derive"
-version = "0.45.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=fix/stackable-version#32f394bc541ff1fd4af23d9bd311561c64510297"
+version = "0.45.1"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.45.1#94141b9cd2142050e8c976d98c56c568dc85a5bd"
 dependencies = [
  "darling 0.20.3",
  "proc-macro2",
