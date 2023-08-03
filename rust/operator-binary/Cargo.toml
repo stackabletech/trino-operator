@@ -22,7 +22,7 @@ openssl = "0.10.42"
 pin-project = "1.0"
 semver = "1.0"
 snafu = "0.7"
-strum = { version = "0.24", features = ["derive"] }
+strum = { version = "0.25", features = ["derive"] }
 tokio = { version = "1.24", features = ["full"] }
 tracing = "0.1"
 
