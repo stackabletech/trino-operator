@@ -5,8 +5,7 @@ metadata:
   name: opa
 spec:
   image:
-    productVersion: "{{ test_scenario['values']['opa'].split('-stackable')[0] }}"
-    stackableVersion: "{{ test_scenario['values']['opa'].split('-stackable')[1] }}"
+    productVersion: "{{ test_scenario['values']['opa'] }}"
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
   clusterConfig:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
