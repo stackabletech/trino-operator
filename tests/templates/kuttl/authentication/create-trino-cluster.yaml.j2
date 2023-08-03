@@ -17,8 +17,7 @@ metadata:
   namespace: $NAMESPACE
 spec:
   image:
-    productVersion: \"{{ test_scenario['values']['trino-latest'].split('-stackable')[0] }}\"
-    stackableVersion: \"{{ test_scenario['values']['trino-latest'].split('-stackable')[1] }}\"
+    productVersion: "{{ test_scenario['values']['trino-latest'] }}"
   clusterConfig:
     catalogLabelSelector: {}
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}

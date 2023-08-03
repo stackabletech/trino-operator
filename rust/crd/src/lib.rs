@@ -780,7 +780,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -796,7 +795,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -814,7 +812,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -833,7 +830,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -854,7 +850,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -870,7 +865,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -888,7 +882,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector: {}
             tls:

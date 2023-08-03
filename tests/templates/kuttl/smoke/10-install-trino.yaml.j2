@@ -5,8 +5,7 @@ metadata:
   name: trino
 spec:
   image:
-    productVersion: "{{ test_scenario['values']['trino'].split('-stackable')[0] }}"
-    stackableVersion: "{{ test_scenario['values']['trino'].split('-stackable')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino'] }}"
   clusterConfig:
     catalogLabelSelector:
       matchLabels:

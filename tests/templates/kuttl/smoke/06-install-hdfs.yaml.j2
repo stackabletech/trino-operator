@@ -5,8 +5,7 @@ metadata:
   name: hdfs
 spec:
   image:
-    productVersion: "{{ test_scenario['values']['hdfs'].split('-stackable')[0] }}"
-    stackableVersion: "{{ test_scenario['values']['hdfs'].split('-stackable')[1] }}"
+    productVersion: "{{ test_scenario['values']['hdfs'] }}"
   clusterConfig:
     dfsReplication: 1
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}

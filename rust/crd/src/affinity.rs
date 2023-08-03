@@ -108,7 +108,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
@@ -198,7 +197,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
@@ -417,7 +415,6 @@ mod tests {
         spec:
           image:
             productVersion: "414"
-            stackableVersion: "0.0.0-dev"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
