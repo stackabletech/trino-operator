@@ -62,43 +62,43 @@ customConfig:
       condition: >-
         .pod == "test-trino-worker-automatic-log-config-0" &&
         .container == "prepare"
-    customLogConfigCoordinatorTrino:
+    filteredCustomLogConfigCoordinatorTrino:
       type: filter
       inputs: [vector]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "trino"
-    customLogConfigCoordinatorPwFileUpdater:
+    filteredCustomLogConfigCoordinatorPwFileUpdater:
       type: filter
       inputs: [vector]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "password-file-updater"
-    customLogConfigCoordinatorVector:
+    filteredCustomLogConfigCoordinatorVector:
       type: filter
       inputs: [vector]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "vector"
-    customLogConfigCoordinatorPrepare:
+    filteredCustomLogConfigCoordinatorPrepare:
       type: filter
       inputs: [vector]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "prepare"
-    customLogConfigWorkerTrino:
+    filteredCustomLogConfigWorkerTrino:
       type: filter
       inputs: [vector]
       condition: >-
         .pod == "test-trino-worker-custom-log-config-0" &&
         .container == "trino"
-    customLogConfigWorkerVector:
+    filteredCustomLogConfigWorkerVector:
       type: filter
       inputs: [vector]
       condition: >-
         .pod == "test-trino-worker-custom-log-config-0" &&
         .container == "vector"
-    customLogConfigWorkerPrepare:
+    filteredCustomLogConfigWorkerPrepare:
       type: filter
       inputs: [vector]
       condition: >-
@@ -114,7 +114,7 @@ customConfig:
         is_null(.message)
   sinks:
     out:
-      inputs: [filtered*, custom*]
+      inputs: [filtered*]
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
       type: vector
       address: {{ lookup('env', 'VECTOR_AGGREGATOR') }}
