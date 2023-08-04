@@ -13,27 +13,27 @@
 dimensions:
   - name: trino
     values:
-      - 387-stackable0.0.0-dev
-      - 395-stackable0.0.0-dev
-      - 396-stackable0.0.0-dev
-      - 403-stackable0.0.0-dev
-      - 414-stackable0.0.0-dev
+      - 387
+      - 395
+      - 396
+      - 403
+      - 414
   - name: trino-latest
     values:
-      - 414-stackable0.0.0-dev
+      - 414
   - name: hive
     values:
-      - 2.3.9-stackable0.0.0-dev
-      - 3.1.3-stackable0.0.0-dev
+      - 2.3.9
+      - 3.1.3
   - name: opa
     values:
-      - 0.45.0-stackable0.0.0-dev
+      - 0.45.0
   - name: hdfs
     values:
-      - 3.3.4-stackable0.0.0-dev
+      - 3.3.4
   - name: zookeeper
     values:
-      - 3.8.0-stackable0.0.0-dev
+      - 3.8.0
   - name: s3-use-tls
     values:
       - "true"
