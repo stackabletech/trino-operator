@@ -1749,9 +1749,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.183"
+version = "1.0.171"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32ac8da02677876d532745a130fc9d8e6edfa81a269b107c5b00829b91d8eb3c"
+checksum = "30e27d1e4fd7659406c492fd6cfaf2066ba8773de45ca75e855590f856dc34a9"
 dependencies = [
  "serde_derive",
 ]
@@ -1768,9 +1768,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.183"
+version = "1.0.171"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aafe972d60b0b9bee71a91b92fee2d4fb3c9d7e8f6b179aa99f27203d99a4816"
+checksum = "389894603bd18c46fa56231694f8d827779c0951a667087194cf9de94ed24682"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1902,7 +1902,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator"
 version = "0.45.1"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=bump/kube#5834a4c223d8c25ab7b06deba41af116178008a4"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=bump/kube#b847817f664f03795c8064ce6a6fa40b4cf5b343"
 dependencies = [
  "chrono",
  "clap",
@@ -1936,7 +1936,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator-derive"
 version = "0.45.1"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=bump/kube#5834a4c223d8c25ab7b06deba41af116178008a4"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=bump/kube#b847817f664f03795c8064ce6a6fa40b4cf5b343"
 dependencies = [
  "darling 0.20.3",
  "proc-macro2",
