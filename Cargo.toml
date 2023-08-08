@@ -5,6 +5,10 @@ members = [
 
 [workspace.package]
 version = "0.0.0-dev"
+authors = ["Stackable GmbH <info@stackable.tech>"]
+license = "OSL-3.0"
+edition = "2021"
+repository = "https://github.com/stackabletech/trino-operator"
 
 [workspace.dependencies]
 anyhow = "1.0"

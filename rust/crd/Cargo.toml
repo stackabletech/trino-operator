@@ -1,12 +1,12 @@
 [package]
-authors = ["Stackable GmbH <info@stackable.de>"]
-description = "Contains the Trino CRD structs and utilities"
-edition = "2021"
-license = "OSL-3.0"
 name = "stackable-trino-crd"
-repository = "https://github.com/stackabletech/trino-operator"
-publish = false
+description = "Contains the Trino CRD structs and utilities"
 version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+publish = false
 
 [dependencies]
 semver.workspace = true

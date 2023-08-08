@@ -1,13 +1,13 @@
 [package]
-authors = ["Stackable GmbH <info@stackable.de>"]
-build = "build.rs"
-description = "Stackable Operator for Trino"
-edition = "2021"
-license = "OSL-3.0"
 name = "stackable-trino-operator"
-repository = "https://github.com/stackabletech/trino-operator"
-publish = false
+description = "Stackable Operator for Trino"
 version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+publish = false
+build = "build.rs"
 
 [dependencies]
 stackable-trino-crd = { path = "../crd" }
