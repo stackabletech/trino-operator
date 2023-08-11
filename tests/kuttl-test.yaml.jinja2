@@ -9,9 +9,10 @@ testDirs:
 startKIND: false
 suppress: ["events"]
 parallel: 2
+
 # The timeout (in seconds) is used when namespaces are created or
 # deleted, and, if not overridden, in TestSteps, TestAsserts, and
-# Commands.
+# Commands. If not set, the timeout is 30 seconds by default.
 #
 # The deletion of a namespace can take a while until all resources are
 # gracefully shut down. If the timeout is reached in the meantime, even
