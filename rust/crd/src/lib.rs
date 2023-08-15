@@ -54,6 +54,7 @@ pub const JVM_CONFIG: &str = "jvm.config";
 pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
+pub const JVM_SECURITY_PROPERTIES: &str = "security.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 // config.properties

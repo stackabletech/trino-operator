@@ -19,6 +19,83 @@ spec:
 # node.properties
 ###################################################################################################
 properties:
+  - property:
+      propertyNames:
+        - name: "networkaddress.cache.ttl"
+          kind:
+            type: "file"
+            file: "security.properties"
+      datatype:
+        type: "integer"
+        min: "0"
+      recommendedValues:
+        - fromVersion: "0.0.0"
+          value: "30"
+      roles:
+        - name: "coordinator"
+          required: true
+      asOfVersion: "0.0.0"
+      comment: "TTL for successfully resolved domain names."
+      description: "TTL for successfully resolved domain names."
+
+  - property:
+      propertyNames:
+        - name: "networkaddress.cache.ttl"
+          kind:
+            type: "file"
+            file: "security.properties"
+      datatype:
+        type: "integer"
+        min: "0"
+      recommendedValues:
+        - fromVersion: "0.0.0"
+          value: "30"
+      roles:
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+      comment: "TTL for successfully resolved domain names."
+      description: "TTL for successfully resolved domain names."
+
+  - property:
+      propertyNames:
+        - name: "networkaddress.cache.negative.ttl"
+          kind:
+            type: "file"
+            file: "security.properties"
+      datatype:
+        type: "integer"
+        min: "0"
+      recommendedValues:
+        - fromVersion: "0.0.0"
+          value: "0"
+      roles:
+        - name: "coordinator"
+          required: true
+      asOfVersion: "0.0.0"
+      comment: "TTL for domain names that cannot be resolved."
+      description: "TTL for domain names that cannot be resolved."
+
+  - property:
+      propertyNames:
+        - name: "networkaddress.cache.negative.ttl"
+          kind:
+            type: "file"
+            file: "security.properties"
+      datatype:
+        type: "integer"
+        min: "0"
+      recommendedValues:
+        - fromVersion: "0.0.0"
+          value: "0"
+      roles:
+        - name: "worker"
+          required: true
+      asOfVersion: "0.0.0"
+      comment: "TTL for domain names that cannot be resolved."
+      description: "TTL for domain names that cannot be resolved."
+
+
   - property: &nodeEnvironment
       propertyNames:
         - name: "node.environment"

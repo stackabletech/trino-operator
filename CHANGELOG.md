@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Default stackableVersion to operator version ([#441]).
+- Configuration overrides for the JVM security properties, such as DNS caching ([#460]).
 
 ### Fixed
 
@@ -20,6 +21,7 @@ All notable changes to this project will be documented in this file.
 [#441]: https://github.com/stackabletech/trino-operator/pull/441
 [#449]: https://github.com/stackabletech/trino-operator/pull/449
 [#453]: https://github.com/stackabletech/trino-operator/pull/453
+[#460]: https://github.com/stackabletech/trino-operator/pull/460
 
 ## [23.7.0] - 2023-07-14
 
