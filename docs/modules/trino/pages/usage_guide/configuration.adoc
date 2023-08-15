@@ -52,12 +52,12 @@ The JVM manages it's own cache of successfully resolved host names as well as a 
 
 [source,yaml]
 ----
-  workers:
+  coordinators:
     configOverrides:
       security.properties:
         networkaddress.cache.ttl: "30"
         networkaddress.cache.negative.ttl: "0"
-  coordinators:
+  workers:
     configOverrides:
       security.properties:
         networkaddress.cache.ttl: "30"
