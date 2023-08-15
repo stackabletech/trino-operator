@@ -40,7 +40,9 @@ use stackable_operator::{
     logging::controller::ReconcilerError,
     memory::BinaryMultiple,
     memory::MemoryQuantity,
-    product_config::{self, types::PropertyNameKind, ProductConfigManager},
+    product_config::{
+        self, types::PropertyNameKind, writer::to_java_properties_string, ProductConfigManager,
+    },
     product_config_utils::{
         transform_all_roles_to_config, validate_all_roles_and_groups_config,
         ValidatedRoleConfigByPropertyKind,
@@ -58,7 +60,9 @@ use stackable_operator::{
         statefulset::StatefulSetConditionBuilder,
     },
 };
-use stackable_trino_crd::authentication::resolve_authentication_classes;
+use stackable_trino_crd::{
+    authentication::resolve_authentication_classes, JVM_SECURITY_PROPERTIES,
+};
 use stackable_trino_crd::{
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
@@ -246,6 +250,11 @@ pub enum Error {
     #[snafu(display("Invalid Trino authentication"))]
     InvalidAuthenticationConfig {
         source: crate::authentication::Error,
+    },
+    #[snafu(display("failed to serialize [{JVM_SECURITY_PROPERTIES}] for {}", rolegroup))]
+    JvmSecurityProperties {
+        source: stackable_operator::product_config::writer::PropertiesWriterError,
+        rolegroup: String,
     },
 }
 
@@ -553,6 +562,7 @@ fn build_rolegroup_config_map(
         -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
         -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
         -Djavax.net.ssl.trustStoreType=pkcs12
+        -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
         ",
         heap = heap_size.format_for_java().context(
             FailedToConvertMemoryResourceConfigToJavaHeapSnafu {
@@ -707,6 +717,23 @@ fn build_rolegroup_config_map(
     }
 
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
+
+    let jvm_sec_props: BTreeMap<String, Option<String>> = config
+        .get(&PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()))
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(k, v)| (k, Some(v)))
+        .collect();
+
+    cm_conf_data.insert(
+        JVM_SECURITY_PROPERTIES.to_string(),
+        to_java_properties_string(jvm_sec_props.iter()).with_context(|_| {
+            JvmSecurityPropertiesSnafu {
+                rolegroup: rolegroup_ref.role_group.clone(),
+            }
+        })?,
+    );
 
     ConfigMapBuilder::new()
         .metadata(
@@ -1125,6 +1152,7 @@ fn validated_product_config(
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+        PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
     ];
 
     roles.insert(
