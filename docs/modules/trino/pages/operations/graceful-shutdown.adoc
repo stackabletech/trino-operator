@@ -11,7 +11,7 @@ Once a worker Pod is asked to terminate, the `PreStop` hook is executed and the 
 
 1. The worker goes into `SHUTTING_DOWN` state.
 2. The worker sleeps for 60 seconds to ensure that the coordinator has noticed the shutdown and stops scheduling new tasks on the worker.
-3. The worker now waits till all task running on it complete. This can take possible as long as the longest running query takes.
+3. The worker now waits till all tasks running on it complete. This will take as long as the longest running query takes.
 4. The worker sleeps for 60 seconds to ensure that the coordinator has
 noticed that all tasks are complete
 5. The `PreStop` hook will never return, but the JVM will be shut down by the graceful shutdown mechanism.
