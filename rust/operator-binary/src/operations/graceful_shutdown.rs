@@ -77,6 +77,3 @@ pub fn add_graceful_shutdown_config(
         ..Default::default()
     });
 }
-
-// curl -v --insecure -X PUT -d '"SHUTTING_DOWN"' -H 'Content-type: application/json' -H 'X-Trino-User: admin' https://127.0.0.1:8443/v1/info/state
-// curl --insecure 'X-Trino-User: admin' https://127.0.0.1:8443/v1/info/state
