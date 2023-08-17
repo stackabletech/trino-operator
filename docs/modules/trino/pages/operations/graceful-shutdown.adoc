@@ -40,7 +40,7 @@ This can be circumvented by using https://trino.io/docs/current/admin/fault-tole
 Until then, you have to use configOverrides to enable it.
 
 == Kubernetes cluster requirements
-Pods need to have the ability to take as long as they need to gracefully shutdown without getting killed.
+Pods need to have the ability to take as long as they need to gracefully shut down without getting killed.
 
 Imagine the situation that you set the graceful shutdown period to 24 hours (using `spec.clusterConfig.gracefulShutdownSeconds: 86400`).
 in case of e.g. an on-prem Kubernetes cluster the Kubernetes infrastructure team wants to drain the Kubernetes node, so that they can do regular maintenance, such as rebooting the node. They will have some upper limit on how long they will wait for Pods on the Node to terminate, until they will reboot the Kubernetes node regardless.
