@@ -1,3 +1,5 @@
+//! See docs/modules/trino/pages/operations/graceful-shutdown.adoc for details
+//! on how the implementation works
 use std::collections::BTreeMap;
 
 use indoc::formatdoc;
@@ -17,18 +19,10 @@ pub fn graceful_shutdown_config_properties(
     let graceful_shutdown_seconds = trino.spec.cluster_config.graceful_shutdown_seconds;
 
     match role {
-        TrinoRole::Coordinator => BTreeMap::from([
-            // If we set the max execution time to the same value as the grace shutdown period,
-            // queries are guaranteed to pass, unless a Pod is force-killed or lost by e.g.
-            // a Kubernetes node failure.
-            // Users can obviously use configOverride to increase this value, but than need to accept
-            // the risk of query failures of query taking longer than "shutdown.grace-period".
-            // This changes obviously once fault tolerant mechanism are enabled.
-            (
-                "query.max-execution-time".to_string(),
-                Some(format!("{graceful_shutdown_seconds}s")),
-            ),
-        ]),
+        TrinoRole::Coordinator => BTreeMap::from([(
+            "query.max-execution-time".to_string(),
+            Some(format!("{graceful_shutdown_seconds}s")),
+        )]),
         TrinoRole::Worker => BTreeMap::from([(
             "shutdown.grace-period".to_string(),
             Some(format!("{GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS}s")),

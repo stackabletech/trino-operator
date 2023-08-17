@@ -36,6 +36,8 @@ spec:
 ----
 
 Please keep in mind, that queries taking longer than the graceful shutdown period are now subject to failure when a Trino worker dies.
+This can be circumvented by using https://trino.io/docs/current/admin/fault-tolerant-execution.html[Fault-tolerant execution], which support for might be added in the future.
+Until then you have to use configOverrides to enable it.
 
 == Kubernetes cluster Requirements
 Pods need to have the ability to take as long as they need to gracefully shutdown without getting killed.
