@@ -121,16 +121,16 @@ pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
-/// The default time the trino worker has to properly shut down.
+/// The default time the trino workers have to properly shut down.
 pub const DEFAULT_GRACEFUL_SHUTDOWN_SECONDS: u64 = 60 * 60;
 
 /// Corresponds to "shutdown.grace-period", which defaults to 2 min.
-/// This seems a bit high, as Pod termination - event with no queries running on the worker -
+/// This seems a bit high, as Pod termination - even with no queries running on the worker -
 /// takes at least 4 minutes (see https://trino.io/docs/current/admin/graceful-shutdown.html).
-/// So we set to 1 minute, so the Pod termination takes at least 2 minutes.
+/// So we set it to 1 minute, so the Pod termination takes at least 2 minutes.
 pub const GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS: u64 = 60;
 
-/// Safety puffer to guarantee all graceful shutdown works every time.
+/// Safety puffer to guarantee the graceful shutdown works every time.
 pub const GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD_SECONDS: u64 = 30;
 
 #[derive(Snafu, Debug)]
