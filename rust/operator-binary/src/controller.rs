@@ -3,6 +3,7 @@ use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
+    operations::{add_graceful_shutdown_config, graceful_shutdown_config_properties},
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
 };
 
@@ -613,6 +614,8 @@ fn build_rolegroup_config_map(
                 dynamic_resolved_config
                     .insert(DISCOVERY_URI.to_string(), Some(discovery.discovery_uri()));
 
+                dynamic_resolved_config.extend(graceful_shutdown_config_properties(trino, role));
+
                 // The log format used by Trino
                 dynamic_resolved_config.insert(LOG_FORMAT.to_string(), Some("json".to_string()));
                 // The path to the log file used by Trino
@@ -864,6 +867,7 @@ fn build_rolegroup_statefulset(
         &mut cb_prepare,
         &mut cb_trino,
     );
+    add_graceful_shutdown_config(trino, trino_role, &mut pod_builder, &mut cb_trino);
 
     // Add the needed stuff for catalogs
     env.extend(
@@ -902,7 +906,13 @@ fn build_rolegroup_statefulset(
 
     let container_prepare = cb_prepare
         .image_from_product_image(resolved_product_image)
-        .command(vec!["/bin/bash".to_string(), "-c".to_string()])
+        .command(vec![
+            "/bin/bash".to_string(),
+            "-x".to_string(),
+            "-euo".to_string(),
+            "pipefail".to_string(),
+            "-c".to_string(),
+        ])
         .args(vec![prepare_args.join(" && ")])
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
@@ -920,7 +930,13 @@ fn build_rolegroup_statefulset(
 
     let container_trino = cb_trino
         .image_from_product_image(resolved_product_image)
-        .command(vec!["/bin/bash".to_string(), "-c".to_string()])
+        .command(vec![
+            "/bin/bash".to_string(),
+            "-x".to_string(),
+            "-euo".to_string(),
+            "pipefail".to_string(),
+            "-c".to_string(),
+        ])
         .args(command::container_trino_args(
             trino_authentication_config,
             catalogs,

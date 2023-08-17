@@ -121,6 +121,18 @@ pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
+/// The default time the trino worker has to properly shut down.
+pub const DEFAULT_GRACEFUL_SHUTDOWN_SECONDS: u64 = 60 * 60;
+
+/// Corresponds to "shutdown.grace-period", which defaults to 2 min.
+/// This seems a bit high, as Pod termination - event with no queries running on the worker -
+/// takes at least 4 minutes (see https://trino.io/docs/current/admin/graceful-shutdown.html).
+/// So we set to 1 minute, so the Pod termination takes at least 2 minutes.
+pub const GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS: u64 = 60;
+
+/// Safety puffer to guarantee all graceful shutdown works every time.
+pub const GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD_SECONDS: u64 = 30;
+
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("object has no namespace associated"))]
@@ -205,6 +217,13 @@ pub struct TrinoClusterConfig {
     /// * external-stable: Use a LoadBalancer service
     #[serde(default)]
     pub listener_class: CurrentlySupportedListenerClasses,
+
+    #[serde(default = "default_graceful_shutdown_seconds")]
+    pub graceful_shutdown_seconds: u64,
+}
+
+fn default_graceful_shutdown_seconds() -> u64 {
+    DEFAULT_GRACEFUL_SHUTDOWN_SECONDS
 }
 
 // TODO: Temporary solution until listener-operator is finished
@@ -697,6 +716,20 @@ impl TrinoCluster {
     pub fn get_internal_tls(&self) -> Option<&str> {
         let spec: &TrinoClusterSpec = &self.spec;
         spec.cluster_config.tls.internal_secret_class.as_deref()
+    }
+
+    pub fn exposed_port(&self) -> u16 {
+        match self.get_server_tls() {
+            Some(_) => HTTPS_PORT,
+            None => HTTP_PORT,
+        }
+    }
+
+    pub fn exposed_protocol(&self) -> &str {
+        match self.get_server_tls() {
+            Some(_) => HTTPS_PORT_NAME,
+            None => HTTP_PORT_NAME,
+        }
     }
 
     /// Returns if the HTTP port should be exposed

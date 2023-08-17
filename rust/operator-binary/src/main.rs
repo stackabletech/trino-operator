@@ -2,6 +2,7 @@ mod authentication;
 mod catalog;
 mod command;
 mod controller;
+mod operations;
 mod product_logging;
 
 use crate::controller::{CONTROLLER_NAME, OPERATOR_NAME};

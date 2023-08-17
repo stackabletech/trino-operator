@@ -30,5 +30,5 @@ strum = { version = "0.25", features = ["derive"] }
 tokio = { version = "1.29", features = ["full"] }
 tracing = "0.1"
 
-# [patch."https://github.com/stackabletech/operator-rs.git"]
-# stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", branch = "main" }
+[patch."https://github.com/stackabletech/operator-rs.git"]
+stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", rev = "8b4ac8b1ef71d59c648beb44ae14ca185060ef84" }
