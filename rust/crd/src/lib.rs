@@ -126,7 +126,7 @@ pub const DEFAULT_GRACEFUL_SHUTDOWN_SECONDS: u64 = 60 * 60;
 
 /// Corresponds to "shutdown.grace-period", which defaults to 2 min.
 /// This seems a bit high, as Pod termination - even with no queries running on the worker -
-/// takes at least 4 minutes (see https://trino.io/docs/current/admin/graceful-shutdown.html).
+/// takes at least 4 minutes (see <https://trino.io/docs/current/admin/graceful-shutdown.html>).
 /// So we set it to 1 minute, so the Pod termination takes at least 2 minutes.
 pub const GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS: u64 = 60;
 
