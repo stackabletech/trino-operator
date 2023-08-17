@@ -717,14 +717,14 @@ fn build_rolegroup_config_map(
         ]),
         // The default access control with the name "default" allows everything but
         // impersonation and graceful shutdown. As we need the user "admin" to have the permissions
-        // to gracefully shit down workers we default to the use of "allow-all".
+        // to gracefully shut down workers we default to the use of "allow-all".
         //
         // Not using OPA is meant as a testing environment anyway, as there is no authorization at all,
         // so this elevation of privileges is acceptable compared for the need for graceful shutdown.
         //
         // If this however imposes a problem we could
         // a.) let the user use OPA
-        // b.) or write a custom Trino Authorizer that behaves the same way the "default" on does,
+        // b.) or write a custom Trino Authorizer that behaves the same way the "default" one does,
         //     with the difference, that the user "admin" is allowed to trigger a graceful shutdown.
         None => BTreeMap::from([(
             "access-control.name".to_string(),

@@ -57,7 +57,7 @@ pub fn add_graceful_shutdown_config(
                 "pipefail".to_string(),
                 "-c".to_string(),
                 // The curl does not block, but the worker process will terminate automatically once the
-                // graceful shutdown is complete. As the Pod get's a normal SIGINT sent once the hook
+                // graceful shutdown is complete. As the Pod gets a normal SIGINT sent once the hook
                 // exited, we need to block this call for at least the same time terminationGracePeriodSeconds
                 // does, so that we don't kill the Pod before the terminationGracePeriodSeconds is reached.
 
