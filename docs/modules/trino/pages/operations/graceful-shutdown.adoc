@@ -2,7 +2,7 @@
 
 == How it works
 Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[graceful shutdown] of the workers.
-This operator always adds an https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[`PreStop` hook] to gracefully shut them down.
+This operator always adds a https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[`PreStop` hook] to gracefully shut them down.
 No additional configuration is needed, this guide is intended for users that need to tweak this mechanism.
 
 The default graceful shutdown period is 1 hour, but it can be tuned using `spec.clusterConfig.gracefulShutdownSeconds`.
@@ -15,7 +15,7 @@ Once a worker Pod is asked to terminate, the `PreStop` hook is executed and the 
 4. The worker sleeps for 60 seconds to ensure that the coordinator has
 noticed that all tasks are complete
 5. The `PreStop` hook will never return, but the JVM will be shut down by the graceful shutdown mechanism.
-6. When the graceful shutdown is not quick enough (e.g. a query runs longer than the graceful shutdown period), after `<graceful shutdown period> + 60s of step 2 + 60s of step 4 + 30s safety overhead` the Pod get's killed, regardless if it has shut down gracefully. This is achieved by setting `terminationGracePeriodSeconds` on the worker Pods.
+6. When the graceful shutdown is not quick enough (e.g. a query runs longer than the graceful shutdown period), after `<graceful shutdown period> + 60s of step 2 + 60s of step 4 + 30s safety overhead` the Pod gets killed, regardless if it has shut down gracefully or not. This is achieved by setting `terminationGracePeriodSeconds` on the worker Pods.
 
 == Implications
 All queries that take less than the graceful shutdown period are guaranteed to not be disturbed by regular termination of Pods.
@@ -37,13 +37,13 @@ spec:
 
 Please keep in mind, that queries taking longer than the graceful shutdown period are now subject to failure when a Trino worker dies.
 This can be circumvented by using https://trino.io/docs/current/admin/fault-tolerant-execution.html[Fault-tolerant execution], which support for might be added in the future.
-Until then you have to use configOverrides to enable it.
+Until then, you have to use configOverrides to enable it.
 
 == Kubernetes cluster requirements
 Pods need to have the ability to take as long as they need to gracefully shutdown without getting killed.
 
 Imagine the situation that you set the graceful shutdown period to 24 hours (using `spec.clusterConfig.gracefulShutdownSeconds: 86400`).
-in case of e.g. an on-prem Kubernetes cluster the Kubernetes infrastructure team want's to drain the Kubernetes node, so that they can do regular maintenance, such as rebooting the node. They will have some upper limit on how long they will wait for Pods on the Node to terminate, until they will reboot the Kubernetes node regardless.
+in case of e.g. an on-prem Kubernetes cluster the Kubernetes infrastructure team wants to drain the Kubernetes node, so that they can do regular maintenance, such as rebooting the node. They will have some upper limit on how long they will wait for Pods on the Node to terminate, until they will reboot the Kubernetes node regardless.
 
 When setting up a production cluster, you need to check with your Kubernetes administrator (or cloud provider) what time period your Pods have to terminate gracefully.
 It is not sufficient to have a look at the `spec.terminationGracePeriodSeconds` and come to the conclusion that the Pods have e.g. 24 hours to gracefully shut down, as e.g. an administrator reboots the Kubernetes node before the time period is reached.
