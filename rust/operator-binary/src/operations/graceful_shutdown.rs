@@ -64,9 +64,9 @@ pub fn add_graceful_shutdown_config(
                 // FIXME: Once we have fully fledged OPA support we need to make sure that the user we choose here (e.g. admin)
                 // has the permissions to trigger a graceful shutdown by e.g. inserting the needed OPA rules transparently.
                 formatdoc!("
-                    curl -v --insecure -X PUT -d '\"SHUTTING_DOWN\"' -H 'Content-type: application/json' -H 'X-Trino-User: admin' {protocol}://{host}:{port}/v1/info/state
-                    echo 'Successfully sent graceful shutdown command'
-                    echo 'Sleeping {termination_grace_period_seconds} seconds'
+                    curl -v --fail --insecure -X PUT -d '\"SHUTTING_DOWN\"' -H 'Content-type: application/json' -H 'X-Trino-User: admin' {protocol}://{host}:{port}/v1/info/state >> /proc/1/fd/1 2>&1
+                    echo 'Successfully sent graceful shutdown command' >> /proc/1/fd/1 2>&1
+                    echo 'Sleeping {termination_grace_period_seconds} seconds' >> /proc/1/fd/1 2>&1
                     sleep {termination_grace_period_seconds}",
                     protocol = trino.exposed_protocol(),
                     host = "127.0.0.1",

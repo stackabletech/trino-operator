@@ -47,3 +47,16 @@ in case of e.g. an on-prem Kubernetes cluster the Kubernetes infrastructure team
 
 When setting up a production cluster, you need to check with your Kubernetes administrator (or cloud provider) what time period your Pods have to terminate gracefully.
 It is not sufficient to have a look at the `spec.terminationGracePeriodSeconds` and come to the conclusion that the Pods have e.g. 24 hours to gracefully shut down, as e.g. an administrator reboots the Kubernetes node before the time period is reached.
+
+== OPA requirements
+In case you use OPA to authorize Trino requests, you need to make sure the user `admin` is authorized to trigger a graceful shutdown of the workers.
+You can achieve this e.g. by adding the following rule, which grants `admin` the permissions to do anything - including graceful shutdown.
+
+[source,rego]
+----
+allow {
+  input.context.identity.user == "admin"
+}
+----
+
+NOTE: We plan to add CustomResources, so that you can define your Trino ACLs via Kubernetes objects. In this case the trino-operator will generate the rego-rules for you, and will add the needed rules for graceful shutdown for you.

@@ -704,21 +704,39 @@ fn build_rolegroup_config_map(
         }
     }
 
-    if let Some(opa_connect) = opa_connect_string {
-        let mut opa_config = BTreeMap::new();
-        opa_config.insert(
+    let access_control_properties = match opa_connect_string {
+        Some(opa_connect_string) => BTreeMap::from([
+            (
+                "access-control.name".to_string(),
+                Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
+            ),
+            (
+                "opa.policy.uri".to_string(),
+                Some(opa_connect_string.to_string()),
+            ),
+        ]),
+        // The default access control with the name "default" allows everything but
+        // impersonation and graceful shutdown. As we need the user "admin" to have the permissions
+        // to gracefully shit down workers we default to the use of "allow-all".
+        //
+        // Not using OPA is meant as a testing environment anyway, as there is no authorization at all,
+        // so this elevation of privileges is acceptable compared for the need for graceful shutdown.
+        //
+        // If this however imposes a problem we could
+        // a.) let the user use OPA
+        // b.) or write a custom Trino Authorizer that behaves the same way the "default" on does,
+        //     with the difference, that the user "admin" is allowed to trigger a graceful shutdown.
+        None => BTreeMap::from([(
             "access-control.name".to_string(),
-            Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
-        );
-        opa_config.insert("opa.policy.uri".to_string(), Some(opa_connect.to_string()));
+            Some("allow-all".to_string()),
+        )]),
+    };
 
-        let config_properties =
-            product_config::writer::to_java_properties_string(opa_config.iter())
-                .context(FailedToWriteJavaPropertiesSnafu)?;
+    let config_properties =
+        product_config::writer::to_java_properties_string(access_control_properties.iter())
+            .context(FailedToWriteJavaPropertiesSnafu)?;
 
-        cm_conf_data.insert(ACCESS_CONTROL_PROPERTIES.to_string(), config_properties);
-    }
-
+    cm_conf_data.insert(ACCESS_CONTROL_PROPERTIES.to_string(), config_properties);
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
 
     let jvm_sec_props: BTreeMap<String, Option<String>> = config
