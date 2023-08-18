@@ -25,10 +25,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
 snafu = "0.7"
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.46.0" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.48.0" }
 strum = { version = "0.25", features = ["derive"] }
 tokio = { version = "1.29", features = ["full"] }
 tracing = "0.1"
 
-[patch."https://github.com/stackabletech/operator-rs.git"]
-stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", rev = "8b4ac8b1ef71d59c648beb44ae14ca185060ef84" }
+# [patch."https://github.com/stackabletech/operator-rs.git"]
+# stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", branch = "main" }
