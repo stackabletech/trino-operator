@@ -1,0 +1,64 @@
+= Graceful shutdown
+
+== How it works
+Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[graceful shutdown] of the workers.
+This operator always adds a https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[`PreStop` hook] to gracefully shut them down.
+No additional configuration is needed, this guide is intended for users that need to tweak this mechanism.
+
+The default graceful shutdown period is 1 hour, but it can be tuned using `spec.clusterConfig.gracefulShutdownSeconds`.
+
+Once a worker Pod is asked to terminate, the `PreStop` hook is executed and the following timeline occurs:
+
+1. The worker goes into `SHUTTING_DOWN` state.
+2. The worker sleeps for 60 seconds to ensure that the coordinator has noticed the shutdown and stops scheduling new tasks on the worker.
+3. The worker now waits till all tasks running on it complete. This will take as long as the longest running query takes.
+4. The worker sleeps for 60 seconds to ensure that the coordinator has
+noticed that all tasks are complete
+5. The `PreStop` hook will never return, but the JVM will be shut down by the graceful shutdown mechanism.
+6. When the graceful shutdown is not quick enough (e.g. a query runs longer than the graceful shutdown period), after `<graceful shutdown period> + 60s of step 2 + 60s of step 4 + 30s safety overhead` the Pod gets killed, regardless if it has shut down gracefully or not. This is achieved by setting `terminationGracePeriodSeconds` on the worker Pods.
+
+WARNING: As of 23.7, the secret-operator issues TLS certificates with a lifetime of 24h. It also adds an annotation to the Pod, so that it is restarted 30 minutes before the certificate expires (23.5h hours in this case). Bot can not be configured. This results in all Pod using https (both coordinator and workers in a typical setup) restarting every 23.5 hours. This problem will be addressed in a future release by e.g. making the certification lifetime configurable.
+
+== Implications
+All queries that take less than the graceful shutdown period are guaranteed to not be disturbed by regular termination of Pods.
+They can obviously still fail when e.g. a Kubernetes node dies completely or the Pod does not get the time it takes (e.g. 1h by default) to properly gracefully shut down.
+
+Because of this reason the operator automatically restricts the execution time of queries to the configured graceful shutdown period using the Trino configuration `query.max-execution-time=3600s`.
+This causes all queries that take longer than 1 hour to fail with the error message `Query failed: Query exceeded the maximum execution time limit of 3600s.00s`.
+
+In case you need to execute queries that take longer than the configured graceful shutdown period, you need to increase the `query.max-execution-time=3600s` as follows:
+
+[source,yaml]
+----
+spec:
+  coordinators:
+    configOverrides:
+      config.properties:
+        query.max-execution-time: 24h
+----
+
+Please keep in mind, that queries taking longer than the graceful shutdown period are now subject to failure when a Trino worker dies.
+This can be circumvented by using https://trino.io/docs/current/admin/fault-tolerant-execution.html[Fault-tolerant execution], which support for might be added in the future.
+Until then, you have to use configOverrides to enable it.
+
+== Kubernetes cluster requirements
+Pods need to have the ability to take as long as they need to gracefully shut down without getting killed.
+
+Imagine the situation that you set the graceful shutdown period to 24 hours (using `spec.clusterConfig.gracefulShutdownSeconds: 86400`).
+in case of e.g. an on-prem Kubernetes cluster the Kubernetes infrastructure team wants to drain the Kubernetes node, so that they can do regular maintenance, such as rebooting the node. They will have some upper limit on how long they will wait for Pods on the Node to terminate, until they will reboot the Kubernetes node regardless.
+
+When setting up a production cluster, you need to check with your Kubernetes administrator (or cloud provider) what time period your Pods have to terminate gracefully.
+It is not sufficient to have a look at the `spec.terminationGracePeriodSeconds` and come to the conclusion that the Pods have e.g. 24 hours to gracefully shut down, as e.g. an administrator reboots the Kubernetes node before the time period is reached.
+
+== OPA requirements
+In case you use OPA to authorize Trino requests, you need to make sure the user `admin` is authorized to trigger a graceful shutdown of the workers.
+You can achieve this e.g. by adding the following rule, which grants `admin` the permissions to do anything - including graceful shutdown.
+
+[source,rego]
+----
+allow {
+  input.context.identity.user == "admin"
+}
+----
+
+NOTE: We plan to add CustomResources, so that you can define your Trino ACLs via Kubernetes objects. In this case the trino-operator will generate the rego-rules for you, and will add the needed rules for graceful shutdown for you.

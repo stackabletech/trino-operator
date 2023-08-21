@@ -1,9 +1,9 @@
 ---
 apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
-timeout: 300
+timeout: 600
 commands:
-  - script: kubectl -n $NAMESPACE wait --for=condition=reconciliationPaused trinoclusters.trino.stackable.tech/trino --timeout 301s
+  - script: kubectl -n $NAMESPACE wait --for=condition=reconciliationPaused trinoclusters.trino.stackable.tech/trino --timeout 601s
 ---
 apiVersion: apps/v1
 kind: StatefulSet
