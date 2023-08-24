@@ -45,6 +45,7 @@ pub fn add_graceful_shutdown_config(
     let termination_grace_period = graceful_shutdown_timeout
         + 2 * GRACEFUL_SHUTDOWN_GRACE_PERIOD
         + GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD;
+    let termination_grace_period_seconds = termination_grace_period.as_secs();
 
     pod_builder.termination_grace_period_seconds(termination_grace_period.as_secs() as i64);
     trino_builder.lifecycle_pre_stop(LifecycleHandler {
@@ -70,7 +71,6 @@ pub fn add_graceful_shutdown_config(
                     protocol = trino.exposed_protocol(),
                     host = "127.0.0.1",
                     port = trino.exposed_port(),
-                    termination_grace_period_seconds = termination_grace_period.as_secs(),
                 ),
             ]),
         }),
