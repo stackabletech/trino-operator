@@ -16,7 +16,11 @@ pub fn graceful_shutdown_config_properties(
     trino: &TrinoCluster,
     role: &TrinoRole,
 ) -> BTreeMap<String, Option<String>> {
-    let graceful_shutdown_seconds = trino.spec.cluster_config.graceful_shutdown_seconds;
+    let graceful_shutdown_seconds = trino
+        .spec
+        .cluster_config
+        .graceful_shutdown_timeout
+        .as_secs();
 
     match role {
         TrinoRole::Coordinator => BTreeMap::from([(
@@ -42,7 +46,11 @@ pub fn add_graceful_shutdown_config(
         return;
     }
 
-    let graceful_shutdown_seconds = trino.spec.cluster_config.graceful_shutdown_seconds;
+    let graceful_shutdown_seconds = trino
+        .spec
+        .cluster_config
+        .graceful_shutdown_timeout
+        .as_secs();
     let termination_grace_period_seconds = graceful_shutdown_seconds
         + 2 * GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS
         + GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD_SECONDS;

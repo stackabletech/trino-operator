@@ -3,14 +3,13 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
+use crate::authentication::TrinoAuthenticationClassRef;
 use crate::discovery::TrinoPodRef;
 
 use affinity::get_affinity;
 use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-
-use crate::authentication::TrinoAuthenticationClassRef;
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
@@ -36,7 +35,7 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
 };
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr, time::Duration};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
@@ -218,12 +217,18 @@ pub struct TrinoClusterConfig {
     #[serde(default)]
     pub listener_class: CurrentlySupportedListenerClasses,
 
-    #[serde(default = "default_graceful_shutdown_seconds")]
-    pub graceful_shutdown_seconds: u64,
+    /// Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`.
+    /// Consult the http://todo.com trino-operator documentation for details.
+    #[serde(
+        default = "default_graceful_shutdown_timeout",
+        with = "humantime_serde"
+    )]
+    #[schemars(with = "String")] // See https://github.com/GREsau/schemars/issues/89
+    pub graceful_shutdown_timeout: Duration,
 }
 
-fn default_graceful_shutdown_seconds() -> u64 {
-    DEFAULT_GRACEFUL_SHUTDOWN_SECONDS
+fn default_graceful_shutdown_timeout() -> Duration {
+    Duration::from_secs(DEFAULT_GRACEFUL_SHUTDOWN_SECONDS)
 }
 
 // TODO: Temporary solution until listener-operator is finished

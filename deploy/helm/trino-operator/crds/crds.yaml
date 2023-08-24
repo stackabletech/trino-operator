@@ -85,11 +85,10 @@ spec:
                           description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                           type: object
                       type: object
-                    gracefulShutdownSeconds:
-                      default: 3600
-                      format: uint64
-                      minimum: 0.0
-                      type: integer
+                    gracefulShutdownTimeout:
+                      default: 1h
+                      description: Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`. Consult the http://todo.com trino-operator documentation for details.
+                      type: string
                     listenerClass:
                       default: cluster-internal
                       description: |-
