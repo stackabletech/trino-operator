@@ -21,5 +21,5 @@
 *** xref:trino:usage_guide/catalogs/iceberg.adoc[]
 *** xref:trino:usage_guide/catalogs/tpcds.adoc[]
 *** xref:trino:usage_guide/catalogs/tpch.adoc[]
-* xref:trino:operations/index.adoc[]
-** xref:trino:operations/graceful-shutdown.adoc[]
+** xref:trino:usage_guide/operations/index.adoc[]
+*** xref:trino:usage_guide/operations/graceful-shutdown.adoc[]
