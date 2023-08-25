@@ -931,4 +931,60 @@ mod tests {
         assert_eq!(trino.get_internal_tls(), None);
         assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
     }
+
+    #[test]
+    fn test_graceful_shutdown_timeout() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "414"
+          clusterConfig:
+            catalogLabelSelector: {}
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.spec.cluster_config.graceful_shutdown_timeout,
+            DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "414"
+          clusterConfig:
+            catalogLabelSelector: {}
+            gracefulShutdownTimeout: 2d
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.spec.cluster_config.graceful_shutdown_timeout,
+            Duration::from_secs(2 * 24 * 60 * 60)
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "414"
+          clusterConfig:
+            catalogLabelSelector: {}
+            gracefulShutdownTimeout: 42 # suffix is missing
+        "#;
+        let trino: Result<TrinoCluster, serde_yaml::Error> = serde_yaml::from_str(input);
+        assert!(trino.is_err());
+        if let Err(err) = trino {
+            assert_eq!(err.to_string(), "spec.clusterConfig.gracefulShutdownTimeout: invalid value: string \"42\", expected a duration at line 11 column 38".to_string());
+        }
+    }
 }
