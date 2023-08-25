@@ -218,7 +218,7 @@ pub struct TrinoClusterConfig {
     pub listener_class: CurrentlySupportedListenerClasses,
 
     /// Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`.
-    /// Consult the http://todo.com trino-operator documentation for details.
+    /// Consult the trino-operator documentation for details.
     #[serde(
         default = "default_graceful_shutdown_timeout",
         with = "humantime_serde"

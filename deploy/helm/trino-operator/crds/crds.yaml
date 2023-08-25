@@ -87,7 +87,7 @@ spec:
                       type: object
                     gracefulShutdownTimeout:
                       default: 1h
-                      description: Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`. Consult the http://todo.com trino-operator documentation for details.
+                      description: Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`. Consult the trino-operator documentation for details.
                       type: string
                     listenerClass:
                       default: cluster-internal
