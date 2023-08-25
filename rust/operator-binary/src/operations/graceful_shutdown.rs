@@ -8,24 +8,23 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
 };
 use stackable_trino_crd::{
-    TrinoCluster, TrinoRole, GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS,
-    GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD_SECONDS,
+    TrinoCluster, TrinoRole, GRACEFUL_SHUTDOWN_GRACE_PERIOD, GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD,
 };
 
 pub fn graceful_shutdown_config_properties(
     trino: &TrinoCluster,
     role: &TrinoRole,
 ) -> BTreeMap<String, Option<String>> {
-    let graceful_shutdown_seconds = trino.spec.cluster_config.graceful_shutdown_seconds;
+    let graceful_shutdown_timeout = trino.spec.cluster_config.graceful_shutdown_timeout;
 
     match role {
         TrinoRole::Coordinator => BTreeMap::from([(
             "query.max-execution-time".to_string(),
-            Some(format!("{graceful_shutdown_seconds}s")),
+            Some(format!("{}s", graceful_shutdown_timeout.as_secs())),
         )]),
         TrinoRole::Worker => BTreeMap::from([(
             "shutdown.grace-period".to_string(),
-            Some(format!("{GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS}s")),
+            Some(format!("{}s", GRACEFUL_SHUTDOWN_GRACE_PERIOD.as_secs())),
         )]),
     }
 }
@@ -42,12 +41,13 @@ pub fn add_graceful_shutdown_config(
         return;
     }
 
-    let graceful_shutdown_seconds = trino.spec.cluster_config.graceful_shutdown_seconds;
-    let termination_grace_period_seconds = graceful_shutdown_seconds
-        + 2 * GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS
-        + GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD_SECONDS;
+    let graceful_shutdown_timeout = trino.spec.cluster_config.graceful_shutdown_timeout;
+    let termination_grace_period = graceful_shutdown_timeout
+        + 2 * GRACEFUL_SHUTDOWN_GRACE_PERIOD
+        + GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD;
+    let termination_grace_period_seconds = termination_grace_period.as_secs();
 
-    pod_builder.termination_grace_period_seconds(termination_grace_period_seconds as i64);
+    pod_builder.termination_grace_period_seconds(termination_grace_period.as_secs() as i64);
     trino_builder.lifecycle_pre_stop(LifecycleHandler {
         exec: Some(ExecAction {
             command: Some(vec![

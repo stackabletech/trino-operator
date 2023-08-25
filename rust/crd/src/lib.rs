@@ -3,14 +3,13 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
+use crate::authentication::TrinoAuthenticationClassRef;
 use crate::discovery::TrinoPodRef;
 
 use affinity::get_affinity;
 use catalog::TrinoCatalog;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-
-use crate::authentication::TrinoAuthenticationClassRef;
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
@@ -36,7 +35,7 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
 };
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr, time::Duration};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
@@ -122,16 +121,16 @@ pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
 /// The default time the trino workers have to properly shut down.
-pub const DEFAULT_GRACEFUL_SHUTDOWN_SECONDS: u64 = 60 * 60;
+pub const DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 
 /// Corresponds to "shutdown.grace-period", which defaults to 2 min.
 /// This seems a bit high, as Pod termination - even with no queries running on the worker -
 /// takes at least 4 minutes (see <https://trino.io/docs/current/admin/graceful-shutdown.html>).
 /// So we set it to 1 minute, so the Pod termination takes at least 2 minutes.
-pub const GRACEFUL_SHUTDOWN_GRACE_PERIOD_SECONDS: u64 = 60;
+pub const GRACEFUL_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(60);
 
 /// Safety puffer to guarantee the graceful shutdown works every time.
-pub const GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD_SECONDS: u64 = 30;
+pub const GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_secs(30);
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -218,12 +217,18 @@ pub struct TrinoClusterConfig {
     #[serde(default)]
     pub listener_class: CurrentlySupportedListenerClasses,
 
-    #[serde(default = "default_graceful_shutdown_seconds")]
-    pub graceful_shutdown_seconds: u64,
+    /// Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`.
+    /// Consult the trino-operator documentation for details.
+    #[serde(
+        default = "default_graceful_shutdown_timeout",
+        with = "humantime_serde"
+    )]
+    #[schemars(with = "String")] // See https://github.com/GREsau/schemars/issues/89
+    pub graceful_shutdown_timeout: Duration,
 }
 
-fn default_graceful_shutdown_seconds() -> u64 {
-    DEFAULT_GRACEFUL_SHUTDOWN_SECONDS
+fn default_graceful_shutdown_timeout() -> Duration {
+    DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT
 }
 
 // TODO: Temporary solution until listener-operator is finished
@@ -925,5 +930,61 @@ mod tests {
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_internal_tls(), None);
         assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
+    }
+
+    #[test]
+    fn test_graceful_shutdown_timeout() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "414"
+          clusterConfig:
+            catalogLabelSelector: {}
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.spec.cluster_config.graceful_shutdown_timeout,
+            DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "414"
+          clusterConfig:
+            catalogLabelSelector: {}
+            gracefulShutdownTimeout: 2d
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.spec.cluster_config.graceful_shutdown_timeout,
+            Duration::from_secs(2 * 24 * 60 * 60)
+        );
+
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "414"
+          clusterConfig:
+            catalogLabelSelector: {}
+            gracefulShutdownTimeout: 42 # suffix is missing
+        "#;
+        let trino: Result<TrinoCluster, serde_yaml::Error> = serde_yaml::from_str(input);
+        assert!(trino.is_err());
+        if let Err(err) = trino {
+            assert_eq!(err.to_string(), "spec.clusterConfig.gracefulShutdownTimeout: invalid value: string \"42\", expected a duration at line 11 column 38".to_string());
+        }
     }
 }

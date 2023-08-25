@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Use [graceful shutdown](https://trino.io/docs/current/admin/graceful-shutdown.html) for workers ([#461]).
+- Use [graceful shutdown](https://trino.io/docs/current/admin/graceful-shutdown.html) for workers ([#461], [#463]).
 - Default stackableVersion to operator version ([#441]).
 - Configuration overrides for the JVM security properties, such as DNS caching ([#460]).
 
@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 [#453]: https://github.com/stackabletech/trino-operator/pull/453
 [#460]: https://github.com/stackabletech/trino-operator/pull/460
 [#461]: https://github.com/stackabletech/trino-operator/pull/461
+[#463]: https://github.com/stackabletech/trino-operator/pull/463
 
 ## [23.7.0] - 2023-07-14
 
