@@ -7,6 +7,7 @@
 ** xref:trino:usage_guide/pod_placement.adoc[]
 ** xref:trino:usage_guide/cluster_operations.adoc[]
 ** xref:trino:usage_guide/connect_to_trino.adoc[]
+** xref:trino:usage_guide/listenerclass.adoc[]
 ** xref:trino:usage_guide/configuration.adoc[]
 ** xref:trino:usage_guide/s3.adoc[]
 ** xref:trino:usage_guide/security.adoc[]
