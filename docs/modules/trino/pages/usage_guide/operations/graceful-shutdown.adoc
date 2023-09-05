@@ -44,7 +44,7 @@ Until then, you have to use configOverrides to enable it.
 == Kubernetes cluster requirements
 Pods need to have the ability to take as long as they need to gracefully shut down without getting killed.
 
-Imagine the situation that you set the graceful shutdown period to 24 hours (using `spec.clusterConfig.gracefulShutdownTimeout: 86400s`).
+Imagine the situation that you set the graceful shutdown period to 24 hours (using `spec.clusterConfig.gracefulShutdownTimeout: 24h`).
 in case of e.g. an on-prem Kubernetes cluster the Kubernetes infrastructure team wants to drain the Kubernetes node, so that they can do regular maintenance, such as rebooting the node. They will have some upper limit on how long they will wait for Pods on the Node to terminate, until they will reboot the Kubernetes node regardless.
 
 When setting up a production cluster, you need to check with your Kubernetes administrator (or cloud provider) what time period your Pods have to terminate gracefully.
