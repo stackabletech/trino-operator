@@ -5,7 +5,7 @@ Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[gracef
 This operator always adds a https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[`PreStop` hook] to gracefully shut them down.
 No additional configuration is needed, this guide is intended for users that need to tweak this mechanism.
 
-The default graceful shutdown period is 1 hour, but it can be tuned using `spec.clusterConfig.gracefulShutdownSeconds`.
+The default graceful shutdown period is 1 hour, but it can be tuned using `spec.clusterConfig.gracefulShutdownTimeout` which uses string values like `1h` (1 hour), `30m` (30 minutes) or `2d` (2 days).
 
 Once a worker Pod is asked to terminate, the `PreStop` hook is executed and the following timeline occurs:
 
@@ -44,7 +44,7 @@ Until then, you have to use configOverrides to enable it.
 == Kubernetes cluster requirements
 Pods need to have the ability to take as long as they need to gracefully shut down without getting killed.
 
-Imagine the situation that you set the graceful shutdown period to 24 hours (using `spec.clusterConfig.gracefulShutdownSeconds: 86400`).
+Imagine the situation that you set the graceful shutdown period to 24 hours (using `spec.clusterConfig.gracefulShutdownTimeout: 24h`).
 in case of e.g. an on-prem Kubernetes cluster the Kubernetes infrastructure team wants to drain the Kubernetes node, so that they can do regular maintenance, such as rebooting the node. They will have some upper limit on how long they will wait for Pods on the Node to terminate, until they will reboot the Kubernetes node regardless.
 
 When setting up a production cluster, you need to check with your Kubernetes administrator (or cloud provider) what time period your Pods have to terminate gracefully.
