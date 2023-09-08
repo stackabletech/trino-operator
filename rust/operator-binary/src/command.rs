@@ -54,15 +54,10 @@ pub fn container_prepare_args(
             STACKABLE_MOUNT_INTERNAL_TLS_DIR,
             STACKABLE_INTERNAL_TLS_DIR,
         ));
-        // Add cert to internal truststore; The secret-operator created truststore has one entry
-        // with alias set to 1. If want to add an alias / cert from another truststore, the
-        // existing entry will be overwritten. Therefore we have to differentiate here.
         if trino.tls_enabled() {
-            args.extend(import_truststore_with_alias(
+            args.extend(import_truststore(
                 STACKABLE_MOUNT_SERVER_TLS_DIR,
                 STACKABLE_INTERNAL_TLS_DIR,
-                "1",
-                "2",
             ))
         }
     }
@@ -165,21 +160,12 @@ fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec
         // Keytool is only barking if a password is not set for the destination truststore (which we set)
         // and do provide an empty password for the source truststore coming from the secret-operator.
         // Using no password will result in a warning.
+        // All secret-op generated truststores have one entry with alias "1". We generate a UUID for 
+        // the destination truststore to avoid conflicts when importing multiple secret-op generated 
+        // truststores. We do not use the UUID rust crate since this will continuously change the STS... and
+        // leads to never-ending reconciles.
         format!("echo Importing {source_directory}/truststore.p12 to {destination_directory}/truststore.p12"),
-        format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
-    ]
-}
-
-fn import_truststore_with_alias(
-    source_directory: &str,
-    destination_directory: &str,
-    source_alias: &str,
-    destination_alias: &str,
-) -> Vec<String> {
-    vec![
-        // The alias in secret-op created 
-        format!("echo Importing {source_directory}/truststore.p12 to {destination_directory}/truststore.p12"),
-        format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -srcalias {source_alias} -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -destalias {destination_alias} -noprompt"),
+        format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -srcalias 1 -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -destalias $(cat /proc/sys/kernel/random/uuid) -noprompt"),
     ]
 }
 
