@@ -24,6 +24,4 @@ parallel: 2
 # the VECTOR_AGGREGATOR environment variable, then the test aggregator
 # uses this period of time by trying to forward the events. In this
 # case, deleting a namespace with several Pods takes about 90 seconds.
-#
-# Trino has a higher timeout than other operators as we have a graceful shutdown.
-timeout: 300
+timeout: 120
