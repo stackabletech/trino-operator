@@ -11,10 +11,6 @@ use stackable_trino_crd::{
     STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
 };
 
-pub const STACKABLE_CLIENT_CA_CERT: &str = "stackable-client-ca-cert";
-pub const STACKABLE_SERVER_CA_CERT: &str = "stackable-server-ca-cert";
-pub const STACKABLE_INTERNAL_CA_CERT: &str = "stackable-internal-ca-cert";
-
 pub fn container_prepare_args(
     trino: &TrinoCluster,
     catalogs: &[CatalogConfig],
@@ -39,26 +35,31 @@ pub fn container_prepare_args(
     }
 
     if trino.tls_enabled() {
-        args.extend(create_key_and_trust_store(
+        args.extend(import_truststore(
             STACKABLE_MOUNT_SERVER_TLS_DIR,
             STACKABLE_SERVER_TLS_DIR,
-            STACKABLE_SERVER_CA_CERT,
+        ));
+        args.extend(import_keystore(
+            STACKABLE_MOUNT_SERVER_TLS_DIR,
+            STACKABLE_SERVER_TLS_DIR,
         ));
     }
 
     if trino.get_internal_tls().is_some() {
-        args.extend(create_key_and_trust_store(
+        args.extend(import_truststore(
             STACKABLE_MOUNT_INTERNAL_TLS_DIR,
             STACKABLE_INTERNAL_TLS_DIR,
-            STACKABLE_INTERNAL_CA_CERT,
+        ));
+        args.extend(import_keystore(
+            STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+            STACKABLE_INTERNAL_TLS_DIR,
         ));
         // Add cert to internal truststore
         if trino.tls_enabled() {
-            args.extend(add_cert_to_stackable_truststore(
-                format!("{STACKABLE_MOUNT_SERVER_TLS_DIR}/ca.crt").as_str(),
+            args.extend(import_truststore(
+                STACKABLE_MOUNT_SERVER_TLS_DIR,
                 STACKABLE_INTERNAL_TLS_DIR,
-                STACKABLE_CLIENT_CA_CERT,
-            ));
+            ))
         }
     }
 
@@ -116,20 +117,19 @@ pub fn container_trino_args(
 
 /// Generates the shell script to create key and truststores from the certificates provided
 /// by the secret operator.
-pub fn create_key_and_trust_store(
-    cert_directory: &str,
-    stackable_cert_directory: &str,
-    alias_name: &str,
-) -> Vec<String> {
+pub fn import_keystore(source_directory: &str, destination_directory: &str) -> Vec<String> {
     vec![
-        format!("echo [{stackable_cert_directory}] Cleaning up truststore - just in case"),
-        format!("rm -f {stackable_cert_directory}/truststore.p12"),
-        format!("echo [{stackable_cert_directory}] Creating truststore"),
-        format!("keytool -importcert -file {cert_directory}/ca.crt -keystore {stackable_cert_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias_name} -storepass {STACKABLE_TLS_STORE_PASSWORD}"),
-        format!("echo [{stackable_cert_directory}] Creating certificate chain"),
-        format!("cat {cert_directory}/ca.crt {cert_directory}/tls.crt > {stackable_cert_directory}/chain.crt"),
-        format!("echo [{stackable_cert_directory}] Creating keystore"),
-        format!("openssl pkcs12 -export -in {stackable_cert_directory}/chain.crt -inkey {cert_directory}/tls.key -out {stackable_cert_directory}/keystore.p12 --passout pass:{STACKABLE_TLS_STORE_PASSWORD}")
+        // The source directory is a secret-op mount and we do not want to write / add anything in there
+        // Therefore we import all the contents to "writeable" stores in another folder.
+        // Keytool is only barking if a password is not set for the destination keystore (which we set)
+        // and do not provide any password for the source keystores.
+        format!("keytool -importkeystore -srckeystore {source_directory}/keystore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/keystore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
+    ]
+}
+
+pub fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec<String> {
+    vec![
+        format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ]
 }
 

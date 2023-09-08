@@ -9,6 +9,7 @@ use crate::{
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::builder::SecretFormat;
 use stackable_operator::{
     builder::{
         resources::ResourceRequirementsBuilder, ConfigMapBuilder, ContainerBuilder,
@@ -1392,6 +1393,7 @@ fn create_tls_volume(volume_name: &str, tls_secret_class: &str) -> Volume {
             SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
                 .with_pod_scope()
                 .with_node_scope()
+                .with_format(SecretFormat::TlsPkcs12)
                 .build(),
         )
         .build()
