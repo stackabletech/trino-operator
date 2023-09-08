@@ -66,8 +66,8 @@ if __name__ == '__main__':
 
     conf = read_json("/tmp/test-config.json")  # config file to indicate our test script if auth / tls is used or not
     coordinator_host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
-    trusted_ca = "/tmp/ca.crt"  # will be copied via kubectl from the coordinator pod
-    untrusted_ca = "/tmp/untrusted-cert.crt"  # some random CA
+    trusted_ca = "/stackable/trusted/ca.crt"  # will be mounted from secret op
+    untrusted_ca = "/stackable/untrusted-cert.crt"  # some random CA
     query = "SHOW CATALOGS"
 
     # We expect these to work

@@ -19,3 +19,24 @@ spec:
         - name: trino-test-helper
           image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
           command: ["sleep", "infinity"]
+          volumeMounts:
+            - mountPath: "/stackable/trusted"
+              name: server-tls-mount
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      volumes:
+        - name: server-tls-mount
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                annotations:
+                  secrets.stackable.tech/class: trino-tls
+                  secrets.stackable.tech/scope: pod,node
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: "1"
+                storageClassName: secrets.stackable.tech

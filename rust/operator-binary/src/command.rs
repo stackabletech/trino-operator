@@ -54,11 +54,15 @@ pub fn container_prepare_args(
             STACKABLE_MOUNT_INTERNAL_TLS_DIR,
             STACKABLE_INTERNAL_TLS_DIR,
         ));
-        // Add cert to internal truststore
+        // Add cert to internal truststore; The secret-operator created truststore has one entry
+        // with alias set to 1. If want to add an alias / cert from another truststore, the
+        // existing entry will be overwritten. Therefore we have to differentiate here.
         if trino.tls_enabled() {
-            args.extend(import_truststore(
+            args.extend(import_truststore_with_alias(
                 STACKABLE_MOUNT_SERVER_TLS_DIR,
                 STACKABLE_INTERNAL_TLS_DIR,
+                "1",
+                "2",
             ))
         }
     }
@@ -141,7 +145,7 @@ fn import_keystore(source_directory: &str, destination_directory: &str) -> Vec<S
         // Keytool is only barking if a password is not set for the destination keystore (which we set)
         // and do provide an empty password for the source keystore coming from the secret-operator.
         // Using no password will result in a warning.
-        format!("echo Importing [{source_directory}/keystore.p12] to {destination_directory}/keystore.p12"),
+        format!("echo Importing {source_directory}/keystore.p12 to {destination_directory}/keystore.p12"),
         format!("keytool -importkeystore -srckeystore {source_directory}/keystore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/keystore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ]
 }
@@ -161,8 +165,21 @@ fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec
         // Keytool is only barking if a password is not set for the destination truststore (which we set)
         // and do provide an empty password for the source truststore coming from the secret-operator.
         // Using no password will result in a warning.
-        format!("echo Importing [{source_directory}/truststore.p12] to {destination_directory}/truststore.p12"),
+        format!("echo Importing {source_directory}/truststore.p12 to {destination_directory}/truststore.p12"),
         format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
+    ]
+}
+
+fn import_truststore_with_alias(
+    source_directory: &str,
+    destination_directory: &str,
+    source_alias: &str,
+    destination_alias: &str,
+) -> Vec<String> {
+    vec![
+        // The alias in secret-op created 
+        format!("echo Importing {source_directory}/truststore.p12 to {destination_directory}/truststore.p12"),
+        format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -srcalias {source_alias} -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -destalias {destination_alias} -noprompt"),
     ]
 }
 
