@@ -144,7 +144,7 @@ impl ExtendCatalogConfig for S3ConnectionDef {
 
                     // Copy the ca.crt from the ca-cert secretclass into truststore for external services
                     catalog_config.init_container_extra_start_commands.extend(
-                        command::add_cert_to_stackable_truststore(
+                        command::add_cert_to_truststore(
                             format!("{volume_mount_path}/ca.crt").as_str(),
                             STACKABLE_CLIENT_TLS_DIR,
                             &volume_name,

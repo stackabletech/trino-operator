@@ -65,9 +65,7 @@ pub fn container_prepare_args(
 
     // Create truststore that will be used when talking to external tools like S3
     // It will be populated from the system truststore so that connections against public services like AWS S3 are still possible
-    args.extend(create_truststore_from_system_truststore(
-        STACKABLE_CLIENT_TLS_DIR,
-    ));
+    args.extend(import_system_truststore(STACKABLE_CLIENT_TLS_DIR));
 
     // Add the commands that are needed to set up the catalogs
     catalogs.iter().for_each(|catalog| {
@@ -115,38 +113,63 @@ pub fn container_trino_args(
     vec![args.join(" && ")]
 }
 
-/// Generates the shell script to create key and truststores from the certificates provided
-/// by the secret operator.
-pub fn import_keystore(source_directory: &str, destination_directory: &str) -> Vec<String> {
+/// Adds a CA file from `cert_file` into a truststore named `truststore.p12` in `destination_directory`
+/// under the alias `alias_name`.
+pub fn add_cert_to_truststore(
+    cert_file: &str,
+    destination_directory: &str,
+    alias_name: &str,
+) -> Vec<String> {
+    vec![
+        format!("echo Adding cert from {cert_file} to truststore {destination_directory}/truststore.p12"),
+        format!("keytool -importcert -file {cert_file} -keystore {destination_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias_name} -storepass {STACKABLE_TLS_STORE_PASSWORD}"),
+    ]
+}
+
+/// Generates the shell script to import a secret operator provided keystore without password
+/// into a new keystore with password in a writeable empty dir
+///
+/// # Arguments
+/// - `source_directory`      - The directory of the source keystore.
+///                             Should usually be a secret operator volume mount.
+/// - `destination_directory` - The directory of the destination keystore.
+///                             Should usually be an empty dir.
+fn import_keystore(source_directory: &str, destination_directory: &str) -> Vec<String> {
     vec![
         // The source directory is a secret-op mount and we do not want to write / add anything in there
-        // Therefore we import all the contents to "writeable" stores in another folder.
+        // Therefore we import all the contents to a keystore in "writeable" empty dirs.
         // Keytool is only barking if a password is not set for the destination keystore (which we set)
-        // and do not provide any password for the source keystores.
+        // and do provide an empty password for the source keystore coming from the secret-operator.
+        // Using no password will result in a warning.
+        format!("echo Importing [{source_directory}/keystore.p12] to {destination_directory}/keystore.p12"),
         format!("keytool -importkeystore -srckeystore {source_directory}/keystore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/keystore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ]
 }
 
-pub fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec<String> {
+/// Generates the shell script to import a secret operator provided truststore without password
+/// into a new truststore with password in a writeable empty dir
+///
+/// # Arguments
+/// - `source_directory`      - The directory of the source truststore.
+///                             Should usually be a secret operator volume mount.
+/// - `destination_directory` - The directory of the destination truststore.
+///                             Should usually be an empty dir.
+fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec<String> {
     vec![
+        // The source directory is a secret-op mount and we do not want to write / add anything in there
+        // Therefore we import all the contents to a truststore in "writeable" empty dirs.
+        // Keytool is only barking if a password is not set for the destination truststore (which we set)
+        // and do provide an empty password for the source truststore coming from the secret-operator.
+        // Using no password will result in a warning.
+        format!("echo Importing [{source_directory}/truststore.p12] to {destination_directory}/truststore.p12"),
         format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ]
 }
 
-pub fn create_truststore_from_system_truststore(truststore_directory: &str) -> Vec<String> {
+/// Import the system truststore to a truststore named `truststore.p12` in `destination_directory`.
+fn import_system_truststore(destination_directory: &str) -> Vec<String> {
     vec![
-        format!("echo [{truststore_directory}] Creating truststore {truststore_directory}/truststore.p12 from system truststore {SYSTEM_TRUST_STORE}"),
-        format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {truststore_directory}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
-    ]
-}
-
-pub fn add_cert_to_stackable_truststore(
-    cert_file: &str,
-    truststore_directory: &str,
-    alias_name: &str,
-) -> Vec<String> {
-    vec![
-        format!("echo [{truststore_directory}] Adding cert from {cert_file} to truststore {truststore_directory}/truststore.p12"),
-        format!("keytool -importcert -file {cert_file} -keystore {truststore_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias_name} -storepass {STACKABLE_TLS_STORE_PASSWORD}"),
+        format!("echo Importing {SYSTEM_TRUST_STORE} to {destination_directory}/truststore.p12"),
+        format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {destination_directory}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
     ]
 }
