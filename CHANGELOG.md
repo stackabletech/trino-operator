@@ -16,8 +16,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.44.0` -> `0.45.1` ([#441], [#453]).
+- `operator-rs` `0.44.0` -> `0.48.0` ([#441], [#453], [#470]).
 - `vector` `0.26.0` -> `0.31.0` ([#453]).
+- Let secret-operator handle certificate conversion ([#470]).
 
 [#441]: https://github.com/stackabletech/trino-operator/pull/441
 [#449]: https://github.com/stackabletech/trino-operator/pull/449
@@ -25,6 +26,7 @@ All notable changes to this project will be documented in this file.
 [#460]: https://github.com/stackabletech/trino-operator/pull/460
 [#461]: https://github.com/stackabletech/trino-operator/pull/461
 [#463]: https://github.com/stackabletech/trino-operator/pull/463
+[#470]: https://github.com/stackabletech/trino-operator/pull/470
 
 ## [23.7.0] - 2023-07-14
 
