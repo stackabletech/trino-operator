@@ -81,7 +81,6 @@ use std::{
     ops::Div,
     str::FromStr,
     sync::Arc,
-    time::Duration,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -1144,7 +1143,7 @@ fn build_rolegroup_service(
 }
 
 pub fn error_policy(_obj: Arc<TrinoCluster>, _error: &Error, _ctx: Arc<Ctx>) -> Action {
-    Action::requeue(Duration::from_secs(5))
+    Action::requeue(std::time::Duration::from_secs(5))
 }
 
 /// Give a secret name and an optional key in the secret to use.
