@@ -21,6 +21,7 @@ use stackable_operator::{
         opa::OpaApiVersion, product_image_selection::ResolvedProductImage,
         rbac::build_rbac_resources,
     },
+    duration::Duration,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -1143,7 +1144,7 @@ fn build_rolegroup_service(
 }
 
 pub fn error_policy(_obj: Arc<TrinoCluster>, _error: &Error, _ctx: Arc<Ctx>) -> Action {
-    Action::requeue(std::time::Duration::from_secs(5))
+    Action::requeue(*Duration::from_secs(5))
 }
 
 /// Give a secret name and an optional key in the secret to use.
