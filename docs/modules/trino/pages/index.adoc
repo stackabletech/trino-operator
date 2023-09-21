@@ -4,6 +4,7 @@ This is an operator for Kubernetes that can manage https://https://trino.io/[Tri
 
 WARNING: This operator only works with images from the https://repo.stackable.tech/#browse/browse:docker:v2%2Fstackable%2Ftrino[Stackable] repository
 
+
 == Supported Versions
 
 The Stackable Operator for Trino currently supports the following versions of Trino:
