@@ -26,6 +26,7 @@ use stackable_operator::{
         fragment::{self, ValidationError},
         merge::Merge,
     },
+    duration::Duration,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -35,7 +36,7 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
 };
-use std::{collections::BTreeMap, str::FromStr, time::Duration};
+use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 pub const APP_NAME: &str = "trino";
@@ -219,11 +220,7 @@ pub struct TrinoClusterConfig {
 
     /// Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`.
     /// Consult the trino-operator documentation for details.
-    #[serde(
-        default = "default_graceful_shutdown_timeout",
-        with = "humantime_serde"
-    )]
-    #[schemars(with = "String")] // See https://github.com/GREsau/schemars/issues/89
+    #[serde(default = "default_graceful_shutdown_timeout")]
     pub graceful_shutdown_timeout: Duration,
 }
 
@@ -984,7 +981,7 @@ mod tests {
         let trino: Result<TrinoCluster, serde_yaml::Error> = serde_yaml::from_str(input);
         assert!(trino.is_err());
         if let Err(err) = trino {
-            assert_eq!(err.to_string(), "spec.clusterConfig.gracefulShutdownTimeout: invalid value: string \"42\", expected a duration at line 11 column 38".to_string());
+            assert_eq!(err.to_string(), "spec.clusterConfig.gracefulShutdownTimeout: fragment with value 42 has no unit at line 11 column 38".to_string());
         }
     }
 }
