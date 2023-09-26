@@ -111,7 +111,7 @@ pub fn container_trino_args(
         data = DATA_DIR_NAME
     ));
 
-    vec![args.join(" && ")]
+    args
 }
 
 /// Generates the shell script to create key and truststores from the certificates provided
