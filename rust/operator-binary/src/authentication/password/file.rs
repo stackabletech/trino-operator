@@ -119,7 +119,7 @@ pub fn build_password_file_update_container(
 
     commands.push(format!(
         r###"
-echo '
+cat << 'EOF' > /tmp/build_password_db.sh
 #!/bin/bash
 
 build_user_dbs() {{
@@ -148,7 +148,11 @@ while inotifywait -s -r -e create -e delete -e modify {stackable_auth_secret_dir
 do
   build_user_dbs
   echo "[$(date --utc +%FT%T.%3NZ)] All databases recreated. Waiting for changes..."
-done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/build_password_db.sh
+done
+EOF
+
+chmod +x /tmp/build_password_db.sh
+/tmp/build_password_db.sh
 "###,
         stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
         stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
@@ -175,7 +179,7 @@ done' > /tmp/build_password_db.sh && chmod +x /tmp/build_password_db.sh && /tmp/
             "pipefail".to_string(),
             "-c".to_string(),
         ])
-        .args(vec![commands.join(" && ")])
+        .args(vec![commands.join("\n")])
         .build()
 }
 

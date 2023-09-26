@@ -932,7 +932,7 @@ fn build_rolegroup_statefulset(
             "pipefail".to_string(),
             "-c".to_string(),
         ])
-        .args(vec![prepare_args.join(" && ")])
+        .args(vec![prepare_args.join("\n")])
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
@@ -956,10 +956,11 @@ fn build_rolegroup_statefulset(
             "pipefail".to_string(),
             "-c".to_string(),
         ])
-        .args(command::container_trino_args(
+        .args(vec![command::container_trino_args(
             trino_authentication_config,
             catalogs,
-        ))
+        )
+        .join("\n")])
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .add_volume_mount("config", CONFIG_DIR_NAME)

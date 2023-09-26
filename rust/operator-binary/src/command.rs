@@ -109,7 +109,7 @@ pub fn container_trino_args(
         data = DATA_DIR_NAME
     ));
 
-    vec![args.join(" && ")]
+    args
 }
 
 /// Adds a CA file from `cert_file` into a truststore named `truststore.p12` in `destination_directory`
