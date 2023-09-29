@@ -18,7 +18,7 @@ The https://trino.io/docs/current/security/password-file.html[file based authent
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-file-auth-snippet.yaml[tag=secret]
+include::example$usage-guide/trino-file-auth-snippet.yaml[tag=secret]
 ----
 
 This contains username and password pairs as shown in the previous snippet. The username and password combinations are provided in the `stringData` field.
@@ -27,14 +27,14 @@ The Secret is referenced in an `AuthenticationClass`.
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-file-auth-snippet.yaml[tag=authentication_class]
+include::example$usage-guide/trino-file-auth-snippet.yaml[tag=authentication_class]
 ----
 
 Then reference the `AuthenticationClass` in your TrinoCluster definition:
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-file-auth-snippet.yaml[tag=trino]
+include::example$usage-guide/trino-file-auth-snippet.yaml[tag=trino]
 ----
 
 Multiple authentication classes with different user secrets can be provided.
@@ -55,7 +55,7 @@ The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDA
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=authentication_class]
+include::example$usage-guide/trino-ldap-auth-snippet.yaml[tag=authentication_class]
 ----
 
 NOTE: You can follow the xref:home:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
@@ -64,7 +64,7 @@ With an AuthenticationClass ready, `PASSWORD` authentication using LDAP is done 
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=trino]
+include::example$usage-guide/trino-ldap-auth-snippet.yaml[tag=trino]
 ----
 
 In the Trino CLI and web interface, LDAP users can now be used to log in.
@@ -75,7 +75,7 @@ In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Tri
 
 [source,yaml]
 ----
-include::example$usage_guide/opa-bundle-trino-cm.yaml[]
+include::example$usage-guide/opa-bundle-trino-cm.yaml[]
 ----
 
 Users should write their own rego rules for more complex OPA authorization.
@@ -96,7 +96,7 @@ Securing the Trino cluster will disable all HTTP ports and disable the web inter
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-secure-tls.yaml[]
+include::example$usage-guide/trino-secure-tls.yaml[]
 ----
 
 <1> The name of (and reference to) the `SecretClass`
@@ -120,7 +120,7 @@ This will disable the HTTP port and UI access and encrypt client-server communic
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-secure-tls-only.yaml[]
+include::example$usage-guide/trino-secure-tls-only.yaml[]
 ----
 
 <1> The name of (and reference to) the `SecretClass`
@@ -140,7 +140,7 @@ Internal TLS is for encrypted and authenticated communications between coordinat
 
 [source,yaml]
 ----
-include::example$usage_guide/trino-secure-internal-tls.yaml[]
+include::example$usage-guide/trino-secure-internal-tls.yaml[]
 ----
 
 <1> The name of (and reference to) the `SecretClass`

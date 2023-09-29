@@ -1,3 +1,0 @@
-= Operations
-
-The pages below describe mechanisms that are relevant for operating a Trino cluster in production environments.

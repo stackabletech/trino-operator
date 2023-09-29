@@ -29,5 +29,5 @@ spec:
 ----
 
 == Connect to S3 store or HDFS
-The `iceberg` connector can connect to S3 or HDFS in the same way the xref:usage_guide/catalogs/hive.adoc[] connector does.
+The `iceberg` connector can connect to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.
 Please check that documentation on how to configure the access.

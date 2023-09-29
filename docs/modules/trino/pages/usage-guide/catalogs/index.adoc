@@ -89,4 +89,4 @@ A `TrinoCluster` can, once created, detect and use new catalogs that have been s
 
 Trino supports lots of different connectors and we can not cover all the available connectors.
 In case the Trino operator does not support a specific connector, there is a fallback mechanism:
-The xref:usage_guide/catalogs/generic.adoc[].
+The xref:usage-guide/catalogs/generic.adoc[].
