@@ -71,14 +71,30 @@ In the Trino CLI and web interface, LDAP users can now be used to log in.
 
 == [[authorization]]Authorization
 
-In order to authorize Trino via OPA, a `ConfigMap` containing Rego rules for Trino has to be applied. The following example is an all-access Rego rule for testing with the user `admin`. Do not use it in production!
+In order to authorize Trino via OPA, a ConfigMap containing a rego rule package for Trino has to be applied and referenced in the TrinoCluster resource.
+The following example is an all-access Rego rule for testing with the user `admin`. Do not use it in production!
 
 [source,yaml]
 ----
 include::example$usage-guide/opa-bundle-trino-cm.yaml[]
 ----
 
-Users should write their own rego rules for more complex OPA authorization.
+Reference the package in the Trino cluster:
+
+[source,yaml]
+----
+...
+spec:
+  clusterConfig:
+    authorization:
+      opa:
+        configMapName: opa  # <1>
+        package: trino      # <2>
+...
+----
+
+<1> The name of the OpaCluster
+<2> The name of the package defined in the rego rule ConfigMap
 
 == Define a secure cluster
 
