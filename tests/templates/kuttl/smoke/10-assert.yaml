@@ -20,3 +20,21 @@ metadata:
 status:
   readyReplicas: 1
   replicas: 1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trino-coordinator
+status:
+  expectedPods: 1
+  currentHealthy: 1
+  disruptionsAllowed: 1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trino-worker
+status:
+  expectedPods: 1
+  currentHealthy: 1
+  disruptionsAllowed: 1

@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Use [graceful shutdown](https://trino.io/docs/current/admin/graceful-shutdown.html) for workers ([#461], [#463], [#466], [#474]).
 - Default stackableVersion to operator version ([#441]).
 - Configuration overrides for the JVM security properties, such as DNS caching ([#460]).
+- Support PodDisruptionBudgets ([#XXX]).
 
 ### Fixed
 
@@ -16,7 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.44.0` -> `0.48.0` ([#441], [#453], [#470]).
+- `operator-rs` `0.44.0` -> `0.51.1` ([#441], [#453], [#470], [#XXX]).
 - `vector` `0.26.0` -> `0.31.0` ([#453]).
 - Let secret-operator handle certificate conversion ([#470]).
 

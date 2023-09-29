@@ -32,7 +32,7 @@ use stackable_operator::{
     product_config_utils::{ConfigError, Configuration},
     product_logging,
     product_logging::spec::Logging,
-    role_utils::{Role, RoleGroup, RoleGroupRef},
+    role_utils::{Role, RoleConfig, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
 };
@@ -665,6 +665,22 @@ impl TrinoCluster {
             .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
                 role_group: rolegroup_ref.role_group.to_owned(),
             })
+    }
+
+    pub fn role_config(&self, role: &TrinoRole) -> Option<&RoleConfig> {
+        match role {
+            TrinoRole::Coordinator => self.spec.coordinators.as_ref().map(|c| &c.role_config),
+            TrinoRole::Worker => self.spec.workers.as_ref().map(|w| &w.role_config),
+        }
+    }
+
+    pub fn num_workers(&self) -> u16 {
+        self.spec
+            .workers
+            .iter()
+            .flat_map(|w| w.role_groups.values())
+            .map(|rg| rg.replicas.unwrap_or(1))
+            .sum()
     }
 
     /// List all coordinator pods expected to form the cluster
