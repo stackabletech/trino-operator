@@ -64,7 +64,7 @@ fn max_unavailable_coordinators() -> u16 {
 
 fn max_unavailable_workers(num_workers: u16) -> u16 {
     // As users normally scale Trino workers to achieve more performance, we can safely take out 10% of the workers.
-    let max_unavailable = (num_workers as f32 / 10.0).ceil() as u16;
+    let max_unavailable = num_workers / 10;
 
     // Clamp to at least a single node allowed to be offline, so we don't block Kubernetes nodes from draining.
     max(max_unavailable, 1)
@@ -87,9 +87,14 @@ mod test {
     #[case(8, 1)]
     #[case(9, 1)]
     #[case(10, 1)]
-    #[case(11, 2)]
-    #[case(12, 2)]
+    #[case(11, 1)]
+    #[case(12, 1)]
+    #[case(19, 1)]
     #[case(20, 2)]
+    #[case(21, 2)]
+    #[case(29, 2)]
+    #[case(30, 3)]
+    #[case(31, 3)]
     #[case(100, 10)]
     fn test_max_unavailable_servers(
         #[case] num_workers: u16,
