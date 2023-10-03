@@ -976,6 +976,9 @@ fn build_rolegroup_statefulset(
     // add trino container first to better default into that container (e.g. instead of vector)
     pod_builder.add_container(container_trino);
 
+    // add password-update container if required
+    trino_authentication_config.add_authentication_containers(trino_role, &mut pod_builder);
+
     if let Some(ContainerLogConfig {
         choice:
             Some(ContainerLogConfigChoice::Custom(CustomContainerLogConfig {
