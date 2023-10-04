@@ -34,6 +34,7 @@ spec:
     productVersion: "{{ test_scenario['values']['trino'] }}"
   clusterConfig:
     catalogLabelSelector: {}
+    gracefulShutdownTimeout: 5s
     vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
     # in order to add the password-file-updater container
     authentication:
