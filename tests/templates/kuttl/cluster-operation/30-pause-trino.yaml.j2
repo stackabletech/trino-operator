@@ -8,6 +8,7 @@ spec:
     productVersion: "{{ test_scenario['values']['trino-latest'] }}"
   clusterConfig:
     catalogLabelSelector: {}
+    gracefulShutdownTimeout: 1s
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
