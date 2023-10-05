@@ -48,7 +48,7 @@ This results e.g. in the following numbers:
 
 == Reduce rolling redeployment durations
 The default PDBs we write out are pessimistic and will cause the rolling redeployment to take a considerable amount of time.
-As an example, when you have 100 workers, we can only take 10 workers down at a time. Assuming a worker takes 5 minutes to properly restart, the whole re-deployment would take (100 nodes / 10 nodes simultaneous * 5 minutest = ) 50 minutes.
+As an example, in a cluster with 100 workers, 10 workers are restarted at the same time. Assuming a worker takes 5 minutes to properly restart, the whole redeployment will take (100 nodes / 10 nodes simultaneous * 5 minutest = ) 50 minutes.
 
 You can use the following measures to speed this up:
 
