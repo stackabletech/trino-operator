@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.44.0` -> `0.51.1` ([#441], [#453], [#470], [#481]).
+- `operator-rs` `0.44.0` -> `0.52.0` ([#441], [#453], [#470], [#481]).
 - `vector` `0.26.0` -> `0.31.0` ([#453]).
 - Let secret-operator handle certificate conversion ([#470]).
 

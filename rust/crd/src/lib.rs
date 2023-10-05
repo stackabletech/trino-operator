@@ -32,7 +32,7 @@ use stackable_operator::{
     product_config_utils::{ConfigError, Configuration},
     product_logging,
     product_logging::spec::Logging,
-    role_utils::{Role, RoleConfig, RoleGroup, RoleGroupRef},
+    role_utils::{GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
 };
@@ -667,7 +667,7 @@ impl TrinoCluster {
             })
     }
 
-    pub fn role_config(&self, role: &TrinoRole) -> Option<&RoleConfig> {
+    pub fn role_config(&self, role: &TrinoRole) -> Option<&GenericRoleConfig> {
         match role {
             TrinoRole::Coordinator => self.spec.coordinators.as_ref().map(|c| &c.role_config),
             TrinoRole::Worker => self.spec.workers.as_ref().map(|w| &w.role_config),

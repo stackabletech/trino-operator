@@ -11,7 +11,7 @@ use crate::{
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{builder::SecretFormat, role_utils::RoleConfig};
+use stackable_operator::{builder::SecretFormat, role_utils::GenericRoleConfig};
 use stackable_operator::{
     builder::{
         resources::ResourceRequirementsBuilder, ConfigMapBuilder, ContainerBuilder,
@@ -463,7 +463,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         }
 
         let role_config = trino.role_config(&trino_role);
-        if let Some(RoleConfig {
+        if let Some(GenericRoleConfig {
             pod_disruption_budget: pdb,
         }) = role_config
         {
