@@ -3608,15 +3608,13 @@ spec:
                         podDisruptionBudget:
                           enabled: true
                           maxUnavailable: null
-                      description: |-
-                        This is a product-agnostic RoleConfig, which fulfills the needs for most of the product. Currently it contains:
-
-                        1. `podDisruptionBudget` to configure the created PDBs.
+                      description: This is a product-agnostic RoleConfig, which is sufficient for most of the products.
                       properties:
                         podDisruptionBudget:
                           default:
                             enabled: true
                             maxUnavailable: null
+                          description: 'This struct is used to configure: 1.) If PodDisruptionBudgets are created by the operator 2.) The allowed number of Pods to be unavailable (`maxUnavailable`)'
                           properties:
                             enabled:
                               default: true
@@ -10634,15 +10632,13 @@ spec:
                         podDisruptionBudget:
                           enabled: true
                           maxUnavailable: null
-                      description: |-
-                        This is a product-agnostic RoleConfig, which fulfills the needs for most of the product. Currently it contains:
-
-                        1. `podDisruptionBudget` to configure the created PDBs.
+                      description: This is a product-agnostic RoleConfig, which is sufficient for most of the products.
                       properties:
                         podDisruptionBudget:
                           default:
                             enabled: true
                             maxUnavailable: null
+                          description: 'This struct is used to configure: 1.) If PodDisruptionBudgets are created by the operator 2.) The allowed number of Pods to be unavailable (`maxUnavailable`)'
                           properties:
                             enabled:
                               default: true
