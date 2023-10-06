@@ -1,4 +1,0 @@
-
-= Cluster Operation
-
-Trino installations can be configured with different cluster operations like pausing reconciliation or stopping the cluster. See xref:concepts:cluster_operations.adoc[cluster operations] for more details.

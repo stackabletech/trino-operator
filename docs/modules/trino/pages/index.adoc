@@ -24,7 +24,7 @@ The Trino Operator manages two custom resources: The _TrinoCluster_ and xref:con
 The TrinoCluster resource allows for the specification of a Trino cluster. Two
 xref:concepts:roles-and-role-groups.adoc[roles] are defined: `coordinators` and `workers`.
 
-To connect to data sources the TrinoCatalogs are used. Have a look at the xref:usage_guide/catalogs/index.adoc[catalog
+To connect to data sources the TrinoCatalogs are used. Have a look at the xref:usage-guide/catalogs/index.adoc[catalog
 overview] to find out which types of data sources are supported by the Stackable platform.
 
 === Resources
@@ -44,7 +44,7 @@ Trino is used to enable SQL access to the data. The xref:demos:trino-iceberg.ado
 demo, focusing just on Apache Iceberg integration.
 
 The xref:demos:spark-k8s-anomaly-detection-taxi-data.adoc[] also uses Trino to enable SQL access to data but also shows
-xref:opa:index.adoc[OpenPolicyAgent] integration for xref:usage_guide/security.adoc#authorization[authorization].
+xref:opa:index.adoc[OpenPolicyAgent] integration for xref:usage-guide/security.adoc#authorization[authorization].
 
 == Supported Versions
 

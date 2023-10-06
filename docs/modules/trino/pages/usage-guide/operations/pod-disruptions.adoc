@@ -1,0 +1,58 @@
+= Allowed Pod disruptions
+
+You can configure the permitted Pod disruptions for Trino nodes as described in xref:concepts:operations/pod_disruptions.adoc[].
+
+Unless you configure something else or disable the provided PodDisruptionBudgets (PDBs), the following PDBs are written:
+
+== Coordinators
+The provided PDBs only allow a single coordinator to be offline at any given time, regardless of the number of replicas or `roleGroups`.
+
+== Workers
+Normally users deploy multiple workers to speed up queries, handle multiple queries in parallel or to just have enough memory available in the Cluster to execute a big query.
+
+Taking this into consideration, the operator uses the following algorithm to determine the maximum number of workers allowed to be unavailable at the same time:
+
+`num_workers` is the number of workers in the Trino cluster, summed over all `roleGroups`.
+
+[source,rust]
+----
+// As users normally scale Trino workers to achieve more performance, we can safely take out 10% of the workers.
+let max_unavailable = num_workers / 10;
+
+// Clamp to at least a single node allowed to be offline, so we don't block Kubernetes nodes from draining.
+let max_unavailable = max(max_unavailable, 1)
+----
+
+This results e.g. in the following numbers:
+
+[cols="1,1"]
+|===
+|Number of workers
+|Maximum unavailable workers
+
+|1 - 9
+|1
+
+|10 - 19
+|1
+
+|20 - 29
+|2
+
+|30 - 39
+|3
+
+|100 - 109
+|10
+|===
+
+== Reduce rolling redeployment durations
+The default PDBs of the operator are pessimistic and will cause the rolling redeployment to take a considerable amount of time.
+As an example, in a cluster with 100 workers, 10 workers are restarted at the same time. Assuming a worker takes 5 minutes to properly restart, the whole redeployment will take (100 nodes / 10 nodes simultaneous * 5 minutest = ) 50 minutes.
+
+You can use the following measures to speed this up:
+
+1. Increase `maxUnavailable` using the `spec.workers.roleConfig.podDisruptionBudget.maxUnavailable` field as described in xref:concepts:operations/pod_disruptions.adoc[].
+2. Write your own PDBs as described in xref:concepts:operations/pod_disruptions.adoc#_using_you_own_custom_pdbs[Using you own custom PDBs].
+
+WARNING: In case you modify or disable the default PDBs, it is your responsibility to make sure there are enough workers available to manage the existing workload and performance requirements!

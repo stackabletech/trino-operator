@@ -70,11 +70,30 @@ rules:
       - jobs
     verbs:
       - create
+      - delete
       - get
       - list
       - patch
       - update
       - watch
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
   - apiGroups:
       - apiextensions.k8s.io
     resources:

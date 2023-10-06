@@ -123,4 +123,4 @@ include::example$getting_started/code/getting_started.sh[tag=cleanup-trino-cli]
 
 == What's next
 
-Have a look at the xref:usage_guide/index.adoc[] to find out more about how to configure a Trino cluster.
+Have a look at the xref:usage-guide/index.adoc[] to find out more about how to configure a Trino cluster.

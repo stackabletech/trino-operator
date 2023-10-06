@@ -3,13 +3,15 @@ use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
-    operations::{add_graceful_shutdown_config, graceful_shutdown_config_properties},
+    operations::{
+        add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
+    },
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
 };
 
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::builder::SecretFormat;
+use stackable_operator::{builder::SecretFormat, role_utils::GenericRoleConfig};
 use stackable_operator::{
     builder::{
         resources::ResourceRequirementsBuilder, ConfigMapBuilder, ContainerBuilder,
@@ -258,6 +260,10 @@ pub enum Error {
         source: stackable_operator::product_config::writer::PropertiesWriterError,
         rolegroup: String,
     },
+    #[snafu(display("failed to create PodDisruptionBudget"))]
+    FailedToCreatePdb {
+        source: crate::operations::pdb::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -454,6 +460,16 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                         rolegroup: rolegroup.clone(),
                     })?,
             );
+        }
+
+        let role_config = trino.role_config(&trino_role);
+        if let Some(GenericRoleConfig {
+            pod_disruption_budget: pdb,
+        }) = role_config
+        {
+            add_pdbs(pdb, &trino, &trino_role, client, &mut cluster_resources)
+                .await
+                .context(FailedToCreatePdbSnafu)?;
         }
     }
 

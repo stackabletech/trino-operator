@@ -30,4 +30,4 @@ The following diagram illustrates this. Two Trino catalogs - each an instance of
 
 image::catalogs.drawio.svg[A TrinoCluster referencing two catalogs by label matching]
 
-A complete example of this is shown here: xref:usage_guide/catalogs/index.adoc[].
+A complete example of this is shown here: xref:usage-guide/catalogs/index.adoc[].
