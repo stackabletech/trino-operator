@@ -145,7 +145,10 @@ impl TrinoAuthenticationConfig {
                 stackable_trino_crd::Container::Vector => {}
             }
         }
+    }
 
+    /// Add required init / side car containers
+    pub fn add_authentication_containers(&self, role: &TrinoRole, pod_builder: &mut PodBuilder) {
         // containers
         for container in self.sidecar_containers(role) {
             pod_builder.add_container(container);

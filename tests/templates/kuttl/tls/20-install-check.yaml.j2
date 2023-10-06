@@ -15,17 +15,18 @@ spec:
       labels:
         app: trino-test-helper
     spec:
-      containers:
-        - name: trino-test-helper
-          image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
-          command: ["sleep", "infinity"]
-          volumeMounts:
-            - mountPath: "/stackable/trusted"
-              name: server-tls-mount
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
+      containers:
+        - name: trino-test-helper
+          image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
+          command: ["sleep", "infinity"]
+{% if test_scenario['values']['use-tls'] == 'true' %}
+          volumeMounts:
+            - mountPath: "/stackable/trusted"
+              name: server-tls-mount
       volumes:
         - name: server-tls-mount
           ephemeral:
@@ -40,3 +41,4 @@ spec:
                   requests:
                     storage: "1"
                 storageClassName: secrets.stackable.tech
+{% endif %}
