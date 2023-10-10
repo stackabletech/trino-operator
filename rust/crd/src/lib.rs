@@ -122,8 +122,8 @@ pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
 pub const DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT: Duration =
-    Duration::from_minutes_unchecked(60);
-pub const DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_minutes_unchecked(15);
+    Duration::from_minutes_unchecked(15);
+pub const DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_minutes_unchecked(60);
 
 /// Corresponds to "shutdown.grace-period", which defaults to 2 min.
 /// This seems a bit high, as Pod termination - even with no queries running on the worker -
