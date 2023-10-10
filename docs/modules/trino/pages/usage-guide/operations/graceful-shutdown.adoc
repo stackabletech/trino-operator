@@ -40,7 +40,7 @@ noticed that all tasks are complete
 5. The `PreStop` hook will never return, but the JVM will be shut down by the graceful shutdown mechanism.
 6. When the graceful shutdown is not quick enough (e.g. a query runs longer than the graceful shutdown period), after `<graceful shutdown period> + 30s of step 2 + 30s of step 4 + 10s safety overhead` the Pod gets killed, regardless if it has shut down gracefully or not. This is achieved by setting `terminationGracePeriodSeconds` on the worker Pods. In this case queries running on the worker will fail.
 
-WARNING: As of version 23.7, the secret-operator issues TLS certificates with a lifetime of 24h. It also adds an annotation to the Pod, so that it is restarted 30 minutes before the certificate expires (23.5h hours in this case). Currently this results in all Pod using https (both coordinator and workers in a typical setup) restarting every 23.5 hours.
+WARNING: As of version 23.7, the secret-operator issues TLS certificates with a lifetime of 24h. It also adds an annotation to the Pod, so that it is restarted 30 minutes before the certificate expires (23.5h hours in this case). Currently, this results in all Pod using https (both coordinator and workers in a typical setup) restarting every 23.5 hours.
 The TLS certificate lifetime can be configured once https://github.com/stackabletech/secret-operator/pull/306 is merged.
 
 == Implications
@@ -76,4 +76,4 @@ allow {
 }
 ----
 
-NOTE: We plan to add CustomResources, so that you can define your Trino ACLs via Kubernetes objects. In this case the trino-operator will generate the rego-rules for you, and will add the needed rules for graceful shutdown for you. Until then you grant the permission yourself.
+NOTE: We plan to add CustomResources, so that you can define your Trino ACLs via Kubernetes objects. In this case the trino-operator will generate the rego-rules for you, and will add the needed rules for graceful shutdown for you. Until then, you grant the permission yourself.
