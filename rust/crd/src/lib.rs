@@ -121,17 +121,18 @@ pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
-/// The default time the trino workers have to properly shut down.
-pub const DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(60 * 60);
+pub const DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT: Duration =
+    Duration::from_minutes_unchecked(60);
+pub const DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_minutes_unchecked(15);
 
 /// Corresponds to "shutdown.grace-period", which defaults to 2 min.
 /// This seems a bit high, as Pod termination - even with no queries running on the worker -
 /// takes at least 4 minutes (see <https://trino.io/docs/current/admin/graceful-shutdown.html>).
-/// So we set it to 1 minute, so the Pod termination takes at least 2 minutes.
-pub const GRACEFUL_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(60);
+/// So we set it to 30 seconds, so the Pod termination takes at least 1 minute.
+pub const WORKER_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(30);
 
 /// Safety puffer to guarantee the graceful shutdown works every time.
-pub const GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_secs(30);
+pub const WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_secs(10);
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -217,15 +218,6 @@ pub struct TrinoClusterConfig {
     /// will be used to expose the service, and ListenerClass names will stay the same, allowing for a non-breaking change.
     #[serde(default)]
     pub listener_class: CurrentlySupportedListenerClasses,
-
-    /// Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`.
-    /// Consult the trino-operator documentation for details.
-    #[serde(default = "default_graceful_shutdown_timeout")]
-    pub graceful_shutdown_timeout: Duration,
-}
-
-fn default_graceful_shutdown_timeout() -> Duration {
-    DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT
 }
 
 // TODO: Temporary solution until listener-operator is finished
@@ -417,6 +409,11 @@ pub struct TrinoConfig {
     pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
     #[fragment_attrs(serde(default))]
     pub affinity: StackableAffinity,
+    #[fragment_attrs(serde(default))]
+    #[fragment_attrs(schemars(
+        description = "Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details."
+    ))]
+    pub graceful_shutdown_timeout: Option<Duration>,
 }
 
 impl TrinoConfig {
@@ -428,6 +425,10 @@ impl TrinoConfig {
         let (cpu_min, cpu_max, memory) = match role {
             TrinoRole::Coordinator => ("500m", "2", "4Gi"),
             TrinoRole::Worker => ("1", "4", "4Gi"),
+        };
+        let graceful_shutdown_timeout = match role {
+            TrinoRole::Coordinator => DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT,
+            TrinoRole::Worker => DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT,
         };
 
         TrinoConfigFragment {
@@ -450,7 +451,9 @@ impl TrinoConfig {
                     },
                 },
             },
-            ..TrinoConfigFragment::default()
+            query_max_memory: None,
+            query_max_memory_per_node: None,
+            graceful_shutdown_timeout: Some(graceful_shutdown_timeout),
         }
     }
 }
@@ -681,6 +684,29 @@ impl TrinoCluster {
             .flat_map(|w| w.role_groups.values())
             .map(|rg| rg.replicas.unwrap_or(1))
             .sum()
+    }
+
+    /// Returns the minimal gracefulShutdownTimeout of all the worker rolegroups.
+    pub fn min_worker_graceful_shutdown_timeout(&self) -> Duration {
+        let role_timeout = self
+            .spec
+            .workers
+            .as_ref()
+            .and_then(|w| w.config.config.graceful_shutdown_timeout);
+        self.spec
+            .workers
+            .as_ref()
+            .iter()
+            .flat_map(|worker| worker.role_groups.values())
+            .map(|role_group| {
+                role_group
+                    .config
+                    .config
+                    .graceful_shutdown_timeout
+                    .unwrap_or(role_timeout.unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT))
+            })
+            .min()
+            .unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT)
     }
 
     /// List all coordinator pods expected to form the cluster
@@ -946,7 +972,7 @@ mod tests {
     }
 
     #[test]
-    fn test_graceful_shutdown_timeout() {
+    fn test_graceful_shutdown_timeout_default() {
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -960,10 +986,13 @@ mod tests {
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
-            trino.spec.cluster_config.graceful_shutdown_timeout,
-            DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT
+            trino.min_worker_graceful_shutdown_timeout(),
+            DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT
         );
+    }
 
+    #[test]
+    fn test_graceful_shutdown_timeout_on_role() {
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -974,14 +1003,22 @@ mod tests {
             productVersion: "414"
           clusterConfig:
             catalogLabelSelector: {}
-            gracefulShutdownTimeout: 2d
+          workers:
+            config:
+              gracefulShutdownTimeout: 42h
+            roleGroups:
+              default:
+                replicas: 1
         "#;
         let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
-            trino.spec.cluster_config.graceful_shutdown_timeout,
-            Duration::from_secs(2 * 24 * 60 * 60)
+            trino.min_worker_graceful_shutdown_timeout(),
+            Duration::from_hours_unchecked(42)
         );
+    }
 
+    #[test]
+    fn test_graceful_shutdown_timeout_on_role_and_rolegroup() {
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -992,12 +1029,25 @@ mod tests {
             productVersion: "414"
           clusterConfig:
             catalogLabelSelector: {}
-            gracefulShutdownTimeout: 42 # suffix is missing
+          workers:
+            config:
+              gracefulShutdownTimeout: 42h
+            roleGroups:
+              normal:
+                replicas: 1
+              short:
+                replicas: 1
+                config:
+                  gracefulShutdownTimeout: 5m
+              long:
+                replicas: 1
+                config:
+                  gracefulShutdownTimeout: 7d
         "#;
-        let trino: Result<TrinoCluster, serde_yaml::Error> = serde_yaml::from_str(input);
-        assert!(trino.is_err());
-        if let Err(err) = trino {
-            assert_eq!(err.to_string(), "spec.clusterConfig.gracefulShutdownTimeout: fragment with value 42 has no unit at line 11 column 38".to_string());
-        }
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+        assert_eq!(
+            trino.min_worker_graceful_shutdown_timeout(),
+            Duration::from_minutes_unchecked(5)
+        );
     }
 }
