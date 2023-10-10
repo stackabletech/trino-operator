@@ -40,7 +40,7 @@ pub fn add_graceful_shutdown_config(
     pod_builder: &mut PodBuilder,
     trino_builder: &mut ContainerBuilder,
 ) {
-    // This must be always be the merge mechanism, as we provide a default value
+    // This must be always set by the merge mechanism, as we provide a default value.
     if let Some(graceful_shutdown_timeout) = merged_config.graceful_shutdown_timeout {
         match role {
             TrinoRole::Coordinator => {
