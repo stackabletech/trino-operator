@@ -24,7 +24,6 @@ use stackable_operator::{
         opa::OpaApiVersion, product_image_selection::ResolvedProductImage,
         rbac::build_rbac_resources,
     },
-    duration::Duration,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -64,6 +63,7 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
+    time::Duration,
 };
 use stackable_trino_crd::{
     authentication::resolve_authentication_classes, JVM_SECURITY_PROPERTIES,
@@ -264,6 +264,8 @@ pub enum Error {
     FailedToCreatePdb {
         source: crate::operations::pdb::Error,
     },
+    #[snafu(display("invalid graceful shutdown"))]
+    InvalidGracefulShutdown { source: crate::operations::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -902,7 +904,8 @@ fn build_rolegroup_statefulset(
         &mut cb_prepare,
         &mut cb_trino,
     );
-    add_graceful_shutdown_config(trino, trino_role, &mut pod_builder, &mut cb_trino);
+    add_graceful_shutdown_config(trino, trino_role, &mut pod_builder, &mut cb_trino)
+        .context(InvalidGracefulShutdownSnafu)?;
 
     // Add the needed stuff for catalogs
     env.extend(
