@@ -71,12 +71,23 @@ data:
     default allow = false
 
     allow {
-      is_admin
+        is_admin
+    }
+    extended[i] {
+        some i
+        input.action.filterResources[i]
+        is_admin
     }
 
     allow {
-      is_bob
-      can_be_accessed_by_bob
+        input.action.operation in ["ExecuteQuery", "AccessCatalog"]
+        is_bob
+    }
+    extended[i] {
+        input.action.operation in ["FilterCatalogs"]
+        some i
+        input.action.filterResources[i]
+        is_bob
     }
 
     is_admin() {
@@ -85,10 +96,6 @@ data:
 
     is_bob() {
       input.context.identity.user == "bob"
-    }
-
-    can_be_accessed_by_bob() {
-      input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
     }
 ---
 apiVersion: trino.stackable.tech/v1alpha1

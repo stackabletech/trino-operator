@@ -1,6 +1,7 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
+    authorization::opa::TrinoOpaConfig,
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command,
     operations::{
@@ -20,10 +21,7 @@ use stackable_operator::{
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
-    commons::{
-        opa::OpaApiVersion, product_image_selection::ResolvedProductImage,
-        rbac::build_rbac_resources,
-    },
+    commons::{product_image_selection::ResolvedProductImage, rbac::build_rbac_resources},
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -66,18 +64,17 @@ use stackable_operator::{
     time::Duration,
 };
 use stackable_trino_crd::{
-    authentication::resolve_authentication_classes, JVM_SECURITY_PROPERTIES,
-};
-use stackable_trino_crd::{
+    authentication::resolve_authentication_classes,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
     Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH,
-    LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
+    LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+    STACKABLE_TLS_STORE_PASSWORD,
 };
 use std::{
     collections::{BTreeMap, HashMap},
@@ -356,27 +353,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .await
         .context(ApplyRoleBindingSnafu)?;
 
-    // Assemble the OPA connection string from the discovery and the given path if provided
-    let opa_connect_string = if let Some(opa_config) = trino
-        .spec
-        .cluster_config
-        .authorization
-        .as_ref()
-        .and_then(|authz| authz.opa.as_ref())
-    {
-        Some(
-            opa_config
-                .full_document_url_from_config_map(
-                    client,
-                    &*trino,
-                    Some("allow"),
-                    OpaApiVersion::V1,
-                )
+    let trino_opa_config = match trino.get_opa_config() {
+        Some(opa_config) => Some(
+            TrinoOpaConfig::from_opa_config(client, &trino, &resolved_product_image, opa_config)
                 .await
                 .context(InvalidOpaConfigSnafu)?,
-        )
-    } else {
-        None
+        ),
+        None => None,
     };
 
     let coordinator_role_service = build_coordinator_role_service(&trino, &resolved_product_image)?;
@@ -412,7 +395,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &config,
                 &merged_config,
                 &trino_authentication_config,
-                opa_connect_string.as_deref(),
+                &trino_opa_config,
                 vector_aggregator_address.as_deref(),
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
@@ -541,7 +524,7 @@ fn build_rolegroup_config_map(
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
-    opa_connect_string: Option<&str>,
+    trino_opa_config: &Option<TrinoOpaConfig>,
     vector_aggregator_address: Option<&str>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
@@ -723,39 +706,14 @@ fn build_rolegroup_config_map(
         }
     }
 
-    let access_control_properties = match opa_connect_string {
-        Some(opa_connect_string) => BTreeMap::from([
-            (
-                "access-control.name".to_string(),
-                Some("tech.stackable.trino.opa.OpaAuthorizer".to_string()),
-            ),
-            (
-                "opa.policy.uri".to_string(),
-                Some(opa_connect_string.to_string()),
-            ),
-        ]),
-        // The default access control with the name "default" allows everything but
-        // impersonation and graceful shutdown. As we need the user "admin" to have the permissions
-        // to gracefully shut down workers we default to the use of "allow-all".
-        //
-        // Not using OPA is meant as a testing environment anyway, as there is no authorization at all,
-        // so this elevation of privileges is acceptable compared for the need for graceful shutdown.
-        //
-        // If this however imposes a problem we could
-        // a.) let the user use OPA
-        // b.) or write a custom Trino Authorizer that behaves the same way the "default" one does,
-        //     with the difference, that the user "admin" is allowed to trigger a graceful shutdown.
-        None => BTreeMap::from([(
-            "access-control.name".to_string(),
-            Some("allow-all".to_string()),
-        )]),
-    };
-
-    let config_properties =
-        product_config::writer::to_java_properties_string(access_control_properties.iter())
+    if let Some(trino_opa_config) = trino_opa_config {
+        let config = trino_opa_config.as_config();
+        let config_properties = product_config::writer::to_java_properties_string(config.iter())
             .context(FailedToWriteJavaPropertiesSnafu)?;
 
-    cm_conf_data.insert(ACCESS_CONTROL_PROPERTIES.to_string(), config_properties);
+        cm_conf_data.insert(ACCESS_CONTROL_PROPERTIES.to_string(), config_properties);
+    }
+
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
 
     let jvm_sec_props: BTreeMap<String, Option<String>> = config

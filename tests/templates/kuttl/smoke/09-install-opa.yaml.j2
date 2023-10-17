@@ -24,6 +24,7 @@ metadata:
   labels:
     opa.stackable.tech/bundle: "trino"
 data:
+{% if test_scenario['values']['trino'].split('-stackable')[0] in ['377', '387', '395', '396', '403'] %}
   trino.rego: |
     package trino
 
@@ -51,3 +52,39 @@ data:
     can_be_accessed_by_bob() {
       input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
     }
+{% else %}
+  trino.rego: |
+    package trino
+
+    import future.keywords.in
+
+    default allow = false
+
+    allow {
+        is_admin
+    }
+    extended[i] {
+        some i
+        input.action.filterResources[i]
+        is_admin
+    }
+
+    allow {
+        input.action.operation in ["ExecuteQuery", "AccessCatalog"]
+        is_bob
+    }
+    extended[i] {
+        input.action.operation in ["FilterCatalogs"]
+        some i
+        input.action.filterResources[i]
+        is_bob
+    }
+
+    is_admin() {
+      input.context.identity.user == "admin"
+    }
+
+    is_bob() {
+      input.context.identity.user == "bob"
+    }
+{% endif %}
