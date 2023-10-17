@@ -12,10 +12,7 @@ spec:
 {% endif %}
   servers:
     roleGroups:
-      default:
-        selector:
-          matchLabels:
-            kubernetes.io/os: linux
+      default: {}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -24,7 +21,7 @@ metadata:
   labels:
     opa.stackable.tech/bundle: "trino"
 data:
-{% if test_scenario['values']['trino'].split('-stackable')[0] in ['377', '387', '395', '396', '403'] %}
+{% if test_scenario['values']['trino'] in ['414'] %}
   trino.rego: |
     package trino
 
