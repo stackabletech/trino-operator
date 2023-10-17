@@ -10,7 +10,7 @@ use stackable_operator::{
 };
 use stackable_trino_crd::TrinoCluster;
 
-const PRODUCT_VERSIONS_WITH_OLD_AUTHORIZER: [&str; 5] = ["377", "387", "395", "396", "403"];
+const PRODUCT_VERSIONS_WITH_OLD_AUTHORIZER: [&str; 1] = ["414"];
 
 pub struct TrinoOpaConfig {
     opa_authorizer_name: String,
