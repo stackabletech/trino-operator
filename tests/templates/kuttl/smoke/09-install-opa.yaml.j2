@@ -21,7 +21,7 @@ metadata:
   labels:
     opa.stackable.tech/bundle: "trino"
 data:
-{% if test_scenario['values']['trino'] in ['414'] %}
+{% if test_scenario['values']['trino'] in [414] %}
   trino.rego: |
     package trino
 
