@@ -24,7 +24,6 @@ use stackable_operator::{
         opa::OpaApiVersion, product_image_selection::ResolvedProductImage,
         rbac::build_rbac_resources,
     },
-    duration::Duration,
     k8s_openapi::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
@@ -64,6 +63,7 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
+    time::Duration,
 };
 use stackable_trino_crd::{
     authentication::resolve_authentication_classes, JVM_SECURITY_PROPERTIES,
@@ -263,6 +263,10 @@ pub enum Error {
     #[snafu(display("failed to create PodDisruptionBudget"))]
     FailedToCreatePdb {
         source: crate::operations::pdb::Error,
+    },
+    #[snafu(display("failed to configure graceful shutdown"), context(false))]
+    GracefulShutdown {
+        source: crate::operations::graceful_shutdown::Error,
     },
 }
 
@@ -908,7 +912,7 @@ fn build_rolegroup_statefulset(
         merged_config,
         &mut pod_builder,
         &mut cb_trino,
-    );
+    )?;
 
     // Add the needed stuff for catalogs
     env.extend(

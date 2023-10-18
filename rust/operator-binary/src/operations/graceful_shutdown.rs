@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use indoc::formatdoc;
+use snafu::Snafu;
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
@@ -11,6 +12,14 @@ use stackable_trino_crd::{
     TrinoCluster, TrinoConfig, TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD,
     WORKER_SHUTDOWN_GRACE_PERIOD,
 };
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Failed to set terminationGracePeriod"), context(false))]
+    SetTerminationGracePeriod {
+        source: stackable_operator::builder::pod::Error,
+    },
+}
 
 pub fn graceful_shutdown_config_properties(
     trino: &TrinoCluster,
@@ -39,13 +48,13 @@ pub fn add_graceful_shutdown_config(
     merged_config: &TrinoConfig,
     pod_builder: &mut PodBuilder,
     trino_builder: &mut ContainerBuilder,
-) {
-    // This must be always set by the merge mechanism, as we provide a default value.
+) -> Result<(), Error> {
+    // This must be always set by the merge mechanism, as we provide a default value,
+    // users can not disable graceful shutdown.
     if let Some(graceful_shutdown_timeout) = merged_config.graceful_shutdown_timeout {
         match role {
             TrinoRole::Coordinator => {
-                pod_builder
-                    .termination_grace_period_seconds(graceful_shutdown_timeout.as_secs() as i64);
+                pod_builder.termination_grace_period(&graceful_shutdown_timeout)?;
             }
             TrinoRole::Worker => {
                 // We could stick `graceful_shutdown_timeout` into the Pod's `termination_grace_period_seconds` and subtract all the overheads
@@ -56,8 +65,7 @@ pub fn add_graceful_shutdown_config(
                     + WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD;
                 let termination_grace_period_seconds = termination_grace_period.as_secs();
 
-                pod_builder
-                    .termination_grace_period_seconds(termination_grace_period.as_secs() as i64);
+                pod_builder.termination_grace_period(&termination_grace_period)?;
                 trino_builder.lifecycle_pre_stop(LifecycleHandler {
                     exec: Some(ExecAction {
                         command: Some(vec![
@@ -89,4 +97,6 @@ pub fn add_graceful_shutdown_config(
             }
         }
     }
+
+    Ok(())
 }
