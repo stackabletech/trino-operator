@@ -1,12 +1,21 @@
 = Graceful shutdown
 
-You can configure the graceful shutdown as described in xref:concepts:operations/pod_placement.adoc[].
+You can configure the graceful shutdown as described in xref:concepts:operations/graceful_shutdown.adoc[].
 
 == Coordinators
 
-As a default, coordinators have `15` minutes to terminate gracefully.
+As a default, coordinators have `15 minutes` to terminate gracefully.
+
+The coordinator process will always run as PID `1` and will get a `SIGTERM` once Kubernetes wants to terminate the Pod.
+It will initiate a graceful shutdown.
+After the graceful shutdown timeout is passed and the process still didn't exit, Kubernetes will issue an `SIGKILL` to force-kill the process.
+
+When a coordinator gets restarted all running queries will fail and will not be recovered.
+As of Trino version `429` this can not be prevented (e.g. by using multiple coordinators).
 
 == Workers
+As a default, Coordinators have `60 minutes` to terminate gracefully.
+
 Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[graceful shutdown] of the workers.
 This operator always adds a https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[`PreStop` hook] to gracefully shut them down.
 No additional configuration is needed, this guide is intended for users that need to tweak this mechanism.
