@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Default stackableVersion to operator version ([#441]).
 - Configuration overrides for the JVM security properties, such as DNS caching ([#460]).
 - Support PodDisruptionBudgets ([#481]).
+- Added support for version 428 with new opa authorizer ([#491]).
 
 ### Fixed
 
@@ -17,9 +18,14 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `operator-rs` `0.44.0` -> `0.52.1` ([#441], [#453], [#470], [#481]).
-- `vector` `0.26.0` -> `0.31.0` ([#453]).
+- `operator-rs` `0.44.0` -> `0.55.0` ([#441], [#453], [#470], [#481], [#491]).
+- `vector` `0.26.0` -> `0.33.0` ([#453], [#491]).
 - Let secret-operator handle certificate conversion ([#470]).
+- [BREAKING]: Version 428 uses the new OPA authorizer from <https://github.com/bloomberg/trino/tree/add-open-policy-agent> which requires existing rego rules to be changed ([#491]).
+
+### Removed
+
+- Removed support for versions 377, 387, 395, 396, 403 ([#491]).
 
 [#441]: https://github.com/stackabletech/trino-operator/pull/441
 [#449]: https://github.com/stackabletech/trino-operator/pull/449
@@ -31,6 +37,7 @@ All notable changes to this project will be documented in this file.
 [#470]: https://github.com/stackabletech/trino-operator/pull/470
 [#474]: https://github.com/stackabletech/trino-operator/pull/474
 [#481]: https://github.com/stackabletech/trino-operator/pull/481
+[#491]: https://github.com/stackabletech/trino-operator/pull/491
 
 ## [23.7.0] - 2023-07-14
 

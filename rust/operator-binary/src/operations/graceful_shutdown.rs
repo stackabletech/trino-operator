@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use indoc::formatdoc;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
@@ -15,7 +15,7 @@ use stackable_trino_crd::{
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Failed to set terminationGracePeriod"), context(false))]
+    #[snafu(display("Failed to set terminationGracePeriod"))]
     SetTerminationGracePeriod {
         source: stackable_operator::builder::pod::Error,
     },
@@ -54,7 +54,9 @@ pub fn add_graceful_shutdown_config(
     if let Some(graceful_shutdown_timeout) = merged_config.graceful_shutdown_timeout {
         match role {
             TrinoRole::Coordinator => {
-                pod_builder.termination_grace_period(&graceful_shutdown_timeout)?;
+                pod_builder
+                    .termination_grace_period(&graceful_shutdown_timeout)
+                    .context(SetTerminationGracePeriodSnafu)?;
             }
             TrinoRole::Worker => {
                 // We could stick `graceful_shutdown_timeout` into the Pod's `termination_grace_period_seconds` and subtract all the overheads
@@ -65,7 +67,9 @@ pub fn add_graceful_shutdown_config(
                     + WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD;
                 let termination_grace_period_seconds = termination_grace_period.as_secs();
 
-                pod_builder.termination_grace_period(&termination_grace_period)?;
+                pod_builder
+                    .termination_grace_period(&termination_grace_period)
+                    .context(SetTerminationGracePeriodSnafu)?;
                 trino_builder.lifecycle_pre_stop(LifecycleHandler {
                     exec: Some(ExecAction {
                         command: Some(vec![
