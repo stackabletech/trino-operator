@@ -26,7 +26,6 @@ use stackable_operator::{
         fragment::{self, ValidationError},
         merge::Merge,
     },
-    duration::Duration,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{ConfigError, Configuration},
@@ -35,6 +34,7 @@ use stackable_operator::{
     role_utils::{GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
+    time::Duration,
 };
 use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -719,6 +719,14 @@ impl TrinoCluster {
         !spec.cluster_config.authentication.is_empty()
     }
 
+    pub fn get_opa_config(&self) -> Option<&OpaConfig> {
+        self.spec
+            .cluster_config
+            .authorization
+            .as_ref()
+            .and_then(|a| a.opa.as_ref())
+    }
+
     /// Return user provided server TLS settings
     pub fn get_server_tls(&self) -> Option<&str> {
         let spec: &TrinoClusterSpec = &self.spec;
@@ -831,7 +839,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -846,7 +854,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -863,7 +871,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -881,7 +889,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -901,7 +909,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -916,7 +924,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -933,7 +941,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -954,7 +962,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -971,7 +979,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
             gracefulShutdownTimeout: 2d
@@ -989,7 +997,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "414"
+            productVersion: "428"
           clusterConfig:
             catalogLabelSelector: {}
             gracefulShutdownTimeout: 42 # suffix is missing

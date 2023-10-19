@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use indoc::formatdoc;
+use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
@@ -10,6 +11,14 @@ use stackable_operator::{
 use stackable_trino_crd::{
     TrinoCluster, TrinoRole, GRACEFUL_SHUTDOWN_GRACE_PERIOD, GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD,
 };
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("invalid graceful shutdown duration"))]
+    InvalidDuration {
+        source: stackable_operator::builder::Error,
+    },
+}
 
 pub fn graceful_shutdown_config_properties(
     trino: &TrinoCluster,
@@ -34,11 +43,11 @@ pub fn add_graceful_shutdown_config(
     role: &TrinoRole,
     pod_builder: &mut PodBuilder,
     trino_builder: &mut ContainerBuilder,
-) {
+) -> Result<(), Error> {
     // Graceful shutdown only affects workers.
     // When a coordinators get's shut down - as of Trino 423 - all queries will die anyway :/
     if role != &TrinoRole::Worker {
-        return;
+        return Ok(());
     }
 
     let graceful_shutdown_timeout = trino.spec.cluster_config.graceful_shutdown_timeout;
@@ -47,7 +56,9 @@ pub fn add_graceful_shutdown_config(
         + GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD;
     let termination_grace_period_seconds = termination_grace_period.as_secs();
 
-    pod_builder.termination_grace_period_seconds(termination_grace_period.as_secs() as i64);
+    pod_builder
+        .termination_grace_period(&termination_grace_period)
+        .context(InvalidDurationSnafu)?;
     trino_builder.lifecycle_pre_stop(LifecycleHandler {
         exec: Some(ExecAction {
             command: Some(vec![
@@ -76,4 +87,6 @@ pub fn add_graceful_shutdown_config(
         }),
         ..Default::default()
     });
+
+    Ok(())
 }

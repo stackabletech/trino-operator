@@ -2,9 +2,5 @@
 // This is a separate file, since it is used by both the direct Trino documentation, and the overarching
 // Stackable Platform documentation.
 
-- 377
-- 387
-- 395
-- 396
-- 403
+- 428
 - 414
