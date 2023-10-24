@@ -1,4 +1,4 @@
-//! This module computes all resources required for Trino authentication (e.g. PASSWORD, CERTIFICATE).
+//! This module computes all resources required for Trino authentication (e.g. PASSWORD, OAUTH2).
 //!
 //! Computes a `TrinoAuthenticationConfig` containing required resources like for all authentication
 //! types like:
@@ -7,6 +7,7 @@
 //! - volume and volume mounts
 //! - extra containers and commands
 //!
+pub(crate) mod oidc;
 pub(crate) mod password;
 
 use crate::authentication::password::{
@@ -14,6 +15,7 @@ use crate::authentication::password::{
     TrinoPasswordAuthenticator,
 };
 
+use crate::authentication::oidc::{TrinoOidcAuthentication, TrinoOidcAuthenticator};
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
@@ -45,6 +47,8 @@ pub enum Error {
     },
     #[snafu(display("Failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
+    #[snafu(display("Failed to configure trino OAuth2 authentication"))]
+    InvalidOauth2AuthenticationConfig { source: oidc::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -78,7 +82,7 @@ impl TrinoAuthenticationConfig {
     ) -> Result<Self, Error> {
         let mut authentication_config = TrinoAuthenticationConfig::default();
         // Represents properties of "http-server.authentication.type".
-        // Properties like PASSWORD, CERTIFICATE are only added once and the order is important
+        // Properties like PASSWORD, OAUTH2 are only added once and the order is important
         // due to Trino starting to evaluate the authenticators depending on the given order
         let mut http_server_authentication_types = vec![];
 
@@ -92,6 +96,11 @@ impl TrinoAuthenticationConfig {
                     password_auth
                         .password_authentication_config(resolved_product_image)
                         .context(InvalidPasswordAuthenticationConfigSnafu)?,
+                ),
+                TrinoAuthenticationType::Oauth2(oauth2_auth) => authentication_config.extend(
+                    oauth2_auth
+                        .oauth2_authentication_config()
+                        .context(InvalidOauth2AuthenticationConfigSnafu)?,
                 ),
             }
         }
@@ -347,8 +356,8 @@ pub enum TrinoAuthenticationType {
     // Jwt,
     // #[strum(serialize = "KERBEROS")]
     // Kerberos,
-    // #[strum(serialize = "OAUTH2")]
-    // Oauth2,
+    #[strum(serialize = "OAUTH2")]
+    Oauth2(TrinoOidcAuthentication),
     #[strum(serialize = "PASSWORD")]
     Password(TrinoPasswordAuthentication),
 }
@@ -366,6 +375,10 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
     fn try_from(auth_classes: Vec<AuthenticationClass>) -> std::result::Result<Self, Self::Error> {
         let mut authentication_types = vec![];
         let mut password_authenticators = vec![];
+        // OAuth2 cannot be configured to have multiple IDPs and therefore does not need to be
+        // a vector in comparison to password authentication (file, ldap).
+        // This is still a vec to handle errors more granular in the OAuth2 module
+        let mut oidc_authenticators = vec![];
 
         for auth_class in auth_classes {
             let auth_class_name = auth_class.name_any();
@@ -380,6 +393,10 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
                         LdapAuthenticator::new(auth_class_name, provider),
                     ));
                 }
+                AuthenticationClassProvider::Oidc(provider) => {
+                    oidc_authenticators
+                        .push(TrinoOidcAuthenticator::new(auth_class_name, provider));
+                }
                 _ => AuthenticationClassProviderNotSupportedSnafu {
                     authentication_class_provider: auth_class.spec.provider.to_string(),
                     authentication_class: ObjectRef::<AuthenticationClass>::from_obj(&auth_class),
@@ -392,6 +409,12 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
         if !password_authenticators.is_empty() {
             authentication_types.push(TrinoAuthenticationType::Password(
                 TrinoPasswordAuthentication::new(password_authenticators),
+            ));
+        }
+        // Any OAuth2 authenticator available?
+        if !oidc_authenticators.is_empty() {
+            authentication_types.push(TrinoAuthenticationType::Oauth2(
+                TrinoOidcAuthentication::new(oidc_authenticators),
             ));
         }
 
