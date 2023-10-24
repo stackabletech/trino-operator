@@ -1,15 +1,7 @@
 use crate::authentication::password;
 use snafu::Snafu;
 use stackable_operator::{
-    builder::VolumeMountBuilder,
-    commons::{
-        authentication::{
-            ldap::SECRET_BASE_PATH,
-            tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
-            LdapAuthenticationProvider,
-        },
-        secret_class::SecretClassVolume,
-    },
+    commons::authentication::LdapAuthenticationProvider,
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 use std::collections::BTreeMap;
@@ -62,12 +54,12 @@ impl LdapAuthenticator {
             LDAP_URL.to_string(),
             format!(
                 "{protocol}{server_hostname}:{server_port}",
-                protocol = match self.ldap.tls {
+                protocol = match self.ldap.tls.tls {
                     None => "ldap://",
                     Some(_) => "ldaps://",
                 },
                 server_hostname = self.ldap.hostname,
-                server_port = self.ldap.port.unwrap_or_else(|| self.ldap.default_port()),
+                server_port = self.ldap.port(),
             ),
         );
 
@@ -97,14 +89,14 @@ impl LdapAuthenticator {
             );
         }
 
-        if self.ldap.use_tls() {
-            if !self.ldap.use_tls_verification() {
+        if self.ldap.tls.use_tls() {
+            if !self.ldap.tls.use_tls_verification() {
                 // Use TLS but don't verify LDAP server ca => not supported
                 return Err(Error::UnverifiedLdapTlsConnectionNotSupported);
             }
             // If there is a custom certificate, configure it.
             // There might also be TLS verification using web PKI
-            if let Some(path) = self.ldap.tls_ca_cert_mount_path() {
+            if let Some(path) = self.ldap.tls.tls_ca_cert_mount_path() {
                 config_data.insert(LDAP_SSL_TRUST_STORE_PATH.to_string(), path);
             }
         } else {
@@ -136,37 +128,15 @@ impl LdapAuthenticator {
     /// Required LDAP authenticator volume amd volume mounts.
     pub fn volumes_and_mounts(&self) -> (Vec<Volume>, Vec<VolumeMount>) {
         let mut volumes = vec![];
-        let mut mounts: Vec<(String, String)> = vec![];
-        if let Some(bind_credentials) = &self.ldap.bind_credentials {
-            let secret_class = bind_credentials.secret_class.to_owned();
-            let volume_name = format!("{secret_class}-bind-credentials");
-            volumes.push(bind_credentials.to_volume(&volume_name));
-            mounts.push((volume_name, secret_class));
-        }
-        if let Some(Tls {
-            verification:
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(secret_class),
-                }),
-        }) = &self.ldap.tls
-        {
-            let volume_name = format!("{secret_class}-ca-cert");
-            let volume = SecretClassVolume {
-                secret_class: secret_class.to_string(),
-                scope: None,
-            }
-            .to_volume(&volume_name);
+        let mut volume_mounts = vec![];
 
-            volumes.push(volume);
-            mounts.push((volume_name, secret_class.to_string()));
-        }
+        let (ldap_volumes, ldap_mounts) = self.ldap.volumes_and_mounts();
+        volumes.extend(ldap_volumes);
+        volume_mounts.extend(ldap_mounts);
 
-        let volume_mounts = mounts
-            .into_iter()
-            .map(|(mount_name, secret)| {
-                VolumeMountBuilder::new(mount_name, format!("{SECRET_BASE_PATH}/{secret}")).build()
-            })
-            .collect::<Vec<VolumeMount>>();
+        let (tls_volumes, tls_mounts) = self.ldap.tls.volumes_and_mounts();
+        volumes.extend(tls_volumes);
+        volume_mounts.extend(tls_mounts);
 
         (volumes, volume_mounts)
     }
@@ -185,8 +155,9 @@ impl LdapAuthenticator {
 mod tests {
     use super::*;
     use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
+    use stackable_operator::commons::authentication::TlsClientDetails;
     use stackable_operator::commons::{
-        authentication::tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
+        authentication::{CaCert, Tls, TlsServerVerification, TlsVerification},
         secret_class::SecretClassVolume,
     };
 
@@ -208,11 +179,13 @@ mod tests {
                     secret_class: "test".to_string(),
                     scope: None,
                 }),
-                tls: Some(Tls {
-                    verification: TlsVerification::Server(TlsServerVerification {
-                        ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
+                tls: TlsClientDetails {
+                    tls: Some(Tls {
+                        verification: TlsVerification::Server(TlsServerVerification {
+                            ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
+                        }),
                     }),
-                }),
+                },
             },
         )
     }
