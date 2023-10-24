@@ -1892,7 +1892,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "stackable-operator"
 version = "0.55.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.55.0#bfbc23d3819f815413cb4135e0835acd76aecf97"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/sso-auth-classes#245c2ae966a1fc418bb139df53793487d9d12b1f"
 dependencies = [
  "chrono",
  "clap",
@@ -1921,12 +1921,13 @@ dependencies = [
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
 name = "stackable-operator-derive"
 version = "0.55.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=0.55.0#bfbc23d3819f815413cb4135e0835acd76aecf97"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/sso-auth-classes#245c2ae966a1fc418bb139df53793487d9d12b1f"
 dependencies = [
  "darling 0.20.3",
  "proc-macro2",
