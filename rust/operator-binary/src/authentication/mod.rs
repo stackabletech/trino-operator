@@ -17,6 +17,7 @@ use crate::authentication::password::{
 
 use crate::authentication::oidc::{TrinoOidcAuthentication, TrinoOidcAuthenticator};
 use snafu::{ResultExt, Snafu};
+use stackable_operator::k8s_openapi::api::core::v1::EnvVar;
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     commons::{
@@ -29,6 +30,7 @@ use stackable_operator::{
 };
 use stackable_trino_crd::TrinoRole;
 use std::collections::{BTreeMap, HashMap};
+use strum::EnumDiscriminants;
 use tracing::trace;
 
 // trino properties
@@ -64,6 +66,8 @@ pub struct TrinoAuthenticationConfig {
     config_properties: HashMap<TrinoRole, BTreeMap<String, String>>,
     /// All extra config files required for authentication for each role.
     config_files: HashMap<TrinoRole, BTreeMap<String, String>>,
+    /// Additional env variables for a certain role and container
+    env_vars: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<EnvVar>>>,
     /// All extra container commands for a certain role and container
     commands: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<String>>>,
     /// Additional volumes like secret mounts, user file database etc.
@@ -186,6 +190,21 @@ impl TrinoAuthenticationConfig {
             .insert(file_name, file_content);
     }
 
+    /// Add an env variable for a given role and container.
+    pub fn add_env_var(
+        &mut self,
+        role: TrinoRole,
+        container: stackable_trino_crd::Container,
+        env_var: EnvVar,
+    ) {
+        self.env_vars
+            .entry(role)
+            .or_insert(BTreeMap::new())
+            .entry(container)
+            .or_insert(Vec::new())
+            .push(env_var)
+    }
+
     /// Add additional commands for a given role and container.
     pub fn add_commands(
         &mut self,
@@ -253,6 +272,21 @@ impl TrinoAuthenticationConfig {
         self.config_files.get(role).cloned().unwrap_or_default()
     }
 
+    /// Retrieve additional env vars for a given role and container.
+    pub fn env_vars(
+        &self,
+        role: &TrinoRole,
+        container: &stackable_trino_crd::Container,
+    ) -> Vec<EnvVar> {
+        self.env_vars
+            .get(role)
+            .cloned()
+            .unwrap_or_default()
+            .get(container)
+            .cloned()
+            .unwrap_or_default()
+    }
+
     /// Retrieve additional container commands for a given role and container.
     pub fn commands(
         &self,
@@ -310,7 +344,16 @@ impl TrinoAuthenticationConfig {
                 .extend(data)
         }
 
-        self.volumes.extend(other.volumes);
+        for (role, containers) in other.env_vars {
+            for (container, env_vars) in containers {
+                self.env_vars
+                    .entry(role.clone())
+                    .or_insert_with(BTreeMap::new)
+                    .entry(container)
+                    .or_insert_with(Vec::new)
+                    .extend(env_vars)
+            }
+        }
 
         for (role, containers) in other.commands {
             for (container, commands) in containers {
@@ -322,6 +365,8 @@ impl TrinoAuthenticationConfig {
                     .extend(commands)
             }
         }
+
+        self.volumes.extend(other.volumes);
 
         for (role, containers) in other.volume_mounts {
             for (container, data) in containers {
@@ -346,7 +391,7 @@ impl TrinoAuthenticationConfig {
 /// Representation of all Trino authentication types (e.g. PASSWORD).
 /// One authentication type may have multiple authenticators (e.g. file, ldap).
 /// These authenticators are summarized and handled in their respective struct.
-#[derive(Clone, Debug, strum::Display)]
+#[derive(Clone, Debug, strum::Display, EnumDiscriminants)]
 pub enum TrinoAuthenticationType {
     // #[strum(serialize = "CERTIFICATE")]
     // Certificate,
@@ -374,12 +419,15 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
 
     fn try_from(auth_classes: Vec<AuthenticationClass>) -> std::result::Result<Self, Self::Error> {
         let mut authentication_types = vec![];
+        let mut authentication_types_order = Vec::<TrinoAuthenticationTypeDiscriminants>::new();
+
         let mut password_authenticators = vec![];
         // OAuth2 cannot be configured to have multiple IDPs and therefore does not need to be
         // a vector in comparison to password authentication (file, ldap).
         // This is still a vec to handle errors more granular in the OAuth2 module
         let mut oidc_authenticators = vec![];
 
+        // Collect all provided AuthenticationClass providers into their respective authenticators
         for auth_class in auth_classes {
             let auth_class_name = auth_class.name_any();
             match auth_class.spec.provider {
@@ -387,15 +435,36 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
                     password_authenticators.push(TrinoPasswordAuthenticator::File(
                         FileAuthenticator::new(auth_class_name, provider),
                     ));
+
+                    if !authentication_types_order
+                        .contains(&TrinoAuthenticationTypeDiscriminants::Password)
+                    {
+                        authentication_types_order
+                            .push(TrinoAuthenticationTypeDiscriminants::Password);
+                    }
                 }
                 AuthenticationClassProvider::Ldap(provider) => {
                     password_authenticators.push(TrinoPasswordAuthenticator::Ldap(
                         LdapAuthenticator::new(auth_class_name, provider),
                     ));
+
+                    if !authentication_types_order
+                        .contains(&TrinoAuthenticationTypeDiscriminants::Password)
+                    {
+                        authentication_types_order
+                            .push(TrinoAuthenticationTypeDiscriminants::Password);
+                    }
                 }
                 AuthenticationClassProvider::Oidc(provider) => {
                     oidc_authenticators
                         .push(TrinoOidcAuthenticator::new(auth_class_name, provider));
+
+                    if !authentication_types_order
+                        .contains(&TrinoAuthenticationTypeDiscriminants::Oauth2)
+                    {
+                        authentication_types_order
+                            .push(TrinoAuthenticationTypeDiscriminants::Oauth2);
+                    }
                 }
                 _ => AuthenticationClassProviderNotSupportedSnafu {
                     authentication_class_provider: auth_class.spec.provider.to_string(),
@@ -405,17 +474,21 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
             }
         }
 
-        // Any password authenticators available?
-        if !password_authenticators.is_empty() {
-            authentication_types.push(TrinoAuthenticationType::Password(
-                TrinoPasswordAuthentication::new(password_authenticators),
-            ));
-        }
-        // Any OAuth2 authenticator available?
-        if !oidc_authenticators.is_empty() {
-            authentication_types.push(TrinoAuthenticationType::Oauth2(
-                TrinoOidcAuthentication::new(oidc_authenticators),
-            ));
+        // We want to preserve the order of the provided AuthenticationClasses to determine
+        // which AuthenticationMethod Trino will try first.
+        for auth_type in authentication_types_order {
+            match auth_type {
+                TrinoAuthenticationTypeDiscriminants::Oauth2 => {
+                    authentication_types.push(TrinoAuthenticationType::Oauth2(
+                        TrinoOidcAuthentication::new(oidc_authenticators.clone()),
+                    ));
+                }
+                TrinoAuthenticationTypeDiscriminants::Password => {
+                    authentication_types.push(TrinoAuthenticationType::Password(
+                        TrinoPasswordAuthentication::new(password_authenticators.clone()),
+                    ));
+                }
+            }
         }
 
         Ok(TrinoAuthenticationTypes {

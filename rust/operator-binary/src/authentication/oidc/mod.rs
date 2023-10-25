@@ -4,17 +4,18 @@
 use crate::authentication::TrinoAuthenticationConfig;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::authentication::OidcAuthenticationProvider;
-use stackable_trino_crd::{Container, TrinoRole};
+use stackable_operator::k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector};
+use stackable_trino_crd::TrinoRole;
 
 // Trino properties
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID: &str =
-    "http-server.authentication.oidc.client-id";
+    "http-server.authentication.oauth2.client-id";
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_SECRET: &str =
-    "http-server.authentication.oidc.client-secret";
-const HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER: &str = "http-server.authentication.oidc.issuer";
+    "http-server.authentication.oauth2.client-secret";
+const HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER: &str = "http-server.authentication.oauth2.issuer";
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD: &str =
-    "http-server.authentication.oidc.principal-field";
-// TODO: test with multiple autheticators (file, oidc)
+    "http-server.authentication.oauth2.principal-field";
+// TODO: test with multiple authenticators (file, oidc)
 // To enable OAuth 2.0 authentication for the Web UI, the following property must be be added:
 // web-ui.authentication.type=oidc
 const WEB_UI_AUTHENTICATION_TYPE: &str = "web-ui.authentication.type";
@@ -82,6 +83,7 @@ impl TrinoOidcAuthentication {
             .endpoint_url()
             .context(FailedToCreateIssuerEndpointUrlSnafu)?;
 
+        // Trino config.properties
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER.to_string(),
@@ -95,27 +97,69 @@ impl TrinoOidcAuthentication {
             "preferred_username".to_string(),
         );
 
+        let client_id_env =
+            self.build_bind_credentials_env_var(OAUTH2_CLIENT_ID_ENV, &authenticator.name);
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID.to_string(),
-            format!(
-                "${{ENV:{client_id}}}",
-                client_id =
-                    self.build_bind_credentials_env_var(OAUTH2_CLIENT_ID_ENV, &authenticator.name)
-            ),
+            format!("${{ENV:{client_id_env}}}",),
         );
 
+        let client_secret_env =
+            self.build_bind_credentials_env_var(OAUTH2_CLIENT_SECRET_ENV, &authenticator.name);
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_SECRET.to_string(),
-            format!(
-                "${{ENV:{client_secret}}}",
-                client_secret = self
-                    .build_bind_credentials_env_var(OAUTH2_CLIENT_SECRET_ENV, &authenticator.name)
-            ),
+            format!("${{ENV:{client_secret_env}}}",),
+        );
+
+        // TODO: test
+        // must be set to enable e.g. OAuth2 login if other authenticators are provided as well
+        // only for the web ui
+        oauth2_authentication_config.add_config_property(
+            TrinoRole::Coordinator,
+            WEB_UI_AUTHENTICATION_TYPE.to_string(),
+            "oauth2".to_string(),
         );
 
         // TODO: set client id and secret env var
+        let secret_name = "simple-trino-oidc-secret";
+        //let (clientId_mount_path, clientSecret_mount_path) =
+        //    OidcAuthenticationProvider::client_credentials_volume_mount_path(secret_name);
+
+        oauth2_authentication_config.add_env_var(
+            TrinoRole::Coordinator,
+            stackable_trino_crd::Container::Trino,
+            EnvVar {
+                name: client_id_env.to_string(),
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        name: Some(secret_name.into()),
+                        key: "clientId".into(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..EnvVar::default()
+            },
+        );
+
+        oauth2_authentication_config.add_env_var(
+            TrinoRole::Coordinator,
+            stackable_trino_crd::Container::Trino,
+            EnvVar {
+                name: client_secret_env.to_string(),
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        name: Some(secret_name.into()),
+                        key: "clientSecret".into(),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..EnvVar::default()
+            },
+        );
 
         Ok(oauth2_authentication_config)
     }

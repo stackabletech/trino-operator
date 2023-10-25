@@ -842,16 +842,21 @@ fn build_rolegroup_statefulset(
         }
     })?;
 
-    let mut env = config
-        .get(&PropertyNameKind::Env)
-        .iter()
-        .flat_map(|env_vars| env_vars.iter())
-        .map(|(k, v)| EnvVar {
-            name: k.clone(),
-            value: Some(v.clone()),
-            ..EnvVar::default()
-        })
-        .collect::<Vec<_>>();
+    // additional authentication env vars
+    let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
+
+    env.extend(
+        config
+            .get(&PropertyNameKind::Env)
+            .iter()
+            .flat_map(|env_vars| env_vars.iter())
+            .map(|(k, v)| EnvVar {
+                name: k.clone(),
+                value: Some(v.clone()),
+                ..EnvVar::default()
+            })
+            .collect::<Vec<_>>(),
+    );
 
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
