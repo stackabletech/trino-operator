@@ -414,6 +414,20 @@ pub struct TrinoAuthenticationTypes {
     authentication_types: Vec<TrinoAuthenticationType>,
 }
 
+impl TrinoAuthenticationTypes {
+    /// Helper method to store the order of provided AuthenticationClasses in the CRD.
+    /// Trino will query all authentication methods in the order provided in
+    /// "http-server.authentication.type".
+    pub fn insert_auth_type_order(
+        store: &mut Vec<TrinoAuthenticationTypeDiscriminants>,
+        auth_type: TrinoAuthenticationTypeDiscriminants,
+    ) {
+        if !store.contains(&auth_type) {
+            store.push(auth_type);
+        }
+    }
+}
+
 impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
     type Error = Error;
 
@@ -436,35 +450,29 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
                         FileAuthenticator::new(auth_class_name, provider),
                     ));
 
-                    if !authentication_types_order
-                        .contains(&TrinoAuthenticationTypeDiscriminants::Password)
-                    {
-                        authentication_types_order
-                            .push(TrinoAuthenticationTypeDiscriminants::Password);
-                    }
+                    TrinoAuthenticationTypes::insert_auth_type_order(
+                        &mut authentication_types_order,
+                        TrinoAuthenticationTypeDiscriminants::Password,
+                    );
                 }
                 AuthenticationClassProvider::Ldap(provider) => {
                     password_authenticators.push(TrinoPasswordAuthenticator::Ldap(
                         LdapAuthenticator::new(auth_class_name, provider),
                     ));
 
-                    if !authentication_types_order
-                        .contains(&TrinoAuthenticationTypeDiscriminants::Password)
-                    {
-                        authentication_types_order
-                            .push(TrinoAuthenticationTypeDiscriminants::Password);
-                    }
+                    TrinoAuthenticationTypes::insert_auth_type_order(
+                        &mut authentication_types_order,
+                        TrinoAuthenticationTypeDiscriminants::Password,
+                    );
                 }
                 AuthenticationClassProvider::Oidc(provider) => {
                     oidc_authenticators
                         .push(TrinoOidcAuthenticator::new(auth_class_name, provider));
 
-                    if !authentication_types_order
-                        .contains(&TrinoAuthenticationTypeDiscriminants::Oauth2)
-                    {
-                        authentication_types_order
-                            .push(TrinoAuthenticationTypeDiscriminants::Oauth2);
-                    }
+                    TrinoAuthenticationTypes::insert_auth_type_order(
+                        &mut authentication_types_order,
+                        TrinoAuthenticationTypeDiscriminants::Oauth2,
+                    );
                 }
                 _ => AuthenticationClassProviderNotSupportedSnafu {
                     authentication_class_provider: auth_class.spec.provider.to_string(),
