@@ -34,6 +34,15 @@ spec:
                         properties:
                           authenticationClass:
                             type: string
+                          secret:
+                            nullable: true
+                            oneOf:
+                              - required:
+                                  - oidc
+                            properties:
+                              oidc:
+                                type: string
+                            type: object
                         required:
                           - authenticationClass
                         type: object
