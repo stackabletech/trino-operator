@@ -72,7 +72,7 @@ impl LdapAuthenticator {
 
         // If bind credentials provided we have to mount the secret volume into env variables
         // in the container and reference the DN and password in the config
-        if self.ldap.bind_credentials.is_some() {
+        if self.ldap.bind_credentials_mount_paths().is_some() {
             config_data.insert(
                 LDAP_BIND_DN.to_string(),
                 format!(
