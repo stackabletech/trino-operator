@@ -1,0 +1,63 @@
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: simple-trino-oidc
+spec:
+  provider:
+    oidc:
+      hostname: keycloak
+      port: 8080
+      rootPath: /realms/master
+      scopes: ["openid"]
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple-trino-oidc-secret
+type: kubernetes.io/opaque
+stringData:
+  clientId: trino
+  clientSecret: trinotrino
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: simple-trino-users
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: simple-trino-users-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple-trino-users-secret
+type: kubernetes.io/opaque
+stringData:
+  test: test
+  abc: abc
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  image:
+    productVersion: "428"
+  clusterConfig:
+    authentication:
+      - authenticationClass: simple-trino-oidc
+        secret:
+          oidc: simple-trino-oidc-secret
+      - authenticationClass: simple-trino-users
+    catalogLabelSelector: {}
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1

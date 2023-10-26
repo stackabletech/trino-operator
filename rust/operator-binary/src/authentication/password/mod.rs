@@ -192,7 +192,8 @@ impl TrinoPasswordAuthentication {
 mod tests {
     use super::*;
     use stackable_operator::commons::authentication::{
-        static_::UserCredentialsSecretRef, LdapAuthenticationProvider, StaticAuthenticationProvider,
+        static_::UserCredentialsSecretRef, LdapAuthenticationProvider,
+        StaticAuthenticationProvider, TlsClientDetails,
     };
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
@@ -208,7 +209,7 @@ mod tests {
             search_filter: "".to_string(),
             ldap_field_names: Default::default(),
             bind_credentials: None,
-            tls: None,
+            tls: TlsClientDetails { tls: None },
         }
     }
 
