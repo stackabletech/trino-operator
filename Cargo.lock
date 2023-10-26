@@ -1965,6 +1965,7 @@ dependencies = [
  "pin-project",
  "rstest",
  "semver",
+ "serde_yaml",
  "snafu",
  "stackable-operator",
  "stackable-trino-crd",

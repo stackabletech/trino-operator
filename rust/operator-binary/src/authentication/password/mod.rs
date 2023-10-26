@@ -191,9 +191,9 @@ impl TrinoPasswordAuthentication {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_yaml;
     use stackable_operator::commons::authentication::{
-        static_::UserCredentialsSecretRef, LdapAuthenticationProvider,
-        StaticAuthenticationProvider, TlsClientDetails,
+        static_::UserCredentialsSecretRef, LdapAuthenticationProvider, StaticAuthenticationProvider,
     };
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
@@ -202,15 +202,12 @@ mod tests {
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
     fn ldap_provider() -> LdapAuthenticationProvider {
-        LdapAuthenticationProvider {
-            hostname: "".to_string(),
-            port: None,
-            search_base: "".to_string(),
-            search_filter: "".to_string(),
-            ldap_field_names: Default::default(),
-            bind_credentials: None,
-            tls: TlsClientDetails { tls: None },
-        }
+        let input = r#"
+            hostname: my.ldap.server
+            searchBase: ou=users,dc=example,dc=org
+        "#;
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
     }
 
     fn setup() -> TrinoAuthenticationConfig {

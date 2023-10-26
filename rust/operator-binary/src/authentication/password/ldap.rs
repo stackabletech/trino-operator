@@ -155,11 +155,6 @@ impl LdapAuthenticator {
 mod tests {
     use super::*;
     use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
-    use stackable_operator::commons::authentication::TlsClientDetails;
-    use stackable_operator::commons::{
-        authentication::{CaCert, Tls, TlsServerVerification, TlsVerification},
-        secret_class::SecretClassVolume,
-    };
 
     const AUTH_CLASS_NAME: &str = "my-auth-class-name";
     const TLS_SECRET_CLASS_NAME: &str = "secret";
@@ -167,27 +162,24 @@ mod tests {
     const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
 
     fn setup_test_authenticator() -> LdapAuthenticator {
-        LdapAuthenticator::new(
-            AUTH_CLASS_NAME.to_string(),
-            LdapAuthenticationProvider {
-                hostname: LDAP_HOST_NAME.to_string(),
-                port: None,
-                search_base: LDAP_SEARCH_BASE.to_string(),
-                search_filter: "".to_string(),
-                ldap_field_names: Default::default(),
-                bind_credentials: Some(SecretClassVolume {
-                    secret_class: "test".to_string(),
-                    scope: None,
-                }),
-                tls: TlsClientDetails {
-                    tls: Some(Tls {
-                        verification: TlsVerification::Server(TlsServerVerification {
-                            ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
-                        }),
-                    }),
-                },
-            },
-        )
+        let input = format!(
+            r#"
+            hostname: {LDAP_HOST_NAME}
+            searchBase: {LDAP_SEARCH_BASE}
+            bindCredentials:
+              secretClass: test
+            tls:
+              verification: 
+                server:
+                  caCert: 
+                    secretClass: {TLS_SECRET_CLASS_NAME}
+        "#
+        );
+        let deserializer = serde_yaml::Deserializer::from_str(&input);
+        let ldap_auth_provider: LdapAuthenticationProvider =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        LdapAuthenticator::new(AUTH_CLASS_NAME.to_string(), ldap_auth_provider)
     }
 
     #[test]

@@ -523,7 +523,7 @@ mod tests {
     use stackable_operator::commons::secret_class::SecretClassVolume;
     use stackable_operator::{
         commons::authentication::{
-            static_::UserCredentialsSecretRef, AuthenticationClassSpec, LdapAuthenticationProvider,
+            static_::UserCredentialsSecretRef, AuthenticationClassSpec,
             StaticAuthenticationProvider,
         },
         kube::core::ObjectMeta,
@@ -534,43 +534,72 @@ mod tests {
     const FILE_AUTH_CLASS_2: &str = "file-auth-2";
     const LDAP_AUTH_CLASS_1: &str = "ldap-auth-1";
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
+    const HOST_NAME: &str = "my.ldap.server";
+    const SEARCH_BASE: &str = "searchbase";
 
-    fn setup_file_auth_class(name: &str) -> AuthenticationClass {
-        AuthenticationClass {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                ..ObjectMeta::default()
+    fn setup_file_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        ResolvedAuthenticationClassRef {
+            authentication_class: AuthenticationClass {
+                metadata: ObjectMeta {
+                    name: Some(name.to_string()),
+                    ..ObjectMeta::default()
+                },
+                spec: AuthenticationClassSpec {
+                    provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
+                        user_credentials_secret: UserCredentialsSecretRef {
+                            name: name.to_string(),
+                        },
+                    }),
+                },
             },
-            spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
-                    user_credentials_secret: UserCredentialsSecretRef {
-                        name: name.to_string(),
-                    },
-                }),
-            },
+            secret_ref: None,
         }
     }
 
     fn setup_ldap_auth_class(
         name: &str,
         bind_credentials: Option<SecretClassVolume>,
-    ) -> AuthenticationClass {
-        AuthenticationClass {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                ..ObjectMeta::default()
-            },
-            spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Ldap(LdapAuthenticationProvider {
-                    hostname: "host".to_string(),
-                    port: None,
-                    search_base: "".to_string(),
-                    search_filter: "".to_string(),
-                    ldap_field_names: Default::default(),
-                    bind_credentials,
-                    tls: None,
-                }),
-            },
+    ) -> ResolvedAuthenticationClassRef {
+        let input = if let Some(credentials) = bind_credentials {
+            format!(
+                r#"
+            apiVersion: authentication.stackable.tech/v1alpha1
+            kind: AuthenticationClass
+            metadata:
+              name: {name}
+            spec:
+              provider:
+                ldap:
+                  hostname: {HOST_NAME}
+                  searchBase: {SEARCH_BASE}
+                  bindCredentials:
+                    secretClass: {secret_class}
+            "#,
+                secret_class = credentials.secret_class
+            )
+        } else {
+            format!(
+                r#"
+            apiVersion: authentication.stackable.tech/v1alpha1
+            kind: AuthenticationClass
+            metadata:
+              name: {name}
+            spec:
+              provider:
+                ldap:
+                  hostname: {HOST_NAME}
+                  searchBase: {SEARCH_BASE}
+            "#
+            )
+        };
+        let deserializer = serde_yaml::Deserializer::from_str(&input);
+
+        ResolvedAuthenticationClassRef {
+            authentication_class: serde_yaml::with::singleton_map_recursive::deserialize(
+                deserializer,
+            )
+            .unwrap(),
+            secret_ref: None,
         }
     }
 
@@ -665,12 +694,12 @@ mod tests {
 
         assert_eq!(
                 config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
+                Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
             );
 
         assert_eq!(
             config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
+                Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
             );
     }
 
