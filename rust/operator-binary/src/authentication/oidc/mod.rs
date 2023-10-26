@@ -2,9 +2,11 @@
 //!
 
 use crate::authentication::TrinoAuthenticationConfig;
-use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::authentication::OidcAuthenticationProvider;
-use stackable_operator::k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector};
+use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::{
+    commons::authentication::OidcAuthenticationProvider,
+    k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector},
+};
 use stackable_trino_crd::TrinoRole;
 
 // Trino properties
@@ -15,11 +17,13 @@ const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_SECRET: &str =
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER: &str = "http-server.authentication.oauth2.issuer";
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD: &str =
     "http-server.authentication.oauth2.principal-field";
-// TODO: test with multiple authenticators (file, oidc)
+const HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES: &str = "http-server.authentication.oauth2.scopes";
 // To enable OAuth 2.0 authentication for the Web UI, the following property must be be added:
 // web-ui.authentication.type=oidc
 const WEB_UI_AUTHENTICATION_TYPE: &str = "web-ui.authentication.type";
 
+const OAUTH2_CLIENT_ID: &str = "clientId";
+const OAUTH2_CLIENT_SECRET: &str = "clientSecret";
 const OAUTH2_CLIENT_ID_ENV: &str = "OAUTH2_CLIENT_ID";
 const OAUTH2_CLIENT_SECRET_ENV: &str = "OAUTH2_CLIENT_SECRET";
 
@@ -41,6 +45,11 @@ pub enum Error {
     FailedToCreateIssuerEndpointUrl {
         source: stackable_operator::commons::authentication::oidc::Error,
     },
+    #[snafu(display(
+        "The OAUTH2 / OIDC AuthenticationClass {auth_class_name} requires to have a secret reference present containing \
+         '{OAUTH2_CLIENT_ID}' and '{OAUTH2_CLIENT_SECRET}' fields."
+    ))]
+    MissingOauth2CredentialSecret { auth_class_name: String },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -52,13 +61,19 @@ pub struct TrinoOidcAuthentication {
 pub struct TrinoOidcAuthenticator {
     name: String,
     oidc: OidcAuthenticationProvider,
+    secret: Option<String>,
 }
 
 impl TrinoOidcAuthenticator {
-    pub fn new(name: String, provider: OidcAuthenticationProvider) -> Self {
+    pub fn new(
+        name: String,
+        provider: OidcAuthenticationProvider,
+        secret_ref: Option<String>,
+    ) -> Self {
         Self {
             name,
             oidc: provider,
+            secret: secret_ref,
         }
     }
 }
@@ -72,11 +87,7 @@ impl TrinoOidcAuthentication {
         let mut oauth2_authentication_config = TrinoAuthenticationConfig::default();
 
         // Check for single OAuth2 AuthenticationClass and error out if multiple were provided
-        self.check_single_oauth2_authentication_class()?;
-
-        // TODO: unwrap cannot fail here due to `check_single_oauth2_authentication_class` above
-        //   the unwrap should be removed still.
-        let authenticator = self.authenticators.get(0).unwrap();
+        let authenticator = self.get_single_oauth2_authentication_class()?;
 
         let issuer = authenticator
             .oidc
@@ -97,71 +108,74 @@ impl TrinoOidcAuthentication {
             "preferred_username".to_string(),
         );
 
+        oauth2_authentication_config.add_config_property(
+            TrinoRole::Coordinator,
+            HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES.to_string(),
+            authenticator.oidc.scopes.join(","),
+        );
+
         let client_id_env =
             self.build_bind_credentials_env_var(OAUTH2_CLIENT_ID_ENV, &authenticator.name);
+        let client_secret_env =
+            self.build_bind_credentials_env_var(OAUTH2_CLIENT_SECRET_ENV, &authenticator.name);
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID.to_string(),
             format!("${{ENV:{client_id_env}}}",),
         );
-
-        let client_secret_env =
-            self.build_bind_credentials_env_var(OAUTH2_CLIENT_SECRET_ENV, &authenticator.name);
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_SECRET.to_string(),
             format!("${{ENV:{client_secret_env}}}",),
         );
 
-        // TODO: test
-        // must be set to enable e.g. OAuth2 login if other authenticators are provided as well
-        // only for the web ui
+        // We set this if OAUTH2/OIDC is enabled. The web defaults to "FORM" which is
+        // for PASSWORD authentication (file, ldap). We do want to enforce users to login
+        // via OAUTH2 if this is set. The coordinator can be reached with any other configured
+        // auth mechanisms and credentials via CLI etc.
+        // See: https://trino.io/docs/current/security/oauth2.html#trino-server-configuration
+        // See: https://trino.io/docs/current/admin/properties-web-interface.html#web-ui-authentication-type
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             WEB_UI_AUTHENTICATION_TYPE.to_string(),
             "oauth2".to_string(),
         );
 
-        // TODO: set client id and secret env var
-        let secret_name = "simple-trino-oidc-secret";
-        //let (clientId_mount_path, clientSecret_mount_path) =
-        //    OidcAuthenticationProvider::client_credentials_volume_mount_path(secret_name);
+        let secret_name =
+            authenticator
+                .secret
+                .as_deref()
+                .context(MissingOauth2CredentialSecretSnafu {
+                    auth_class_name: authenticator.name.clone(),
+                })?;
 
         oauth2_authentication_config.add_env_var(
             TrinoRole::Coordinator,
             stackable_trino_crd::Container::Trino,
-            EnvVar {
-                name: client_id_env.to_string(),
-                value_from: Some(EnvVarSource {
-                    secret_key_ref: Some(SecretKeySelector {
-                        name: Some(secret_name.into()),
-                        key: "clientId".into(),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }),
-                ..EnvVar::default()
-            },
+            Self::env_var_from_secret(secret_name, OAUTH2_CLIENT_ID, &client_id_env),
         );
-
         oauth2_authentication_config.add_env_var(
             TrinoRole::Coordinator,
             stackable_trino_crd::Container::Trino,
-            EnvVar {
-                name: client_secret_env.to_string(),
-                value_from: Some(EnvVarSource {
-                    secret_key_ref: Some(SecretKeySelector {
-                        name: Some(secret_name.into()),
-                        key: "clientSecret".into(),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }),
-                ..EnvVar::default()
-            },
+            Self::env_var_from_secret(secret_name, OAUTH2_CLIENT_SECRET, &client_secret_env),
         );
 
         Ok(oauth2_authentication_config)
+    }
+
+    fn env_var_from_secret(secret_name: &str, key: &str, env_var: &str) -> EnvVar {
+        EnvVar {
+            name: env_var.to_string(),
+            value_from: Some(EnvVarSource {
+                secret_key_ref: Some(SecretKeySelector {
+                    name: Some(secret_name.into()),
+                    key: key.into(),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            ..EnvVar::default()
+        }
     }
 
     fn build_bind_credentials_env_var(&self, prefix: &str, auth_class_name: &str) -> String {
@@ -172,11 +186,12 @@ impl TrinoOidcAuthentication {
     }
 
     /// Make sure we have exactly one authentication class
-    fn check_single_oauth2_authentication_class(&self) -> Result<(), Error> {
+    fn get_single_oauth2_authentication_class(&self) -> Result<TrinoOidcAuthenticator, Error> {
         match self.authenticators.len() {
             // We should not reach the '0' branch, this is just a sanity check.
             0 => Err(Error::NoOauth2AuthenticationClassProvided),
-            1 => Ok(()),
+            // The unwrap is safe here
+            1 => Ok(self.authenticators.get(0).unwrap().clone()),
             _ => Err(Error::MultipleOauth2AuthenticationClasses {
                 authentication_class_names: self
                     .authenticators

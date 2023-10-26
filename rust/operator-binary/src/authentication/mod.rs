@@ -28,6 +28,7 @@ use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, ResourceExt},
     product_config,
 };
+use stackable_trino_crd::authentication::ResolvedAuthenticationClassRef;
 use stackable_trino_crd::TrinoRole;
 use std::collections::{BTreeMap, HashMap};
 use strum::EnumDiscriminants;
@@ -428,10 +429,12 @@ impl TrinoAuthenticationTypes {
     }
 }
 
-impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
+impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
     type Error = Error;
 
-    fn try_from(auth_classes: Vec<AuthenticationClass>) -> std::result::Result<Self, Self::Error> {
+    fn try_from(
+        resolved_auth_classes: Vec<ResolvedAuthenticationClassRef>,
+    ) -> std::result::Result<Self, Self::Error> {
         let mut authentication_types = vec![];
         let mut authentication_types_order = Vec::<TrinoAuthenticationTypeDiscriminants>::new();
 
@@ -442,9 +445,9 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
         let mut oidc_authenticators = vec![];
 
         // Collect all provided AuthenticationClass providers into their respective authenticators
-        for auth_class in auth_classes {
-            let auth_class_name = auth_class.name_any();
-            match auth_class.spec.provider {
+        for resolved_auth_class in resolved_auth_classes {
+            let auth_class_name = resolved_auth_class.authentication_class.name_any();
+            match resolved_auth_class.authentication_class.spec.provider {
                 AuthenticationClassProvider::Static(provider) => {
                     password_authenticators.push(TrinoPasswordAuthenticator::File(
                         FileAuthenticator::new(auth_class_name, provider),
@@ -466,8 +469,11 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
                     );
                 }
                 AuthenticationClassProvider::Oidc(provider) => {
-                    oidc_authenticators
-                        .push(TrinoOidcAuthenticator::new(auth_class_name, provider));
+                    oidc_authenticators.push(TrinoOidcAuthenticator::new(
+                        auth_class_name,
+                        provider,
+                        resolved_auth_class.secret_ref,
+                    ));
 
                     TrinoAuthenticationTypes::insert_auth_type_order(
                         &mut authentication_types_order,
@@ -475,8 +481,14 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
                     );
                 }
                 _ => AuthenticationClassProviderNotSupportedSnafu {
-                    authentication_class_provider: auth_class.spec.provider.to_string(),
-                    authentication_class: ObjectRef::<AuthenticationClass>::from_obj(&auth_class),
+                    authentication_class_provider: resolved_auth_class
+                        .authentication_class
+                        .spec
+                        .provider
+                        .to_string(),
+                    authentication_class: ObjectRef::<AuthenticationClass>::from_obj(
+                        &resolved_auth_class.authentication_class,
+                    ),
                 }
                 .fail()?,
             }
