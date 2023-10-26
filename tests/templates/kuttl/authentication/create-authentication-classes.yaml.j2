@@ -2,6 +2,28 @@
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
+  name: oidc-$NAMESPACE
+spec:
+  provider:
+    oidc:
+      hostname: keycloak
+      port: 8080
+      rootPath: /realms/stackable
+      scopes: ["openid"]
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oidc-secret
+  namespace: $NAMESPACE
+type: kubernetes.io/opaque
+stringData:
+  clientId: stackable
+  clientSecret: STACKABLE_CLIENT_SECRET
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
   name: password-$NAMESPACE
 spec:
   provider:

@@ -25,6 +25,9 @@ spec:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
     authentication:
+      - authenticationClass: oidc-$NAMESPACE
+        secret:
+          oidc: oidc-secret
       - authenticationClass: password-$NAMESPACE
       - authenticationClass: password-other-$NAMESPACE
       - authenticationClass: ldap-$NAMESPACE

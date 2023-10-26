@@ -15,8 +15,6 @@ const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID: &str =
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_SECRET: &str =
     "http-server.authentication.oauth2.client-secret";
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER: &str = "http-server.authentication.oauth2.issuer";
-const HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD: &str =
-    "http-server.authentication.oauth2.principal-field";
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES: &str = "http-server.authentication.oauth2.scopes";
 // To enable OAuth 2.0 authentication for the Web UI, the following property must be be added:
 // web-ui.authentication.type=oidc
@@ -31,12 +29,12 @@ pub enum Error {
     #[snafu(display(
         "Trino cannot configure OAuth2 with multiple Identity providers. \
          Received the following AuthenticationClasses {authentication_class_names:?}. \
-         Please only provide one OAuth2 Authentication Class!"
+         Please only provide one OAuth2 AuthenticationClass!"
     ))]
     MultipleOauth2AuthenticationClasses {
         authentication_class_names: Vec<String>,
     },
-    #[snafu(display("Could not create OAuth2 issuer endpont url"))]
+    #[snafu(display("Failed to create OAuth2 issuer endpoint url."))]
     FailedToCreateIssuerEndpointUrl {
         source: stackable_operator::commons::authentication::oidc::Error,
     },
@@ -103,13 +101,6 @@ impl TrinoOidcAuthentication {
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER.to_string(),
             issuer.to_string(),
-        );
-
-        // TODO: do not hardcode / use constant!
-        oauth2_authentication_config.add_config_property(
-            TrinoRole::Coordinator,
-            HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD.to_string(),
-            "preferred_username".to_string(),
         );
 
         oauth2_authentication_config.add_config_property(
