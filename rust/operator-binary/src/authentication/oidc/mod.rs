@@ -3,6 +3,9 @@
 
 use crate::authentication::TrinoAuthenticationConfig;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::commons::authentication::oidc::{
+    CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY,
+};
 use stackable_operator::{
     commons::authentication::OidcAuthenticationProvider,
     k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector},
@@ -21,11 +24,6 @@ const HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES: &str = "http-server.authenticati
 // To enable OAuth 2.0 authentication for the Web UI, the following property must be be added:
 // web-ui.authentication.type=oidc
 const WEB_UI_AUTHENTICATION_TYPE: &str = "web-ui.authentication.type";
-
-const OAUTH2_CLIENT_ID: &str = "clientId";
-const OAUTH2_CLIENT_SECRET: &str = "clientSecret";
-const OAUTH2_CLIENT_ID_ENV: &str = "OAUTH2_CLIENT_ID";
-const OAUTH2_CLIENT_SECRET_ENV: &str = "OAUTH2_CLIENT_SECRET";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -47,24 +45,24 @@ pub enum Error {
     },
     #[snafu(display(
         "The OAUTH2 / OIDC AuthenticationClass {auth_class_name} requires to have a secret reference present containing \
-         '{OAUTH2_CLIENT_ID}' and '{OAUTH2_CLIENT_SECRET}' fields."
+         '{CLIENT_ID_SECRET_KEY}' and '{CLIENT_SECRET_SECRET_KEY}' fields."
     ))]
     MissingOauth2CredentialSecret { auth_class_name: String },
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct TrinoOidcAuthentication {
-    authenticators: Vec<TrinoOidcAuthenticator>,
+    authenticators: Vec<OidcAuthenticator>,
 }
 
 #[derive(Clone, Debug)]
-pub struct TrinoOidcAuthenticator {
+pub struct OidcAuthenticator {
     name: String,
     oidc: OidcAuthenticationProvider,
     secret: Option<String>,
 }
 
-impl TrinoOidcAuthenticator {
+impl OidcAuthenticator {
     pub fn new(
         name: String,
         provider: OidcAuthenticationProvider,
@@ -79,7 +77,7 @@ impl TrinoOidcAuthenticator {
 }
 
 impl TrinoOidcAuthentication {
-    pub fn new(authenticators: Vec<TrinoOidcAuthenticator>) -> Self {
+    pub fn new(authenticators: Vec<OidcAuthenticator>) -> Self {
         Self { authenticators }
     }
 
@@ -88,6 +86,15 @@ impl TrinoOidcAuthentication {
 
         // Check for single OAuth2 AuthenticationClass and error out if multiple were provided
         let authenticator = self.get_single_oauth2_authentication_class()?;
+
+        // We require a secret with client credentials
+        let secret_name =
+            authenticator
+                .secret
+                .as_deref()
+                .context(MissingOauth2CredentialSecretSnafu {
+                    auth_class_name: authenticator.name.clone(),
+                })?;
 
         let issuer = authenticator
             .oidc
@@ -114,10 +121,15 @@ impl TrinoOidcAuthentication {
             authenticator.oidc.scopes.join(","),
         );
 
-        let client_id_env =
-            self.build_bind_credentials_env_var(OAUTH2_CLIENT_ID_ENV, &authenticator.name);
-        let client_secret_env =
-            self.build_bind_credentials_env_var(OAUTH2_CLIENT_SECRET_ENV, &authenticator.name);
+        let (client_id_env, client_secret_env) =
+            OidcAuthenticationProvider::client_credentials_env_names(secret_name);
+
+        oauth2_authentication_config.add_env_vars(
+            TrinoRole::Coordinator,
+            stackable_trino_crd::Container::Trino,
+            OidcAuthenticationProvider::client_credentials_env_var_mounts(secret_name.to_string()),
+        );
+
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID.to_string(),
@@ -141,52 +153,11 @@ impl TrinoOidcAuthentication {
             "oauth2".to_string(),
         );
 
-        let secret_name =
-            authenticator
-                .secret
-                .as_deref()
-                .context(MissingOauth2CredentialSecretSnafu {
-                    auth_class_name: authenticator.name.clone(),
-                })?;
-
-        oauth2_authentication_config.add_env_var(
-            TrinoRole::Coordinator,
-            stackable_trino_crd::Container::Trino,
-            Self::env_var_from_secret(secret_name, OAUTH2_CLIENT_ID, &client_id_env),
-        );
-        oauth2_authentication_config.add_env_var(
-            TrinoRole::Coordinator,
-            stackable_trino_crd::Container::Trino,
-            Self::env_var_from_secret(secret_name, OAUTH2_CLIENT_SECRET, &client_secret_env),
-        );
-
         Ok(oauth2_authentication_config)
     }
 
-    fn env_var_from_secret(secret_name: &str, key: &str, env_var: &str) -> EnvVar {
-        EnvVar {
-            name: env_var.to_string(),
-            value_from: Some(EnvVarSource {
-                secret_key_ref: Some(SecretKeySelector {
-                    name: Some(secret_name.into()),
-                    key: key.into(),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }),
-            ..EnvVar::default()
-        }
-    }
-
-    fn build_bind_credentials_env_var(&self, prefix: &str, auth_class_name: &str) -> String {
-        format!(
-            "{prefix}_{auth_class}",
-            auth_class = auth_class_name.to_uppercase().replace('-', "_")
-        )
-    }
-
     /// Make sure we have exactly one authentication class
-    fn get_single_oauth2_authentication_class(&self) -> Result<TrinoOidcAuthenticator, Error> {
+    fn get_single_oauth2_authentication_class(&self) -> Result<OidcAuthenticator, Error> {
         match self.authenticators.len() {
             // We should not reach the '0' branch, this is just a sanity check.
             0 => Err(Error::NoOauth2AuthenticationClassProvided),
@@ -205,66 +176,95 @@ impl TrinoOidcAuthentication {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
-    // use stackable_operator::commons::{
-    //     authentication::tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
-    //     secret_class::SecretClassVolume,
-    // };
-    //
-    // const AUTH_CLASS_NAME: &str = "my-auth-class-name";
-    // const TLS_SECRET_CLASS_NAME: &str = "secret";
-    // const LDAP_HOST_NAME: &str = "openldap.default.svc.cluster.local";
-    // const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
-    //
-    // fn setup_test_authenticator() -> LdapAuthenticator {
-    //     LdapAuthenticator::new(
-    //         AUTH_CLASS_NAME.to_string(),
-    //         LdapAuthenticationProvider {
-    //             hostname: LDAP_HOST_NAME.to_string(),
-    //             port: None,
-    //             search_base: LDAP_SEARCH_BASE.to_string(),
-    //             search_filter: "".to_string(),
-    //             ldap_field_names: Default::default(),
-    //             bind_credentials: Some(SecretClassVolume {
-    //                 secret_class: "test".to_string(),
-    //                 scope: None,
-    //             }),
-    //             tls: Some(Tls {
-    //                 verification: TlsVerification::Server(TlsServerVerification {
-    //                     ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
-    //                 }),
-    //             }),
-    //         },
-    //     )
-    // }
-    //
-    // #[test]
-    // fn test_ldap_authenticator() {
-    //     let ldap_authenticator = setup_test_authenticator();
-    //
-    //     let file_name = ldap_authenticator.config_file_name();
-    //     assert_eq!(
-    //         file_name,
-    //         format!("{AUTH_CLASS_NAME}-password-ldap-auth.properties",)
-    //     );
-    //
-    //     let config = ldap_authenticator.config_file_data().unwrap();
-    //     assert!(config.get(LDAP_BIND_DN).is_some());
-    //     assert_eq!(
-    //         config.get(LDAP_USER_BASE_DN),
-    //         Some(LDAP_SEARCH_BASE.to_string()).as_ref()
-    //     );
-    //     assert_eq!(
-    //         config.get(LDAP_URL),
-    //         Some(format!("ldaps://{LDAP_HOST_NAME}:636")).as_ref()
-    //     );
-    //     assert_eq!(
-    //         config.get(PASSWORD_AUTHENTICATOR_NAME),
-    //         Some(PASSWORD_AUTHENTICATOR_NAME_LDAP.to_string()).as_ref()
-    //     );
-    //     assert_eq!(
-    //         config.get(LDAP_SSL_TRUST_STORE_PATH),
-    //         Some(format!("/stackable/secrets/{TLS_SECRET_CLASS_NAME}/ca.crt")).as_ref()
-    //     );
-    // }
+    use super::*;
+    use stackable_trino_crd::Container;
+
+    const IDP_PORT: u16 = 8080;
+    const IDP_ROOT_PATH: &str = "/realms/master";
+    const IDP_SCOPE_1: &str = "openid";
+    const IDP_SCOPE_2: &str = "test";
+    const AUTH_CLASS_NAME_1: &str = "trino-oidc-auth-1";
+    const AUTH_CLASS_NAME_2: &str = "trino-oidc-auth-2";
+    const AUTH_CLASS_CREDENTIAL_SECRET: &str = "trino-oidc-credentials";
+
+    fn setup_test_authenticator(
+        auth_class_name: &str,
+        credential_secret: Option<String>,
+    ) -> OidcAuthenticator {
+        let input = format!(
+            r#"
+            hostname: keycloak
+            port: {IDP_PORT}
+            rootPath: {IDP_ROOT_PATH}
+            scopes: ["{IDP_SCOPE_1}", "{IDP_SCOPE_2}"]
+        "#
+        );
+        let deserializer = serde_yaml::Deserializer::from_str(&input);
+        let oidc_auth_provider: OidcAuthenticationProvider =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        OidcAuthenticator::new(
+            auth_class_name.to_string(),
+            oidc_auth_provider,
+            credential_secret,
+        )
+    }
+
+    #[test]
+    fn test_oidc_authentication_limit_one_error() {
+        let oidc_authentication = TrinoOidcAuthentication::new(vec![
+            setup_test_authenticator(AUTH_CLASS_NAME_1, None),
+            setup_test_authenticator(AUTH_CLASS_NAME_2, None),
+        ]);
+
+        assert!(oidc_authentication.oauth2_authentication_config().is_err())
+    }
+
+    #[test]
+    fn test_oidc_authentication_missing_secret_error() {
+        let oidc_authentication =
+            TrinoOidcAuthentication::new(vec![setup_test_authenticator(AUTH_CLASS_NAME_1, None)]);
+
+        assert!(oidc_authentication.oauth2_authentication_config().is_err());
+    }
+
+    #[test]
+    fn test_oidc_authentication_settings() {
+        let oidc_authentication = TrinoOidcAuthentication::new(vec![setup_test_authenticator(
+            AUTH_CLASS_NAME_1,
+            Some(AUTH_CLASS_CREDENTIAL_SECRET.to_string()),
+        )]);
+
+        let trino_oidc_auth = oidc_authentication.oauth2_authentication_config().unwrap();
+
+        assert_eq!(
+            Some(&format!("http://keycloak:{IDP_PORT}{IDP_ROOT_PATH}")),
+            trino_oidc_auth
+                .config_properties
+                .get(&TrinoRole::Coordinator)
+                .unwrap()
+                .get(HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER)
+        );
+
+        assert_eq!(
+            Some(&format!("{IDP_SCOPE_1},{IDP_SCOPE_2}")),
+            trino_oidc_auth
+                .config_properties
+                .get(&TrinoRole::Coordinator)
+                .unwrap()
+                .get(HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES)
+        );
+
+        // we expect 2 env variables for client id and client secret
+        assert_eq!(
+            2,
+            trino_oidc_auth
+                .env_vars
+                .get(&TrinoRole::Coordinator)
+                .unwrap()
+                .get(&Container::Trino)
+                .unwrap()
+                .len()
+        );
+    }
 }

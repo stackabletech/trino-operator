@@ -15,7 +15,7 @@ use crate::authentication::password::{
     TrinoPasswordAuthenticator,
 };
 
-use crate::authentication::oidc::{TrinoOidcAuthentication, TrinoOidcAuthenticator};
+use crate::authentication::oidc::{OidcAuthenticator, TrinoOidcAuthentication};
 use snafu::{ResultExt, Snafu};
 use stackable_operator::k8s_openapi::api::core::v1::EnvVar;
 use stackable_operator::{
@@ -204,6 +204,21 @@ impl TrinoAuthenticationConfig {
             .entry(container)
             .or_insert(Vec::new())
             .push(env_var)
+    }
+
+    /// Add an env variable for a given role and container.
+    pub fn add_env_vars(
+        &mut self,
+        role: TrinoRole,
+        container: stackable_trino_crd::Container,
+        env_var: Vec<EnvVar>,
+    ) {
+        self.env_vars
+            .entry(role)
+            .or_insert(BTreeMap::new())
+            .entry(container)
+            .or_insert(Vec::new())
+            .extend(env_var)
     }
 
     /// Add additional commands for a given role and container.
@@ -469,7 +484,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                     );
                 }
                 AuthenticationClassProvider::Oidc(provider) => {
-                    oidc_authenticators.push(TrinoOidcAuthenticator::new(
+                    oidc_authenticators.push(OidcAuthenticator::new(
                         auth_class_name,
                         provider,
                         resolved_auth_class.secret_ref,
@@ -530,11 +545,12 @@ mod tests {
     };
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
 
+    const OIDC_AUTH_CLASS_1: &str = "oidc-auth-1";
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
     const FILE_AUTH_CLASS_2: &str = "file-auth-2";
     const LDAP_AUTH_CLASS_1: &str = "ldap-auth-1";
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
-    const HOST_NAME: &str = "my.ldap.server";
+    const HOST_NAME: &str = "my.server";
     const SEARCH_BASE: &str = "searchbase";
 
     fn setup_file_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
@@ -603,6 +619,32 @@ mod tests {
         }
     }
 
+    fn setup_oidc_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        let input = format!(
+            r#"
+            apiVersion: authentication.stackable.tech/v1alpha1
+            kind: AuthenticationClass
+            metadata:
+              name: {name}
+            spec:
+              provider:
+                oidc:
+                  hostname: {HOST_NAME}
+                  rootPath: /realms/master
+                  scopes: ["openid"]
+            "#,
+        );
+        let deserializer = serde_yaml::Deserializer::from_str(&input);
+
+        ResolvedAuthenticationClassRef {
+            authentication_class: serde_yaml::with::singleton_map_recursive::deserialize(
+                deserializer,
+            )
+            .unwrap(),
+            secret_ref: Some("my-oidc-secret".to_string()),
+        }
+    }
+
     fn resolved_product_image() -> ResolvedProductImage {
         ResolvedProductImage {
             product_version: "".to_string(),
@@ -615,6 +657,7 @@ mod tests {
 
     fn setup_authentication_config() -> TrinoAuthenticationConfig {
         let auth_classes = vec![
+            setup_oidc_auth_class(OIDC_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
             setup_ldap_auth_class(LDAP_AUTH_CLASS_1, None),
@@ -635,6 +678,7 @@ mod tests {
         };
 
         let auth_classes = vec![
+            setup_oidc_auth_class(OIDC_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
             setup_ldap_auth_class(LDAP_AUTH_CLASS_1, Some(bind_credentials.clone())),
@@ -653,9 +697,10 @@ mod tests {
         let config_properties =
             setup_authentication_config().config_properties(&TrinoRole::Coordinator);
 
+        // check if auth class order is preserved
         assert_eq!(
             config_properties.get(HTTP_SERVER_AUTHENTICATION_TYPE),
-            Some("PASSWORD".to_string()).as_ref(),
+            Some("OAUTH2,PASSWORD".to_string()).as_ref(),
         );
 
         let expected_config_file_names = format!(
