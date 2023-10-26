@@ -3,12 +3,9 @@
 
 use crate::authentication::TrinoAuthenticationConfig;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::authentication::oidc::{
-    CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY,
-};
-use stackable_operator::{
-    commons::authentication::OidcAuthenticationProvider,
-    k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector},
+use stackable_operator::commons::authentication::{
+    oidc::{CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY},
+    OidcAuthenticationProvider,
 };
 use stackable_trino_crd::TrinoRole;
 
@@ -253,6 +250,15 @@ mod tests {
                 .get(&TrinoRole::Coordinator)
                 .unwrap()
                 .get(HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES)
+        );
+
+        assert_eq!(
+            Some(&format!("oauth2")),
+            trino_oidc_auth
+                .config_properties
+                .get(&TrinoRole::Coordinator)
+                .unwrap()
+                .get(WEB_UI_AUTHENTICATION_TYPE)
         );
 
         // we expect 2 env variables for client id and client secret

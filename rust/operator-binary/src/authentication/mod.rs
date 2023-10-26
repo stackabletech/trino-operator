@@ -191,22 +191,7 @@ impl TrinoAuthenticationConfig {
             .insert(file_name, file_content);
     }
 
-    /// Add an env variable for a given role and container.
-    pub fn add_env_var(
-        &mut self,
-        role: TrinoRole,
-        container: stackable_trino_crd::Container,
-        env_var: EnvVar,
-    ) {
-        self.env_vars
-            .entry(role)
-            .or_insert(BTreeMap::new())
-            .entry(container)
-            .or_insert(Vec::new())
-            .push(env_var)
-    }
-
-    /// Add an env variable for a given role and container.
+    /// Add env variables for a given role and container.
     pub fn add_env_vars(
         &mut self,
         role: TrinoRole,
