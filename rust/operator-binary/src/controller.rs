@@ -905,6 +905,9 @@ fn build_rolegroup_statefulset(
         merged_config,
     ));
 
+    prepare_args
+        .extend(trino_authentication_config.commands(&TrinoRole::Coordinator, &Container::Prepare));
+
     let container_prepare = cb_prepare
         .image_from_product_image(resolved_product_image)
         .command(vec![

@@ -2,12 +2,13 @@
 //!
 
 use crate::authentication::TrinoAuthenticationConfig;
+use crate::command;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::commons::authentication::{
     oidc::{CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY},
     OidcAuthenticationProvider,
 };
-use stackable_trino_crd::TrinoRole;
+use stackable_trino_crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR};
 
 // Trino properties
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID: &str =
@@ -43,6 +44,8 @@ pub enum Error {
          '{CLIENT_ID_SECRET_KEY}' and '{CLIENT_SECRET_SECRET_KEY}' fields."
     ))]
     MissingOauth2CredentialSecret { auth_class_name: String },
+    #[snafu(display("Trino does not support unverified TLS connections to OIDC"))]
+    UnverifiedOidcTlsConnectionNotSupported,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -140,6 +143,32 @@ impl TrinoOidcAuthentication {
             WEB_UI_AUTHENTICATION_TYPE.to_string(),
             "oauth2".to_string(),
         );
+
+        // Volumes and VolumeMounts
+        let (tls_volumes, tls_mounts) = authenticator.oidc.tls.volumes_and_mounts();
+        oauth2_authentication_config.add_volumes(tls_volumes);
+        oauth2_authentication_config.add_volume_mounts(
+            TrinoRole::Coordinator,
+            stackable_trino_crd::Container::Prepare,
+            tls_mounts,
+        );
+
+        if authenticator.oidc.tls.use_tls() {
+            if !authenticator.oidc.tls.use_tls_verification() {
+                // TODO: this still true?
+                // Use TLS but don't verify OIDC server ca => not supported
+                return Err(Error::UnverifiedOidcTlsConnectionNotSupported);
+            }
+            // If there is a custom certificate, configure it.
+            // There might also be TLS verification using web PKI
+            if let Some(path) = authenticator.oidc.tls.tls_ca_cert_mount_path() {
+                oauth2_authentication_config.add_commands(
+                    TrinoRole::Coordinator,
+                    stackable_trino_crd::Container::Prepare,
+                    command::add_cert_to_truststore(&path, STACKABLE_CLIENT_TLS_DIR, "oidc-idp"),
+                );
+            }
+        }
 
         Ok(oauth2_authentication_config)
     }

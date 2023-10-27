@@ -228,6 +228,13 @@ impl TrinoAuthenticationConfig {
         }
     }
 
+    /// Add additional volumes for the pod builder.
+    pub fn add_volumes(&mut self, volumes: Vec<Volume>) {
+        for volume in volumes {
+            self.add_volume(volume)
+        }
+    }
+
     /// Add an additional volume mount for a role and container.
     /// Volume mounts are only added once and filtered for duplicates.
     pub fn add_volume_mount(
@@ -248,6 +255,19 @@ impl TrinoAuthenticationConfig {
             .any(|vm| vm.name == volume_mount.name)
         {
             current_volume_mounts.push(volume_mount);
+        }
+    }
+
+    /// Add additional volume mounts for a role and container.
+    /// Volume mounts are only added once and filtered for duplicates.
+    pub fn add_volume_mounts(
+        &mut self,
+        role: TrinoRole,
+        container: stackable_trino_crd::Container,
+        volume_mounts: Vec<VolumeMount>,
+    ) {
+        for volume_mount in volume_mounts {
+            self.add_volume_mount(role.clone(), container.clone(), volume_mount);
         }
     }
 
