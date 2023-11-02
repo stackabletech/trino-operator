@@ -7,12 +7,7 @@
 //! - volume and volume mounts
 //! - extra containers and commands
 //!
-pub(crate) mod password;
-
-use crate::authentication::password::{
-    file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
-    TrinoPasswordAuthenticator,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
@@ -23,11 +18,16 @@ use stackable_operator::{
     },
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
-    product_config,
 };
 use stackable_trino_crd::TrinoRole;
-use std::collections::{BTreeMap, HashMap};
 use tracing::trace;
+
+use crate::authentication::password::{
+    file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
+    TrinoPasswordAuthenticator,
+};
+
+pub(crate) mod password;
 
 // trino properties
 const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
@@ -39,10 +39,12 @@ pub enum Error {
         authentication_class_provider: String,
         authentication_class: ObjectRef<AuthenticationClass>,
     },
+
     #[snafu(display("Failed to format trino authentication java properties"))]
     FailedToWriteJavaProperties {
         source: product_config::writer::PropertiesWriterError,
     },
+
     #[snafu(display("Failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
 }

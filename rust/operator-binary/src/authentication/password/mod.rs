@@ -8,19 +8,20 @@
 //! - volume and volume mounts
 //! - extra containers and commands
 //!
-pub mod file;
-pub mod ldap;
+use std::collections::BTreeMap;
+
+use snafu::{ResultExt, Snafu};
+use stackable_operator::commons::product_image_selection::ResolvedProductImage;
+use stackable_trino_crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME};
+use tracing::trace;
 
 use crate::authentication::{
     password::{file::FileAuthenticator, ldap::LdapAuthenticator},
     TrinoAuthenticationConfig,
 };
 
-use snafu::{ResultExt, Snafu};
-use stackable_operator::{commons::product_image_selection::ResolvedProductImage, product_config};
-use stackable_trino_crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME};
-use std::collections::BTreeMap;
-use tracing::trace;
+pub mod file;
+pub mod ldap;
 
 // Trino properties
 pub(crate) const PASSWORD_AUTHENTICATOR_CONFIG_FILES: &str = "password-authenticator.config-files";
@@ -30,6 +31,7 @@ const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 pub enum Error {
     #[snafu(display("Failed to configure LDAP password authentication"))]
     InvalidLdapAuthenticationConfiguration { source: ldap::Error },
+
     #[snafu(display("Failed to write password authentication config file"))]
     FailedToWritePasswordAuthenticationFile {
         source: product_config::writer::PropertiesWriterError,
