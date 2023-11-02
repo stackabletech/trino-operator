@@ -16,26 +16,32 @@ use stackable_operator::client::Client;
 #[derive(Debug, Snafu)]
 #[snafu(module)]
 pub enum FromTrinoCatalogError {
-    #[snafu(display("object defines no namespace"))]
+    #[snafu(display("object has no namespace"))]
     ObjectHasNoNamespace,
+
     #[snafu(display("failed to resolve S3ConnectionDef"))]
     ResolveS3ConnectionDef {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
+
     #[snafu(display("trino catalog has no name set"))]
     InvalidCatalogSpec,
+
     #[snafu(display("failed to resolve [{catalog}] discovery config map [{cm_name}]"))]
     FailedToGetDiscoveryConfigMap {
         source: stackable_operator::error::Error,
         catalog: String,
         cm_name: String,
     },
+
     #[snafu(display(
         "failed to retrieve [{catalog}] discovery config map [{cm_name}] data field"
     ))]
     FailedToGetDiscoveryConfigMapData { catalog: String, cm_name: String },
+
     #[snafu(display(
         "failed to retrieve [{catalog}] discovery config map [{cm_name}] data key [{data_key}]"
     ))]
