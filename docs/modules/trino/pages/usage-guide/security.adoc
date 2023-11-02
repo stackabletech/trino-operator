@@ -74,7 +74,7 @@ In the Trino CLI and web interface, LDAP users can now be used to log in.
 In order to authorize Trino via OPA, a ConfigMap containing a rego rule package for Trino has to be applied and referenced in the TrinoCluster resource.
 The following example is an all-access Rego rule for testing with the user `admin`. Do not use it in production!
 
-NOTE: Due to changes in the Trino OPA authorizer, rego rules differ from Version 414 and 428. The OPA authorizer will become part of the Trino package once this https://github.com/trinodb/trino/pull/19532[pull request] is merged. The stackable Trino version 428 already uses that new OPA authorizer and utilizes https://github.com/bloomberg/trino/blob/add-open-policy-agent/plugin/trino-opa/README.md#batch-mode[batch mode]. This is under active development and is not stable yet!
+NOTE: Due to changes in the Trino OPA authorizer, rego rules differ between version 414 and 428. The OPA authorizer will become part of the Trino package once this https://github.com/trinodb/trino/pull/19532[pull request] is merged. The stackable Trino version 428 already uses that new OPA authorizer and utilizes https://github.com/bloomberg/trino/blob/add-open-policy-agent/plugin/trino-opa/README.md#batch-mode[batch mode]. This is under active development and is not stable yet!
 
 === Rego for Trino version 414
 
