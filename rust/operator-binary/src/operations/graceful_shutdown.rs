@@ -27,12 +27,15 @@ pub fn graceful_shutdown_config_properties(
 ) -> BTreeMap<String, Option<String>> {
     match role {
         TrinoRole::Coordinator => {
-            let min_graceful_shutdown_timeout = trino.min_worker_graceful_shutdown_timeout();
+            let min_worker_graceful_shutdown_timeout = trino.min_worker_graceful_shutdown_timeout();
             // We know that queries taking longer than the minimum gracefulShutdownTimeout are subject to failure.
             // Read operator docs for reasoning.
             BTreeMap::from([(
                 "query.max-execution-time".to_string(),
-                Some(format!("{}s", min_graceful_shutdown_timeout.as_secs())),
+                Some(format!(
+                    "{}s",
+                    min_worker_graceful_shutdown_timeout.as_secs()
+                )),
             )])
         }
         TrinoRole::Worker => BTreeMap::from([(
@@ -79,7 +82,7 @@ pub fn add_graceful_shutdown_config(
                             "pipefail".to_string(),
                             "-c".to_string(),
                             // The curl does not block, but the worker process will terminate automatically once the
-                            // graceful shutdown is complete. As the Pod gets a normal SIGINT sent once the hook
+                            // graceful shutdown is complete. As the Pod gets a normal SIGTERM sent once the hook
                             // exited, we need to block this call for at least the same time terminationGracePeriodSeconds
                             // does, so that we don't kill the Pod before the terminationGracePeriodSeconds is reached.
 

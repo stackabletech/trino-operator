@@ -9,6 +9,7 @@ use stackable_operator::{
     commons::product_image_selection::ResolvedProductImage,
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     product_logging::{self, spec::AutomaticContainerLogConfig},
+    utils::COMMON_BASH_TRAP_FUNCTIONS,
 };
 use std::collections::BTreeMap;
 
@@ -152,7 +153,11 @@ done
 EOF
 
 chmod +x /tmp/build_password_db.sh
-/tmp/build_password_db.sh
+
+{COMMON_BASH_TRAP_FUNCTIONS}
+prepare_signal_handlers
+/tmp/build_password_db.sh &
+wait_for_termination $!
 "###,
         stackable_password_db_dir = PASSWORD_DB_VOLUME_MOUNT_PATH,
         stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,

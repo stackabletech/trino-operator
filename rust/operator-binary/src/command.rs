@@ -1,9 +1,16 @@
 use crate::{
-    authentication::TrinoAuthenticationConfig, catalog::config::CatalogConfig,
-    controller::STACKABLE_LOG_CONFIG_DIR,
+    authentication::TrinoAuthenticationConfig,
+    catalog::config::CatalogConfig,
+    controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
 };
 
-use stackable_operator::product_logging::spec::{ContainerLogConfig, ContainerLogConfigChoice};
+use stackable_operator::{
+    product_logging::{
+        framework::{create_vector_shutdown_file_command, remove_vector_shutdown_file_command},
+        spec::{ContainerLogConfig, ContainerLogConfigChoice},
+    },
+    utils::COMMON_BASH_TRAP_FUNCTIONS,
+};
 use stackable_trino_crd::{
     Container, TrinoCluster, TrinoConfig, TrinoRole, CONFIG_DIR_NAME, DATA_DIR_NAME,
     LOG_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
@@ -102,11 +109,20 @@ pub fn container_trino_args(
         }
     });
 
-    // start command
+    // Start command
     args.push(format!(
-        "bin/launcher run --etc-dir={conf} --data-dir={data}",
-        conf = RW_CONFIG_DIR_NAME,
-        data = DATA_DIR_NAME
+        "\
+{COMMON_BASH_TRAP_FUNCTIONS}
+{remove_vector_shutdown_file_command}
+prepare_signal_handlers
+bin/launcher run --etc-dir={RW_CONFIG_DIR_NAME} --data-dir={DATA_DIR_NAME} &
+wait_for_termination $!
+{create_vector_shutdown_file_command}
+",
+        remove_vector_shutdown_file_command =
+            remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+        create_vector_shutdown_file_command =
+            create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
     ));
 
     args
@@ -160,8 +176,8 @@ fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec
         // Keytool is only barking if a password is not set for the destination truststore (which we set)
         // and do provide an empty password for the source truststore coming from the secret-operator.
         // Using no password will result in a warning.
-        // All secret-op generated truststores have one entry with alias "1". We generate a UUID for 
-        // the destination truststore to avoid conflicts when importing multiple secret-op generated 
+        // All secret-op generated truststores have one entry with alias "1". We generate a UUID for
+        // the destination truststore to avoid conflicts when importing multiple secret-op generated
         // truststores. We do not use the UUID rust crate since this will continuously change the STS... and
         // leads to never-ending reconciles.
         format!("echo Importing {source_directory}/truststore.p12 to {destination_directory}/truststore.p12"),
