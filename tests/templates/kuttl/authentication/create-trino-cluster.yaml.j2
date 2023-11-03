@@ -37,7 +37,6 @@ spec:
         replicas: 1
   workers:
     config:
-      gracefulShutdownTimeout: 5s # Let the test run faster
       logging:
         enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
     roleGroups:
