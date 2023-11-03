@@ -6,7 +6,7 @@ You can configure the graceful shutdown as described in xref:concepts:operations
 
 As a default, coordinators have `15 minutes` to terminate gracefully.
 
-The coordinator process will always run as PID `1` and will receive a `SIGTERM` signal when Kubernetes wants to terminate the Pod.
+The coordinator process will receive a `SIGTERM` signal when Kubernetes wants to terminate the Pod.
 After the graceful shutdown timeout runs out, and the process still didn't exit, Kubernetes will issue a `SIGKILL` signal.
 
 When a coordinator gets restarted, all currently running queries will fail and cannot be recovered after the restart process is finished.
