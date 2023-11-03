@@ -85,4 +85,4 @@ allow {
 }
 ----
 
-NOTE: We plan to add CustomResources, so that you can define your Trino ACLs via Kubernetes objects. In this case the trino-operator will generate the rego-rules for you, and will add the needed rules for graceful shutdown for you. Until then, you grant the permission yourself.
+NOTE: We plan to add CustomResources, so that you can define your Trino ACLs via Kubernetes objects. In this case the trino-operator will generate the rego-rules for you, and will add the needed rules for graceful shutdown for you. Until then, you need to grant the permission yourself.
