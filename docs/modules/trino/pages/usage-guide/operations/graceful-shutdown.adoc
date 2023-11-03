@@ -13,6 +13,7 @@ When a coordinator gets restarted, all currently running queries will fail and c
 As of Trino version `428` this can not be prevented (e.g. by using multiple coordinators).
 
 == Workers
+
 As a default, Coordinators have `60 minutes` to terminate gracefully.
 
 Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[gracefully shutting down] workers.
@@ -38,6 +39,7 @@ spec:
 ----
 
 == Implementation
+
 Once a worker Pod is asked to terminate, the `PreStop` hook is executed and the following timeline occurs:
 
 1. The worker goes into `SHUTTING_DOWN` state.
@@ -52,6 +54,7 @@ WARNING: As of version 23.7, the secret-operator issues TLS certificates with a 
 The TLS certificate lifetime can be configured once https://github.com/stackabletech/secret-operator/pull/306 is merged.
 
 == Implications
+
 All queries that take less than the minimal graceful shutdown period of all roleGroups (`1` hour as a default) are guaranteed to not be disturbed by regular termination of Pods.
 They can obviously still fail when e.g. a Kubernetes node dies completely or the Pod does not get the time it takes to properly gracefully shut down.
 
@@ -74,6 +77,7 @@ Running into this issue can be circumvented by using https://trino.io/docs/curre
 Until native support is added, you will have to use `configOverrides` to enable it.
 
 == OPA requirements
+
 In case you use OPA to authorize Trino requests, you need to make sure the user `admin` is authorized to trigger a graceful shutdown of the workers.
 You can achieve this e.g. by adding the following rule, which grants `admin` the permissions to do anything - including graceful shutdown.
 
