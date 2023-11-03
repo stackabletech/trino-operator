@@ -9,13 +9,13 @@ As a default, coordinators have `15 minutes` to terminate gracefully.
 The coordinator process will always run as PID `1` and will receive a `SIGTERM` signal when Kubernetes wants to terminate the Pod.
 After the graceful shutdown timeout runs out, and the process still didn't exit, Kubernetes will issue a `SIGKILL` signal.
 
-When a coordinator gets restarted all running queries will fail and will not be recovered.
+When a coordinator gets restarted, all currently running queries will fail and cannot be recovered after the restart process is finished.
 As of Trino version `428` this can not be prevented (e.g. by using multiple coordinators).
 
 == Workers
 As a default, Coordinators have `60 minutes` to terminate gracefully.
 
-Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[graceful shutdown] of the workers.
+Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[gracefully shutting down] workers.
 This operator always adds a https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[`PreStop` hook] to gracefully shut them down.
 No additional configuration is needed, this guide is intended for users that need to tweak this mechanism.
 
@@ -55,7 +55,7 @@ The TLS certificate lifetime can be configured once https://github.com/stackable
 All queries that take less than the minimal graceful shutdown period of all roleGroups (`1` hour as a default) are guaranteed to not be disturbed by regular termination of Pods.
 They can obviously still fail when e.g. a Kubernetes node dies completely or the Pod does not get the time it takes to properly gracefully shut down.
 
-Because of this the operator automatically restricts the execution time of queries to the minimal graceful shutdown period of all roleGroups using the Trino configuration `query.max-execution-time=3600s`.
+Because of this, the operator automatically restricts the execution time of queries to the minimal graceful shutdown period of all roleGroups using the Trino configuration `query.max-execution-time=3600s`.
 This causes all queries that take longer than 1 hour to fail with the error message `Query failed: Query exceeded the maximum execution time limit of 3600s.00s`.
 
 In case you need to execute queries that take longer than the configured graceful shutdown period, you need to increase the `query.max-execution-time` property as follows:
@@ -70,8 +70,8 @@ spec:
 ----
 
 Please keep in mind, that queries taking longer than the graceful shutdown period are now subject to failure when a Trino worker gets shut down.
-This can be circumvented by using https://trino.io/docs/current/admin/fault-tolerant-execution.html[Fault-tolerant execution], which is not supported natively yet.
-Until properly supported, you have to use configOverrides to enable it.
+Running into this issue can be circumvented by using https://trino.io/docs/current/admin/fault-tolerant-execution.html[Fault-tolerant execution], which is not supported natively yet.
+Until native support is added, you will have to use `configOverrides` to enable it.
 
 == OPA requirements
 In case you use OPA to authorize Trino requests, you need to make sure the user `admin` is authorized to trigger a graceful shutdown of the workers.
