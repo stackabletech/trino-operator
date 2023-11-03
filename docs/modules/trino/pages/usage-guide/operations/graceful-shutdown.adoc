@@ -6,12 +6,11 @@ You can configure the graceful shutdown as described in xref:concepts:operations
 
 As a default, coordinators have `15 minutes` to terminate gracefully.
 
-The coordinator process will always run as PID `1` and will get a `SIGTERM` once Kubernetes wants to terminate the Pod.
-It will initiate a graceful shutdown.
-After the graceful shutdown timeout is passed and the process still didn't exit, Kubernetes will issue an `SIGKILL` to force-kill the process.
+The coordinator process will always run as PID `1` and will receive a `SIGTERM` signal when Kubernetes wants to terminate the Pod.
+After the graceful shutdown timeout runs out, and the process still didn't exit, Kubernetes will issue a `SIGKILL` signal.
 
 When a coordinator gets restarted all running queries will fail and will not be recovered.
-As of Trino version `429` this can not be prevented (e.g. by using multiple coordinators).
+As of Trino version `428` this can not be prevented (e.g. by using multiple coordinators).
 
 == Workers
 As a default, Coordinators have `60 minutes` to terminate gracefully.
