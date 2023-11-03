@@ -138,18 +138,23 @@ pub const WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_se
 pub enum Error {
     #[snafu(display("object has no namespace associated"))]
     NoNamespace,
+
     #[snafu(display("object has no names"))]
     NoName,
+
     #[snafu(display("unknown role {role}. Should be one of {roles:?}"))]
     UnknownTrinoRole {
         source: strum::ParseError,
         role: String,
         roles: Vec<String>,
     },
+
     #[snafu(display("the role {role} is not defined"))]
     CannotRetrieveTrinoRole { role: String },
+
     #[snafu(display("the role group {role_group} is not defined"))]
     CannotRetrieveTrinoRoleGroup { role_group: String },
+
     #[snafu(display("fragment validation failure"))]
     FragmentValidationFailure { source: ValidationError },
 }
