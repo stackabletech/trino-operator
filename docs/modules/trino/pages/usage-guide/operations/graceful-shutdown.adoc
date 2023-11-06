@@ -53,7 +53,7 @@ noticed that all tasks are complete
 [WARNING]
 ====
 As of SDP version `23.7`, the secret-operator issues TLS certificates with a lifetime of 24h.
-It also adds an annotation to the Pod, indicting it requires a restart 30 minutes before the certificate expires (23.5h hours in this case).
+It also adds an annotation to the Pod, indicating it requires a restart 30 minutes before the certificate expires (23.5h hours in this case).
 Currently, this results in all Pod using HTTPS (both coordinator and workers in a typical setup) to be restarted every 23.5 hours.
 
 The TLS certificate lifetime can be configured using `podOverrides` by setting `secrets.stackable.tech/backend.autotls.cert.lifetime` on every secret-operator volume.
