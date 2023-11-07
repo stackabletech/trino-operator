@@ -299,8 +299,10 @@ pub enum Error {
         source: crate::operations::pdb::Error,
     },
 
-    #[snafu(display("invalid graceful shutdown"))]
-    InvalidGracefulShutdown { source: crate::operations::Error },
+    #[snafu(display("failed to configure graceful shutdown"))]
+    GracefulShutdown {
+        source: crate::operations::graceful_shutdown::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -900,8 +902,14 @@ fn build_rolegroup_statefulset(
         &mut cb_prepare,
         &mut cb_trino,
     );
-    add_graceful_shutdown_config(trino, trino_role, &mut pod_builder, &mut cb_trino)
-        .context(InvalidGracefulShutdownSnafu)?;
+    add_graceful_shutdown_config(
+        trino,
+        trino_role,
+        merged_config,
+        &mut pod_builder,
+        &mut cb_trino,
+    )
+    .context(GracefulShutdownSnafu)?;
 
     // Add the needed stuff for catalogs
     env.extend(
