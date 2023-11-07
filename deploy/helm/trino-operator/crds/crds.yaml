@@ -85,10 +85,6 @@ spec:
                           description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                           type: object
                       type: object
-                    gracefulShutdownTimeout:
-                      default: 1h
-                      description: Time period the trino workers have to gracefully shut down, e.g. `1h`, `30m` or `2d`. Consult the trino-operator documentation for details.
-                      type: string
                     listenerClass:
                       default: cluster-internal
                       description: |-
@@ -628,6 +624,10 @@ spec:
                                   type: array
                               type: object
                           type: object
+                        gracefulShutdownTimeout:
+                          description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
+                          nullable: true
+                          type: string
                         logging:
                           default:
                             enableVectorAgent: null
@@ -4118,6 +4118,10 @@ spec:
                                         type: array
                                     type: object
                                 type: object
+                              gracefulShutdownTimeout:
+                                description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
+                                nullable: true
+                                type: string
                               logging:
                                 default:
                                   enableVectorAgent: null
@@ -7668,6 +7672,10 @@ spec:
                                   type: array
                               type: object
                           type: object
+                        gracefulShutdownTimeout:
+                          description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
+                          nullable: true
+                          type: string
                         logging:
                           default:
                             enableVectorAgent: null
@@ -11158,6 +11166,10 @@ spec:
                                         type: array
                                     type: object
                                 type: object
+                              gracefulShutdownTimeout:
+                                description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
+                                nullable: true
+                                type: string
                               logging:
                                 default:
                                   enableVectorAgent: null

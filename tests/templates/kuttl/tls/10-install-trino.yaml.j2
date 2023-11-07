@@ -58,7 +58,6 @@ spec:
     productVersion: "{{ test_scenario['values']['trino-latest'] }}"
   clusterConfig:
     catalogLabelSelector: {}
-    gracefulShutdownTimeout: 5s
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
@@ -86,6 +85,7 @@ spec:
         replicas: 1
   workers:
     config:
+      gracefulShutdownTimeout: 5s # Let the test run faster
       logging:
         enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
     roleGroups:
