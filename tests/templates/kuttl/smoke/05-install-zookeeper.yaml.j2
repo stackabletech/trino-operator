@@ -8,8 +8,7 @@ spec:
     productVersion: "{{ test_scenario['values']['zookeeper'] }}"
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
   clusterConfig:
-    logging:
-      vectorAggregatorConfigMapName: vector-aggregator-discovery
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
   servers:
     config:

@@ -1,22 +1,24 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
-use crate::{
-    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
-    authorization::opa::TrinoOpaConfig,
-    catalog::{config::CatalogConfig, FromTrinoCatalogError},
-    command,
-    operations::{
-        add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
-    },
-    product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Write,
+    ops::Div,
+    str::FromStr,
+    sync::Arc,
 };
 
 use indoc::formatdoc;
+use product_config::{
+    self,
+    types::PropertyNameKind,
+    writer::{to_java_properties_string, PropertiesWriterError},
+    ProductConfigManager,
+};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{builder::SecretFormat, role_utils::GenericRoleConfig};
 use stackable_operator::{
     builder::{
         resources::ResourceRequirementsBuilder, ConfigMapBuilder, ContainerBuilder,
-        ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
+        ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder, SecretFormat,
         SecretOperatorVolumeSourceBuilder, VolumeBuilder,
     },
     client::Client,
@@ -40,11 +42,7 @@ use stackable_operator::{
     },
     labels::{role_group_selector_labels, role_selector_labels, ObjectLabels},
     logging::controller::ReconcilerError,
-    memory::BinaryMultiple,
-    memory::MemoryQuantity,
-    product_config::{
-        self, types::PropertyNameKind, writer::to_java_properties_string, ProductConfigManager,
-    },
+    memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{
         transform_all_roles_to_config, validate_all_roles_and_groups_config,
         ValidatedRoleConfigByPropertyKind,
@@ -56,7 +54,7 @@ use stackable_operator::{
             CustomContainerLogConfig,
         },
     },
-    role_utils::RoleGroupRef,
+    role_utils::{GenericRoleConfig, RoleGroupRef},
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
@@ -76,14 +74,18 @@ use stackable_trino_crd::{
     STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
     STACKABLE_TLS_STORE_PASSWORD,
 };
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Write,
-    ops::Div,
-    str::FromStr,
-    sync::Arc,
-};
 use strum::{EnumDiscriminants, IntoStaticStr};
+
+use crate::{
+    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
+    authorization::opa::TrinoOpaConfig,
+    catalog::{config::CatalogConfig, FromTrinoCatalogError},
+    command,
+    operations::{
+        add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
+    },
+    product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
+};
 
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
@@ -115,154 +117,192 @@ const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 pub enum Error {
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
+
     #[snafu(display("object defines no {} role", role))]
     MissingTrinoRole { role: String },
+
     #[snafu(display("failed to create cluster resources"))]
     CreateClusterResources {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to delete orphaned resources"))]
     DeleteOrphanedResources {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to apply global Service"))]
     ApplyRoleService {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to apply Service for {}", rolegroup))]
     ApplyRoleGroupService {
         source: stackable_operator::error::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
+
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfig {
         source: stackable_operator::error::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
+
     #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
     ApplyRoleGroupConfig {
         source: stackable_operator::error::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
+
     #[snafu(display("failed to apply StatefulSet for {}", rolegroup))]
     ApplyRoleGroupStatefulSet {
         source: stackable_operator::error::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
+
     #[snafu(display("failed to apply internal secret"))]
     ApplyInternalSecret {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("invalid product config"))]
     InvalidProductConfig {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("object is missing metadata to build owner reference"))]
     ObjectMissingMetadataForOwnerRef {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to transform configs"))]
     ProductConfigTransform {
         source: stackable_operator::product_config_utils::ConfigError,
     },
+
     #[snafu(display("failed to format runtime properties"))]
-    FailedToWriteJavaProperties {
-        source: stackable_operator::product_config::writer::PropertiesWriterError,
-    },
+    FailedToWriteJavaProperties { source: PropertiesWriterError },
+
     #[snafu(display("failed to parse role: {source}"))]
     FailedToParseRole { source: strum::ParseError },
+
     #[snafu(display("internal operator failure: {source}"))]
     InternalOperatorFailure { source: stackable_trino_crd::Error },
+
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
+
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to resolve S3 connection"))]
     ResolveS3Connection {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to get associated TrinoCatalogs"))]
     GetCatalogs {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to parse {catalog}"))]
     ParseCatalog {
         source: FromTrinoCatalogError,
         catalog: ObjectRef<TrinoCatalog>,
     },
+
     #[snafu(display("invalid memory resource configuration - missing default or value in crd?"))]
     MissingMemoryResourceConfig,
+
     #[snafu(display("could not convert / scale memory resource config to [{unit}]"))]
     FailedToConvertMemoryResourceConfig {
         source: stackable_operator::error::Error,
         unit: String,
     },
+
     #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
     FailedToConvertMemoryResourceConfigToJavaHeap {
         source: stackable_operator::error::Error,
         unit: String,
     },
+
     #[snafu(display("illegal container name: [{container_name}]"))]
     IllegalContainerName {
         source: stackable_operator::error::Error,
         container_name: String,
     },
+
     #[snafu(display("failed to retrieve secret for internal communications"))]
     FailedToRetrieveInternalSecret {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to resolve and merge config for role and role group"))]
     FailedToResolveConfig { source: stackable_trino_crd::Error },
+
     #[snafu(display("failed to resolve the Vector aggregator address"))]
     ResolveVectorAggregatorAddress {
         source: crate::product_logging::Error,
     },
+
     #[snafu(display("failed to add the logging configuration to the ConfigMap [{cm_name}]"))]
     InvalidLoggingConfig {
         source: crate::product_logging::Error,
         cm_name: String,
     },
+
     #[snafu(display("failed to patch service account"))]
     ApplyServiceAccount {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to patch role binding"))]
     ApplyRoleBinding {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to update status"))]
     ApplyStatus {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("failed to build RBAC resources"))]
     BuildRbacResources {
         source: stackable_operator::error::Error,
     },
+
     #[snafu(display("Failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
         source: stackable_trino_crd::authentication::Error,
     },
+
     #[snafu(display("Unsupported Trino authentication"))]
     UnsupportedAuthenticationConfig {
         source: crate::authentication::Error,
     },
+
     #[snafu(display("Invalid Trino authentication"))]
     InvalidAuthenticationConfig {
         source: crate::authentication::Error,
     },
+
     #[snafu(display("failed to serialize [{JVM_SECURITY_PROPERTIES}] for {}", rolegroup))]
     JvmSecurityProperties {
-        source: stackable_operator::product_config::writer::PropertiesWriterError,
+        source: PropertiesWriterError,
         rolegroup: String,
     },
+
     #[snafu(display("failed to create PodDisruptionBudget"))]
     FailedToCreatePdb {
         source: crate::operations::pdb::Error,
     },
-    #[snafu(display("invalid graceful shutdown"))]
-    InvalidGracefulShutdown { source: crate::operations::Error },
+
+    #[snafu(display("failed to configure graceful shutdown"))]
+    GracefulShutdown {
+        source: crate::operations::graceful_shutdown::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -867,8 +907,14 @@ fn build_rolegroup_statefulset(
         &mut cb_prepare,
         &mut cb_trino,
     );
-    add_graceful_shutdown_config(trino, trino_role, &mut pod_builder, &mut cb_trino)
-        .context(InvalidGracefulShutdownSnafu)?;
+    add_graceful_shutdown_config(
+        trino,
+        trino_role,
+        merged_config,
+        &mut pod_builder,
+        &mut cb_trino,
+    )
+    .context(GracefulShutdownSnafu)?;
 
     // Add the needed stuff for catalogs
     env.extend(

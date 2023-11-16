@@ -7,32 +7,32 @@
 //! - volume and volume mounts
 //! - extra containers and commands
 //!
-pub(crate) mod oidc;
-pub(crate) mod password;
+use std::collections::{BTreeMap, HashMap};
 
-use crate::authentication::password::{
-    file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
-    TrinoPasswordAuthenticator,
-};
-
-use crate::authentication::oidc::{OidcAuthenticator, TrinoOidcAuthentication};
 use snafu::{ResultExt, Snafu};
-use stackable_operator::k8s_openapi::api::core::v1::EnvVar;
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     commons::{
         authentication::{AuthenticationClass, AuthenticationClassProvider},
         product_image_selection::ResolvedProductImage,
     },
-    k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
+    k8s_openapi::api::core::v1::{Container, EnvVar, Volume, VolumeMount},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
-    product_config,
 };
-use stackable_trino_crd::authentication::ResolvedAuthenticationClassRef;
-use stackable_trino_crd::TrinoRole;
-use std::collections::{BTreeMap, HashMap};
+use stackable_trino_crd::{authentication::ResolvedAuthenticationClassRef, TrinoRole};
 use strum::EnumDiscriminants;
 use tracing::trace;
+
+use crate::authentication::{
+    oidc::{OidcAuthenticator, TrinoOidcAuthentication},
+    password::{
+        file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
+        TrinoPasswordAuthenticator,
+    },
+};
+
+pub(crate) mod oidc;
+pub(crate) mod password;
 
 // trino properties
 const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
@@ -44,10 +44,12 @@ pub enum Error {
         authentication_class_provider: String,
         authentication_class: ObjectRef<AuthenticationClass>,
     },
+
     #[snafu(display("Failed to format trino authentication java properties"))]
     FailedToWriteJavaProperties {
         source: product_config::writer::PropertiesWriterError,
     },
+
     #[snafu(display("Failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
     #[snafu(display("Failed to configure trino OAuth2 authentication"))]

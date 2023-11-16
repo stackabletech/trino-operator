@@ -17,16 +17,19 @@ use strum::Display;
 pub enum Error {
     #[snafu(display("object has no namespace"))]
     ObjectHasNoNamespace,
+
     #[snafu(display("failed to retrieve the ConfigMap {cm_name}"))]
     ConfigMapNotFound {
         source: stackable_operator::error::Error,
         cm_name: String,
     },
+
     #[snafu(display("failed to retrieve the entry {entry} for ConfigMap {cm_name}"))]
     MissingConfigMapEntry {
         entry: &'static str,
         cm_name: String,
     },
+
     #[snafu(display("vectorAggregatorConfigMapName must be set"))]
     MissingVectorAggregatorAddress,
 }
