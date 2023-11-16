@@ -193,9 +193,8 @@ impl TrinoPasswordAuthentication {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_yaml;
     use stackable_operator::commons::authentication::{
-        static_::UserCredentialsSecretRef, LdapAuthenticationProvider, StaticAuthenticationProvider,
+        ldap, static_, static_::UserCredentialsSecretRef,
     };
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
@@ -203,7 +202,7 @@ mod tests {
     const LDAP_AUTH_CLASS_1: &str = "ldap-auth-1";
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
-    fn ldap_provider() -> LdapAuthenticationProvider {
+    fn ldap_provider() -> ldap::AuthenticationProvider {
         let input = r#"
             hostname: my.ldap.server
             searchBase: ou=users,dc=example,dc=org
@@ -216,7 +215,7 @@ mod tests {
         let authenticators = vec![
             TrinoPasswordAuthenticator::File(FileAuthenticator::new(
                 FILE_AUTH_CLASS_1.to_string(),
-                StaticAuthenticationProvider {
+                static_::AuthenticationProvider {
                     user_credentials_secret: UserCredentialsSecretRef {
                         name: FILE_AUTH_CLASS_1.to_string(),
                     },
@@ -224,7 +223,7 @@ mod tests {
             )),
             TrinoPasswordAuthenticator::File(FileAuthenticator::new(
                 FILE_AUTH_CLASS_2.to_string(),
-                StaticAuthenticationProvider {
+                static_::AuthenticationProvider {
                     user_credentials_secret: UserCredentialsSecretRef {
                         name: FILE_AUTH_CLASS_2.to_string(),
                     },
@@ -272,7 +271,7 @@ mod tests {
     fn test_password_authentication_config_files() {
         let file_auth_1 = FileAuthenticator::new(
             FILE_AUTH_CLASS_1.to_string(),
-            StaticAuthenticationProvider {
+            static_::AuthenticationProvider {
                 user_credentials_secret: UserCredentialsSecretRef {
                     name: FILE_AUTH_CLASS_1.to_string(),
                 },

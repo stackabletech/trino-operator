@@ -4,9 +4,8 @@
 use crate::authentication::TrinoAuthenticationConfig;
 use crate::command;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::commons::authentication::{
-    oidc::{CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY},
-    OidcAuthenticationProvider,
+use stackable_operator::commons::authentication::oidc::{
+    self, CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY,
 };
 use stackable_trino_crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR};
 
@@ -56,14 +55,14 @@ pub struct TrinoOidcAuthentication {
 #[derive(Clone, Debug)]
 pub struct OidcAuthenticator {
     name: String,
-    oidc: OidcAuthenticationProvider,
+    oidc: oidc::AuthenticationProvider,
     secret: Option<String>,
 }
 
 impl OidcAuthenticator {
     pub fn new(
         name: String,
-        provider: OidcAuthenticationProvider,
+        provider: oidc::AuthenticationProvider,
         secret_ref: Option<String>,
     ) -> Self {
         Self {
@@ -113,12 +112,14 @@ impl TrinoOidcAuthentication {
         );
 
         let (client_id_env, client_secret_env) =
-            OidcAuthenticationProvider::client_credentials_env_names(secret_name);
+            oidc::AuthenticationProvider::client_credentials_env_names(secret_name);
 
         oauth2_authentication_config.add_env_vars(
             TrinoRole::Coordinator,
             stackable_trino_crd::Container::Trino,
-            OidcAuthenticationProvider::client_credentials_env_var_mounts(secret_name.to_string()),
+            oidc::AuthenticationProvider::client_credentials_env_var_mounts(
+                secret_name.to_string(),
+            ),
         );
 
         oauth2_authentication_config.add_config_property(
@@ -217,7 +218,7 @@ mod tests {
         "#
         );
         let deserializer = serde_yaml::Deserializer::from_str(&input);
-        let oidc_auth_provider: OidcAuthenticationProvider =
+        let oidc_auth_provider: oidc::AuthenticationProvider =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         OidcAuthenticator::new(
@@ -273,7 +274,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(&format!("oauth2")),
+            Some(&"oauth2".to_string()),
             trino_oidc_auth
                 .config_properties
                 .get(&TrinoRole::Coordinator)

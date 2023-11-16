@@ -542,12 +542,10 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use stackable_operator::commons::authentication::static_;
     use stackable_operator::commons::secret_class::SecretClassVolume;
     use stackable_operator::{
-        commons::authentication::{
-            static_::UserCredentialsSecretRef, AuthenticationClassSpec,
-            StaticAuthenticationProvider,
-        },
+        commons::authentication::{static_::UserCredentialsSecretRef, AuthenticationClassSpec},
         kube::core::ObjectMeta,
     };
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
@@ -568,11 +566,13 @@ mod tests {
                     ..ObjectMeta::default()
                 },
                 spec: AuthenticationClassSpec {
-                    provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
-                        user_credentials_secret: UserCredentialsSecretRef {
-                            name: name.to_string(),
+                    provider: AuthenticationClassProvider::Static(
+                        static_::AuthenticationProvider {
+                            user_credentials_secret: UserCredentialsSecretRef {
+                                name: name.to_string(),
+                            },
                         },
-                    }),
+                    ),
                 },
             },
             secret_ref: None,
