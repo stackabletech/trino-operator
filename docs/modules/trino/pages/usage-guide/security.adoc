@@ -12,7 +12,7 @@ Different authentication types can be used simultaneously.
 
 The Trino operator currently supports the following `PASSWORD` authenticators.
 
-==== Password file
+==== File
 
 The https://trino.io/docs/current/security/password-file.html[file based authentication] can be defined as follows. First create a secret with your users:
 
@@ -49,7 +49,7 @@ Changes to the referenced user `Secret` (e.g. adding or removing a user) are upd
 
 Adding or removing an `AuthenticationClass` will however result in a `Pod` restart.
 
-=== LDAP
+==== LDAP
 
 The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well and authentication in Stackable is done using xref:home:concepts:authentication.adoc#authenticationclass[AuthenticationClasses]:
 
