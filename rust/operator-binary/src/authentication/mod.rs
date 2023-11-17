@@ -494,7 +494,14 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                     oidc_authenticators.push(OidcAuthenticator::new(
                         auth_class_name,
                         provider,
-                        resolved_auth_class.secret_ref,
+                        resolved_auth_class
+                            .oidc
+                            .as_ref()
+                            .map(|o| o.client_credentials_secret_ref.clone()),
+                        resolved_auth_class
+                            .oidc
+                            .map(|o| o.extra_scopes)
+                            .unwrap_or_default(),
                     ));
 
                     TrinoAuthenticationTypes::insert_auth_type_order(
@@ -542,7 +549,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stackable_operator::commons::authentication::static_;
+    use stackable_operator::commons::authentication::{oidc, static_};
     use stackable_operator::commons::secret_class::SecretClassVolume;
     use stackable_operator::{
         commons::authentication::{static_::UserCredentialsSecretRef, AuthenticationClassSpec},
@@ -575,7 +582,7 @@ mod tests {
                     ),
                 },
             },
-            secret_ref: None,
+            oidc: None,
         }
     }
 
@@ -622,7 +629,7 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            secret_ref: None,
+            oidc: None,
         }
     }
 
@@ -648,7 +655,10 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            secret_ref: Some("my-oidc-secret".to_string()),
+            oidc: Some(oidc::ClientAuthenticationOptions {
+                client_credentials_secret_ref: "my-oidc-secret".to_string(),
+                extra_scopes: Vec::new(),
+            }),
         }
     }
 

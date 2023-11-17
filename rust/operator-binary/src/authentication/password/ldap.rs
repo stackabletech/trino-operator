@@ -89,8 +89,8 @@ impl LdapAuthenticator {
             );
         }
 
-        if self.ldap.tls.use_tls() {
-            if !self.ldap.tls.use_tls_verification() {
+        if self.ldap.tls.uses_tls() {
+            if !self.ldap.tls.uses_tls_verification() {
                 // Use TLS but don't verify LDAP server ca => not supported
                 return Err(Error::UnverifiedLdapTlsConnectionNotSupported);
             }

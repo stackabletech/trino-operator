@@ -1705,9 +1705,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.21.8"
+version = "0.21.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "446e14c5cda4f3f30fe71863c34ec70f5ac79d6087097ad0bb433e1be5edf04c"
+checksum = "629648aced5775d558af50b2b4c7b02983a04b312126d45eeead26e7caa498b9"
 dependencies = [
  "log",
  "ring",
@@ -2040,7 +2040,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 [[package]]
 name = "stackable-operator"
 version = "0.56.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/sso-auth-classes#3f7b5b5cae7358a905094d89d0a65d10e08997fe"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/sso-auth-classes#90bdd2da61ce4da0e3c72f89d93520ea3afb0af1"
 dependencies = [
  "chrono",
  "clap",
@@ -2076,7 +2076,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator-derive"
 version = "0.56.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/sso-auth-classes#3f7b5b5cae7358a905094d89d0a65d10e08997fe"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat/sso-auth-classes#90bdd2da61ce4da0e3c72f89d93520ea3afb0af1"
 dependencies = [
  "darling 0.20.3",
  "proc-macro2",
@@ -2800,6 +2800,6 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12a3946ecfc929b583800f4629b6c25b88ac6e92a40ea5670f77112a85d40a8b"
+checksum = "525b4ec142c6b68a2d10f01f7bbf6755599ca3f81ea53b8431b7dd348f5fdb2d"

@@ -57,6 +57,7 @@ pub struct OidcAuthenticator {
     name: String,
     oidc: oidc::AuthenticationProvider,
     secret: Option<String>,
+    extra_scopes: Vec<String>,
 }
 
 impl OidcAuthenticator {
@@ -64,11 +65,13 @@ impl OidcAuthenticator {
         name: String,
         provider: oidc::AuthenticationProvider,
         secret_ref: Option<String>,
+        extra_scopes: Vec<String>,
     ) -> Self {
         Self {
             name,
             oidc: provider,
             secret: secret_ref,
+            extra_scopes,
         }
     }
 }
@@ -105,10 +108,12 @@ impl TrinoOidcAuthentication {
             issuer.to_string(),
         );
 
+        let mut scopes = authenticator.oidc.scopes;
+        scopes.extend(authenticator.extra_scopes);
         oauth2_authentication_config.add_config_property(
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES.to_string(),
-            authenticator.oidc.scopes.join(","),
+            scopes.join(","),
         );
 
         let (client_id_env, client_secret_env) =
@@ -151,11 +156,16 @@ impl TrinoOidcAuthentication {
         oauth2_authentication_config.add_volume_mounts(
             TrinoRole::Coordinator,
             stackable_trino_crd::Container::Prepare,
+            tls_mounts.clone(),
+        );
+        oauth2_authentication_config.add_volume_mounts(
+            TrinoRole::Worker,
+            stackable_trino_crd::Container::Prepare,
             tls_mounts,
         );
 
-        if authenticator.oidc.tls.use_tls() {
-            if !authenticator.oidc.tls.use_tls_verification() {
+        if authenticator.oidc.tls.uses_tls() {
+            if !authenticator.oidc.tls.uses_tls_verification() {
                 // TODO: this still true?
                 // Use TLS but don't verify OIDC server ca => not supported
                 return Err(Error::UnverifiedOidcTlsConnectionNotSupported);
@@ -225,6 +235,7 @@ mod tests {
             auth_class_name.to_string(),
             oidc_auth_provider,
             credential_secret,
+            Vec::new(),
         )
     }
 
