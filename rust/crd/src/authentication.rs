@@ -33,15 +33,11 @@ pub async fn resolve_authentication_classes(
             .resolve_class(client)
             .await
             .context(AuthenticationClassRetrievalSnafu)?;
-        let oidc =
-            if let ClientAuthenticationConfig::Oidc(oidc) = &client_authentication_detail.config {
-                Some(oidc.clone())
-            } else {
-                None
-            };
+        let ClientAuthenticationConfig::Oidc(oidc) = &client_authentication_detail.config;
+
         resolved_auth_classes.push(ResolvedAuthenticationClassRef {
             authentication_class: resolved_auth_class,
-            oidc,
+            oidc: Some(oidc.clone()),
         });
     }
 
