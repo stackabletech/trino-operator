@@ -494,14 +494,8 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                     oidc_authenticators.push(OidcAuthenticator::new(
                         auth_class_name,
                         provider,
-                        resolved_auth_class
-                            .oidc
-                            .as_ref()
-                            .map(|o| o.client_credentials_secret_ref.clone()),
-                        resolved_auth_class
-                            .oidc
-                            .map(|o| o.extra_scopes)
-                            .unwrap_or_default(),
+                        resolved_auth_class.oidc.client_credentials_secret_ref,
+                        resolved_auth_class.oidc.extra_scopes,
                     ));
 
                     TrinoAuthenticationTypes::insert_auth_type_order(
@@ -582,7 +576,10 @@ mod tests {
                     ),
                 },
             },
-            oidc: None,
+            oidc: oidc::ClientAuthenticationOptions {
+                client_credentials_secret_ref: "my-oidc-secret".to_string(),
+                extra_scopes: Vec::new(),
+            },
         }
     }
 
@@ -629,7 +626,10 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            oidc: None,
+            oidc: oidc::ClientAuthenticationOptions {
+                client_credentials_secret_ref: "my-oidc-secret".to_string(),
+                extra_scopes: Vec::new(),
+            },
         }
     }
 
@@ -655,10 +655,10 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            oidc: Some(oidc::ClientAuthenticationOptions {
+            oidc: oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
-            }),
+            },
         }
     }
 

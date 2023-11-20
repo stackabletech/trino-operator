@@ -3,7 +3,7 @@
 
 use crate::authentication::TrinoAuthenticationConfig;
 use crate::command;
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::authentication::oidc::{
     self, CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY,
 };
@@ -56,7 +56,7 @@ pub struct TrinoOidcAuthentication {
 pub struct OidcAuthenticator {
     name: String,
     oidc: oidc::AuthenticationProvider,
-    secret: Option<String>,
+    client_credentials_secret: String,
     extra_scopes: Vec<String>,
 }
 
@@ -64,13 +64,13 @@ impl OidcAuthenticator {
     pub fn new(
         name: String,
         provider: oidc::AuthenticationProvider,
-        secret_ref: Option<String>,
+        client_credentials_secret: String,
         extra_scopes: Vec<String>,
     ) -> Self {
         Self {
             name,
             oidc: provider,
-            secret: secret_ref,
+            client_credentials_secret,
             extra_scopes,
         }
     }
@@ -86,15 +86,6 @@ impl TrinoOidcAuthentication {
 
         // Check for single OAuth2 AuthenticationClass and error out if multiple were provided
         let authenticator = self.get_single_oauth2_authentication_class()?;
-
-        // We require a secret with client credentials
-        let secret_name =
-            authenticator
-                .secret
-                .as_deref()
-                .context(MissingOauth2CredentialSecretSnafu {
-                    auth_class_name: authenticator.name.clone(),
-                })?;
 
         let issuer = authenticator
             .oidc
@@ -117,13 +108,15 @@ impl TrinoOidcAuthentication {
         );
 
         let (client_id_env, client_secret_env) =
-            oidc::AuthenticationProvider::client_credentials_env_names(secret_name);
+            oidc::AuthenticationProvider::client_credentials_env_names(
+                &authenticator.client_credentials_secret,
+            );
 
         oauth2_authentication_config.add_env_vars(
             TrinoRole::Coordinator,
             stackable_trino_crd::Container::Trino,
             oidc::AuthenticationProvider::client_credentials_env_var_mounts(
-                secret_name.to_string(),
+                authenticator.client_credentials_secret,
             ),
         );
 
@@ -217,7 +210,7 @@ mod tests {
 
     fn setup_test_authenticator(
         auth_class_name: &str,
-        credential_secret: Option<String>,
+        credential_secret: String,
     ) -> OidcAuthenticator {
         let input = format!(
             r#"
@@ -242,26 +235,18 @@ mod tests {
     #[test]
     fn test_oidc_authentication_limit_one_error() {
         let oidc_authentication = TrinoOidcAuthentication::new(vec![
-            setup_test_authenticator(AUTH_CLASS_NAME_1, None),
-            setup_test_authenticator(AUTH_CLASS_NAME_2, None),
+            setup_test_authenticator(AUTH_CLASS_NAME_1, AUTH_CLASS_CREDENTIAL_SECRET.to_string()),
+            setup_test_authenticator(AUTH_CLASS_NAME_2, AUTH_CLASS_CREDENTIAL_SECRET.to_string()),
         ]);
 
         assert!(oidc_authentication.oauth2_authentication_config().is_err())
     }
 
     #[test]
-    fn test_oidc_authentication_missing_secret_error() {
-        let oidc_authentication =
-            TrinoOidcAuthentication::new(vec![setup_test_authenticator(AUTH_CLASS_NAME_1, None)]);
-
-        assert!(oidc_authentication.oauth2_authentication_config().is_err());
-    }
-
-    #[test]
     fn test_oidc_authentication_settings() {
         let oidc_authentication = TrinoOidcAuthentication::new(vec![setup_test_authenticator(
             AUTH_CLASS_NAME_1,
-            Some(AUTH_CLASS_CREDENTIAL_SECRET.to_string()),
+            AUTH_CLASS_CREDENTIAL_SECRET.to_string(),
         )]);
 
         let trino_oidc_auth = oidc_authentication.oauth2_authentication_config().unwrap();
