@@ -15,6 +15,7 @@ spec:
       labels:
         app: trino-test-helper
     spec:
+      serviceAccount: integration-tests-sa
       containers:
         - name: trino-test-helper
           image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
