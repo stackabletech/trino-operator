@@ -26,6 +26,7 @@ pub enum Error {
         "No OAuth2 AuthenticationClass provided. This is an internal operator failure and should not be happening."
     ))]
     NoOauth2AuthenticationClassProvided,
+
     #[snafu(display(
         "Trino cannot configure OAuth2 with multiple Identity providers. \
          Received the following AuthenticationClasses {authentication_class_names:?}. \
@@ -34,15 +35,18 @@ pub enum Error {
     MultipleOauth2AuthenticationClasses {
         authentication_class_names: Vec<String>,
     },
+
     #[snafu(display("Failed to create OAuth2 issuer endpoint url."))]
     FailedToCreateIssuerEndpointUrl {
         source: stackable_operator::commons::authentication::oidc::Error,
     },
+
     #[snafu(display(
         "The OAUTH2 / OIDC AuthenticationClass {auth_class_name} requires to have a secret reference present containing \
          '{CLIENT_ID_SECRET_KEY}' and '{CLIENT_SECRET_SECRET_KEY}' fields."
     ))]
     MissingOauth2CredentialSecret { auth_class_name: String },
+
     #[snafu(display("Trino does not support unverified TLS connections to OIDC"))]
     UnverifiedOidcTlsConnectionNotSupported,
 }
