@@ -36,7 +36,10 @@ spec:
                             description: A name/key which references an authentication class. To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be achieved by using [`ClientAuthenticationDetails::resolve_class`].
                             type: string
                           oidc:
-                            description: This field contains authentication provider specific configuration. It is flattened into the final CRD.
+                            description: |-
+                              This field contains authentication provider specific configuration. It is flattened into the final CRD.
+
+                              Use [`oidc_or_error`] to get the value or report an error to the user.
                             nullable: true
                             properties:
                               clientCredentialsSecret:
