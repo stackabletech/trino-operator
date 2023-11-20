@@ -9,7 +9,7 @@
 //!
 use std::collections::{BTreeMap, HashMap};
 
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     commons::{
@@ -52,8 +52,12 @@ pub enum Error {
 
     #[snafu(display("Failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
+
     #[snafu(display("Failed to configure trino OAuth2 authentication"))]
     InvalidOauth2AuthenticationConfig { source: oidc::Error },
+
+    #[snafu(display("OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"))]
+    OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -491,11 +495,16 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                     );
                 }
                 AuthenticationClassProvider::Oidc(provider) => {
+                    let oidc = resolved_auth_class.oidc.context(
+                        OidcAuthenticationDetailsNotSpecifiedSnafu {
+                            auth_class_name: auth_class_name.clone(),
+                        },
+                    )?;
                     oidc_authenticators.push(OidcAuthenticator::new(
                         auth_class_name,
                         provider,
-                        resolved_auth_class.oidc.client_credentials_secret_ref,
-                        resolved_auth_class.oidc.extra_scopes,
+                        oidc.client_credentials_secret_ref,
+                        oidc.extra_scopes,
                     ));
 
                     TrinoAuthenticationTypes::insert_auth_type_order(
@@ -576,10 +585,10 @@ mod tests {
                     ),
                 },
             },
-            oidc: oidc::ClientAuthenticationOptions {
+            oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
-            },
+            }),
         }
     }
 
@@ -626,10 +635,10 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            oidc: oidc::ClientAuthenticationOptions {
+            oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
-            },
+            }),
         }
     }
 
@@ -655,10 +664,10 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            oidc: oidc::ClientAuthenticationOptions {
+            oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
-            },
+            }),
         }
     }
 
