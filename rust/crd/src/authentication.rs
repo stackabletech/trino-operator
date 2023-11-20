@@ -1,9 +1,7 @@
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     client::Client,
-    commons::authentication::{
-        oidc, AuthenticationClass, ClientAuthenticationConfig, ClientAuthenticationDetails,
-    },
+    commons::authentication::{oidc, AuthenticationClass, ClientAuthenticationDetails},
 };
 
 #[derive(Snafu, Debug)]
@@ -33,11 +31,10 @@ pub async fn resolve_authentication_classes(
             .resolve_class(client)
             .await
             .context(AuthenticationClassRetrievalSnafu)?;
-        let ClientAuthenticationConfig::Oidc(oidc) = &client_authentication_detail.config;
 
         resolved_auth_classes.push(ResolvedAuthenticationClassRef {
             authentication_class: resolved_auth_class,
-            oidc: Some(oidc.clone()),
+            oidc: client_authentication_detail.oidc.clone(),
         });
     }
 
