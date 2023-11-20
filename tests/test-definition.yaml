@@ -69,6 +69,7 @@ tests:
       - use-authentication
       - use-tls
       - use-internal-tls
+      - openshift
   - name: resources
     dimensions:
       - trino-latest
@@ -83,6 +84,7 @@ tests:
   - name: logging
     dimensions:
       - trino
+      - openshift
   - name: cluster-operation
     dimensions:
       - trino-latest
