@@ -31,17 +31,34 @@ spec:
                       default: []
                       description: Authentication options for Trino.
                       items:
+                        description: |-
+                          An enum of supported authentication providers. Each variant contains provider specific options. The structure is based on disussions around the [OIDC ADR][oidc-adr].
+
+                          [oidc-adr]: https://docs.stackable.tech/home/nightly/contributor/adr/adr032-oauth-oidc-support
+                        oneOf:
+                          - required:
+                              - oidc
                         properties:
                           authenticationClass:
+                            description: A name/key which references an authentication class. To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be achieved by using [`ClientAuthenticationDetails::resolve_class`].
                             type: string
-                          secret:
-                            nullable: true
-                            oneOf:
-                              - required:
-                                  - oidc
+                          oidc:
+                            description: OIDC specific config options. These are set on the product config level.
                             properties:
-                              oidc:
+                              clientCredentialsSecret:
+                                description: A reference to the OIDC client credentials secret. The secret contains the client id and secret.
                                 type: string
+                              extraScopes:
+                                default: []
+                                description: |-
+                                  An optional list of extra scopes which get merged with the scopes defined in the [`AuthenticationClass`][authclass].
+
+                                  [authclass]: crate::commons::authentication::AuthenticationClass
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                              - clientCredentialsSecret
                             type: object
                         required:
                           - authenticationClass
