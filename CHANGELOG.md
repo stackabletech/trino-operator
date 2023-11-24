@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [23.11.0] - 2023-11-24
+
 ### Added
 
 - Use [graceful shutdown](https://trino.io/docs/current/admin/graceful-shutdown.html) for workers ([#461], [#463], [#466], [#474]).
