@@ -588,6 +588,7 @@ mod tests {
             oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
+                extra_fields_for_product: (),
             }),
         }
     }
@@ -638,6 +639,7 @@ mod tests {
             oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
+                extra_fields_for_product: (),
             }),
         }
     }
@@ -655,6 +657,7 @@ mod tests {
                   hostname: {HOST_NAME}
                   rootPath: /realms/master
                   scopes: ["openid"]
+                  principalClaim: preferred_username
             "#,
         );
         let deserializer = serde_yaml::Deserializer::from_str(&input);
@@ -667,6 +670,7 @@ mod tests {
             oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
+                extra_fields_for_product: (),
             }),
         }
     }

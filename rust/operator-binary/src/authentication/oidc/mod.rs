@@ -222,6 +222,7 @@ mod tests {
             port: {IDP_PORT}
             rootPath: {IDP_ROOT_PATH}
             scopes: ["{IDP_SCOPE_1}", "{IDP_SCOPE_2}"]
+            principalClaim: preferred_username
         "#
         );
         let deserializer = serde_yaml::Deserializer::from_str(&input);
