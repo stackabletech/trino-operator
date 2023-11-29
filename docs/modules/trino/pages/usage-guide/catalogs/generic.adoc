@@ -31,6 +31,10 @@ spec:
           valueFromSecret:
             name: my-postgresql-credentials-secret
             key: password
+#         if tables are capitalized / upper case for e.g. frost-server which can be read by trino,
+#         but when querying data the table seems not to exist
+#         case-insensitive-name-matching:
+#           value: "true"
 #         extra-property-from-configmap:
 #           valueFromConfigMap:
 #             name: my-configmap
@@ -54,3 +58,7 @@ An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
 == Add additional contents
 
 In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:nightly@home:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
+
+== Add databases with upper case tables
+
+The `case-insensitive-name-matching` property fixes a problem with upper case table names in databases, since Trino can only handle lower cases. If table names are upper cases and get queried via Trino the error `Table '<catalog>.<schema>.<table>' does not exist io.trino.spi.TrinoException: line 2:6: Table '<catalog>.<schema>.<table>' does not exist` is thrown. 
