@@ -42,7 +42,7 @@ pub async fn resolve_authentication_classes(
         let auth_class_name = resolved_auth_class.name_any();
 
         resolved_auth_classes.push(ResolvedAuthenticationClassRef {
-            oidc: match resolved_auth_class.spec.provider {
+            oidc: match &resolved_auth_class.spec.provider {
                 AuthenticationClassProvider::Oidc(_) => Some(
                     client_authentication_detail
                         .oidc_or_error(&auth_class_name)

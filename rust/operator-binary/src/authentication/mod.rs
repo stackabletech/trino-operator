@@ -588,7 +588,7 @@ mod tests {
             oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
-                extra_fields_for_product: (),
+                product_specific_fields: (),
             }),
         }
     }
@@ -639,7 +639,7 @@ mod tests {
             oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
-                extra_fields_for_product: (),
+                product_specific_fields: (),
             }),
         }
     }
@@ -670,7 +670,7 @@ mod tests {
             oidc: Some(oidc::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
-                extra_fields_for_product: (),
+                product_specific_fields: (),
             }),
         }
     }
