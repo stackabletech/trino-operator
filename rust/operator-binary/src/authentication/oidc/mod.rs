@@ -16,6 +16,8 @@ const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_SECRET: &str =
     "http-server.authentication.oauth2.client-secret";
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_ISSUER: &str = "http-server.authentication.oauth2.issuer";
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES: &str = "http-server.authentication.oauth2.scopes";
+const HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD: &str =
+    "http-server.authentication.oauth2.principal-field";
 // To enable OAuth 2.0 authentication for the Web UI, the following property must be be added:
 // web-ui.authentication.type=oidc
 const WEB_UI_AUTHENTICATION_TYPE: &str = "web-ui.authentication.type";
@@ -133,6 +135,12 @@ impl TrinoOidcAuthentication {
             TrinoRole::Coordinator,
             HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_SECRET.to_string(),
             format!("${{ENV:{client_secret_env}}}",),
+        );
+
+        oauth2_authentication_config.add_config_property(
+            TrinoRole::Coordinator,
+            HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD.to_string(),
+            authenticator.oidc.principal_claim,
         );
 
         // We set this if OAUTH2/OIDC is enabled. The web defaults to "FORM" which is
