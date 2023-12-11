@@ -14314,13 +14314,16 @@ spec:
           description: Auto-generated derived type for TrinoCatalogSpec via `CustomResource`
           properties:
             spec:
+              description: The TrinoCatalog resource can be used to define catalogs in Kubernetes objects. Read more about it in the [Trino operator concept docs](https://docs.stackable.tech/home/nightly/trino/concepts) and the [Trino operator usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/). The documentation also contains a list of all the supported backends.
               properties:
                 configOverrides:
                   additionalProperties:
                     type: string
                   default: {}
+                  description: 'The `configOverrides` allow overriding arbitrary Trino settings. For example, for Hive you could add `hive.metastore.username: trino`.'
                   type: object
                 connector:
+                  description: The `connector` defines which connector is used.
                   oneOf:
                     - required:
                         - blackHole
@@ -14338,8 +14341,10 @@ spec:
                         - tpch
                   properties:
                     blackHole:
+                      description: A [Black Hole](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/black-hole) connector.
                       type: object
                     generic:
+                      description: A [generic](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/generic) connector.
                       properties:
                         connectorName:
                           description: Name of the Trino connector. Will be passed to `connector.name`.
@@ -14394,6 +14399,7 @@ spec:
                         - connectorName
                       type: object
                     googleSheet:
+                      description: A [Google sheets](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/google-sheets) connector.
                       properties:
                         cache:
                           description: Cache the contents of sheets. This is used to reduce Google Sheets API usage and latency.
@@ -14419,6 +14425,7 @@ spec:
                         - metadataSheetId
                       type: object
                     hive:
+                      description: An [Apache Hive](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/hive) connector.
                       properties:
                         hdfs:
                           description: Connection to an HDFS cluster. Please make sure that the underlying Hive metastore also has access to the HDFS.
@@ -14543,6 +14550,7 @@ spec:
                         - metastore
                       type: object
                     iceberg:
+                      description: An [Apache Iceberg](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/iceberg) connector.
                       properties:
                         hdfs:
                           description: Connection to an HDFS cluster. Please make sure that the underlying Hive metastore also has access to the HDFS.
@@ -14667,8 +14675,10 @@ spec:
                         - metastore
                       type: object
                     tpcds:
+                      description: A [TPC-DS](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpcds) connector.
                       type: object
                     tpch:
+                      description: A [TPC-H](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpch) connector.
                       type: object
                   type: object
               required:
