@@ -21,10 +21,11 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoAuthenticationClassRef {
+    /// An [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) to use.
     pub authentication_class: String,
 }
 
-/// Retrieve all provided `AuthenticationClass` references.
+/// Retrieve all provided AuthenticationClass references.
 pub async fn resolve_authentication_classes(
     client: &Client,
     authentication_class_refs: &Vec<TrinoAuthenticationClassRef>,

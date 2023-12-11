@@ -159,6 +159,9 @@ pub enum Error {
     FragmentValidationFailure { source: ValidationError },
 }
 
+/// A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
+/// Find more information on how to use it and the resources that the operator generates in the
+/// [operator documentation](DOCS_BASE_URL_PLACEHOLDER/trino/).
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "trino.stackable.tech",
@@ -176,17 +179,22 @@ pub enum Error {
 #[kube(status = "TrinoClusterStatus")]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
-    /// Trino product image to use.
+    // no doc - it's in the struct.
     pub image: ProductImage,
-    /// Trino cluster configuration options.
+
+    /// Settings that affect all roles and role groups.
+    /// The settings in the `clusterConfig` are cluster wide settings that do not need to be configurable at role or role group level.
     pub cluster_config: TrinoClusterConfig,
-    /// Cluster operations like pause reconciliation or cluster stop.
+
+    // no doc - it's in the struct.
     #[serde(default)]
     pub cluster_operation: ClusterOperation,
-    /// Settings for the Coordinator Role/Process.
+
+    // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfigFragment>>,
-    /// Settings for the Worker Role/Process.
+
+    // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfigFragment>>,
 }
@@ -195,21 +203,30 @@ pub struct TrinoClusterSpec {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterConfig {
     /// Authentication options for Trino.
+    /// Learn more in the [Trino authentication usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authentication).
     #[serde(default)]
     pub authentication: Vec<TrinoAuthenticationClassRef>,
+
     /// Authorization options for Trino.
+    /// Learn more in the [Trino authorization usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authorization).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization: Option<TrinoAuthorization>,
+
     /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
     /// to include in the Trino instance.
     pub catalog_label_selector: LabelSelector,
+
     /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,
-    /// Name of the Vector aggregator discovery ConfigMap.
+
+    /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
     /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
+    /// Follow the [logging tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/logging-vector-aggregator)
+    /// to learn how to configure log aggregation with Vector.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vector_aggregator_config_map_name: Option<String>,
+
     /// This field controls which type of Service the Operator creates for this TrinoCluster:
     ///
     /// * cluster-internal: Use a ClusterIP service
@@ -219,7 +236,7 @@ pub struct TrinoClusterConfig {
     /// * external-stable: Use a LoadBalancer service
     ///
     /// This is a temporary solution with the goal to keep yaml manifests forward compatible.
-    /// In the future, this setting will control which ListenerClass <https://docs.stackable.tech/home/stable/listener-operator/listenerclass.html>
+    /// In the future, this setting will control which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html)
     /// will be used to expose the service, and ListenerClass names will stay the same, allowing for a non-breaking change.
     #[serde(default)]
     pub listener_class: CurrentlySupportedListenerClasses,
@@ -251,7 +268,7 @@ impl CurrentlySupportedListenerClasses {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoAuthorization {
-    /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
+    // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
 }
