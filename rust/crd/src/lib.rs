@@ -179,17 +179,22 @@ pub enum Error {
 #[kube(status = "TrinoClusterStatus")]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterSpec {
-    /// Trino product image to use.
+    // no doc - it's in the struct.
     pub image: ProductImage,
-    /// Trino cluster configuration options.
+
+    /// Settings that affect all roles and role groups.
+    /// The settings in the `clusterConfig` are cluster wide settings that do not need to be configurable at role or role group level.
     pub cluster_config: TrinoClusterConfig,
-    /// Cluster operations like pause reconciliation or cluster stop.
+
+    // no doc - it's in the struct.
     #[serde(default)]
     pub cluster_operation: ClusterOperation,
-    /// Settings for the Coordinator Role/Process.
+
+    // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coordinators: Option<Role<TrinoConfigFragment>>,
-    /// Settings for the Worker Role/Process.
+
+    // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workers: Option<Role<TrinoConfigFragment>>,
 }
@@ -198,14 +203,19 @@ pub struct TrinoClusterSpec {
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterConfig {
     /// Authentication options for Trino.
+    /// Learn more in the [Trino authentication usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authentication).
     #[serde(default)]
     pub authentication: Vec<TrinoAuthenticationClassRef>,
+
     /// Authorization options for Trino.
+    /// Learn more in the [Trino authorization usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authorization).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization: Option<TrinoAuthorization>,
+
     /// [LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs
     /// to include in the Trino instance.
     pub catalog_label_selector: LabelSelector,
+
     /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,
@@ -258,7 +268,7 @@ impl CurrentlySupportedListenerClasses {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoAuthorization {
-    /// The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
+    // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opa: Option<OpaConfig>,
 }

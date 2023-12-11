@@ -26,25 +26,26 @@ spec:
               description: A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino. Find more information on how to use it and the resources that the operator generates in the [operator documentation](https://docs.stackable.tech/home/nightly/trino/).
               properties:
                 clusterConfig:
-                  description: Trino cluster configuration options.
+                  description: Settings that affect all roles and role groups. The settings in the `clusterConfig` are cluster wide settings that do not need to be configurable at role or role group level.
                   properties:
                     authentication:
                       default: []
-                      description: Authentication options for Trino.
+                      description: Authentication options for Trino. Learn more in the [Trino authentication usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authentication).
                       items:
                         properties:
                           authenticationClass:
+                            description: An [AuthenticationClass](https://docs.stackable.tech/home/nightly/concepts/authentication) to use.
                             type: string
                         required:
                           - authenticationClass
                         type: object
                       type: array
                     authorization:
-                      description: Authorization options for Trino.
+                      description: Authorization options for Trino. Learn more in the [Trino authorization usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authorization).
                       nullable: true
                       properties:
                         opa:
-                          description: The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
+                          description: Configure the OPA stacklet [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) and the name of the Rego package containing your authorization rules. Consult the [OPA authorization documentation](https://docs.stackable.tech/home/nightly/concepts/opa) to learn how to deploy Rego authorization rules with OPA.
                           nullable: true
                           properties:
                             configMapName:
@@ -133,7 +134,7 @@ spec:
                   default:
                     stopped: false
                     reconciliationPaused: false
-                  description: Cluster operations like pause reconciliation or cluster stop.
+                  description: '[Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations) properties, allow stopping the product instance as well as pausing reconciliation.'
                   properties:
                     reconciliationPaused:
                       default: false
@@ -145,7 +146,7 @@ spec:
                       type: boolean
                   type: object
                 coordinators:
-                  description: Settings for the Coordinator Role/Process.
+                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured at role level, the `roleConfig`.
                   nullable: true
                   properties:
                     cliOverrides:
@@ -7171,7 +7172,10 @@ spec:
                         - productVersion
                     - required:
                         - productVersion
-                  description: Trino product image to use.
+                  description: |-
+                    Specify which image to use, the easiest way is to only configure the `productVersion`. You can also configure a custom image registry to pull from, as well as completely custom images.
+
+                    Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection) for details.
                   properties:
                     custom:
                       description: Overwrite the docker image. Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
@@ -7208,7 +7212,7 @@ spec:
                       type: string
                   type: object
                 workers:
-                  description: Settings for the Worker Role/Process.
+                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured at role level, the `roleConfig`.
                   nullable: true
                   properties:
                     cliOverrides:
