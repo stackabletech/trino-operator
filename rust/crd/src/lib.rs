@@ -159,6 +159,9 @@ pub enum Error {
     FragmentValidationFailure { source: ValidationError },
 }
 
+/// A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
+/// Find more information on how to use it and the resources that the operator generates in the
+/// [operator documentation](DOCS_BASE_URL_PLACEHOLDER/trino/).
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "trino.stackable.tech",
@@ -206,10 +209,14 @@ pub struct TrinoClusterConfig {
     /// TLS configuration options for server and internal communication.
     #[serde(default)]
     pub tls: TrinoTls,
-    /// Name of the Vector aggregator discovery ConfigMap.
+
+    /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
     /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
+    /// Follow the [logging tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/logging-vector-aggregator)
+    /// to learn how to configure log aggregation with Vector.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vector_aggregator_config_map_name: Option<String>,
+
     /// This field controls which type of Service the Operator creates for this TrinoCluster:
     ///
     /// * cluster-internal: Use a ClusterIP service
@@ -219,7 +226,7 @@ pub struct TrinoClusterConfig {
     /// * external-stable: Use a LoadBalancer service
     ///
     /// This is a temporary solution with the goal to keep yaml manifests forward compatible.
-    /// In the future, this setting will control which ListenerClass <https://docs.stackable.tech/home/stable/listener-operator/listenerclass.html>
+    /// In the future, this setting will control which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html)
     /// will be used to expose the service, and ListenerClass names will stay the same, allowing for a non-breaking change.
     #[serde(default)]
     pub listener_class: CurrentlySupportedListenerClasses,
