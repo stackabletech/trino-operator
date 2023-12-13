@@ -26,7 +26,7 @@ snafu = "0.7"
 stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "0.57.0" }
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.6.0" }
 strum = { version = "0.25", features = ["derive"] }
-tokio = { version = "1.29", features = ["full"] }
+tokio = { version = "1.35", features = ["full"] }
 tracing = "0.1"
 
 # [patch."https://github.com/stackabletech/operator-rs.git"]
