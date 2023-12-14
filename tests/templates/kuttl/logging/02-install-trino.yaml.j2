@@ -32,6 +32,7 @@ metadata:
 spec:
   image:
     productVersion: "{{ test_scenario['values']['trino'] }}"
+    pullPolicy: IfNotPresent
   clusterConfig:
     catalogLabelSelector: {}
     vectorAggregatorConfigMapName: trino-vector-aggregator-discovery
