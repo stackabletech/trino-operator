@@ -6,6 +6,7 @@ metadata:
 spec:
   image:
     productVersion: "{{ test_scenario['values']['trino-latest'] }}"
+    pullPolicy: IfNotPresent
   clusterConfig:
     catalogLabelSelector: {}
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}

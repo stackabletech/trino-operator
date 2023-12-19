@@ -6,6 +6,7 @@ metadata:
 spec:
   image:
     productVersion: "{{ test_scenario['values']['hive'] }}"
+    pullPolicy: IfNotPresent
   clusterConfig:
     database:
       connString: jdbc:postgresql://postgresql:5432/hive
