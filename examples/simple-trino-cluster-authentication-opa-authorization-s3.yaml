@@ -70,24 +70,35 @@ data:
 
     default allow = false
 
+    # Allow non-batched access
     allow {
-        is_admin
+      is_admin
     }
+    # Allow batched access
     extended[i] {
-        some i
-        input.action.filterResources[i]
-        is_admin
+      some i
+      input.action.filterResources[i]
+      is_admin
+    }
+    # Corner case: filtering columns is done with a single table item, and many columns inside
+    extended[i] {
+      some i
+      input.action.operation == "FilterColumns"
+      count(input.action.filterResources) == 1
+      input.action.filterResources[0].table.columns[i]
+      is_admin
     }
 
+    # Special rules for bob
     allow {
-        input.action.operation in ["ExecuteQuery", "AccessCatalog"]
-        is_bob
+      input.action.operation in ["ExecuteQuery", "AccessCatalog"]
+      is_bob
     }
     extended[i] {
-        input.action.operation in ["FilterCatalogs"]
-        some i
-        input.action.filterResources[i]
-        is_bob
+      input.action.operation in ["FilterCatalogs"]
+      some i
+      input.action.filterResources[i]
+      is_bob
     }
 
     is_admin() {
