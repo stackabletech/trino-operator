@@ -12,6 +12,7 @@ pub struct IcebergConnector {
     pub metastore: MetastoreConnection,
     /// Connection to an S3 store.
     /// Please make sure that the underlying Hive metastore also has access to the S3 store.
+    /// Learn more about S3 configuration in the [S3 concept docs](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
     pub s3: Option<S3ConnectionDef>,
     /// Connection to an HDFS cluster.
     /// Please make sure that the underlying Hive metastore also has access to the HDFS.

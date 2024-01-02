@@ -6,6 +6,7 @@ metadata:
 spec:
   image:
     productVersion: "{{ test_scenario['values']['zookeeper'] }}"
+    pullPolicy: IfNotPresent
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
   clusterConfig:
     vectorAggregatorConfigMapName: vector-aggregator-discovery

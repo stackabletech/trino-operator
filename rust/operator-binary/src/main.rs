@@ -45,8 +45,8 @@ async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => {
-            TrinoCluster::print_yaml_schema()?;
-            TrinoCatalog::print_yaml_schema()?;
+            TrinoCluster::print_yaml_schema(built_info::CARGO_PKG_VERSION)?;
+            TrinoCatalog::print_yaml_schema(built_info::CARGO_PKG_VERSION)?;
         }
         Command::Run(ProductOperatorRun {
             product_config,

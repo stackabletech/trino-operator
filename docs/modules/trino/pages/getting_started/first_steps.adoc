@@ -4,7 +4,7 @@ After going through the xref:getting_started/installation.adoc[] section and hav
 
 == Setup Trino
 
-A working Trino cluster and its web interface require only the commons and secret operators to work. Simple tests are possible without an external data source (e.g. PostgreSQL, Hive or S3), as internal data can be used.
+A working Trino cluster and its web interface require only the commons, secret and listener operators to work. Simple tests are possible without an external data source (e.g. PostgreSQL, Hive or S3), as internal data can be used.
 
 Create a file named `trino.yaml` with the following content:
 

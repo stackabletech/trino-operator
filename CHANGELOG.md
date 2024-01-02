@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Various documentation of the CRD ([#510]).
+
+[#510]: https://github.com/stackabletech/trino-operator/pull/510
+
+## [23.11.0] - 2023-11-24
+
+### Added
+
 - Use [graceful shutdown](https://trino.io/docs/current/admin/graceful-shutdown.html) for workers ([#461], [#463], [#466], [#474]).
 - Default stackableVersion to operator version ([#441]).
 - Configuration overrides for the JVM security properties, such as DNS caching ([#460]).

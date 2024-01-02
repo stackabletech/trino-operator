@@ -54,3 +54,27 @@ An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
 == Add additional contents
 
 In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:nightly@home:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
+
+== Troubleshoot
+
+=== Capitalized or upper case table names with PostgreSQL / MySQL
+
+If table names are capitalized or upper case in PostgreSQL / MySQL, Trino can list the tables contained in a schema (lower case) but cannot access any data due to the error:
+
+`Table '<catalog>.<schema>.<table>' does not exist io.trino.spi.TrinoException: line 2:6: Table '<catalog>.<schema>.<table>' does not exist`
+
+This is fixed by setting the `case-insensitive-name-matching` connector property which works for both https://trino.io/docs/current/connector/postgresql.html#general-configuration-properties[PostgreSQL connector] and https://trino.io/docs/current/connector/mysql.html#general-configuration-properties[MySQL Connector].
+
+This can be added to the generic connector as follows:
+
+[source,yaml]
+----
+spec:
+  connector:
+    generic:
+      ...
+      properties:
+        case-insensitive-name-matching:
+          value: "true"
+      ...
+----

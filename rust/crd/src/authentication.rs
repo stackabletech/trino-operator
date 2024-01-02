@@ -23,11 +23,12 @@ pub enum Error {
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub struct ResolvedAuthenticationClassRef {
+    /// An [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) to use.
     pub authentication_class: AuthenticationClass,
     pub oidc: Option<oidc::ClientAuthenticationOptions>,
 }
 
-/// Retrieve all provided `AuthenticationClass` references.
+/// Retrieve all provided AuthenticationClass references.
 pub async fn resolve_authentication_classes(
     client: &Client,
     client_authentication_details: &Vec<ClientAuthenticationDetails>,

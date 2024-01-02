@@ -23,13 +23,14 @@ spec:
           description: Auto-generated derived type for TrinoClusterSpec via `CustomResource`
           properties:
             spec:
+              description: A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino. Find more information on how to use it and the resources that the operator generates in the [operator documentation](https://docs.stackable.tech/home/nightly/trino/).
               properties:
                 clusterConfig:
-                  description: Trino cluster configuration options.
+                  description: Settings that affect all roles and role groups. The settings in the `clusterConfig` are cluster wide settings that do not need to be configurable at role or role group level.
                   properties:
                     authentication:
                       default: []
-                      description: Authentication options for Trino.
+                      description: Authentication options for Trino. Learn more in the [Trino authentication usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authentication).
                       items:
                         properties:
                           authenticationClass:
@@ -59,11 +60,11 @@ spec:
                         type: object
                       type: array
                     authorization:
-                      description: Authorization options for Trino.
+                      description: Authorization options for Trino. Learn more in the [Trino authorization usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authorization).
                       nullable: true
                       properties:
                         opa:
-                          description: The discovery ConfigMap name of the OPA cluster (usually the same as the OPA cluster name).
+                          description: Configure the OPA stacklet [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) and the name of the Rego package containing your authorization rules. Consult the [OPA authorization documentation](https://docs.stackable.tech/home/nightly/concepts/opa) to learn how to deploy Rego authorization rules with OPA.
                           nullable: true
                           properties:
                             configMapName:
@@ -118,7 +119,7 @@ spec:
 
                         * external-stable: Use a LoadBalancer service
 
-                        This is a temporary solution with the goal to keep yaml manifests forward compatible. In the future, this setting will control which ListenerClass <https://docs.stackable.tech/home/stable/listener-operator/listenerclass.html> will be used to expose the service, and ListenerClass names will stay the same, allowing for a non-breaking change.
+                        This is a temporary solution with the goal to keep yaml manifests forward compatible. In the future, this setting will control which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) will be used to expose the service, and ListenerClass names will stay the same, allowing for a non-breaking change.
                       enum:
                         - cluster-internal
                         - external-unstable
@@ -126,8 +127,8 @@ spec:
                       type: string
                     tls:
                       default:
-                        serverSecretClass: tls
                         internalSecretClass: tls
+                        serverSecretClass: tls
                       description: TLS configuration options for server and internal communication.
                       properties:
                         internalSecretClass:
@@ -142,7 +143,7 @@ spec:
                           type: string
                       type: object
                     vectorAggregatorConfigMapName:
-                      description: Name of the Vector aggregator discovery ConfigMap. It must contain the key `ADDRESS` with the address of the Vector aggregator.
+                      description: Name of the Vector aggregator [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery). It must contain the key `ADDRESS` with the address of the Vector aggregator. Follow the [logging tutorial](https://docs.stackable.tech/home/nightly/tutorials/logging-vector-aggregator) to learn how to configure log aggregation with Vector.
                       nullable: true
                       type: string
                   required:
@@ -150,9 +151,9 @@ spec:
                   type: object
                 clusterOperation:
                   default:
-                    stopped: false
                     reconciliationPaused: false
-                  description: Cluster operations like pause reconciliation or cluster stop.
+                    stopped: false
+                  description: '[Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations) properties, allow stopping the product instance as well as pausing reconciliation.'
                   properties:
                     reconciliationPaused:
                       default: false
@@ -164,7 +165,7 @@ spec:
                       type: boolean
                   type: object
                 coordinators:
-                  description: Settings for the Coordinator Role/Process.
+                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured at role level, the `roleConfig`.
                   nullable: true
                   properties:
                     cliOverrides:
@@ -177,10 +178,10 @@ spec:
                       properties:
                         affinity:
                           default:
-                            podAffinity: null
-                            podAntiAffinity: null
                             nodeAffinity: null
                             nodeSelector: null
+                            podAffinity: null
+                            podAntiAffinity: null
                           description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                           properties:
                             nodeAffinity:
@@ -653,8 +654,8 @@ spec:
                           type: string
                         logging:
                           default:
-                            enableVectorAgent: null
                             containers: {}
+                            enableVectorAgent: null
                           description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                           properties:
                             containers:
@@ -743,12 +744,12 @@ spec:
                           type: string
                         resources:
                           default:
+                            cpu:
+                              max: null
+                              min: null
                             memory:
                               limit: null
                               runtimeLimits: {}
-                            cpu:
-                              min: null
-                              max: null
                             storage:
                               data:
                                 capacity: null
@@ -756,8 +757,8 @@ spec:
                           properties:
                             cpu:
                               default:
-                                min: null
                                 max: null
+                                min: null
                               properties:
                                 max:
                                   description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
@@ -832,12 +833,7 @@ spec:
                           type: string
                         type: object
                       default: {}
-                      description: |-
-                        The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. For example, for a HdfsCluster:
-
-                        ```yaml configOverrides: # on role level core-site.xml: # the name of the configuration file fs.trash.interval: "5"  # the name of the property and the value to set ```
-
-                        Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
+                      description: The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
                       type: object
                     envOverrides:
                       additionalProperties:
@@ -3686,10 +3682,10 @@ spec:
                             properties:
                               affinity:
                                 default:
-                                  podAffinity: null
-                                  podAntiAffinity: null
                                   nodeAffinity: null
                                   nodeSelector: null
+                                  podAffinity: null
+                                  podAntiAffinity: null
                                 description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                                 properties:
                                   nodeAffinity:
@@ -4162,8 +4158,8 @@ spec:
                                 type: string
                               logging:
                                 default:
-                                  enableVectorAgent: null
                                   containers: {}
+                                  enableVectorAgent: null
                                 description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                                 properties:
                                   containers:
@@ -4252,12 +4248,12 @@ spec:
                                 type: string
                               resources:
                                 default:
+                                  cpu:
+                                    max: null
+                                    min: null
                                   memory:
                                     limit: null
                                     runtimeLimits: {}
-                                  cpu:
-                                    min: null
-                                    max: null
                                   storage:
                                     data:
                                       capacity: null
@@ -4265,8 +4261,8 @@ spec:
                                 properties:
                                   cpu:
                                     default:
-                                      min: null
                                       max: null
+                                      min: null
                                     properties:
                                       max:
                                         description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
@@ -4341,12 +4337,7 @@ spec:
                                 type: string
                               type: object
                             default: {}
-                            description: |-
-                              The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. For example, for a HdfsCluster:
-
-                              ```yaml configOverrides: # on role level core-site.xml: # the name of the configuration file fs.trash.interval: "5"  # the name of the property and the value to set ```
-
-                              Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
+                            description: The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
                             type: object
                           envOverrides:
                             additionalProperties:
@@ -7200,7 +7191,10 @@ spec:
                         - productVersion
                     - required:
                         - productVersion
-                  description: Trino product image to use.
+                  description: |-
+                    Specify which image to use, the easiest way is to only configure the `productVersion`. You can also configure a custom image registry to pull from, as well as completely custom images.
+
+                    Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection) for details.
                   properties:
                     custom:
                       description: Overwrite the docker image. Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
@@ -7237,7 +7231,7 @@ spec:
                       type: string
                   type: object
                 workers:
-                  description: Settings for the Worker Role/Process.
+                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured at role level, the `roleConfig`.
                   nullable: true
                   properties:
                     cliOverrides:
@@ -7250,10 +7244,10 @@ spec:
                       properties:
                         affinity:
                           default:
-                            podAffinity: null
-                            podAntiAffinity: null
                             nodeAffinity: null
                             nodeSelector: null
+                            podAffinity: null
+                            podAntiAffinity: null
                           description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                           properties:
                             nodeAffinity:
@@ -7726,8 +7720,8 @@ spec:
                           type: string
                         logging:
                           default:
-                            enableVectorAgent: null
                             containers: {}
+                            enableVectorAgent: null
                           description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                           properties:
                             containers:
@@ -7816,12 +7810,12 @@ spec:
                           type: string
                         resources:
                           default:
+                            cpu:
+                              max: null
+                              min: null
                             memory:
                               limit: null
                               runtimeLimits: {}
-                            cpu:
-                              min: null
-                              max: null
                             storage:
                               data:
                                 capacity: null
@@ -7829,8 +7823,8 @@ spec:
                           properties:
                             cpu:
                               default:
-                                min: null
                                 max: null
+                                min: null
                               properties:
                                 max:
                                   description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
@@ -7905,12 +7899,7 @@ spec:
                           type: string
                         type: object
                       default: {}
-                      description: |-
-                        The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. For example, for a HdfsCluster:
-
-                        ```yaml configOverrides: # on role level core-site.xml: # the name of the configuration file fs.trash.interval: "5"  # the name of the property and the value to set ```
-
-                        Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
+                      description: The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
                       type: object
                     envOverrides:
                       additionalProperties:
@@ -10759,10 +10748,10 @@ spec:
                             properties:
                               affinity:
                                 default:
-                                  podAffinity: null
-                                  podAntiAffinity: null
                                   nodeAffinity: null
                                   nodeSelector: null
+                                  podAffinity: null
+                                  podAntiAffinity: null
                                 description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                                 properties:
                                   nodeAffinity:
@@ -11235,8 +11224,8 @@ spec:
                                 type: string
                               logging:
                                 default:
-                                  enableVectorAgent: null
                                   containers: {}
+                                  enableVectorAgent: null
                                 description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                                 properties:
                                   containers:
@@ -11325,12 +11314,12 @@ spec:
                                 type: string
                               resources:
                                 default:
+                                  cpu:
+                                    max: null
+                                    min: null
                                   memory:
                                     limit: null
                                     runtimeLimits: {}
-                                  cpu:
-                                    min: null
-                                    max: null
                                   storage:
                                     data:
                                       capacity: null
@@ -11338,8 +11327,8 @@ spec:
                                 properties:
                                   cpu:
                                     default:
-                                      min: null
                                       max: null
+                                      min: null
                                     properties:
                                       max:
                                         description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
@@ -11414,12 +11403,7 @@ spec:
                                 type: string
                               type: object
                             default: {}
-                            description: |-
-                              The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. For example, for a HdfsCluster:
-
-                              ```yaml configOverrides: # on role level core-site.xml: # the name of the configuration file fs.trash.interval: "5"  # the name of the property and the value to set ```
-
-                              Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
+                            description: The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
                             type: object
                           envOverrides:
                             additionalProperties:
@@ -14349,13 +14333,16 @@ spec:
           description: Auto-generated derived type for TrinoCatalogSpec via `CustomResource`
           properties:
             spec:
+              description: The TrinoCatalog resource can be used to define catalogs in Kubernetes objects. Read more about it in the [Trino operator concept docs](https://docs.stackable.tech/home/nightly/trino/concepts) and the [Trino operator usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/). The documentation also contains a list of all the supported backends.
               properties:
                 configOverrides:
                   additionalProperties:
                     type: string
                   default: {}
+                  description: 'The `configOverrides` allow overriding arbitrary Trino settings. For example, for Hive you could add `hive.metastore.username: trino`.'
                   type: object
                 connector:
+                  description: The `connector` defines which connector is used.
                   oneOf:
                     - required:
                         - blackHole
@@ -14373,8 +14360,10 @@ spec:
                         - tpch
                   properties:
                     blackHole:
+                      description: A [Black Hole](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/black-hole) connector.
                       type: object
                     generic:
+                      description: A [generic](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/generic) connector.
                       properties:
                         connectorName:
                           description: Name of the Trino connector. Will be passed to `connector.name`.
@@ -14429,38 +14418,40 @@ spec:
                         - connectorName
                       type: object
                     googleSheet:
+                      description: A [Google sheets](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/google-sheets) connector.
                       properties:
                         cache:
                           description: Cache the contents of sheets. This is used to reduce Google Sheets API usage and latency.
                           nullable: true
                           properties:
                             sheetsDataExpireAfterWrite:
-                              description: How long to cache spreadsheet data or metadata, defaults to `5m`
+                              description: How long to cache spreadsheet data or metadata, defaults to `5m`.
                               nullable: true
                               type: string
                             sheetsDataMaxCacheSize:
-                              description: Maximum number of spreadsheets to cache, defaults to `1000`
+                              description: Maximum number of spreadsheets to cache, defaults to 1000.
                               nullable: true
                               type: string
                           type: object
                         credentialsSecret:
-                          description: Name of the secret containing the Google API JSON key file. The key used from the Secret is `credentials`
+                          description: The Secret containing the Google API JSON key file. The key used from the Secret is `credentials`.
                           type: string
                         metadataSheetId:
-                          description: Sheet ID of the spreadsheet, that contains the table mapping
+                          description: Sheet ID of the spreadsheet, that contains the table mapping.
                           type: string
                       required:
                         - credentialsSecret
                         - metadataSheetId
                       type: object
                     hive:
+                      description: An [Apache Hive](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/hive) connector.
                       properties:
                         hdfs:
                           description: Connection to an HDFS cluster. Please make sure that the underlying Hive metastore also has access to the HDFS.
                           nullable: true
                           properties:
                             configMap:
-                              description: Name of the discovery-configmap providing information about the HDFS cluster
+                              description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
                               type: string
                           required:
                             - configMap
@@ -14469,13 +14460,13 @@ spec:
                           description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
                           properties:
                             configMap:
-                              description: Name of the discovery-configmap providing information about the Hive metastore
+                              description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
                               type: string
                           required:
                             - configMap
                           type: object
                         s3:
-                          description: Connection to an S3 store. Please make sure that the underlying Hive metastore also has access to the S3 store.
+                          description: Connection to an S3 store. Please make sure that the underlying Hive metastore also has access to the S3 store. Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
                           nullable: true
                           oneOf:
                             - required:
@@ -14578,13 +14569,14 @@ spec:
                         - metastore
                       type: object
                     iceberg:
+                      description: An [Apache Iceberg](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/iceberg) connector.
                       properties:
                         hdfs:
                           description: Connection to an HDFS cluster. Please make sure that the underlying Hive metastore also has access to the HDFS.
                           nullable: true
                           properties:
                             configMap:
-                              description: Name of the discovery-configmap providing information about the HDFS cluster
+                              description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
                               type: string
                           required:
                             - configMap
@@ -14593,13 +14585,13 @@ spec:
                           description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
                           properties:
                             configMap:
-                              description: Name of the discovery-configmap providing information about the Hive metastore
+                              description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
                               type: string
                           required:
                             - configMap
                           type: object
                         s3:
-                          description: Connection to an S3 store. Please make sure that the underlying Hive metastore also has access to the S3 store.
+                          description: Connection to an S3 store. Please make sure that the underlying Hive metastore also has access to the S3 store. Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
                           nullable: true
                           oneOf:
                             - required:
@@ -14702,8 +14694,10 @@ spec:
                         - metastore
                       type: object
                     tpcds:
+                      description: A [TPC-DS](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpcds) connector.
                       type: object
                     tpch:
+                      description: A [TPC-H](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpch) connector.
                       type: object
                   type: object
               required:

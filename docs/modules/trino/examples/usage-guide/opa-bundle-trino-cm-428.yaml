@@ -13,12 +13,22 @@ data:
 
     default allow = false
 
+    # Allow non-batched access
     allow {
       is_admin
     }
+    # Allow batched access
     extended[i] {
       some i
       input.action.filterResources[i]
+      is_admin
+    }
+    # Corner case: filtering columns is done with a single table item, and many columns inside
+    extended[i] {
+      some i
+      input.action.operation == "FilterColumns"
+      count(input.action.filterResources) == 1
+      input.action.filterResources[0].table.columns[i]
       is_admin
     }
 
