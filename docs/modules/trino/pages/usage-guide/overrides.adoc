@@ -15,11 +15,11 @@ Confiuration overrides are applied like so:
 
 [source,yaml]
 ----
-  ...
-    configOverrides:
-      config.properties:  # <1>
-        http-server.authentication.oauth2.principal-field: preferred_username  # <2>
-  ...
+  # ...
+  configOverrides:
+    config.properties:  # <1>
+      http-server.authentication.oauth2.principal-field: preferred_username  # <2>
+  # ...
 ----
 
 <1> The file where you want to override a setting.
@@ -36,10 +36,10 @@ The TrinoCatalog also supports configuration overrides:
 
 [source,yaml]
 ----
-  ...
+  # ...
   configOverrides:
     hive.s3.upload-acl-type: BUCKET_OWNER_FULL_CONTROL
-  ...
+  # ...
 ----
 
 Note how you do not need to specify a filename here.
@@ -51,10 +51,10 @@ Environment variables can be (over)written by adding the `envOverrides` property
 
 [source,yaml]
 ----
-...
+  # ...
   envOverrides:
     MY_ENV_VAR: "MY_VALUE"
-...
+  # ...
 ----
 
 == Pod overrides
