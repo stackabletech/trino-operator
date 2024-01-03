@@ -38,7 +38,7 @@ spec:
                             type: string
                           oidc:
                             description: |-
-                              This field contains authentication provider specific configuration. It is flattened into the final CRD.
+                              This field contains authentication provider specific configuration.
 
                               Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
                             nullable: true
