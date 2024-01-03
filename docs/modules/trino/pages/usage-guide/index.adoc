@@ -1,15 +1,4 @@
 = Usage guide
 
-This section will help you to use the Trino Stackable Operator. It will show you how to set up a Trino cluster in different ways and to test it with Hive and S3.
-
-== Guides
-
-The following guides are available here:
-
-* xref:usage-guide/catalogs/index.adoc[]
-* xref:usage-guide/s3.adoc[]
-* xref:usage-guide/configuration.adoc[]
-* xref:usage-guide/security.adoc[]
-* xref:usage-guide/monitoring.adoc[]
-* xref:usage-guide/log_aggregation.adoc[]
-* xref:usage-guide/query.adoc[]
+This section will help you to use the Trino Stackable Operator.
+It will show you how to set up a Trino cluster in different ways and to test it with Hive and S3.

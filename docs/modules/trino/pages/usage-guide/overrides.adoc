@@ -1,0 +1,63 @@
+= Configuration, environment & Pod overrides
+
+The Stackable Data Platform supports overrides in config files, environment variables and Pod templates.
+Read more about overrides on the xref:concepts:overrides.adoc[overrides concepts page].
+
+WARNING: Overriding some settings like port numbers can cause your cluster to malfunction!
+
+== Configuration overrides
+
+Trino configuration is stored in several files listed below.
+The configuration overrides menchanism allows you to customize parameters in these files;
+consult the Trino documentation to find out which settings available.
+
+Confiuration overrides are applied like so:
+
+[source,yaml]
+----
+  # ...
+  configOverrides:
+    config.properties:  # <1>
+      http-server.authentication.oauth2.principal-field: preferred_username  # <2>
+  # ...
+----
+
+<1> The file where you want to override a setting.
+<2> The config setting and the value to set it to.
+
+Configuration overrides can be applied to:
+
+* `config.properties`
+* `node.properties`
+
+=== Configuration overrides in the TrinoCatalog
+
+The TrinoCatalog also supports configuration overrides:
+
+[source,yaml]
+----
+  # ...
+  configOverrides:
+    hive.s3.upload-acl-type: BUCKET_OWNER_FULL_CONTROL
+  # ...
+----
+
+Note how you do not need to specify a filename here.
+
+
+== Environment overrides
+
+Environment variables can be (over)written by adding the `envOverrides` property:
+
+[source,yaml]
+----
+  # ...
+  envOverrides:
+    MY_ENV_VAR: "MY_VALUE"
+  # ...
+----
+
+== Pod overrides
+
+Pod overrides allow you to specify a PodTemplateSpec.
+Consult the xref:concepts:overrides.adoc#pod-overrides[Pod overrides concept documentation] for more information.
