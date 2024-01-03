@@ -358,17 +358,11 @@ impl TrinoAuthenticationConfig {
     /// This is a helper to easily extend/merge this struct
     fn extend(&mut self, other: Self) {
         for (role, data) in other.config_properties {
-            self.config_properties
-                .entry(role)
-                .or_default()
-                .extend(data)
+            self.config_properties.entry(role).or_default().extend(data)
         }
 
         for (role, data) in other.config_files {
-            self.config_files
-                .entry(role)
-                .or_default()
-                .extend(data)
+            self.config_files.entry(role).or_default().extend(data)
         }
 
         for (role, containers) in other.env_vars {
