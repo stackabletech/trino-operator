@@ -1,6 +1,7 @@
 //! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
 use std::{
     collections::{BTreeMap, HashMap},
+    convert::Infallible,
     fmt::Write,
     ops::Div,
     str::FromStr,
@@ -40,7 +41,8 @@ use stackable_operator::{
         runtime::{controller::Action, reflector::ObjectRef},
         Resource, ResourceExt,
     },
-    labels::{role_group_selector_labels, role_selector_labels, ObjectLabels},
+    kvp::ObjectLabels,
+    kvp::{Annotation, Label, Labels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{
@@ -303,6 +305,32 @@ pub enum Error {
     GracefulShutdown {
         source: crate::operations::graceful_shutdown::Error,
     },
+
+    #[snafu(display("failed to get required labels"))]
+    GetRequiredLabels {
+        source:
+            stackable_operator::kvp::KeyValuePairError<stackable_operator::kvp::LabelValueError>,
+    },
+
+    #[snafu(display("failed to build labels"))]
+    LabelBuild {
+        source: stackable_operator::kvp::LabelError,
+    },
+
+    #[snafu(display("failed to build annotation"))]
+    AnnotationBuild {
+        source: stackable_operator::kvp::KeyValuePairError<Infallible>,
+    },
+
+    #[snafu(display("failed to build metadata"))]
+    MetadataBuild {
+        source: stackable_operator::builder::ObjectMetaBuilderError,
+    },
+
+    #[snafu(display("failed to build TLS certificate SecretClass Volume"))]
+    TlsCertSecretClassVolumeBuild {
+        source: stackable_operator::builder::SecretOperatorVolumeSourceBuilderError,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -379,7 +407,9 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let (rbac_sa, rbac_rolebinding) = build_rbac_resources(
         trino.as_ref(),
         APP_NAME,
-        cluster_resources.get_required_labels(),
+        cluster_resources
+            .get_required_labels()
+            .context(GetRequiredLabelsSnafu)?,
     )
     .context(BuildRbacResourcesSnafu)?;
 
@@ -543,10 +573,15 @@ pub fn build_coordinator_role_service(
                 &role_name,
                 "global",
             ))
+            .context(MetadataBuildSnafu)?
             .build(),
         spec: Some(ServiceSpec {
             ports: Some(service_ports(trino)),
-            selector: Some(role_selector_labels(trino, APP_NAME, &role_name)),
+            selector: Some(
+                Labels::role_selector(trino, APP_NAME, &role_name)
+                    .context(LabelBuildSnafu)?
+                    .into(),
+            ),
             type_: Some(trino.spec.cluster_config.listener_class.k8s_service_type()),
             ..ServiceSpec::default()
         }),
@@ -786,6 +821,7 @@ fn build_rolegroup_config_map(
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 ))
+                .context(MetadataBuildSnafu)?
                 .build(),
         )
         .data(cm_conf_data)
@@ -816,6 +852,7 @@ fn build_rolegroup_catalog_config_map(
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 ))
+                .context(MetadataBuildSnafu)?
                 .build(),
         )
         .data(
@@ -1043,17 +1080,22 @@ fn build_rolegroup_statefulset(
         ));
     }
 
+    let metadata = ObjectMetaBuilder::new()
+        .with_recommended_labels(build_recommended_labels(
+            trino,
+            &resolved_product_image.app_version_label,
+            &rolegroup_ref.role,
+            &rolegroup_ref.role_group,
+        ))
+        .context(MetadataBuildSnafu)?
+        .with_annotation(
+            Annotation::try_from(("kubectl.kubernetes.io/default-container", "trino"))
+                .context(AnnotationBuildSnafu)?,
+        )
+        .build();
+
     pod_builder
-        .metadata_builder(|m| {
-            m.with_recommended_labels(build_recommended_labels(
-                trino,
-                &resolved_product_image.app_version_label,
-                &rolegroup_ref.role,
-                &rolegroup_ref.role_group,
-            ));
-            // This is actually used by some kuttl tests (as they don't specify the container explicitly)
-            m.with_annotation("kubectl.kubernetes.io/default-container", "trino")
-        })
+        .metadata(metadata)
         .image_pull_secrets_from_product_image(resolved_product_image)
         .affinity(&merged_config.affinity)
         .add_init_container(container_prepare)
@@ -1105,17 +1147,22 @@ fn build_rolegroup_statefulset(
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             ))
+            .context(MetadataBuildSnafu)?
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
             replicas: rolegroup.replicas.map(i32::from),
             selector: LabelSelector {
-                match_labels: Some(role_group_selector_labels(
-                    trino,
-                    APP_NAME,
-                    &rolegroup_ref.role,
-                    &rolegroup_ref.role_group,
-                )),
+                match_labels: Some(
+                    Labels::role_group_selector(
+                        trino,
+                        APP_NAME,
+                        &rolegroup_ref.role,
+                        &rolegroup_ref.role_group,
+                    )
+                    .context(LabelBuildSnafu)?
+                    .into(),
+                ),
                 ..LabelSelector::default()
             },
             service_name: rolegroup_ref.object_name(),
@@ -1151,19 +1198,24 @@ fn build_rolegroup_service(
                 &rolegroup_ref.role,
                 &rolegroup_ref.role_group,
             ))
-            .with_label("prometheus.io/scrape", "true")
+            .context(MetadataBuildSnafu)?
+            .with_label(Label::try_from(("prometheus.io/scrape", "true")).context(LabelBuildSnafu)?)
             .build(),
         spec: Some(ServiceSpec {
             // Internal communication does not need to be exposed
             type_: Some("ClusterIP".to_string()),
             cluster_ip: Some("None".to_string()),
             ports: Some(service_ports(trino)),
-            selector: Some(role_group_selector_labels(
-                trino,
-                APP_NAME,
-                &rolegroup_ref.role,
-                &rolegroup_ref.role_group,
-            )),
+            selector: Some(
+                Labels::role_group_selector(
+                    trino,
+                    APP_NAME,
+                    &rolegroup_ref.role,
+                    &rolegroup_ref.role_group,
+                )
+                .context(LabelBuildSnafu)?
+                .into(),
+            ),
             publish_not_ready_addresses: Some(true),
             ..ServiceSpec::default()
         }),
@@ -1414,16 +1466,17 @@ fn liveness_probe(trino: &TrinoCluster) -> Probe {
     }
 }
 
-fn create_tls_volume(volume_name: &str, tls_secret_class: &str) -> Volume {
-    VolumeBuilder::new(volume_name)
+fn create_tls_volume(volume_name: &str, tls_secret_class: &str) -> Result<Volume> {
+    Ok(VolumeBuilder::new(volume_name)
         .ephemeral(
             SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
                 .with_pod_scope()
                 .with_node_scope()
                 .with_format(SecretFormat::TlsPkcs12)
-                .build(),
+                .build()
+                .context(TlsCertSecretClassVolumeBuildSnafu)?,
         )
-        .build()
+        .build())
 }
 
 fn tls_volume_mounts(
@@ -1436,7 +1489,7 @@ fn tls_volume_mounts(
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
         cb_trino.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume("server-tls-mount", server_tls));
+        pod_builder.add_volume(create_tls_volume("server-tls-mount", server_tls)?);
     }
 
     cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
@@ -1450,7 +1503,7 @@ fn tls_volume_mounts(
     if let Some(internal_tls) = trino.get_internal_tls() {
         cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
         cb_trino.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume("internal-tls-mount", internal_tls));
+        pod_builder.add_volume(create_tls_volume("internal-tls-mount", internal_tls)?);
 
         cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
         cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
