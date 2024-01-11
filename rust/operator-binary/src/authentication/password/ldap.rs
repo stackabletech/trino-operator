@@ -130,10 +130,9 @@ impl LdapAuthenticator {
 
     /// Required LDAP authenticator volume amd volume mounts.
     pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>), Error> {
-        Ok(self
-            .ldap
+        self.ldap
             .volumes_and_mounts()
-            .context(LdapVolumesAndMountsSnafu)?)
+            .context(LdapVolumesAndMountsSnafu)
     }
 
     /// Convert the provided authentication class name into an ENV variable.

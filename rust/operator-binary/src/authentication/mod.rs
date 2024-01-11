@@ -166,7 +166,7 @@ impl TrinoAuthenticationConfig {
     ) {
         self.config_properties
             .entry(role)
-            .or_insert(BTreeMap::new())
+            .or_default()
             .insert(property_name, property_value);
     }
 
@@ -175,7 +175,7 @@ impl TrinoAuthenticationConfig {
     pub fn add_config_file(&mut self, role: TrinoRole, file_name: String, file_content: String) {
         self.config_files
             .entry(role)
-            .or_insert(BTreeMap::new())
+            .or_default()
             .insert(file_name, file_content);
     }
 
@@ -188,9 +188,9 @@ impl TrinoAuthenticationConfig {
     ) {
         self.commands
             .entry(role)
-            .or_insert(BTreeMap::new())
+            .or_default()
             .entry(container)
-            .or_insert(Vec::new())
+            .or_default()
             .extend(commands)
     }
 
@@ -212,9 +212,9 @@ impl TrinoAuthenticationConfig {
         let current_volume_mounts = self
             .volume_mounts
             .entry(role)
-            .or_insert_with(BTreeMap::new)
+            .or_default()
             .entry(container)
-            .or_insert_with(Vec::new);
+            .or_default();
 
         if !current_volume_mounts
             .iter()
@@ -226,7 +226,7 @@ impl TrinoAuthenticationConfig {
 
     /// Add an extra sidecar container for a given role
     pub fn add_sidecar_container(&mut self, role: TrinoRole, container: Container) {
-        let containers_for_role = self.sidecar_containers.entry(role).or_insert_with(Vec::new);
+        let containers_for_role = self.sidecar_containers.entry(role).or_default();
 
         if !containers_for_role.iter().any(|c| c.name == container.name) {
             containers_for_role.push(container);
@@ -290,17 +290,11 @@ impl TrinoAuthenticationConfig {
     /// This is a helper to easily extend/merge this struct
     fn extend(&mut self, other: Self) {
         for (role, data) in other.config_properties {
-            self.config_properties
-                .entry(role)
-                .or_insert_with(BTreeMap::new)
-                .extend(data)
+            self.config_properties.entry(role).or_default().extend(data)
         }
 
         for (role, data) in other.config_files {
-            self.config_files
-                .entry(role)
-                .or_insert_with(BTreeMap::new)
-                .extend(data)
+            self.config_files.entry(role).or_default().extend(data)
         }
 
         self.volumes.extend(other.volumes);
@@ -309,9 +303,9 @@ impl TrinoAuthenticationConfig {
             for (container, commands) in containers {
                 self.commands
                     .entry(role.clone())
-                    .or_insert_with(BTreeMap::new)
+                    .or_default()
                     .entry(container)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(commands)
             }
         }
@@ -320,9 +314,9 @@ impl TrinoAuthenticationConfig {
             for (container, data) in containers {
                 self.volume_mounts
                     .entry(role.clone())
-                    .or_insert_with(BTreeMap::new)
+                    .or_default()
                     .entry(container)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(data)
             }
         }
@@ -330,7 +324,7 @@ impl TrinoAuthenticationConfig {
         for (role, data) in other.sidecar_containers {
             self.sidecar_containers
                 .entry(role)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(data)
         }
     }
