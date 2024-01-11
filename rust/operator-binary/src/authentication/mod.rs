@@ -431,27 +431,32 @@ mod tests {
     }
 
     fn setup_ldap_auth_class(
-        name: &str,
-        bind_credentials: Option<SecretClassVolume>,
+        name: &str
     ) -> AuthenticationClass {
-        let auth_provider = serde_yaml::from_str::<ldap::AuthenticationProvider>(
-            "
-            hostname: openldap
-            searchBase: ou=users,dc=example,dc=org
-            searchFilter: (uid=%s)
-            ",
-        )
-        .unwrap();
+        deserialize(&format!(r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            ldap:
+              hostname: openldap
+        "#))
+    }
 
-        AuthenticationClass {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                ..ObjectMeta::default()
-            },
-            spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Ldap(auth_provider),
-            },
-        }
+    fn setup_ldap_auth_class_with_bind_credentials_secret_class(
+        name: &str,
+        secret_class: &str,
+    ) -> AuthenticationClass {
+        deserialize(&format!(r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            ldap:
+              hostname: openldap
+              bindCredentials:
+                secretClass: {secret_class}
+        "#))
     }
 
     fn resolved_product_image() -> ResolvedProductImage {
@@ -468,8 +473,8 @@ mod tests {
         let auth_classes = vec![
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, None),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, None),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_1),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_2),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -480,16 +485,11 @@ mod tests {
     }
 
     fn setup_authentication_config_bind_credentials() -> TrinoAuthenticationConfig {
-        let bind_credentials = SecretClassVolume {
-            secret_class: "secret_class".to_string(),
-            scope: None,
-        };
-
         let auth_classes = vec![
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, Some(bind_credentials.clone())),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, Some(bind_credentials)),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(LDAP_AUTH_CLASS_1, "secret_class"),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(LDAP_AUTH_CLASS_2, "secret_class"),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -641,4 +641,10 @@ mod tests {
         // expect one file user password db update container
         assert_eq!(auth_config.sidecar_containers.len(), 1);
     }
+
+    fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(input: &'de str) -> T {
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
+    }
+
 }
