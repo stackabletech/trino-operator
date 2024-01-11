@@ -545,12 +545,12 @@ mod tests {
 
         assert_eq!(
                 config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
+                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://openldap\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
             );
 
         assert_eq!(
             config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
+                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://openldap\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
             );
     }
 
