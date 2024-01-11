@@ -400,12 +400,6 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stackable_operator::{
-        commons::authentication::{
-            static_, static_::UserCredentialsSecretRef, AuthenticationClassSpec,
-        },
-        kube::core::ObjectMeta,
-    };
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
@@ -414,19 +408,17 @@ mod tests {
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
     fn setup_file_auth_class(name: &str) -> AuthenticationClass {
-        AuthenticationClass {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                ..ObjectMeta::default()
-            },
-            spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Static(static_::AuthenticationProvider {
-                    user_credentials_secret: UserCredentialsSecretRef {
-                        name: name.to_string(),
-                    },
-                }),
-            },
-        }
+        deserialize(&format!(
+            r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            static:
+              userCredentialsSecret:
+                name: {name}
+        "#
+        ))
     }
 
     fn setup_ldap_auth_class(name: &str) -> AuthenticationClass {
