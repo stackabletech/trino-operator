@@ -210,9 +210,7 @@ mod tests {
     fn ldap_provider() -> ldap::AuthenticationProvider {
         serde_yaml::from_str::<ldap::AuthenticationProvider>(
             "
-            hostname: \"\"
-            searchBase: \"\"
-            searchFilter: \"\"
+            hostname: my-ldap
             ",
         )
         .unwrap()
