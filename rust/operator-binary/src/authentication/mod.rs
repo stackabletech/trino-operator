@@ -409,8 +409,7 @@ mod tests {
     use stackable_operator::commons::secret_class::SecretClassVolume;
     use stackable_operator::{
         commons::authentication::{
-            static_::UserCredentialsSecretRef, AuthenticationClassSpec, LdapAuthenticationProvider,
-            StaticAuthenticationProvider,
+            ldap, static_, static_::UserCredentialsSecretRef, AuthenticationClassSpec,
         },
         kube::core::ObjectMeta,
     };
@@ -428,7 +427,7 @@ mod tests {
                 ..ObjectMeta::default()
             },
             spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
+                provider: AuthenticationClassProvider::Static(static_::AuthenticationProvider {
                     user_credentials_secret: UserCredentialsSecretRef {
                         name: name.to_string(),
                     },
@@ -441,21 +440,22 @@ mod tests {
         name: &str,
         bind_credentials: Option<SecretClassVolume>,
     ) -> AuthenticationClass {
+        let auth_provider = serde_yaml::from_str::<ldap::AuthenticationProvider>(
+            "
+            hostname: openldap
+            searchBase: ou=users,dc=example,dc=org
+            searchFilter: (uid=%s)
+            ",
+        )
+        .unwrap();
+
         AuthenticationClass {
             metadata: ObjectMeta {
                 name: Some(name.to_string()),
                 ..ObjectMeta::default()
             },
             spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Ldap(LdapAuthenticationProvider {
-                    hostname: "host".to_string(),
-                    port: None,
-                    search_base: "".to_string(),
-                    search_filter: "".to_string(),
-                    ldap_field_names: Default::default(),
-                    bind_credentials,
-                    tls: None,
-                }),
+                provider: AuthenticationClassProvider::Ldap(auth_provider),
             },
         }
     }

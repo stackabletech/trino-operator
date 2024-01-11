@@ -1,15 +1,7 @@
 use crate::authentication::password;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    builder::VolumeMountBuilder,
-    commons::{
-        authentication::{
-            ldap::SECRET_BASE_PATH,
-            tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
-            LdapAuthenticationProvider,
-        },
-        secret_class::SecretClassVolume,
-    },
+    commons::authentication::ldap::AuthenticationProvider,
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 use std::collections::BTreeMap;
@@ -30,16 +22,26 @@ const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 pub enum Error {
     #[snafu(display("Trino does not support unverified TLS connections to LDAP"))]
     UnverifiedLdapTlsConnectionNotSupported,
+
+    #[snafu(display("Failed to construct LDAP endpoint URL"))]
+    LdapEndpoint {
+        source: stackable_operator::commons::authentication::ldap::Error,
+    },
+
+    #[snafu(display("Failed to construct LDAP volumes and volume mounts"))]
+    LdapVolumesAndMounts {
+        source: stackable_operator::commons::authentication::ldap::Error,
+    },
 }
 
 #[derive(Clone, Debug)]
 pub struct LdapAuthenticator {
     name: String,
-    ldap: LdapAuthenticationProvider,
+    ldap: AuthenticationProvider,
 }
 
 impl LdapAuthenticator {
-    pub fn new(name: String, provider: LdapAuthenticationProvider) -> Self {
+    pub fn new(name: String, provider: AuthenticationProvider) -> Self {
         Self {
             name,
             ldap: provider,
@@ -54,21 +56,14 @@ impl LdapAuthenticator {
     /// Return the content of the authenticator config file to register with Trino
     pub fn config_file_data(&self) -> Result<BTreeMap<String, String>, Error> {
         let mut config_data = BTreeMap::new();
+        self.ldap.endpoint_url();
         config_data.insert(
             password::PASSWORD_AUTHENTICATOR_NAME.to_string(),
             PASSWORD_AUTHENTICATOR_NAME_LDAP.to_string(),
         );
         config_data.insert(
             LDAP_URL.to_string(),
-            format!(
-                "{protocol}{server_hostname}:{server_port}",
-                protocol = match self.ldap.tls {
-                    None => "ldap://",
-                    Some(_) => "ldaps://",
-                },
-                server_hostname = self.ldap.hostname,
-                server_port = self.ldap.port.unwrap_or_else(|| self.ldap.default_port()),
-            ),
+            self.ldap.endpoint_url().context(LdapEndpointSnafu)?.into(),
         );
 
         config_data.insert(LDAP_USER_BASE_DN.to_string(), self.ldap.search_base.clone());
@@ -80,7 +75,7 @@ impl LdapAuthenticator {
 
         // If bind credentials provided we have to mount the secret volume into env variables
         // in the container and reference the DN and password in the config
-        if self.ldap.bind_credentials.is_some() {
+        if self.ldap.has_bind_credentials() {
             config_data.insert(
                 LDAP_BIND_DN.to_string(),
                 format!(
@@ -97,14 +92,14 @@ impl LdapAuthenticator {
             );
         }
 
-        if self.ldap.use_tls() {
-            if !self.ldap.use_tls_verification() {
+        if self.ldap.tls.uses_tls() {
+            if !self.ldap.tls.uses_tls_verification() {
                 // Use TLS but don't verify LDAP server ca => not supported
                 return Err(Error::UnverifiedLdapTlsConnectionNotSupported);
             }
             // If there is a custom certificate, configure it.
             // There might also be TLS verification using web PKI
-            if let Some(path) = self.ldap.tls_ca_cert_mount_path() {
+            if let Some(path) = self.ldap.tls.tls_ca_cert_mount_path() {
                 config_data.insert(LDAP_SSL_TRUST_STORE_PATH.to_string(), path);
             }
         } else {
@@ -134,41 +129,11 @@ impl LdapAuthenticator {
     }
 
     /// Required LDAP authenticator volume amd volume mounts.
-    pub fn volumes_and_mounts(&self) -> (Vec<Volume>, Vec<VolumeMount>) {
-        let mut volumes = vec![];
-        let mut mounts: Vec<(String, String)> = vec![];
-        if let Some(bind_credentials) = &self.ldap.bind_credentials {
-            let secret_class = bind_credentials.secret_class.to_owned();
-            let volume_name = format!("{secret_class}-bind-credentials");
-            volumes.push(bind_credentials.to_volume(&volume_name));
-            mounts.push((volume_name, secret_class));
-        }
-        if let Some(Tls {
-            verification:
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(secret_class),
-                }),
-        }) = &self.ldap.tls
-        {
-            let volume_name = format!("{secret_class}-ca-cert");
-            let volume = SecretClassVolume {
-                secret_class: secret_class.to_string(),
-                scope: None,
-            }
-            .to_volume(&volume_name);
-
-            volumes.push(volume);
-            mounts.push((volume_name, secret_class.to_string()));
-        }
-
-        let volume_mounts = mounts
-            .into_iter()
-            .map(|(mount_name, secret)| {
-                VolumeMountBuilder::new(mount_name, format!("{SECRET_BASE_PATH}/{secret}")).build()
-            })
-            .collect::<Vec<VolumeMount>>();
-
-        (volumes, volume_mounts)
+    pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>), Error> {
+        Ok(self
+            .ldap
+            .volumes_and_mounts()
+            .context(LdapVolumesAndMountsSnafu)?)
     }
 
     /// Convert the provided authentication class name into an ENV variable.
@@ -185,10 +150,6 @@ impl LdapAuthenticator {
 mod tests {
     use super::*;
     use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
-    use stackable_operator::commons::{
-        authentication::tls::{CaCert, Tls, TlsServerVerification, TlsVerification},
-        secret_class::SecretClassVolume,
-    };
 
     const AUTH_CLASS_NAME: &str = "my-auth-class-name";
     const TLS_SECRET_CLASS_NAME: &str = "secret";
@@ -196,25 +157,26 @@ mod tests {
     const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
 
     fn setup_test_authenticator() -> LdapAuthenticator {
-        LdapAuthenticator::new(
-            AUTH_CLASS_NAME.to_string(),
-            LdapAuthenticationProvider {
-                hostname: LDAP_HOST_NAME.to_string(),
-                port: None,
-                search_base: LDAP_SEARCH_BASE.to_string(),
-                search_filter: "".to_string(),
-                ldap_field_names: Default::default(),
-                bind_credentials: Some(SecretClassVolume {
-                    secret_class: "test".to_string(),
-                    scope: None,
-                }),
-                tls: Some(Tls {
-                    verification: TlsVerification::Server(TlsServerVerification {
-                        ca_cert: CaCert::SecretClass(TLS_SECRET_CLASS_NAME.to_string()),
-                    }),
-                }),
-            },
+        let auth_provider = serde_yaml::from_str::<AuthenticationProvider>(
+            format!(
+                "
+            hostname: {LDAP_HOST_NAME}
+            searchBase: {LDAP_SEARCH_BASE}
+            searchFilter: \"\"
+            bindcredentials:
+              secretClass: test
+            tls:
+              verification:
+                server:
+                  caCert:
+                    secretClass: {TLS_SECRET_CLASS_NAME}
+            "
+            )
+            .as_str(),
         )
+        .unwrap();
+
+        LdapAuthenticator::new(AUTH_CLASS_NAME.to_string(), auth_provider)
     }
 
     #[test]

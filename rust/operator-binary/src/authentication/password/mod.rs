@@ -36,6 +36,9 @@ pub enum Error {
     FailedToWritePasswordAuthenticationFile {
         source: product_config::writer::PropertiesWriterError,
     },
+
+    #[snafu(display("Failed to create LDAP Volumes and VolumeMounts"))]
+    LdapVolumeAndVolumeMounts { source: ldap::Error },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -141,7 +144,9 @@ impl TrinoPasswordAuthentication {
                         ldap_authenticator.commands(),
                     );
 
-                    let (volumes, volume_mounts) = ldap_authenticator.volumes_and_mounts();
+                    let (volumes, volume_mounts) = ldap_authenticator
+                        .volumes_and_mounts()
+                        .context(LdapVolumeAndVolumeMountsSnafu)?;
                     // required volumes
                     for volume in volumes {
                         password_authentication_config.add_volume(volume)
@@ -194,7 +199,7 @@ impl TrinoPasswordAuthentication {
 mod tests {
     use super::*;
     use stackable_operator::commons::authentication::{
-        static_::UserCredentialsSecretRef, LdapAuthenticationProvider, StaticAuthenticationProvider,
+        ldap, static_, static_::UserCredentialsSecretRef,
     };
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
@@ -202,23 +207,22 @@ mod tests {
     const LDAP_AUTH_CLASS_1: &str = "ldap-auth-1";
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
-    fn ldap_provider() -> LdapAuthenticationProvider {
-        LdapAuthenticationProvider {
-            hostname: "".to_string(),
-            port: None,
-            search_base: "".to_string(),
-            search_filter: "".to_string(),
-            ldap_field_names: Default::default(),
-            bind_credentials: None,
-            tls: None,
-        }
+    fn ldap_provider() -> ldap::AuthenticationProvider {
+        serde_yaml::from_str::<ldap::AuthenticationProvider>(
+            "
+            hostname: \"\"
+            searchBase: \"\"
+            searchFilter: \"\"
+            ",
+        )
+        .unwrap()
     }
 
     fn setup() -> TrinoAuthenticationConfig {
         let authenticators = vec![
             TrinoPasswordAuthenticator::File(FileAuthenticator::new(
                 FILE_AUTH_CLASS_1.to_string(),
-                StaticAuthenticationProvider {
+                static_::AuthenticationProvider {
                     user_credentials_secret: UserCredentialsSecretRef {
                         name: FILE_AUTH_CLASS_1.to_string(),
                     },
@@ -226,7 +230,7 @@ mod tests {
             )),
             TrinoPasswordAuthenticator::File(FileAuthenticator::new(
                 FILE_AUTH_CLASS_2.to_string(),
-                StaticAuthenticationProvider {
+                static_::AuthenticationProvider {
                     user_credentials_secret: UserCredentialsSecretRef {
                         name: FILE_AUTH_CLASS_2.to_string(),
                     },
@@ -274,7 +278,7 @@ mod tests {
     fn test_password_authentication_config_files() {
         let file_auth_1 = FileAuthenticator::new(
             FILE_AUTH_CLASS_1.to_string(),
-            StaticAuthenticationProvider {
+            static_::AuthenticationProvider {
                 user_credentials_secret: UserCredentialsSecretRef {
                     name: FILE_AUTH_CLASS_1.to_string(),
                 },

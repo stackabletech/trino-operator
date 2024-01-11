@@ -2063,6 +2063,7 @@ dependencies = [
  "product-config",
  "rstest",
  "semver",
+ "serde_yaml",
  "snafu 0.7.5",
  "stackable-operator",
  "stackable-trino-crd",
