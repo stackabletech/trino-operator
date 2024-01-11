@@ -156,23 +156,19 @@ mod tests {
     const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
 
     fn setup_test_authenticator() -> LdapAuthenticator {
-        let auth_provider = serde_yaml::from_str::<AuthenticationProvider>(
-            format!(
-                "
+        let auth_provider = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+            r#"
             hostname: {LDAP_HOST_NAME}
             searchBase: {LDAP_SEARCH_BASE}
-            searchFilter: \"\"
-            bindcredentials:
+            bindCredentials:
               secretClass: test
             tls:
               verification:
                 server:
                   caCert:
                     secretClass: {TLS_SECRET_CLASS_NAME}
-            "
-            )
-            .as_str(),
-        )
+            "#
+        ))
         .unwrap();
 
         LdapAuthenticator::new(AUTH_CLASS_NAME.to_string(), auth_provider)

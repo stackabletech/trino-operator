@@ -400,10 +400,9 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stackable_operator::commons::secret_class::SecretClassVolume;
     use stackable_operator::{
         commons::authentication::{
-            ldap, static_, static_::UserCredentialsSecretRef, AuthenticationClassSpec,
+            static_, static_::UserCredentialsSecretRef, AuthenticationClassSpec,
         },
         kube::core::ObjectMeta,
     };
@@ -430,24 +429,25 @@ mod tests {
         }
     }
 
-    fn setup_ldap_auth_class(
-        name: &str
-    ) -> AuthenticationClass {
-        deserialize(&format!(r#"
+    fn setup_ldap_auth_class(name: &str) -> AuthenticationClass {
+        deserialize(&format!(
+            r#"
         metadata:
           name: {name}
         spec:
           provider:
             ldap:
               hostname: openldap
-        "#))
+        "#
+        ))
     }
 
     fn setup_ldap_auth_class_with_bind_credentials_secret_class(
         name: &str,
         secret_class: &str,
     ) -> AuthenticationClass {
-        deserialize(&format!(r#"
+        deserialize(&format!(
+            r#"
         metadata:
           name: {name}
         spec:
@@ -456,7 +456,8 @@ mod tests {
               hostname: openldap
               bindCredentials:
                 secretClass: {secret_class}
-        "#))
+        "#
+        ))
     }
 
     fn resolved_product_image() -> ResolvedProductImage {
@@ -488,8 +489,14 @@ mod tests {
         let auth_classes = vec![
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class_with_bind_credentials_secret_class(LDAP_AUTH_CLASS_1, "secret_class"),
-            setup_ldap_auth_class_with_bind_credentials_secret_class(LDAP_AUTH_CLASS_2, "secret_class"),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(
+                LDAP_AUTH_CLASS_1,
+                "secret_class",
+            ),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(
+                LDAP_AUTH_CLASS_2,
+                "secret_class",
+            ),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -642,9 +649,12 @@ mod tests {
         assert_eq!(auth_config.sidecar_containers.len(), 1);
     }
 
-    fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(input: &'de str) -> T {
+    /// Helper function to deserialize objects with serde. We need this 'singleton_map_recursive' thing, otherwise
+    /// untagged enums will not deserialize correctly.
+    fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(
+        input: &'de str,
+    ) -> T {
         let deserializer = serde_yaml::Deserializer::from_str(input);
         serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
     }
-
 }
