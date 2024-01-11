@@ -56,7 +56,7 @@ impl LdapAuthenticator {
     /// Return the content of the authenticator config file to register with Trino
     pub fn config_file_data(&self) -> Result<BTreeMap<String, String>, Error> {
         let mut config_data = BTreeMap::new();
-        self.ldap.endpoint_url();
+        self.ldap.endpoint_url().context(LdapEndpointSnafu)?;
         config_data.insert(
             password::PASSWORD_AUTHENTICATOR_NAME.to_string(),
             PASSWORD_AUTHENTICATOR_NAME_LDAP.to_string(),

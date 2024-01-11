@@ -17,6 +17,7 @@ use stackable_trino_crd::{
 use super::{
     config::CatalogConfig,
     from_trino_catalog_error::{
+        CreateS3CredentialsSecretOperatorVolumeSnafu, CreateS3TLSSecretOperatorVolumeSnafu,
         FailedToGetDiscoveryConfigMapDataKeySnafu, FailedToGetDiscoveryConfigMapDataSnafu,
         FailedToGetDiscoveryConfigMapSnafu, ObjectHasNoNamespaceSnafu, ResolveS3ConnectionDefSnafu,
         S3TlsNoVerificationNotSupportedSnafu,
@@ -102,7 +103,11 @@ impl ExtendCatalogConfig for S3ConnectionDef {
             let volume_mount_path = format!("{S3_SECRET_DIR_NAME}/{catalog_name}/{secret_class}");
             catalog_config.volumes.push(
                 VolumeBuilder::new(&volume_name)
-                    .ephemeral(SecretOperatorVolumeSourceBuilder::new(&secret_class).build())
+                    .ephemeral(
+                        SecretOperatorVolumeSourceBuilder::new(&secret_class)
+                            .build()
+                            .context(CreateS3CredentialsSecretOperatorVolumeSnafu)?,
+                    )
                     .build(),
             );
             catalog_config
@@ -135,7 +140,11 @@ impl ExtendCatalogConfig for S3ConnectionDef {
                         format!("{STACKABLE_MOUNT_CLIENT_TLS_DIR}/{catalog_name}/{secret_class}");
                     catalog_config.volumes.push(
                         VolumeBuilder::new(&volume_name)
-                            .ephemeral(SecretOperatorVolumeSourceBuilder::new(secret_class).build())
+                            .ephemeral(
+                                SecretOperatorVolumeSourceBuilder::new(secret_class)
+                                    .build()
+                                    .context(CreateS3TLSSecretOperatorVolumeSnafu)?,
+                            )
                             .build(),
                     );
                     catalog_config
