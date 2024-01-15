@@ -306,23 +306,23 @@ pub enum Error {
         source: crate::operations::graceful_shutdown::Error,
     },
 
-    #[snafu(display("failed to get required labels"))]
+    #[snafu(display("failed to get required Labels"))]
     GetRequiredLabels {
         source:
             stackable_operator::kvp::KeyValuePairError<stackable_operator::kvp::LabelValueError>,
     },
 
-    #[snafu(display("failed to build labels"))]
+    #[snafu(display("failed to build Labels"))]
     LabelBuild {
         source: stackable_operator::kvp::LabelError,
     },
 
-    #[snafu(display("failed to build annotation"))]
+    #[snafu(display("failed to build Annotation"))]
     AnnotationBuild {
         source: stackable_operator::kvp::KeyValuePairError<Infallible>,
     },
 
-    #[snafu(display("failed to build metadata"))]
+    #[snafu(display("failed to build Metadata"))]
     MetadataBuild {
         source: stackable_operator::builder::ObjectMetaBuilderError,
     },
