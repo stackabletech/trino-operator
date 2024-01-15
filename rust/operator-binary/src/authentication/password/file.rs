@@ -5,8 +5,10 @@ use stackable_operator::{
     builder::{
         resources::ResourceRequirementsBuilder, ContainerBuilder, VolumeBuilder, VolumeMountBuilder,
     },
-    commons::authentication::static_::AuthenticationProvider,
-    commons::product_image_selection::ResolvedProductImage,
+    commons::{
+        authentication::static_::AuthenticationProvider,
+        product_image_selection::ResolvedProductImage,
+    },
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     product_logging::{self, spec::AutomaticContainerLogConfig},
     utils::COMMON_BASH_TRAP_FUNCTIONS,
