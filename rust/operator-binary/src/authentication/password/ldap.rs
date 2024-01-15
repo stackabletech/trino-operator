@@ -29,7 +29,7 @@ pub enum Error {
     },
 
     #[snafu(display("Failed to construct LDAP volumes and volume mounts"))]
-    LdapVolumesAndMounts {
+    LdapVolumeAndVolumeMounts {
         source: stackable_operator::commons::authentication::ldap::Error,
     },
 }
@@ -132,7 +132,7 @@ impl LdapAuthenticator {
     pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>), Error> {
         self.ldap
             .volumes_and_mounts()
-            .context(LdapVolumesAndMountsSnafu)
+            .context(LdapVolumeAndVolumeMountsSnafu)
     }
 
     /// Convert the provided authentication class name into an ENV variable.
