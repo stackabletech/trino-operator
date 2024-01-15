@@ -28,7 +28,7 @@ pub enum Error {
         source: stackable_operator::commons::authentication::ldap::Error,
     },
 
-    #[snafu(display("Failed to construct LDAP volumes and volume mounts"))]
+    #[snafu(display("Failed to construct LDAP Volumes and VolumeMounts"))]
     LdapVolumeAndVolumeMounts {
         source: stackable_operator::commons::authentication::ldap::Error,
     },
