@@ -1089,6 +1089,7 @@ fn build_rolegroup_statefulset(
         ))
         .context(MetadataBuildSnafu)?
         .with_annotation(
+            // This is actually used by some kuttl tests (as they don't specify the container explicitly)
             Annotation::try_from(("kubectl.kubernetes.io/default-container", "trino"))
                 .context(AnnotationBuildSnafu)?,
         )
