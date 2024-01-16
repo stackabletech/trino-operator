@@ -166,7 +166,7 @@ impl TrinoAuthenticationConfig {
     ) {
         self.config_properties
             .entry(role)
-            .or_insert(BTreeMap::new())
+            .or_default()
             .insert(property_name, property_value);
     }
 
@@ -175,7 +175,7 @@ impl TrinoAuthenticationConfig {
     pub fn add_config_file(&mut self, role: TrinoRole, file_name: String, file_content: String) {
         self.config_files
             .entry(role)
-            .or_insert(BTreeMap::new())
+            .or_default()
             .insert(file_name, file_content);
     }
 
@@ -188,9 +188,9 @@ impl TrinoAuthenticationConfig {
     ) {
         self.commands
             .entry(role)
-            .or_insert(BTreeMap::new())
+            .or_default()
             .entry(container)
-            .or_insert(Vec::new())
+            .or_default()
             .extend(commands)
     }
 
@@ -212,9 +212,9 @@ impl TrinoAuthenticationConfig {
         let current_volume_mounts = self
             .volume_mounts
             .entry(role)
-            .or_insert_with(BTreeMap::new)
+            .or_default()
             .entry(container)
-            .or_insert_with(Vec::new);
+            .or_default();
 
         if !current_volume_mounts
             .iter()
@@ -226,7 +226,7 @@ impl TrinoAuthenticationConfig {
 
     /// Add an extra sidecar container for a given role
     pub fn add_sidecar_container(&mut self, role: TrinoRole, container: Container) {
-        let containers_for_role = self.sidecar_containers.entry(role).or_insert_with(Vec::new);
+        let containers_for_role = self.sidecar_containers.entry(role).or_default();
 
         if !containers_for_role.iter().any(|c| c.name == container.name) {
             containers_for_role.push(container);
@@ -290,17 +290,11 @@ impl TrinoAuthenticationConfig {
     /// This is a helper to easily extend/merge this struct
     fn extend(&mut self, other: Self) {
         for (role, data) in other.config_properties {
-            self.config_properties
-                .entry(role)
-                .or_insert_with(BTreeMap::new)
-                .extend(data)
+            self.config_properties.entry(role).or_default().extend(data)
         }
 
         for (role, data) in other.config_files {
-            self.config_files
-                .entry(role)
-                .or_insert_with(BTreeMap::new)
-                .extend(data)
+            self.config_files.entry(role).or_default().extend(data)
         }
 
         self.volumes.extend(other.volumes);
@@ -309,9 +303,9 @@ impl TrinoAuthenticationConfig {
             for (container, commands) in containers {
                 self.commands
                     .entry(role.clone())
-                    .or_insert_with(BTreeMap::new)
+                    .or_default()
                     .entry(container)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(commands)
             }
         }
@@ -320,9 +314,9 @@ impl TrinoAuthenticationConfig {
             for (container, data) in containers {
                 self.volume_mounts
                     .entry(role.clone())
-                    .or_insert_with(BTreeMap::new)
+                    .or_default()
                     .entry(container)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(data)
             }
         }
@@ -330,7 +324,7 @@ impl TrinoAuthenticationConfig {
         for (role, data) in other.sidecar_containers {
             self.sidecar_containers
                 .entry(role)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .extend(data)
         }
     }
@@ -406,14 +400,6 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stackable_operator::commons::secret_class::SecretClassVolume;
-    use stackable_operator::{
-        commons::authentication::{
-            static_::UserCredentialsSecretRef, AuthenticationClassSpec, LdapAuthenticationProvider,
-            StaticAuthenticationProvider,
-        },
-        kube::core::ObjectMeta,
-    };
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
@@ -422,42 +408,48 @@ mod tests {
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
     fn setup_file_auth_class(name: &str) -> AuthenticationClass {
-        AuthenticationClass {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                ..ObjectMeta::default()
-            },
-            spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Static(StaticAuthenticationProvider {
-                    user_credentials_secret: UserCredentialsSecretRef {
-                        name: name.to_string(),
-                    },
-                }),
-            },
-        }
+        deserialize(&format!(
+            r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            static:
+              userCredentialsSecret:
+                name: {name}
+        "#
+        ))
     }
 
-    fn setup_ldap_auth_class(
+    fn setup_ldap_auth_class(name: &str) -> AuthenticationClass {
+        deserialize(&format!(
+            r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            ldap:
+              hostname: openldap
+        "#
+        ))
+    }
+
+    fn setup_ldap_auth_class_with_bind_credentials_secret_class(
         name: &str,
-        bind_credentials: Option<SecretClassVolume>,
+        secret_class: &str,
     ) -> AuthenticationClass {
-        AuthenticationClass {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                ..ObjectMeta::default()
-            },
-            spec: AuthenticationClassSpec {
-                provider: AuthenticationClassProvider::Ldap(LdapAuthenticationProvider {
-                    hostname: "host".to_string(),
-                    port: None,
-                    search_base: "".to_string(),
-                    search_filter: "".to_string(),
-                    ldap_field_names: Default::default(),
-                    bind_credentials,
-                    tls: None,
-                }),
-            },
-        }
+        deserialize(&format!(
+            r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            ldap:
+              hostname: openldap
+              bindCredentials:
+                secretClass: {secret_class}
+        "#
+        ))
     }
 
     fn resolved_product_image() -> ResolvedProductImage {
@@ -474,8 +466,8 @@ mod tests {
         let auth_classes = vec![
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, None),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, None),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_1),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_2),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -486,16 +478,17 @@ mod tests {
     }
 
     fn setup_authentication_config_bind_credentials() -> TrinoAuthenticationConfig {
-        let bind_credentials = SecretClassVolume {
-            secret_class: "secret_class".to_string(),
-            scope: None,
-        };
-
         let auth_classes = vec![
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, Some(bind_credentials.clone())),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, Some(bind_credentials)),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(
+                LDAP_AUTH_CLASS_1,
+                "secret_class",
+            ),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(
+                LDAP_AUTH_CLASS_2,
+                "secret_class",
+            ),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -551,12 +544,12 @@ mod tests {
 
         assert_eq!(
                 config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
+                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://openldap\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
             );
 
         assert_eq!(
             config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://host\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
+                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://openldap\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
             );
     }
 
@@ -646,5 +639,14 @@ mod tests {
         let auth_config = setup_authentication_config();
         // expect one file user password db update container
         assert_eq!(auth_config.sidecar_containers.len(), 1);
+    }
+
+    /// Helper function to deserialize objects with serde. We need this 'singleton_map_recursive' thing, otherwise
+    /// untagged enums will not deserialize correctly.
+    fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(
+        input: &'de str,
+    ) -> T {
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
     }
 }

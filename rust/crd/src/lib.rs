@@ -833,17 +833,6 @@ impl TrinoCluster {
         // Retrieve rolegroup specific resource config
         let mut conf_rolegroup = self.rolegroup(rolegroup_ref)?.config.config.clone();
 
-        if let Some(RoleGroup {
-            selector: Some(selector),
-            ..
-        }) = role.role_groups.get(&rolegroup_ref.role_group)
-        {
-            // Migrate old `selector` attribute, see ADR 26 affinities.
-            // TODO Can be removed after support for the old `selector` field is dropped.
-            #[allow(deprecated)]
-            conf_rolegroup.affinity.add_legacy_selector(selector);
-        }
-
         // Merge more specific configs into default config
         // Hierarchy is:
         // 1. RoleGroup
