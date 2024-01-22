@@ -179,7 +179,7 @@ impl ExtendCatalogConfig for HdfsConnection {
         let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
         catalog_config.add_property(
             "hive.config.resources",
-            format!("{hdfs_site_dir}/hdfs-site.xml"),
+            format!("{hdfs_site_dir}/core-site.xml,{hdfs_site_dir}/hdfs-site.xml"),
         );
 
         let volume_name = format!("{catalog_name}-hdfs");
