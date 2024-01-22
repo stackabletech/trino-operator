@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 - Add `core-site.xml` when configuring HDFS connection ([#526]).
 
+[#510]: https://github.com/stackabletech/trino-operator/pull/510
 [#526]: https://github.com/stackabletech/trino-operator/pull/526
 
 ## [23.11.0] - 2023-11-24
