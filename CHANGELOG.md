@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Various documentation of the CRD ([#510]).
+- Helm: support labels in values.yaml ([#528]).
 
 ### Fixed
 
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#510]: https://github.com/stackabletech/trino-operator/pull/510
 [#526]: https://github.com/stackabletech/trino-operator/pull/526
+[#528]: https://github.com/stackabletech/trino-operator/pull/528
 
 ## [23.11.0] - 2023-11-24
 
