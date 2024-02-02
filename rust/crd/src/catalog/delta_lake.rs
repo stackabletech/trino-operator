@@ -9,7 +9,7 @@ use stackable_operator::{
 // stuff there and missing that these settings don't apply to other connectors (such as Iceberg or Delta Lake).
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IcebergConnector {
+pub struct DeltaLakeConnector {
     /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
     pub metastore: MetastoreConnection,
     /// Connection to an S3 store.
