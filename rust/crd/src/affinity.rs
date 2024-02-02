@@ -19,9 +19,9 @@ pub fn get_affinity(
             .iter()
             .filter_map(|catalog| match &catalog.spec.connector {
                 TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
-                TrinoCatalogConnector::Iceberg(iceberg) => Some(&iceberg.hive.metastore.config_map),
+                TrinoCatalogConnector::Iceberg(iceberg) => Some(&iceberg.metastore.config_map),
                 TrinoCatalogConnector::DeltaLake(delta_lake) => {
-                    Some(&delta_lake.hive.metastore.config_map)
+                    Some(&delta_lake.metastore.config_map)
                 }
                 TrinoCatalogConnector::BlackHole(_)
                 | TrinoCatalogConnector::Generic(_)
@@ -45,10 +45,10 @@ pub fn get_affinity(
                     hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
                 }
                 TrinoCatalogConnector::Iceberg(iceberg) => {
-                    iceberg.hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                    iceberg.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
                 }
                 TrinoCatalogConnector::DeltaLake(delta_lake) => {
-                    delta_lake.hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                    delta_lake.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
                 }
                 TrinoCatalogConnector::BlackHole(_)
                 | TrinoCatalogConnector::Generic(_)

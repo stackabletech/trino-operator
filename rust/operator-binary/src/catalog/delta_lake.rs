@@ -22,17 +22,16 @@ impl ToCatalogConfig for DeltaLakeConnector {
         // See https://trino.io/docs/current/connector/delta-lake.html
         config.add_property("delta.security", "allow-all");
 
-        self.hive
-            .metastore
+        self.metastore
             .extend_catalog_config(&mut config, catalog_name, catalog_namespace.clone(), client)
             .await?;
 
-        if let Some(ref s3) = self.hive.s3 {
+        if let Some(ref s3) = self.s3 {
             s3.extend_catalog_config(&mut config, catalog_name, catalog_namespace.clone(), client)
                 .await?;
         }
 
-        if let Some(ref hdfs) = self.hive.hdfs {
+        if let Some(ref hdfs) = self.hdfs {
             hdfs.extend_catalog_config(
                 &mut config,
                 catalog_name,
