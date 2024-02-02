@@ -5,8 +5,8 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
 };
 
-/// This struct is similar to [`super::hive::HiveConnector`], but we do not `#[serde(flatten)]` it here, to avoid changing
-/// stuff there and missing that these settings don't apply to other connectors (such as Iceberg or Delta Lake).
+// This struct is similar to [`super::hive::HiveConnector`], but we do not `#[serde(flatten)]` it here, to avoid changing
+// stuff there and missing that these settings don't apply to other connectors (such as Iceberg or Delta Lake).
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeltaLakeConnector {
