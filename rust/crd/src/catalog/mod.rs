@@ -1,5 +1,6 @@
 pub mod black_hole;
 pub mod commons;
+pub mod delta_lake;
 pub mod generic;
 pub mod google_sheet;
 pub mod hive;
@@ -21,6 +22,8 @@ use hive::HiveConnector;
 use iceberg::IcebergConnector;
 use tpcds::TpcdsConnector;
 use tpch::TpchConnector;
+
+use self::delta_lake::DeltaLakeConnector;
 
 /// The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
 /// Read more about it in the [Trino operator concept docs](DOCS_BASE_URL_PLACEHOLDER/trino/concepts)
@@ -54,6 +57,9 @@ pub struct TrinoCatalogSpec {
 pub enum TrinoCatalogConnector {
     /// A [Black Hole](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/black-hole) connector.
     BlackHole(BlackHoleConnector),
+
+    /// An [Delta Lake](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/delta-lake) connector.
+    DeltaLake(DeltaLakeConnector),
 
     /// A [Google sheets](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/google-sheets) connector.
     GoogleSheet(GoogleSheetConnector),

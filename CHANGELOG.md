@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Various documentation of the CRD ([#510]).
 - Helm: support labels in values.yaml ([#528]).
+- Delta Lake connector ([#XXX]).
 
 ### Fixed
 

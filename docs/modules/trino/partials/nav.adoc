@@ -14,6 +14,7 @@
 ** xref:trino:usage-guide/overrides.adoc[]
 ** xref:trino:usage-guide/catalogs/index.adoc[]
 *** xref:trino:usage-guide/catalogs/black-hole.adoc[]
+*** xref:trino:usage-guide/catalogs/delta-lake.adoc[]
 *** xref:trino:usage-guide/catalogs/generic.adoc[]
 *** xref:trino:usage-guide/catalogs/google-sheets.adoc[]
 *** xref:trino:usage-guide/catalogs/hive.adoc[]
