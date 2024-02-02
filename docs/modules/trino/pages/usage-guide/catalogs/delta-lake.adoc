@@ -1,7 +1,7 @@
 = Delta Lake
 
 [Delta Lake](https://delta.io/) is an open-source storage framework that enables building a Lakehouse architecture with support for multiple compute engines.
-It depends on a Hive metastore being present and makes use of the same metastore configMap used by the Hive connector.
+It depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.
 
 == Example Delta Lake catalog configuration
 
