@@ -19,7 +19,7 @@ spec:
     # Specify deltaLake here when defining a Delta Lake catalog
     deltaLake:
       metastore:
-        configMap: simple-hive-derby
+        configMap: simple-hive
       s3:
         inline:
           host: test-minio

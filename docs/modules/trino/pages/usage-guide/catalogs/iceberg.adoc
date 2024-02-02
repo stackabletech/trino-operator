@@ -18,7 +18,7 @@ spec:
     # Specify iceberg here when defining a iceberg catalog
     iceberg:
       metastore:
-        configMap: simple-hive-derby
+        configMap: simple-hive
       s3:
         inline:
           host: test-minio
