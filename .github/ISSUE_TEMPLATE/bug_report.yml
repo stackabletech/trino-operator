@@ -9,8 +9,13 @@ body:
 
   - type: input
     attributes:
-      label: Affected version
-      description: Which version do you see this bug in?
+      label: Affected Stackable version
+      description: Which version of the Stackable Operator do you see this bug in?
+
+  - type: input
+    attributes:
+      label: Affected Trino version
+      description: Which version of Trino do you see this bug in?
 
   - type: textarea
     attributes:

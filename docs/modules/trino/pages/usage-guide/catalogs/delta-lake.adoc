@@ -1,0 +1,34 @@
+= Delta Lake
+
+[Delta Lake](https://delta.io/) is an open-source storage framework that enables building a Lakehouse architecture with support for multiple compute engines.
+It depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.
+
+== Example Delta Lake catalog configuration
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  # The name of the catalog as it will appear in Trino
+  name: delta
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    # Specify deltaLake here when defining a Delta Lake catalog
+    deltaLake:
+      metastore:
+        configMap: simple-hive
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+----
+
+== Connect to S3 store or HDFS
+The Delta Lake connector can connect to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.
+Please check that documentation on how to configure the access.

@@ -1,6 +1,7 @@
 pub mod black_hole;
 pub mod commons;
 pub mod config;
+pub mod delta_lake;
 pub mod generic;
 pub mod google_sheet;
 pub mod hive;
@@ -49,6 +50,16 @@ pub enum FromTrinoCatalogError {
         catalog: String,
         cm_name: String,
         data_key: String,
+    },
+
+    #[snafu(display("Failed to create the Secret Volume for the S3 credentials"))]
+    CreateS3CredentialsSecretOperatorVolume {
+        source: stackable_operator::builder::SecretOperatorVolumeSourceBuilderError,
+    },
+
+    #[snafu(display("Failed to create the Secret Volume for the TLS certificate for S3"))]
+    CreateS3TLSSecretOperatorVolume {
+        source: stackable_operator::builder::SecretOperatorVolumeSourceBuilderError,
     },
 }
 

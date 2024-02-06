@@ -546,12 +546,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stackable_operator::commons::authentication::{oidc, static_};
-    use stackable_operator::commons::secret_class::SecretClassVolume;
-    use stackable_operator::{
-        commons::authentication::{static_::UserCredentialsSecretRef, AuthenticationClassSpec},
-        kube::core::ObjectMeta,
-    };
+    use stackable_operator::commons::authentication::oidc::ClientAuthenticationOptions;
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
 
     const OIDC_AUTH_CLASS_1: &str = "oidc-auth-1";
@@ -563,23 +558,21 @@ mod tests {
     const SEARCH_BASE: &str = "searchbase";
 
     fn setup_file_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        let input = deserialize(&format!(
+            r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            static:
+              userCredentialsSecret:
+                name: {name}
+        "#
+        ));
+
         ResolvedAuthenticationClassRef {
-            authentication_class: AuthenticationClass {
-                metadata: ObjectMeta {
-                    name: Some(name.to_string()),
-                    ..ObjectMeta::default()
-                },
-                spec: AuthenticationClassSpec {
-                    provider: AuthenticationClassProvider::Static(
-                        static_::AuthenticationProvider {
-                            user_credentials_secret: UserCredentialsSecretRef {
-                                name: name.to_string(),
-                            },
-                        },
-                    ),
-                },
-            },
-            oidc: Some(oidc::ClientAuthenticationOptions {
+            authentication_class: input,
+            oidc: Some(ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
                 product_specific_fields: (),
@@ -587,13 +580,31 @@ mod tests {
         }
     }
 
-    fn setup_ldap_auth_class(
+    fn setup_ldap_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        let input = deserialize(&format!(
+            r#"
+        metadata:
+          name: {name}
+        spec:
+          provider:
+            ldap:
+              hostname: {HOST_NAME}
+              searchBase: {SEARCH_BASE}
+        "#
+        ));
+
+        ResolvedAuthenticationClassRef {
+            authentication_class: input,
+            oidc: None,
+        }
+    }
+
+    fn setup_ldap_auth_class_with_bind_credentials_secret_class(
         name: &str,
-        bind_credentials: Option<SecretClassVolume>,
+        secret_class: &str,
     ) -> ResolvedAuthenticationClassRef {
-        let input = if let Some(credentials) = bind_credentials {
-            format!(
-                r#"
+        let input = deserialize(&format!(
+            r#"
             apiVersion: authentication.stackable.tech/v1alpha1
             kind: AuthenticationClass
             metadata:
@@ -605,32 +616,12 @@ mod tests {
                   searchBase: {SEARCH_BASE}
                   bindCredentials:
                     secretClass: {secret_class}
-            "#,
-                secret_class = credentials.secret_class
-            )
-        } else {
-            format!(
-                r#"
-            apiVersion: authentication.stackable.tech/v1alpha1
-            kind: AuthenticationClass
-            metadata:
-              name: {name}
-            spec:
-              provider:
-                ldap:
-                  hostname: {HOST_NAME}
-                  searchBase: {SEARCH_BASE}
             "#
-            )
-        };
-        let deserializer = serde_yaml::Deserializer::from_str(&input);
+        ));
 
         ResolvedAuthenticationClassRef {
-            authentication_class: serde_yaml::with::singleton_map_recursive::deserialize(
-                deserializer,
-            )
-            .unwrap(),
-            oidc: Some(oidc::ClientAuthenticationOptions {
+            authentication_class: input,
+            oidc: Some(ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
                 product_specific_fields: (),
@@ -661,7 +652,7 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            oidc: Some(oidc::ClientAuthenticationOptions {
+            oidc: Some(ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
                 product_specific_fields: (),
@@ -684,8 +675,8 @@ mod tests {
             setup_oidc_auth_class(OIDC_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, None),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, None),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_1),
+            setup_ldap_auth_class(LDAP_AUTH_CLASS_2),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -696,17 +687,18 @@ mod tests {
     }
 
     fn setup_authentication_config_bind_credentials() -> TrinoAuthenticationConfig {
-        let bind_credentials = SecretClassVolume {
-            secret_class: "secret_class".to_string(),
-            scope: None,
-        };
-
         let auth_classes = vec![
             setup_oidc_auth_class(OIDC_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_1, Some(bind_credentials.clone())),
-            setup_ldap_auth_class(LDAP_AUTH_CLASS_2, Some(bind_credentials)),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(
+                LDAP_AUTH_CLASS_1,
+                "secret_class",
+            ),
+            setup_ldap_auth_class_with_bind_credentials_secret_class(
+                LDAP_AUTH_CLASS_2,
+                "secret_class",
+            ),
         ];
 
         TrinoAuthenticationConfig::new(
@@ -767,9 +759,9 @@ mod tests {
             );
 
         assert_eq!(
-            config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
-                Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
-            );
+                    config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
+                        Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
+                    );
     }
 
     #[test]
@@ -810,9 +802,9 @@ mod tests {
 
         // we expect one user password db mount
         assert_eq!(coordinator_main_mounts.len(), 1);
-        assert_eq!(coordinator_main_mounts.get(0).unwrap().name, "users");
+        assert_eq!(coordinator_main_mounts.first().unwrap().name, "users");
         assert_eq!(
-            coordinator_main_mounts.get(0).unwrap().mount_path,
+            coordinator_main_mounts.first().unwrap().mount_path,
             "/stackable/users"
         );
     }
@@ -858,5 +850,14 @@ mod tests {
         let auth_config = setup_authentication_config();
         // expect one file user password db update container
         assert_eq!(auth_config.sidecar_containers.len(), 1);
+    }
+
+    /// Helper function to deserialize objects with serde. We need this 'singleton_map_recursive' thing, otherwise
+    /// untagged enums will not deserialize correctly.
+    fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(
+        input: &'de str,
+    ) -> T {
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
     }
 }

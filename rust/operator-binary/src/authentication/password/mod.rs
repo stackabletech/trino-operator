@@ -36,6 +36,9 @@ pub enum Error {
     FailedToWritePasswordAuthenticationFile {
         source: product_config::writer::PropertiesWriterError,
     },
+
+    #[snafu(display("Failed to create LDAP Volumes and VolumeMounts"))]
+    LdapVolumeAndVolumeMounts { source: ldap::Error },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -141,7 +144,9 @@ impl TrinoPasswordAuthentication {
                         ldap_authenticator.commands(),
                     );
 
-                    let (volumes, volume_mounts) = ldap_authenticator.volumes_and_mounts();
+                    let (volumes, volume_mounts) = ldap_authenticator
+                        .volumes_and_mounts()
+                        .context(LdapVolumeAndVolumeMountsSnafu)?;
                     // required volumes
                     for volume in volumes {
                         password_authentication_config.add_volume(volume)
@@ -203,12 +208,12 @@ mod tests {
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
     fn ldap_provider() -> ldap::AuthenticationProvider {
-        let input = r#"
-            hostname: my.ldap.server
-            searchBase: ou=users,dc=example,dc=org
-        "#;
-        let deserializer = serde_yaml::Deserializer::from_str(input);
-        serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
+        serde_yaml::from_str::<ldap::AuthenticationProvider>(
+            "
+            hostname: my-ldap
+            ",
+        )
+        .unwrap()
     }
 
     fn setup() -> TrinoAuthenticationConfig {

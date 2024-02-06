@@ -165,7 +165,7 @@ spec:
                       type: boolean
                   type: object
                 coordinators:
-                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured at role level, the `roleConfig`.
+                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level. There is also a second form of config, which can only be configured at role level, the `roleConfig`. You can learn more about this in the [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
                   nullable: true
                   properties:
                     cliOverrides:
@@ -7148,37 +7148,6 @@ spec:
                             minimum: 0.0
                             nullable: true
                             type: integer
-                          selector:
-                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                            nullable: true
-                            properties:
-                              matchExpressions:
-                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                items:
-                                  description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-                                  properties:
-                                    key:
-                                      description: key is the label key that the selector applies to.
-                                      type: string
-                                    operator:
-                                      description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                                      type: string
-                                    values:
-                                      description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-                                      items:
-                                        type: string
-                                      type: array
-                                  required:
-                                    - key
-                                    - operator
-                                  type: object
-                                type: array
-                              matchLabels:
-                                additionalProperties:
-                                  type: string
-                                description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-                                type: object
-                            type: object
                         type: object
                       type: object
                   required:
@@ -7231,7 +7200,7 @@ spec:
                       type: string
                   type: object
                 workers:
-                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured at role level, the `roleConfig`.
+                  description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level. There is also a second form of config, which can only be configured at role level, the `roleConfig`. You can learn more about this in the [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
                   nullable: true
                   properties:
                     cliOverrides:
@@ -14214,37 +14183,6 @@ spec:
                             minimum: 0.0
                             nullable: true
                             type: integer
-                          selector:
-                            description: A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
-                            nullable: true
-                            properties:
-                              matchExpressions:
-                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
-                                items:
-                                  description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
-                                  properties:
-                                    key:
-                                      description: key is the label key that the selector applies to.
-                                      type: string
-                                    operator:
-                                      description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
-                                      type: string
-                                    values:
-                                      description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
-                                      items:
-                                        type: string
-                                      type: array
-                                  required:
-                                    - key
-                                    - operator
-                                  type: object
-                                type: array
-                              matchLabels:
-                                additionalProperties:
-                                  type: string
-                                description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
-                                type: object
-                            type: object
                         type: object
                       type: object
                   required:
@@ -14347,6 +14285,8 @@ spec:
                     - required:
                         - blackHole
                     - required:
+                        - deltaLake
+                    - required:
                         - googleSheet
                     - required:
                         - generic
@@ -14361,6 +14301,134 @@ spec:
                   properties:
                     blackHole:
                       description: A [Black Hole](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/black-hole) connector.
+                      type: object
+                    deltaLake:
+                      description: An [Delta Lake](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/delta-lake) connector.
+                      properties:
+                        hdfs:
+                          description: Connection to an HDFS cluster. Please make sure that the underlying Hive metastore also has access to the HDFS.
+                          nullable: true
+                          properties:
+                            configMap:
+                              description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                              type: string
+                          required:
+                            - configMap
+                          type: object
+                        metastore:
+                          description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
+                          properties:
+                            configMap:
+                              description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
+                              type: string
+                          required:
+                            - configMap
+                          type: object
+                        s3:
+                          description: Connection to an S3 store. Please make sure that the underlying Hive metastore also has access to the S3 store. Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                          nullable: true
+                          oneOf:
+                            - required:
+                                - inline
+                            - required:
+                                - reference
+                          properties:
+                            inline:
+                              description: Inline definition of an S3 connection.
+                              properties:
+                                accessStyle:
+                                  description: Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+                                  enum:
+                                    - Path
+                                    - VirtualHosted
+                                  nullable: true
+                                  type: string
+                                credentials:
+                                  description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing `accessKey` and `secretKey` is sufficient.
+                                  nullable: true
+                                  properties:
+                                    scope:
+                                      description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                                      nullable: true
+                                      properties:
+                                        node:
+                                          default: false
+                                          description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
+                                          type: boolean
+                                        pod:
+                                          default: false
+                                          description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
+                                          type: boolean
+                                        services:
+                                          default: []
+                                          description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
+                                          items:
+                                            type: string
+                                          type: array
+                                      type: object
+                                    secretClass:
+                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                      type: string
+                                  required:
+                                    - secretClass
+                                  type: object
+                                host:
+                                  description: 'Hostname of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
+                                  nullable: true
+                                  type: string
+                                port:
+                                  description: Port the S3 server listens on. If not specified the product will determine the port to use.
+                                  format: uint16
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                                tls:
+                                  description: If you want to use TLS when talking to S3 you can enable TLS encrypted communication with this setting.
+                                  nullable: true
+                                  properties:
+                                    verification:
+                                      description: The verification method used to verify the certificates of the server and/or the client.
+                                      oneOf:
+                                        - required:
+                                            - none
+                                        - required:
+                                            - server
+                                      properties:
+                                        none:
+                                          description: Use TLS but don't verify certificates.
+                                          type: object
+                                        server:
+                                          description: Use TLS and a CA certificate to verify the server.
+                                          properties:
+                                            caCert:
+                                              description: CA cert to verify the server.
+                                              oneOf:
+                                                - required:
+                                                    - webPki
+                                                - required:
+                                                    - secretClass
+                                              properties:
+                                                secretClass:
+                                                  description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                                  type: string
+                                                webPki:
+                                                  description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                                  type: object
+                                              type: object
+                                          required:
+                                            - caCert
+                                          type: object
+                                      type: object
+                                  required:
+                                    - verification
+                                  type: object
+                              type: object
+                            reference:
+                              description: A reference to an S3Connection resource.
+                              type: string
+                          type: object
+                      required:
+                        - metastore
                       type: object
                     generic:
                       description: A [generic](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/generic) connector.
@@ -14485,27 +14553,30 @@ spec:
                                   nullable: true
                                   type: string
                                 credentials:
-                                  description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient.
+                                  description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing `accessKey` and `secretKey` is sufficient.
                                   nullable: true
                                   properties:
                                     scope:
-                                      description: '[Scope](https://docs.stackable.tech/secret-operator/scope.html) of the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)'
+                                      description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
                                       nullable: true
                                       properties:
                                         node:
                                           default: false
+                                          description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
                                           type: boolean
                                         pod:
                                           default: false
+                                          description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
                                           type: boolean
                                         services:
                                           default: []
+                                          description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
                                           items:
                                             type: string
                                           type: array
                                       type: object
                                     secretClass:
-                                      description: '[SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) containing the LDAP bind credentials'
+                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
                                       type: string
                                   required:
                                     - secretClass
@@ -14525,7 +14596,7 @@ spec:
                                   nullable: true
                                   properties:
                                     verification:
-                                      description: The verification method used to verify the certificates of the server and/or the client
+                                      description: The verification method used to verify the certificates of the server and/or the client.
                                       oneOf:
                                         - required:
                                             - none
@@ -14533,13 +14604,13 @@ spec:
                                             - server
                                       properties:
                                         none:
-                                          description: Use TLS but don't verify certificates
+                                          description: Use TLS but don't verify certificates.
                                           type: object
                                         server:
-                                          description: Use TLS and ca certificate to verify the server
+                                          description: Use TLS and a CA certificate to verify the server.
                                           properties:
                                             caCert:
-                                              description: Ca cert to verify the server
+                                              description: CA cert to verify the server.
                                               oneOf:
                                                 - required:
                                                     - webPki
@@ -14547,10 +14618,10 @@ spec:
                                                     - secretClass
                                               properties:
                                                 secretClass:
-                                                  description: Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method.
+                                                  description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                   type: string
                                                 webPki:
-                                                  description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                                  description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
                                                   type: object
                                               type: object
                                           required:
@@ -14610,27 +14681,30 @@ spec:
                                   nullable: true
                                   type: string
                                 credentials:
-                                  description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient.
+                                  description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing `accessKey` and `secretKey` is sufficient.
                                   nullable: true
                                   properties:
                                     scope:
-                                      description: '[Scope](https://docs.stackable.tech/secret-operator/scope.html) of the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)'
+                                      description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
                                       nullable: true
                                       properties:
                                         node:
                                           default: false
+                                          description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
                                           type: boolean
                                         pod:
                                           default: false
+                                          description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
                                           type: boolean
                                         services:
                                           default: []
+                                          description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
                                           items:
                                             type: string
                                           type: array
                                       type: object
                                     secretClass:
-                                      description: '[SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) containing the LDAP bind credentials'
+                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
                                       type: string
                                   required:
                                     - secretClass
@@ -14650,7 +14724,7 @@ spec:
                                   nullable: true
                                   properties:
                                     verification:
-                                      description: The verification method used to verify the certificates of the server and/or the client
+                                      description: The verification method used to verify the certificates of the server and/or the client.
                                       oneOf:
                                         - required:
                                             - none
@@ -14658,13 +14732,13 @@ spec:
                                             - server
                                       properties:
                                         none:
-                                          description: Use TLS but don't verify certificates
+                                          description: Use TLS but don't verify certificates.
                                           type: object
                                         server:
-                                          description: Use TLS and ca certificate to verify the server
+                                          description: Use TLS and a CA certificate to verify the server.
                                           properties:
                                             caCert:
-                                              description: Ca cert to verify the server
+                                              description: CA cert to verify the server.
                                               oneOf:
                                                 - required:
                                                     - webPki
@@ -14672,10 +14746,10 @@ spec:
                                                     - secretClass
                                               properties:
                                                 secretClass:
-                                                  description: Name of the SecretClass which will provide the ca cert. Note that a SecretClass does not need to have a key but can also work with just a ca cert. So if you got provided with a ca cert but don't have access to the key you can still use this method.
+                                                  description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                   type: string
                                                 webPki:
-                                                  description: Use TLS and the ca certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                                  description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
                                                   type: object
                                               type: object
                                           required:

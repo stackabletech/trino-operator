@@ -74,7 +74,7 @@ IMPORTANT: Please make sure that the underlying Hive metastore also has access t
 You can add connect Trino to Hive catalogs from systems that are not managed by Stackable, including Hive running on existing Hadoop clusters. Unmanaged Hive instances can be defined by creating a configMap containing the configuration for the remote Hive Metastore and HDFS or S3 storage services.
 
 === Create a Hive Metastore configMap
-The Hive metastore configMap contains the URL for the metastore's thrift endpoint.
+The Hive metastore ConfigMap contains the URL for the metastore's thrift endpoint.
 [source,yaml]
 ----
 apiVersion: v1

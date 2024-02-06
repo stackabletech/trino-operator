@@ -1,6 +1,6 @@
 = Apache Iceberg
 
-Apache Iceberg is a format for huge analytic tables designed to address some of the scaling issues with traditional Hive tables. Iceberg depends on Hive metastore being present and makes use of the same metastore configMap used by the Hive connector.
+Apache Iceberg is a format for huge analytic tables designed to address some of the scaling issues with traditional Hive tables. Iceberg depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.
 
 == Example Iceberg catalog configuration
 
@@ -18,7 +18,7 @@ spec:
     # Specify iceberg here when defining a iceberg catalog
     iceberg:
       metastore:
-        configMap: simple-hive-derby
+        configMap: simple-hive
       s3:
         inline:
           host: test-minio
@@ -29,5 +29,5 @@ spec:
 ----
 
 == Connect to S3 store or HDFS
-The `iceberg` connector can connect to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.
+The Iceberg connector can connect to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.
 Please check that documentation on how to configure the access.

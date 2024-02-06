@@ -51,6 +51,11 @@ pub enum Error {
 
     #[snafu(display("Trino does not support unverified TLS connections to OIDC"))]
     UnverifiedOidcTlsConnectionNotSupported,
+
+    #[snafu(display("Failed to create OIDC Volumes and VolumeMounts"))]
+    FailedToCreateOidcVolumeAndVolumeMounts {
+        source: stackable_operator::commons::authentication::tls::TlsClientDetailsError,
+    },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -156,7 +161,11 @@ impl TrinoOidcAuthentication {
         );
 
         // Volumes and VolumeMounts
-        let (tls_volumes, tls_mounts) = authenticator.oidc.tls.volumes_and_mounts();
+        let (tls_volumes, tls_mounts) = authenticator
+            .oidc
+            .tls
+            .volumes_and_mounts()
+            .context(FailedToCreateOidcVolumeAndVolumeMountsSnafu)?;
         oauth2_authentication_config.add_volumes(tls_volumes);
         oauth2_authentication_config.add_volume_mounts(
             TrinoRole::Coordinator,
@@ -195,7 +204,7 @@ impl TrinoOidcAuthentication {
             // We should not reach the '0' branch, this is just a sanity check.
             0 => Err(Error::NoOauth2AuthenticationClassProvided),
             // The unwrap is safe here
-            1 => Ok(self.authenticators.get(0).unwrap().clone()),
+            1 => Ok(self.authenticators.first().unwrap().clone()),
             _ => Err(Error::MultipleOauth2AuthenticationClasses {
                 authentication_class_names: self
                     .authenticators

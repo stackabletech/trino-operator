@@ -23,7 +23,7 @@ spec:
   connector:
     hive:
       metastore:
-        configMap: simple-hive-derby
+        configMap: simple-hive
       s3:
         inline:
           host: test-minio
@@ -45,7 +45,7 @@ spec:
   connector:
     iceberg:
       metastore:
-        configMap: simple-hive-derby
+        configMap: simple-hive
       s3:
         inline:
           host: test-minio
