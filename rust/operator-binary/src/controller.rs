@@ -8,7 +8,6 @@ use std::{
     sync::Arc,
 };
 
-use indoc::formatdoc;
 use product_config::{
     self,
     types::PropertyNameKind,
@@ -70,11 +69,11 @@ use stackable_trino_crd::{
     Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
+    JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
     LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
     RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD,
+    
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -82,7 +81,7 @@ use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     authorization::opa::TrinoOpaConfig,
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
-    command,
+    command, config,
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
     },
@@ -215,21 +214,6 @@ pub enum Error {
         catalog: ObjectRef<TrinoCatalog>,
     },
 
-    #[snafu(display("invalid memory resource configuration - missing default or value in crd?"))]
-    MissingMemoryResourceConfig,
-
-    #[snafu(display("could not convert / scale memory resource config to [{unit}]"))]
-    FailedToConvertMemoryResourceConfig {
-        source: stackable_operator::error::Error,
-        unit: String,
-    },
-
-    #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
-    FailedToConvertMemoryResourceConfigToJavaHeap {
-        source: stackable_operator::error::Error,
-        unit: String,
-    },
-
     #[snafu(display("illegal container name: [{container_name}]"))]
     IllegalContainerName {
         source: stackable_operator::error::Error,
@@ -330,6 +314,11 @@ pub enum Error {
     #[snafu(display("failed to build TLS certificate SecretClass Volume"))]
     TlsCertSecretClassVolumeBuild {
         source: stackable_operator::builder::SecretOperatorVolumeSourceBuilderError,
+    },
+
+    #[snafu(display("failed to build JVM config"))]
+    FailedToCreateJvmConfig {
+        source: crate::config::jvm::Error,
     },
 }
 
@@ -604,50 +593,8 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
-    let memory_unit = BinaryMultiple::Mebi;
-    let heap_size = MemoryQuantity::try_from(
-        merged_config
-            .resources
-            .memory
-            .limit
-            .as_ref()
-            .context(MissingMemoryResourceConfigSnafu)?,
-    )
-    .context(FailedToConvertMemoryResourceConfigSnafu {
-        unit: memory_unit.to_java_memory_unit(),
-    })?
-    .scale_to(memory_unit)
-        * JVM_HEAP_FACTOR;
-
-    // TODO: create via product config?
-    // from https://trino.io/docs/current/installation/deployment.html#jvm-config
-    let mut jvm_config = formatdoc!(
-        "-server
-        -Xms{heap}
-        -Xmx{heap}
-        -XX:-UseBiasedLocking
-        -XX:+UseG1GC
-        -XX:G1HeapRegionSize=32M
-        -XX:+ExplicitGCInvokesConcurrent
-        -XX:+ExitOnOutOfMemoryError
-        -XX:+HeapDumpOnOutOfMemoryError
-        -XX:-OmitStackTraceInFastThrow
-        -XX:ReservedCodeCacheSize=512M
-        -XX:PerMethodRecompilationCutoff=10000
-        -XX:PerBytecodeRecompilationCutoff=10000
-        -Djdk.attach.allowAttachSelf=true
-        -Djdk.nio.maxCachedBufferSize=2000000
-        -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
-        -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
-        -Djavax.net.ssl.trustStoreType=pkcs12
-        -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
-        ",
-        heap = heap_size.format_for_java().context(
-            FailedToConvertMemoryResourceConfigToJavaHeapSnafu {
-                unit: memory_unit.to_java_memory_unit(),
-            }
-        )?
-    );
+    // retrieve JVM config - TODO: currently not overridable
+    let mut jvm_config = config::jvm::jvm_config(resolved_product_image, merged_config).context(FailedToCreateJvmConfigSnafu)?;
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino

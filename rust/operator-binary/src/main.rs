@@ -2,6 +2,7 @@ mod authentication;
 mod authorization;
 mod catalog;
 mod command;
+mod config;
 mod controller;
 mod operations;
 mod product_logging;
