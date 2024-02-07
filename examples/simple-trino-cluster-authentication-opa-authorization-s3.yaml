@@ -5,7 +5,7 @@ metadata:
   name: simple-trino
 spec:
   image:
-    productVersion: "428"
+    productVersion: "438"
   clusterConfig:
     authentication:
       - authenticationClass: simple-trino-users
@@ -51,7 +51,7 @@ metadata:
   name: simple-opa
 spec:
   image:
-    productVersion: 0.57.0
+    productVersion: 0.61.0
   servers:
     roleGroups:
       default: {}
