@@ -7,7 +7,7 @@ use stackable_operator::{
     memory::{BinaryMultiple, MemoryQuantity},
 };
 use stackable_trino_crd::{
-    TrinoConfig, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, RW_CONFIG_DIR_NAME,
+    TrinoConfig, TrinoRole, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, RW_CONFIG_DIR_NAME,
     STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
 
@@ -27,8 +27,11 @@ pub enum Error {
     },
 }
 
+// Currently works for all supported versions (414, 428, 438 as of 2024-02-08) but maybe be changed
+// in the future depending on the role and version.
 pub fn jvm_config(
-    resolved_product_image: &ResolvedProductImage,
+    _resolved_product_image: &ResolvedProductImage,
+    _role: &TrinoRole,
     merged_config: &TrinoConfig,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;
@@ -52,96 +55,34 @@ pub fn jvm_config(
         },
     )?;
 
-    match resolved_product_image.product_version.as_str() {
-        // from https://trino.io/docs/414/installation/deployment.html#jvm-config 
-        "414" => {
-            Ok(formatdoc!(
-                "-server
-                -Xms{heap}
-                -Xmx{heap}
-                -XX:InitialRAMPercentage=80
-                -XX:MaxRAMPercentage=80
-                -XX:G1HeapRegionSize=32M
-                -XX:+ExplicitGCInvokesConcurrent
-                -XX:+ExitOnOutOfMemoryError
-                -XX:+HeapDumpOnOutOfMemoryError
-                -XX:-OmitStackTraceInFastThrow
-                -XX:ReservedCodeCacheSize=512M
-                -XX:PerMethodRecompilationCutoff=10000
-                -XX:PerBytecodeRecompilationCutoff=10000
-                -Djdk.attach.allowAttachSelf=true
-                -Djdk.nio.maxCachedBufferSize=2000000
-                -XX:+UnlockDiagnosticVMOptions
-                -XX:+UseAESCTRIntrinsics
-                # Disable Preventive GC for performance reasons (JDK-8293861)
-                -XX:-G1UsePreventiveGC
-                -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
-                -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
-                -Djavax.net.ssl.trustStoreType=pkcs12
-                -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
-                ",
-            ))
-        }
-        // from https://trino.io/docs/428/installation/deployment.html#jvm-config
-        "428" => {
-            Ok(formatdoc!(
-                "-server
-                -Xms{heap}
-                -Xmx{heap}
-                -XX:InitialRAMPercentage=80
-                -XX:MaxRAMPercentage=80
-                -XX:G1HeapRegionSize=32M
-                -XX:+ExplicitGCInvokesConcurrent
-                -XX:+ExitOnOutOfMemoryError
-                -XX:+HeapDumpOnOutOfMemoryError
-                -XX:-OmitStackTraceInFastThrow
-                -XX:ReservedCodeCacheSize=512M
-                -XX:PerMethodRecompilationCutoff=10000
-                -XX:PerBytecodeRecompilationCutoff=10000
-                -Djdk.attach.allowAttachSelf=true
-                -Djdk.nio.maxCachedBufferSize=2000000
-                -XX:+UnlockDiagnosticVMOptions
-                -XX:+UseAESCTRIntrinsics
-                -Dfile.encoding=UTF-8
-                # Disable Preventive GC for performance reasons (JDK-8293861)
-                -XX:-G1UsePreventiveGC  
-                # Reduce starvation of threads by GClocker, recommend to set about the number of cpu cores (JDK-8192647)
-                -XX:GCLockerRetryAllocationCount=32
-                -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
-                -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
-                -Djavax.net.ssl.trustStoreType=pkcs12
-                -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
-                ",
-            ))
-        }
-        // from https://trino.io/docs/438/installation/deployment.html#jvm-config
-        // otherwise use the (currently) 438 one
-        _ =>  {            Ok(formatdoc!(
-            "-server
-            -Xms{heap}
-            -Xmx{heap}
-            -XX:InitialRAMPercentage=80
-            -XX:MaxRAMPercentage=80
-            -XX:G1HeapRegionSize=32M
-            -XX:+ExplicitGCInvokesConcurrent
-            -XX:+ExitOnOutOfMemoryError
-            -XX:+HeapDumpOnOutOfMemoryError
-            -XX:-OmitStackTraceInFastThrow
-            -XX:ReservedCodeCacheSize=512M
-            -XX:PerMethodRecompilationCutoff=10000
-            -XX:PerBytecodeRecompilationCutoff=10000
-            -Djdk.attach.allowAttachSelf=true
-            -Djdk.nio.maxCachedBufferSize=2000000
-            -Dfile.encoding=UTF-8
-            # Reduce starvation of threads by GClocker, recommend to set about the number of cpu cores (JDK-8192647)
-            -XX:+UnlockDiagnosticVMOptions
-            -XX:GCLockerRetryAllocationCount=32
-            -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
-            -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
-            -Djavax.net.ssl.trustStoreType=pkcs12
-            -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
-            ",
-        ))}
-
-    }
+    // Basically copied from https://trino.io/docs/438/installation/deployment.html and merged
+    // with https://trino.io/docs/428/installation/deployment.html (-XX:-G1UsePreventiveGC)
+    Ok(formatdoc!(
+        "-server
+        -Xms{heap}
+        -Xmx{heap}
+        -XX:InitialRAMPercentage=80
+        -XX:MaxRAMPercentage=80
+        -XX:G1HeapRegionSize=32M
+        -XX:+ExplicitGCInvokesConcurrent
+        -XX:+ExitOnOutOfMemoryError
+        -XX:+HeapDumpOnOutOfMemoryError
+        -XX:-OmitStackTraceInFastThrow
+        -XX:ReservedCodeCacheSize=512M
+        -XX:PerMethodRecompilationCutoff=10000
+        -XX:PerBytecodeRecompilationCutoff=10000
+        -Djdk.attach.allowAttachSelf=true
+        -Djdk.nio.maxCachedBufferSize=2000000
+        -Dfile.encoding=UTF-8
+        # Disable Preventive GC for performance reasons (JDK-8293861)
+        -XX:+UnlockDiagnosticVMOptions
+        -XX:-G1UsePreventiveGC              
+        # Reduce starvation of threads by GClocker, recommend to set about the number of cpu cores (JDK-8192647)
+        -XX:GCLockerRetryAllocationCount=32
+        -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
+        -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
+        -Djavax.net.ssl.trustStoreType=pkcs12
+        -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
+        ",
+    ))
 }

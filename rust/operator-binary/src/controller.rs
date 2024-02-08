@@ -69,11 +69,10 @@ use stackable_trino_crd::{
     Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
     APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
     ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
-    LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    
+    JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE,
+    LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
+    STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -317,9 +316,7 @@ pub enum Error {
     },
 
     #[snafu(display("failed to build JVM config"))]
-    FailedToCreateJvmConfig {
-        source: crate::config::jvm::Error,
-    },
+    FailedToCreateJvmConfig { source: crate::config::jvm::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -594,7 +591,8 @@ fn build_rolegroup_config_map(
     let mut cm_conf_data = BTreeMap::new();
 
     // retrieve JVM config - TODO: currently not overridable
-    let mut jvm_config = config::jvm::jvm_config(resolved_product_image, merged_config).context(FailedToCreateJvmConfigSnafu)?;
+    let mut jvm_config = config::jvm::jvm_config(resolved_product_image, role, merged_config)
+        .context(FailedToCreateJvmConfigSnafu)?;
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -813,6 +811,10 @@ fn build_rolegroup_catalog_config_map(
                         .collect::<Vec<_>>();
                     Ok((
                         format!("{}.properties", catalog.name),
+                        // false positive https://github.com/rust-lang/rust-clippy/issues/9280
+                        // we need the tuple (&String, &Option<String>) which the extra map is doing.
+                        // Removing the map changes the type to &(String, Option<String>)
+                        #[allow(clippy::map_identity)]
                         product_config::writer::to_java_properties_string(
                             catalog_props.iter().map(|(k, v)| (k, v)),
                         )
