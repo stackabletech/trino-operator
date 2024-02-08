@@ -50,7 +50,7 @@ data:
     can_be_accessed_by_bob() if {
       input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
     }
-{% else if test_scenario['values']['trino'] in [428] %}
+{% elif test_scenario['values']['trino'] in [428] %}
   trino.rego: |
     package trino
 
@@ -61,7 +61,7 @@ data:
     allow if {
         is_admin
     }
-    extended[i] if {
+    extended contains i if {
         some i
         input.action.filterResources[i]
         is_admin
@@ -71,7 +71,7 @@ data:
         input.action.operation in ["ExecuteQuery", "AccessCatalog"]
         is_bob
     }
-    extended[i] if {
+    extended contains i if {
         input.action.operation in ["FilterCatalogs"]
         some i
         input.action.filterResources[i]
@@ -96,7 +96,7 @@ data:
     allow if {
         is_admin
     }
-    batch[i] if {
+    batch contains i if {
         some i
         input.action.filterResources[i]
         is_admin
@@ -106,7 +106,7 @@ data:
         input.action.operation in ["ExecuteQuery", "AccessCatalog"]
         is_bob
     }
-    batch[i] if {
+    batch contains i if {
         input.action.operation in ["FilterCatalogs"]
         some i
         input.action.filterResources[i]
