@@ -112,7 +112,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "428"
+            productVersion: "438"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
@@ -201,7 +201,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "428"
+            productVersion: "438"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:

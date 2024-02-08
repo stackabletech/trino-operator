@@ -591,9 +591,9 @@ mod tests {
 
         // we expect one user password db mount
         assert_eq!(coordinator_main_mounts.len(), 1);
-        assert_eq!(coordinator_main_mounts.get(0).unwrap().name, "users");
+        assert_eq!(coordinator_main_mounts.first().unwrap().name, "users");
         assert_eq!(
-            coordinator_main_mounts.get(0).unwrap().mount_path,
+            coordinator_main_mounts.first().unwrap().mount_path,
             "/stackable/users"
         );
     }
