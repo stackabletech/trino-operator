@@ -26,63 +26,98 @@ data:
   trino.rego: |
     package trino
 
-    import future.keywords.in
+    import rego.v1
 
     default allow = false
 
-    allow {
+    allow if {
       is_admin
     }
 
-    allow {
+    allow if {
       is_bob
       can_be_accessed_by_bob
     }
 
-    is_admin() {
+    is_admin() if {
       input.context.identity.user == "admin"
     }
 
-    is_bob() {
+    is_bob() if {
       input.context.identity.user == "bob"
     }
 
-    can_be_accessed_by_bob() {
+    can_be_accessed_by_bob() if {
       input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
     }
-{% else %}
+{% else if test_scenario['values']['trino'] in [428] %}
   trino.rego: |
     package trino
 
-    import future.keywords.in
+    import rego.v1
 
     default allow = false
 
-    allow {
+    allow if {
         is_admin
     }
-    extended[i] {
+    extended[i] if {
         some i
         input.action.filterResources[i]
         is_admin
     }
 
-    allow {
+    allow if {
         input.action.operation in ["ExecuteQuery", "AccessCatalog"]
         is_bob
     }
-    extended[i] {
+    extended[i] if {
         input.action.operation in ["FilterCatalogs"]
         some i
         input.action.filterResources[i]
         is_bob
     }
 
-    is_admin() {
+    is_admin() if {
       input.context.identity.user == "admin"
     }
 
-    is_bob() {
+    is_bob() if {
+      input.context.identity.user == "bob"
+    }
+{% else  %}
+  trino.rego: |
+    package trino
+
+    import rego.v1
+
+    default allow = false
+
+    allow if {
+        is_admin
+    }
+    batch[i] if {
+        some i
+        input.action.filterResources[i]
+        is_admin
+    }
+
+    allow if {
+        input.action.operation in ["ExecuteQuery", "AccessCatalog"]
+        is_bob
+    }
+    batch[i] if {
+        input.action.operation in ["FilterCatalogs"]
+        some i
+        input.action.filterResources[i]
+        is_bob
+    }
+
+    is_admin() if {
+      input.context.identity.user == "admin"
+    }
+
+    is_bob() if {
       input.context.identity.user == "bob"
     }
 {% endif %}
