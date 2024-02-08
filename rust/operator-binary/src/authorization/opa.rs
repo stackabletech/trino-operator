@@ -73,7 +73,8 @@ impl TrinoOpaConfig {
                 .full_document_url_from_config_map(
                     client,
                     trino,
-                    Some("extended"),
+                    // Sticking to example https://trino.io/docs/current/security/opa-access-control.html
+                    Some("batch"),
                     OpaApiVersion::V1,
                 )
                 .await?;

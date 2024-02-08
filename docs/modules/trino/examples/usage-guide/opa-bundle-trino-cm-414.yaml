@@ -13,10 +13,10 @@ data:
 
     default allow = false
 
-    allow {
+    allow if {
       is_admin
     }
 
-    is_admin() {
+    is_admin() if {
       input.context.identity.user == "admin"
     }
