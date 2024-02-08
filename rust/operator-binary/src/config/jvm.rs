@@ -18,8 +18,10 @@ pub enum Error {
         source: stackable_operator::error::Error,
         unit: String,
     },
+
     #[snafu(display("invalid memory resource configuration - missing default or value in crd?"))]
     MissingMemoryResourceConfig,
+
     #[snafu(display("could not convert / scale memory resource config to [{unit}]"))]
     FailedToConvertMemoryResourceConfig {
         source: stackable_operator::error::Error,
