@@ -60,7 +60,8 @@ pub fn jvm_config(
     // Basically copied from https://trino.io/docs/438/installation/deployment.html and merged
     // with https://trino.io/docs/428/installation/deployment.html (-XX:-G1UsePreventiveGC)
     Ok(formatdoc!(
-        "-server
+        "
+        -server
         -Xms{heap}
         -Xmx{heap}
         -XX:InitialRAMPercentage=80
@@ -76,10 +77,8 @@ pub fn jvm_config(
         -Djdk.attach.allowAttachSelf=true
         -Djdk.nio.maxCachedBufferSize=2000000
         -Dfile.encoding=UTF-8
-        # Disable Preventive GC for performance reasons (JDK-8293861)
         -XX:+UnlockDiagnosticVMOptions
-        -XX:-G1UsePreventiveGC              
-        # Reduce starvation of threads by GClocker, recommend to set about the number of cpu cores (JDK-8192647)
+        -XX:-G1UsePreventiveGC
         -XX:GCLockerRetryAllocationCount=32
         -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
         -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
