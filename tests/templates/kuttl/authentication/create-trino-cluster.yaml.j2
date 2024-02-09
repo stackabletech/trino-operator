@@ -25,8 +25,8 @@ spec:
 {% endif %}
     authentication:
       - authenticationClass: oidc-$NAMESPACE
-        secret:
-          oidc: oidc-secret
+        oidc:
+          clientCredentialsSecret: oidc-secret
       - authenticationClass: password-$NAMESPACE
       - authenticationClass: password-other-$NAMESPACE
       - authenticationClass: ldap-$NAMESPACE

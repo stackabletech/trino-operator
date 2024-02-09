@@ -10,4 +10,4 @@ commands:
   - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-active-workers.py -u integrationtest -p integrationtest -n $NAMESPACE -w 1
   - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-active-workers.py -u integrationtest-other -p integrationtest-other -n $NAMESPACE -w 1
   # oidc/oauth2
-  - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/oauth-login.py https://trino-coordinator:8443/ui/
+  - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-oauth-login.py https://trino-coordinator:8443/ui/
