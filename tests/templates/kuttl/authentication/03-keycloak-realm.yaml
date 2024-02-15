@@ -33,10 +33,10 @@ data:
       },
       "clients": [
         {
-          "clientId": "superset",
+          "clientId": "trino",
           "enabled": true,
           "clientAuthenticatorType": "client-secret",
-          "secret": "superset-client-secret",
+          "secret": "trino-client-secret",
           "redirectUris": [
             "*"
           ],

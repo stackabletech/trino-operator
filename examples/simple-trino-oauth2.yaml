@@ -28,10 +28,10 @@
 #   },
 #   "clients": [
 #     {
-#       "clientId": "superset",
+#       "clientId": "trino",
 #       "enabled": true,
 #       "clientAuthenticatorType": "client-secret",
-#       "secret": "superset-client-secret",
+#       "secret": "trino-client-secret",
 #       "redirectUris": [
 #         "*"
 #       ],
@@ -63,8 +63,8 @@ metadata:
   name: simple-trino-oidc-secret
 type: kubernetes.io/opaque
 stringData:
-  clientId: superset
-  clientSecret: superset-client-secret
+  clientId: trino
+  clientSecret: trino-client-secret
 ---
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
