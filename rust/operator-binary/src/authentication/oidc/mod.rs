@@ -4,9 +4,7 @@
 use crate::authentication::TrinoAuthenticationConfig;
 use crate::command;
 use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::authentication::oidc::{
-    self, CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY,
-};
+use stackable_operator::commons::authentication::oidc;
 use stackable_trino_crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR};
 
 // Trino properties
@@ -42,12 +40,6 @@ pub enum Error {
     FailedToCreateIssuerEndpointUrl {
         source: stackable_operator::commons::authentication::oidc::Error,
     },
-
-    #[snafu(display(
-        "The OAUTH2 / OIDC AuthenticationClass {auth_class_name} requires to have a secret reference present containing \
-         '{CLIENT_ID_SECRET_KEY}' and '{CLIENT_SECRET_SECRET_KEY}' fields."
-    ))]
-    MissingOauth2CredentialSecret { auth_class_name: String },
 
     #[snafu(display("Trino does not support unverified TLS connections to OIDC"))]
     UnverifiedOidcTlsConnectionNotSupported,
@@ -218,6 +210,8 @@ impl TrinoOidcAuthentication {
 
 #[cfg(test)]
 mod tests {
+    use std::mem;
+
     use super::*;
     use stackable_trino_crd::Container;
 
@@ -238,7 +232,8 @@ mod tests {
             hostname: keycloak
             port: {IDP_PORT}
             rootPath: {IDP_ROOT_PATH}
-            scopes: ["{IDP_SCOPE_1}", "{IDP_SCOPE_2}"]
+            scopes:
+              - {IDP_SCOPE_1}
             principalClaim: preferred_username
         "#
         );
@@ -250,7 +245,7 @@ mod tests {
             auth_class_name.to_string(),
             oidc_auth_provider,
             credential_secret,
-            Vec::new(),
+            vec![IDP_SCOPE_2.into()],
         )
     }
 
@@ -261,7 +256,15 @@ mod tests {
             setup_test_authenticator(AUTH_CLASS_NAME_2, AUTH_CLASS_CREDENTIAL_SECRET.to_string()),
         ]);
 
-        assert!(oidc_authentication.oauth2_authentication_config().is_err())
+        let error = oidc_authentication
+            .oauth2_authentication_config()
+            .expect_err("Specifying multiple OAuth 2 authentication classes should throw an error");
+        assert_eq!(
+            mem::discriminant(&Error::MultipleOauth2AuthenticationClasses {
+                authentication_class_names: Default::default()
+            }),
+            mem::discriminant(&error)
+        );
     }
 
     #[test]
@@ -291,15 +294,6 @@ mod tests {
                 .get(HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES)
         );
 
-        assert_eq!(
-            Some(&"oauth2".to_string()),
-            trino_oidc_auth
-                .config_properties
-                .get(&TrinoRole::Coordinator)
-                .unwrap()
-                .get(WEB_UI_AUTHENTICATION_TYPE)
-        );
-
         // we expect 2 env variables for client id and client secret
         assert_eq!(
             2,
@@ -310,6 +304,24 @@ mod tests {
                 .get(&Container::Trino)
                 .unwrap()
                 .len()
+        );
+
+        assert_eq!(
+            Some(&"preferred_username".to_string()),
+            trino_oidc_auth
+                .config_properties
+                .get(&TrinoRole::Coordinator)
+                .unwrap()
+                .get(HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD)
+        );
+
+        assert_eq!(
+            Some(&"oauth2".to_string()),
+            trino_oidc_auth
+                .config_properties
+                .get(&TrinoRole::Coordinator)
+                .unwrap()
+                .get(WEB_UI_AUTHENTICATION_TYPE)
         );
     }
 }

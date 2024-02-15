@@ -15,7 +15,7 @@ pub enum Error {
     },
 
     #[snafu(display("Invalid OIDC configuration"))]
-    OidcConfiguration {
+    InvalidOidcConfiguration {
         source: stackable_operator::error::Error,
     },
 }
@@ -47,7 +47,7 @@ pub async fn resolve_authentication_classes(
                 AuthenticationClassProvider::Oidc(_) => Some(
                     client_authentication_detail
                         .oidc_or_error(&auth_class_name)
-                        .context(OidcConfigurationSnafu)?
+                        .context(InvalidOidcConfigurationSnafu)?
                         .clone(),
                 ),
                 _ => None,

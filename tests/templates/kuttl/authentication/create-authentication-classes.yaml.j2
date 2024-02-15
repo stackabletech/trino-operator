@@ -6,11 +6,17 @@ metadata:
 spec:
   provider:
     oidc:
-      hostname: keycloak
-      port: 8080
+      hostname: keycloak.$NAMESPACE.svc.cluster.local
+      port: 8443
       rootPath: /realms/stackable
-      scopes: ["openid"]
+      scopes:
+        - openid
       principalClaim: preferred_username
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: tls
 ---
 apiVersion: v1
 kind: Secret
@@ -19,8 +25,8 @@ metadata:
   namespace: $NAMESPACE
 type: kubernetes.io/opaque
 stringData:
-  clientId: stackable
-  clientSecret: STACKABLE_CLIENT_SECRET
+  clientId: superset
+  clientSecret: superset-client-secret
 ---
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass

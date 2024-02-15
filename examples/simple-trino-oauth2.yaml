@@ -1,3 +1,48 @@
+# Keycloak configuration:
+#
+# {
+#   "realm": "stackable",
+#   "enabled": true,
+#   "users": [
+#     {
+#       "username": "test",
+#       "enabled": true,
+#       "credentials": [
+#         {
+#           "type": "password",
+#           "value": "test"
+#         }
+#       ],
+#       "realmRoles": [
+#         "user"
+#       ]
+#     }
+#   ],
+#   "roles": {
+#     "realm": [
+#       {
+#         "name": "user",
+#         "description": "User privileges"
+#       }
+#     ]
+#   },
+#   "clients": [
+#     {
+#       "clientId": "superset",
+#       "enabled": true,
+#       "clientAuthenticatorType": "client-secret",
+#       "secret": "superset-client-secret",
+#       "redirectUris": [
+#         "*"
+#       ],
+#       "webOrigins": [
+#         "*"
+#       ],
+#       "standardFlowEnabled": true,
+#       "protocol": "openid-connect",
+#     }
+#   ]
+# }
 ---
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
@@ -8,8 +53,9 @@ spec:
     oidc:
       hostname: keycloak
       port: 8080
-      rootPath: /realms/master
+      rootPath: /realms/stackable
       scopes: ["openid"]
+      principalClaim: preferred_username
 ---
 apiVersion: v1
 kind: Secret
@@ -17,8 +63,8 @@ metadata:
   name: simple-trino-oidc-secret
 type: kubernetes.io/opaque
 stringData:
-  clientId: trino
-  clientSecret: trinotrino
+  clientId: superset
+  clientSecret: superset-client-secret
 ---
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
@@ -49,8 +95,8 @@ spec:
   clusterConfig:
     authentication:
       - authenticationClass: simple-trino-oidc
-        secret:
-          oidc: simple-trino-oidc-secret
+        oidc:
+          clientCredentialsSecret: simple-trino-oidc-secret
       - authenticationClass: simple-trino-users
     catalogLabelSelector: {}
   coordinators:

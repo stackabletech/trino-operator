@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: keycloak-realm
+  name: keycloak-realms
 data:
   keycloak-realm.json: |-
     {
@@ -10,21 +10,8 @@ data:
       "enabled": true,
       "users": [
         {
-          "username": "admin",
           "enabled": true,
-          "credentials": [
-            {
-              "type": "password",
-              "value": "admin"
-            }
-          ],
-          "realmRoles": [
-            "admin"
-          ]
-        },
-        {
           "username": "test",
-          "enabled": true,
           "credentials": [
             {
               "type": "password",
@@ -39,10 +26,6 @@ data:
       "roles": {
         "realm": [
           {
-            "name": "admin",
-            "description": "Admin privileges"
-          },
-          {
             "name": "user",
             "description": "User privileges"
           }
@@ -50,10 +33,10 @@ data:
       },
       "clients": [
         {
-          "clientId": "stackable",
+          "clientId": "superset",
           "enabled": true,
           "clientAuthenticatorType": "client-secret",
-          "secret": "STACKABLE_CLIENT_SECRET",
+          "secret": "superset-client-secret",
           "redirectUris": [
             "*"
           ],
@@ -61,9 +44,7 @@ data:
             "*"
           ],
           "standardFlowEnabled": true,
-          "protocol": "openid-connect",
-          "directAccessGrantsEnabled": true,
-          "serviceAccountsEnabled": true
+          "protocol": "openid-connect"
         }
       ]
     }

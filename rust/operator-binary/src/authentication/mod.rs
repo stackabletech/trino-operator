@@ -572,11 +572,7 @@ mod tests {
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
-            oidc: Some(ClientAuthenticationOptions {
-                client_credentials_secret_ref: "my-oidc-secret".to_string(),
-                extra_scopes: Vec::new(),
-                product_specific_fields: (),
-            }),
+            oidc: None,
         }
     }
 
@@ -621,11 +617,7 @@ mod tests {
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
-            oidc: Some(ClientAuthenticationOptions {
-                client_credentials_secret_ref: "my-oidc-secret".to_string(),
-                extra_scopes: Vec::new(),
-                product_specific_fields: (),
-            }),
+            oidc: None,
         }
     }
 
@@ -754,14 +746,14 @@ mod tests {
         );
 
         assert_eq!(
-                config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
-                Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
-            );
+            config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
+            Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
+        );
 
         assert_eq!(
-                    config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
-                        Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
-                    );
+            config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
+                Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
+        );
     }
 
     #[test]

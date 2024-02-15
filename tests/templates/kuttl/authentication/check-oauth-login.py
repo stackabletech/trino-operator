@@ -7,62 +7,28 @@ Finally it tests that Keycloak redirects back to the original page.
 """
 import logging
 import requests
-import urllib3
-from html.parser import HTMLParser
 import sys
-
-
-class KCLoginParser(HTMLParser):
-    """ Extract the Keycloak url to perform the user login
-        and be redirected to Druid.
-    """
-
-    kc_action: str = ""
-
-    def __init__(self):
-        HTMLParser.__init__(self)
-
-    def handle_starttag(self, tag, attrs):
-        if "form" == tag:
-            for name, value in attrs:
-                if "action" == name:
-                    logging.debug(f"found redirect action {value}")
-                    self.kc_action = value
+from bs4 import BeautifulSoup
 
 
 def test_login_flow(login_url):
     session = requests.Session()
 
-    result = session.get(
-        login_url,
-        verify=False,
-        allow_redirects=True,
-    )
+    result = session.get(login_url)
 
     result.raise_for_status()
 
-    kcLoginParser = KCLoginParser()
-    kcLoginParser.feed(result.text)
-
-    if not kcLoginParser.kc_action:
-        raise ValueError("Failed to extract Keycloak action URL")
-
-    result = session.post(kcLoginParser.kc_action,
-                          data={
-                              "username": "test",
-                              "password": "test",
-                          },
-                          verify=False,
-                          allow_redirects=True,
-                          )
+    html = BeautifulSoup(result.text, 'html.parser')
+    authenticate_url = html.form['action']
+    result = session.post(authenticate_url, data={
+        'username': "test",
+        'password': "test"
+    })
 
     result.raise_for_status()
 
-    location = result.url
-    code = result.status_code
-    if not (code == 200 and location == login_url):
-        raise ValueError(
-            f"Expected to land on the Druid console but ended at [{location}]")
+    assert result.url == login_url, \
+        f"Redirection to the Trino UI expected"
 
 
 def main():
