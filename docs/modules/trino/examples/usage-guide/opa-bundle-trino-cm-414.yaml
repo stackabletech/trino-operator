@@ -9,14 +9,14 @@ data:
   trino.rego: |
     package trino
 
-    import future.keywords.in
+    import rego.v1
 
     default allow = false
 
-    allow {
+    allow if {
       is_admin
     }
 
-    is_admin() {
+    is_admin() if {
       input.context.identity.user == "admin"
     }

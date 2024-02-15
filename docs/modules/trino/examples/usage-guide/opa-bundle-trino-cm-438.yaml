@@ -18,13 +18,13 @@ data:
       is_admin
     }
     # Allow batched access
-    extended contains i if {
+    batch contains i if {
       some i
       input.action.filterResources[i]
       is_admin
     }
     # Corner case: filtering columns is done with a single table item, and many columns inside
-    extended contains i if {
+    batch contains i if {
       some i
       input.action.operation == "FilterColumns"
       count(input.action.filterResources) == 1
