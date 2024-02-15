@@ -172,7 +172,6 @@ impl TrinoOidcAuthentication {
 
         if authenticator.oidc.tls.uses_tls() {
             if !authenticator.oidc.tls.uses_tls_verification() {
-                // TODO: this still true?
                 // Use TLS but don't verify OIDC server ca => not supported
                 return Err(Error::UnverifiedOidcTlsConnectionNotSupported);
             }
