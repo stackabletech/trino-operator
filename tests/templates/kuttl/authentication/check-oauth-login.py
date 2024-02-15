@@ -8,6 +8,7 @@ Finally it tests that Keycloak redirects back to the original page.
 import logging
 import requests
 import sys
+import urllib3
 from bs4 import BeautifulSoup
 
 
@@ -28,7 +29,7 @@ def test_login_flow(login_url):
     result.raise_for_status()
 
     assert result.url == login_url, \
-        f"Redirection to the Trino UI expected"
+        "Redirection to the Trino UI expected"
 
 
 def main():
