@@ -1,4 +1,4 @@
-// As of 2024-02-07 we support multiple Trino versions. Some using Java 17 and the latest (438) uses Java 21.
+// As of 2024-02-07 we support multiple Trino versions. Some using Java 17 and the latest (439) uses Java 21.
 // This requires a different JVM config
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
@@ -29,7 +29,7 @@ pub enum Error {
     },
 }
 
-// Currently works for all supported versions (414, 428, 438 as of 2024-02-08) but maybe be changed
+// Currently works for all supported versions (414, 428, 439 as of 2024-02-08) but maybe be changed
 // in the future depending on the role and version.
 pub fn jvm_config(
     _resolved_product_image: &ResolvedProductImage,
@@ -57,7 +57,7 @@ pub fn jvm_config(
         },
     )?;
 
-    // Basically copied from https://trino.io/docs/438/installation/deployment.html and merged
+    // Basically copied from https://trino.io/docs/439/installation/deployment.html and merged
     // with https://trino.io/docs/428/installation/deployment.html (-XX:-G1UsePreventiveGC)
     Ok(formatdoc!(
         "
