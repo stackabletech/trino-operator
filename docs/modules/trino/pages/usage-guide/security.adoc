@@ -91,11 +91,11 @@ include::example$usage-guide/opa-bundle-trino-cm-414.yaml[]
 include::example$usage-guide/opa-bundle-trino-cm-428.yaml[]
 ----
 
-=== Rego for Trino version 438
+=== Rego for Trino version 439
 
 [source,yaml]
 ----
-include::example$usage-guide/opa-bundle-trino-cm-438.yaml[]
+include::example$usage-guide/opa-bundle-trino-cm-439.yaml[]
 ----
 
 Reference the package in the Trino cluster:

@@ -10,7 +10,7 @@ The coordinator process will receive a `SIGTERM` signal when Kubernetes wants to
 After the graceful shutdown timeout runs out, and the process still didn't exit, Kubernetes will issue a `SIGKILL` signal.
 
 When a coordinator gets restarted, all currently running queries will fail and cannot be recovered after the restart process is finished.
-As of Trino version `438` this can not be prevented (e.g. by using multiple coordinators).
+As of Trino version `439` this can not be prevented (e.g. by using multiple coordinators).
 
 == Workers
 
