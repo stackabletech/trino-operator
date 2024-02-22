@@ -1,6 +1,5 @@
 ---
 apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 300
+kind: TestStep
 commands:
   - script: kubectl cp -n $NAMESPACE ./check-opa.py trino-test-opa-0:/tmp || true
