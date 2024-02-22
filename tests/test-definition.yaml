@@ -89,6 +89,10 @@ tests:
   - name: cluster-operation
     dimensions:
       - trino-latest
+  - name: opa-authorization
+    dimensions:
+      - trino-latest
+      - opa      
 suites:
   - name: nightly
     # Run with the latest product versions and tls true and false to cover different tls code paths.

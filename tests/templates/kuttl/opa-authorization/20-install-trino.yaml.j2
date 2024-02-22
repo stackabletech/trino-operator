@@ -5,7 +5,7 @@ metadata:
   name: trino
 spec:
   image:
-    productVersion: "{{ test_scenario['values']['trino'] }}"
+    productVersion: "{{ test_scenario['values']['trino-latest'] }}"
     pullPolicy: IfNotPresent
   clusterConfig:
     catalogLabelSelector:
