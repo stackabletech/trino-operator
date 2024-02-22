@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stackable.tech/request.trino.opa.schema.json",
+  "title": "Trino OPA request",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "context": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "identity": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "user": {
+              "description": "",
+              "type": "string"
+            },
+            "groups": {
+              "description": "",
+              "type": "array",
+              "items": {
+                "description": "",
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false,
+          "required": ["user", "groups"]
+        },
+        "softwareStack": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "trinoVersion": {
+              "description": "",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["trinoVersion"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["identity", "softwareStack"]
+    },
+    "action": {
+      "description": "",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SelectFromColumns"
+        },
+        {
+          "$ref": "#/$defs/RenameTable"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["context", "action"],
+
+  "$defs": {
+    "SelectFromColumns": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SelectFromColumns"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "columns": {
+                  "description": "",
+                  "type": "array",
+                  "items": {
+                    "description": "",
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "RenameTable": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "RenameTable"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        },
+        "targetResource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    }
+  }
+}

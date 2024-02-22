@@ -1,41 +1,20 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: simple-trino-opa-bundle
-  labels:
-    opa.stackable.tech/bundle: "trino"
-data:
-  trino.rego: |
-    package trino
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      # Trino Rego rules provided by the Stackable Data Platform
+      kubectl create configmap trino-opa-rules \
+        --namespace=$NAMESPACE \
+        --from-file=rego/trino.rego
+      kubectl label configmaps trino-opa-rules \
+        opa.stackable.tech/bundle=trino \
+        --namespace=$NAMESPACE
 
-    import rego.v1
-
-    default allow = false
-
-    allow if {
-        is_admin
-    }
-    batch contains i if {
-        some i
-        input.action.filterResources[i]
-        is_admin
-    }
-
-    allow if {
-        input.action.operation in ["ExecuteQuery", "AccessCatalog"]
-        is_bob
-    }
-    batch contains i if {
-        input.action.operation in ["FilterCatalogs"]
-        some i
-        input.action.filterResources[i]
-        is_bob
-    }
-
-    is_admin() if {
-      input.context.identity.user == "admin"
-    }
-
-    is_bob() if {
-      input.context.identity.user == "bob"
-    }
+      # Trino policies provided by the customer
+      kubectl create configmap trino-opa-policies \
+        --namespace=$NAMESPACE \
+        --from-file=rego/policies.rego
+      kubectl label configmaps trino-opa-policies \
+        opa.stackable.tech/bundle=trino \
+        --namespace=$NAMESPACE
