@@ -17,6 +17,27 @@ test_execute_query if {
 	}
 }
 
+test_filter_catalogs if {
+	trino.batch == {0, 1, 2, 3} with input as {
+		"action": {
+			"filterResources": [
+				{"catalog": {"name": "tpcds"}},
+				{"catalog": {"name": "system"}},
+				{"catalog": {"name": "lakehouse"}},
+				{"catalog": {"name": "tpch"}},
+			],
+			"operation": "FilterCatalogs",
+		},
+		"context": {
+			"identity": {
+				"groups": [],
+				"user": "admin",
+			},
+			"softwareStack": {"trinoVersion": "439"},
+		},
+	}
+}
+
 test_select_from_columns if {
 	trino.allow with input as {
 		"action": {

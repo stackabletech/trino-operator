@@ -34,6 +34,15 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation == "FilterCatalogs"
+	permissions := {{
+		"resource": "catalog",
+		"catalogName": action.resource.catalog.name,
+		"allow": "read-only",
+	}}
+}
+
+required_permissions := permissions if {
 	operation == "SelectFromColumns"
 	permissions := {
 		{
@@ -229,6 +238,9 @@ allow if {
 
 # TODO Add batch support
 
+# METADATA
+# description: Comparision of required and actual permissions
+# entrypoint: true
 batch contains index if {
 	some index, resource in input.action.filterResources
 	allow with input.action.resource as resource
