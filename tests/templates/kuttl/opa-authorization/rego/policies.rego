@@ -5,6 +5,10 @@ import rego.v1
 policies := {
 	"catalogs": [
 		{
+			"user": "admin",
+			"allow": "all",
+		},
+		{
 			"user": "banned-user",
 			"allow": "none",
 		},
@@ -24,6 +28,10 @@ policies := {
 	],
 	"schemas": [
 		{
+			"user": "admin",
+			"owner": true,
+		},
+		{
 			"group": "some-group",
 			"catalog": "example_.*",
 			"schema": "example_.*",
@@ -35,6 +43,17 @@ policies := {
 		},
 	],
 	"tables": [
+		{
+			"user": "admin",
+			"privileges": [
+				"SELECT",
+				"INSERT",
+				"DELETE",
+				"UPDATE",
+				"OWNERSHIP",
+				"GRANT_SELECT",
+			],
+		},
 		{
 			"group": "some-group",
 			"table": "example_.*",

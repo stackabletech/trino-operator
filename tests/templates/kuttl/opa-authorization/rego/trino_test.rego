@@ -4,8 +4,30 @@ import data.trino
 import data.trino_policies
 import rego.v1
 
+test_select_from_columns_admin if {
+	trino.allow
+		with input as {
+			"context": {
+				"identity": {
+					"user": "admin",
+					"groups": [],
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+			"action": {
+				"operation": "SelectFromColumns",
+				"resource": {"table": {
+					"catalogName": "system",
+					"schemaName": "information_schema",
+					"tableName": "schemata",
+					"columns": ["schema_name"],
+				}},
+			},
+		}
+}
+
 test_select_from_columns if {
-	trino.allow with data.policies as trino_policies.policies
+	trino.allow
 		with input as {
 			"context": {
 				"identity": {
@@ -31,7 +53,7 @@ test_select_from_columns if {
 }
 
 test_rename_table if {
-	trino.allow with data.policies as trino_policies.policies
+	trino.allow
 		with input as {
 			"context": {
 				"identity": {

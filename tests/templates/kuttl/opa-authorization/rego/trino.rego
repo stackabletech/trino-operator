@@ -21,6 +21,10 @@ operation := action.operation
 
 # Required permissions
 
+# TODO Do not default required_permissions to none when all operations
+# are implemented
+default required_permissions := {}
+
 required_permissions := permissions if {
 	operation == "SelectFromColumns"
 	permissions := {
@@ -91,10 +95,12 @@ required_table_permissions contains permission if {
 
 # Filter policies so that only rules matching the identity are contained
 policies_matching_identity[resource] := matching_rules if {
-	some resource, rules in data.policies
+	some resource, rules in data.trino_policies.policies
 	matching_rules := [rule |
 		some rule in rules
-		some group in identity.groups
+
+		# Add an empty dummy group to iterate at least once
+		some group in array.concat(identity.groups, [""])
 
 		user_pattern := object.get(rule, "user", ".*")
 		group_pattern := object.get(rule, "group", ".*")
@@ -173,12 +179,10 @@ table_privileges(catalog_name, schema_name, table_name, columns) := privileges i
 	privileges := rules[0].privileges
 }
 
-# TODO Disallow by default when the required rules are implemented
-
 # METADATA
 # description: Comparision of required and actual permissions
 # entrypoint: true
-default allow := true
+default allow := false
 
 allow if {
 	every required_catalog_permission in required_catalog_permissions {
