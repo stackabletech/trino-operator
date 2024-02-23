@@ -59,6 +59,9 @@
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
+          "$ref": "#/$defs/FilterSchemas"
+        },
+        {
           "$ref": "#/$defs/RenameTable"
         },
         {
@@ -144,6 +147,42 @@
           },
           "additionalProperties": false,
           "required": ["catalog"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "FilterSchemas": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "FilterSchemas"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "schema": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
         }
       },
       "additionalProperties": false,

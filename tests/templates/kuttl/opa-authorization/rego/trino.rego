@@ -22,10 +22,6 @@ operation := action.operation
 
 # Required permissions
 
-# TODO Do not default required_permissions to none when all operations
-# are implemented
-default required_permissions := {}
-
 required_permissions := permissions if {
 	operation == "AccessCatalog"
 	permissions := {{
@@ -48,6 +44,19 @@ required_permissions := permissions if {
 	permissions := {{
 		"resource": "catalog",
 		"catalogName": action.resource.catalog.name,
+		"allow": "read-only",
+	}}
+}
+
+required_permissions := permissions if {
+	operation == "FilterSchemas"
+
+	# SHOW SCHEMAS requires read-only access on the catalog. Ownership
+	# of the schema is not required and therefore the schemaName is not
+	# checked.
+	permissions := {{
+		"resource": "catalog",
+		"catalogName": action.resource.schema.catalogName,
 		"allow": "read-only",
 	}}
 }
@@ -231,6 +240,10 @@ table_privileges(catalog_name, schema_name, table_name, columns) := privileges i
 default allow := false
 
 allow if {
+	# Fail if the required permissions for the given operation are not
+	# implemented yet
+	required_permissions
+
 	every required_catalog_permission in required_catalog_permissions {
 		access := catalog_access(required_catalog_permission.catalogName)
 		required_catalog_permission.allow in access

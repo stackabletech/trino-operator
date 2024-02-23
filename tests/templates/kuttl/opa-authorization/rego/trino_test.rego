@@ -54,6 +54,39 @@ test_filter_catalogs if {
 	}
 }
 
+test_filter_schemas if {
+	trino.batch == {0, 1, 2, 3} with input as {
+		"action": {
+			"filterResources": [
+				{"schema": {
+					"catalogName": "system",
+					"schemaName": "information_schema",
+				}},
+				{"schema": {
+					"catalogName": "system",
+					"schemaName": "runtime",
+				}},
+				{"schema": {
+					"catalogName": "system",
+					"schemaName": "metadata",
+				}},
+				{"schema": {
+					"catalogName": "system",
+					"schemaName": "jdbc",
+				}},
+			],
+			"operation": "FilterSchemas",
+		},
+		"context": {
+			"identity": {
+				"groups": [],
+				"user": "admin",
+			},
+			"softwareStack": {"trinoVersion": "439"},
+		},
+	}
+}
+
 test_select_from_columns if {
 	trino.allow with input as {
 		"action": {
