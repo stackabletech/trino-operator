@@ -22,6 +22,61 @@ operation := action.operation
 
 # Required permissions
 
+# TODO Implement the following operations:
+# * AddColumn
+# * AlterColumn
+# * CreateCatalog
+# * CreateFunction
+# * CreateMaterializedView
+# * CreateSchema
+# * CreateTable
+# * CreateView
+# * CreateViewWithExecuteFunction
+# * CreateViewWithSelectFromColumns
+# * DeleteFromTable
+# * DropCatalog
+# * DropColumn
+# * DropFunction
+# * DropMaterializedView
+# * DropSchema
+# * DropTable
+# * DropView
+# * ExecuteFunction
+# * ExecuteProcedure
+# * ExecuteTableProcedure
+# * FilterColumns
+# * FilterFunctions
+# * FilterTables
+# * FilterViewQueryOwnedBy
+# * InsertIntoTable
+# * KillQueryOwnedBy
+# * ReadSystemInformation
+# * RefreshMaterializedView
+# * RenameColumn
+# * RenameMaterializedView
+# * RenameSchema
+# * RenameView
+# * SelectFromColumns
+# * SetCatalogSessionProperty
+# * SetColumnComment
+# * SetMaterializedViewProperties
+# * SetSchemaAuthorization
+# * SetSystemSessionProperty
+# * SetTableAuthorization
+# * SetTableComment
+# * SetTableProperties
+# * SetViewAuthorization
+# * SetViewComment
+# * ShowColumns
+# * ShowCreateSchema
+# * ShowCreateTable
+# * ShowFunctions
+# * ShowTables
+# * TruncateTable
+# * UpdateTableColumns
+# * ViewQueryOwnedBy
+# * WriteSystemInformation
+
 required_permissions := permissions if {
 	operation == "AccessCatalog"
 	permissions := {{
@@ -267,8 +322,6 @@ allow if {
 		object.subset(privileges, required_table_permission.privileges)
 	}
 }
-
-# TODO Add batch support
 
 # METADATA
 # description: Comparision of required and actual permissions
