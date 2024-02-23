@@ -26,6 +26,15 @@ operation := action.operation
 default required_permissions := {}
 
 required_permissions := permissions if {
+	operation == "AccessCatalog"
+	permissions := {{
+		"resource": "catalog",
+		"catalogName": action.resource.catalog.name,
+		"allow": "read-only",
+	}}
+}
+
+required_permissions := permissions if {
 	operation == "ExecuteQuery"
 	permissions := {{
 		"resource": "query",
@@ -40,25 +49,6 @@ required_permissions := permissions if {
 		"catalogName": action.resource.catalog.name,
 		"allow": "read-only",
 	}}
-}
-
-required_permissions := permissions if {
-	operation == "SelectFromColumns"
-	permissions := {
-		{
-			"resource": "catalog",
-			"catalogName": action.resource.table.catalogName,
-			"allow": "read-only",
-		},
-		{
-			"resource": "table",
-			"catalogName": action.resource.table.catalogName,
-			"schemaName": action.resource.table.schemaName,
-			"tableName": action.resource.table.tableName,
-			"columns": action.resource.table.columns,
-			"privileges": ["SELECT"],
-		},
-	}
 }
 
 required_permissions := permissions if {
@@ -89,6 +79,25 @@ required_permissions := permissions if {
 			"tableName": action.targetResource.table.tableName,
 			"columns": [],
 			"privileges": ["OWNERSHIP"],
+		},
+	}
+}
+
+required_permissions := permissions if {
+	operation == "SelectFromColumns"
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "read-only",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"columns": action.resource.table.columns,
+			"privileges": ["SELECT"],
 		},
 	}
 }

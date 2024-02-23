@@ -50,6 +50,15 @@
       "description": "",
       "oneOf": [
         {
+          "$ref": "#/$defs/AccessCatalog"
+        },
+        {
+          "$ref": "#/$defs/ExecuteQuery"
+        },
+        {
+          "$ref": "#/$defs/FilterCatalogs"
+        },
+        {
           "$ref": "#/$defs/SelectFromColumns"
         },
         {
@@ -62,48 +71,76 @@
   "required": ["context", "action"],
 
   "$defs": {
-    "SelectFromColumns": {
+    "AccessCatalog": {
       "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "const": "SelectFromColumns"
+          "const": "AccessCatalog"
         },
         "resource": {
           "description": "",
           "type": "object",
           "properties": {
-            "table": {
+            "catalog": {
               "description": "",
               "type": "object",
               "properties": {
-                "catalogName": {
+                "name": {
                   "description": "",
                   "type": "string"
-                },
-                "schemaName": {
-                  "description": "",
-                  "type": "string"
-                },
-                "tableName": {
-                  "description": "",
-                  "type": "string"
-                },
-                "columns": {
-                  "description": "",
-                  "type": "array",
-                  "items": {
-                    "description": "",
-                    "type": "string"
-                  }
                 }
               },
               "additionalProperties": false,
-              "required": ["catalogName", "schemaName", "tableName"]
+              "required": ["name"]
             }
           },
           "additionalProperties": false,
-          "required": ["table"]
+          "required": ["catalog"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "ExecuteQuery": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "ExecuteQuery"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation"]
+    },
+
+    "FilterCatalogs": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "FilterCatalogs"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "catalog": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["name"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["catalog"]
         }
       },
       "additionalProperties": false,
@@ -164,6 +201,54 @@
                 "tableName": {
                   "description": "",
                   "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "SelectFromColumns": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SelectFromColumns"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "columns": {
+                  "description": "",
+                  "type": "array",
+                  "items": {
+                    "description": "",
+                    "type": "string"
+                  }
                 }
               },
               "additionalProperties": false,
