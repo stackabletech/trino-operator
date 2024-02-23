@@ -5,12 +5,16 @@ import rego.v1
 policies := {
 	"catalogs": [
 		{
-			"user": "admin",
-			"allow": "all",
-		},
-		{
 			"user": "banned-user",
 			"allow": "none",
+		},
+		{
+			"group": "banned-group",
+			"allow": "none",
+		},
+		{
+			"user": "admin",
+			"allow": "all",
 		},
 		{
 			"catalog": "secret_catalog",
@@ -26,7 +30,29 @@ policies := {
 			"allow": "read-only",
 		},
 	],
+	"queries": [
+		{
+			"user": "banned-user",
+			"allow": [],
+		},
+		{
+			"group": "banned-group",
+			"allow": [],
+		},
+		{
+			"user": "admin",
+			"allow": ["execute", "kill", "view"],
+		},
+	],
 	"schemas": [
+		{
+			"user": "banned-user",
+			"owner": false,
+		},
+		{
+			"group": "banned-group",
+			"owner": false,
+		},
 		{
 			"user": "admin",
 			"owner": true,
@@ -43,6 +69,14 @@ policies := {
 		},
 	],
 	"tables": [
+		{
+			"user": "banned-user",
+			"privileges": [],
+		},
+		{
+			"user": "banned-group",
+			"privileges": [],
+		},
 		{
 			"user": "admin",
 			"privileges": [

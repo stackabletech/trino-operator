@@ -37,6 +37,41 @@
         "required": ["allow"]
       }
     },
+    "queries": {
+      "description": "",
+      "type": "array",
+      "items": {
+        "description": "",
+        "type": "object",
+        "properties": {
+          "user": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "allow": {
+            "description": "",
+            "type": "array",
+            "items": {
+              "description": "",
+              "enum": [
+                "execute",
+                "kill",
+                "view"
+              ]
+            },
+            "default": ["execute", "kill", "view"]
+          }
+        },
+        "additionalProperties": false,
+        "required": ["allow"]
+      }
+    },
     "schemas": {
       "description": "",
       "type": "array",

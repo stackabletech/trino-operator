@@ -26,6 +26,14 @@ operation := action.operation
 default required_permissions := {}
 
 required_permissions := permissions if {
+	operation == "ExecuteQuery"
+	permissions := {{
+		"resource": "query",
+		"allow": ["execute"],
+	}}
+}
+
+required_permissions := permissions if {
 	operation == "SelectFromColumns"
 	permissions := {
 		{
@@ -79,6 +87,11 @@ required_permissions := permissions if {
 required_catalog_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "catalog"
+}
+
+required_query_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "query"
 }
 
 required_schema_permissions contains permission if {
@@ -135,6 +148,11 @@ catalog_access(catalog_name) := access if {
 	access := catalog_access_map[rules[0].allow]
 }
 
+# Query access of the first matching rule
+default query_access := ["execute", "kill", "view"]
+
+query_access := policies_matching_identity.queries[0].allow
+
 # Schema ownership of the first matching rule
 default schema_owner(_, _) := false
 
@@ -188,6 +206,9 @@ allow if {
 	every required_catalog_permission in required_catalog_permissions {
 		access := catalog_access(required_catalog_permission.catalogName)
 		required_catalog_permission.allow in access
+	}
+	every required_query_permission in required_query_permissions {
+		object.subset(query_access, required_query_permission.allow)
 	}
 	every required_schema_permission in required_schema_permissions {
 		schema_owner(
