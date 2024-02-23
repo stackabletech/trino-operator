@@ -20,16 +20,22 @@ test_access_catalog if {
 	}
 }
 
-test_execute_query if {
-	trino.allow with input as {
-		"action": {"operation": "ExecuteQuery"},
-		"context": {
-			"identity": {
-				"groups": [],
-				"user": "admin",
+test_no_resource_action if {
+	every operation in {
+		"ExecuteQuery",
+		"ReadSystemInformation",
+		"WriteSystemInformation",
+	} {
+		trino.allow with input as {
+			"action": {"operation": operation},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
 			},
-			"softwareStack": {"trinoVersion": "439"},
-		},
+		}
 	}
 }
 

@@ -48,9 +48,9 @@ operation := action.operation
 # * FilterFunctions
 # * FilterTables
 # * FilterViewQueryOwnedBy
+# * ImpersonateUser
 # * InsertIntoTable
 # * KillQueryOwnedBy
-# * ReadSystemInformation
 # * RefreshMaterializedView
 # * RenameColumn
 # * RenameMaterializedView
@@ -75,7 +75,6 @@ operation := action.operation
 # * TruncateTable
 # * UpdateTableColumns
 # * ViewQueryOwnedBy
-# * WriteSystemInformation
 
 required_permissions := permissions if {
 	operation == "AccessCatalog"
@@ -113,6 +112,14 @@ required_permissions := permissions if {
 		"resource": "catalog",
 		"catalogName": action.resource.schema.catalogName,
 		"allow": "read-only",
+	}}
+}
+
+required_permissions := permissions if {
+	operation == "ReadSystemInformation"
+	permissions := {{
+		"resource": "system_information",
+		"allow": ["read"],
 	}}
 }
 
@@ -176,6 +183,14 @@ required_permissions := permissions if {
 	}}
 }
 
+required_permissions := permissions if {
+	operation == "WriteSystemInformation"
+	permissions := {{
+		"resource": "system_information",
+		"allow": ["write"],
+	}}
+}
+
 required_catalog_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "catalog"
@@ -194,6 +209,11 @@ required_schema_permissions contains permission if {
 required_table_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "table"
+}
+
+required_system_information_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "system_information"
 }
 
 # Policies
@@ -289,6 +309,11 @@ table_privileges(catalog_name, schema_name, table_name, columns) := privileges i
 	privileges := rules[0].privileges
 }
 
+# System information access of the first matching rule
+default system_information_access := []
+
+system_information_access := policies_matching_identity.system_information[0].allow
+
 # METADATA
 # description: Comparision of required and actual permissions
 # entrypoint: true
@@ -299,27 +324,30 @@ allow if {
 	# implemented yet
 	required_permissions
 
-	every required_catalog_permission in required_catalog_permissions {
-		access := catalog_access(required_catalog_permission.catalogName)
-		required_catalog_permission.allow in access
+	every required_permission in required_catalog_permissions {
+		access := catalog_access(required_permission.catalogName)
+		required_permission.allow in access
 	}
-	every required_query_permission in required_query_permissions {
-		object.subset(query_access, required_query_permission.allow)
+	every required_permission in required_query_permissions {
+		object.subset(query_access, required_permission.allow)
 	}
-	every required_schema_permission in required_schema_permissions {
+	every required_permission in required_schema_permissions {
 		schema_owner(
-			required_schema_permission.catalogName,
-			required_schema_permission.schemaName,
+			required_permission.catalogName,
+			required_permission.schemaName,
 		)
 	}
-	every required_table_permission in required_table_permissions {
+	every required_permission in required_table_permissions {
 		privileges := table_privileges(
-			required_table_permission.catalogName,
-			required_table_permission.schemaName,
-			required_table_permission.tableName,
-			required_table_permission.columns,
+			required_permission.catalogName,
+			required_permission.schemaName,
+			required_permission.tableName,
+			required_permission.columns,
 		)
-		object.subset(privileges, required_table_permission.privileges)
+		object.subset(privileges, required_permission.privileges)
+	}
+	every required_permission in required_system_information_permissions {
+		object.subset(system_information_access, required_permission.allow)
 	}
 }
 

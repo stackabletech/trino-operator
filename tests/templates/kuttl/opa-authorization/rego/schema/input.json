@@ -53,13 +53,13 @@
           "$ref": "#/$defs/AccessCatalog"
         },
         {
-          "$ref": "#/$defs/ExecuteQuery"
-        },
-        {
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
           "$ref": "#/$defs/FilterSchemas"
+        },
+        {
+          "$ref": "#/$defs/NoResourceAction"
         },
         {
           "$ref": "#/$defs/RenameTable"
@@ -109,12 +109,17 @@
       "required": ["operation", "resource"]
     },
 
-    "ExecuteQuery": {
+    "NoResourceAction": {
       "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "const": "ExecuteQuery"
+          "description": "",
+          "enum": [
+            "ExecuteQuery",
+            "ReadSystemInformation",
+            "WriteSystemInformation"
+          ]
         }
       },
       "additionalProperties": false,

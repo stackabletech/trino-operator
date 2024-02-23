@@ -117,4 +117,18 @@ policies := {
 			"privileges": ["OWNERSHIP"],
 		},
 	],
+	"system_information": [
+		{
+			"user": "banned-user",
+			"allow": [],
+		},
+		{
+			"group": "banned-group",
+			"allow": [],
+		},
+		{
+			"user": "admin",
+			"allow": ["read", "write"],
+		},
+	],
 }

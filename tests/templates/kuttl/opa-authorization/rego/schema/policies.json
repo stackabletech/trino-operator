@@ -183,6 +183,40 @@
         "additionalProperties": false,
         "required": ["privileges"]
       }
+    },
+    "system_information": {
+      "description": "",
+      "type": "array",
+      "items": {
+        "description": "",
+        "type": "object",
+        "properties": {
+          "user": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "allow": {
+            "description": "",
+            "type": "array",
+            "items": {
+              "description": "",
+              "enum": [
+                "read",
+                "write"
+              ]
+            },
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "required": ["allow"]
+      }
     }
   },
   "additionalProperties": false
