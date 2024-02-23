@@ -74,3 +74,19 @@ test_select_from_columns if {
 		},
 	}
 }
+
+test_show_schemas if {
+	trino.allow with input as {
+		"action": {
+			"operation": "ShowSchemas",
+			"resource": {"catalog": {"name": "system"}},
+		},
+		"context": {
+			"identity": {
+				"groups": [],
+				"user": "admin",
+			},
+			"softwareStack": {"trinoVersion": "439"},
+		},
+	}
+}

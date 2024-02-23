@@ -12,6 +12,7 @@ import rego.v1
 # But there are differences:
 # * Only `user` and `group` are matched but not `role`.
 # * Filters and masks are not supported.
+# * The visibility is not checked.
 
 identity := input.context.identity
 
@@ -100,6 +101,15 @@ required_permissions := permissions if {
 			"privileges": ["SELECT"],
 		},
 	}
+}
+
+required_permissions := permissions if {
+	operation == "ShowSchemas"
+	permissions := {{
+		"resource": "catalog",
+		"catalogName": action.resource.catalog.name,
+		"allow": "read-only",
+	}}
 }
 
 required_catalog_permissions contains permission if {

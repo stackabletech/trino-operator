@@ -59,10 +59,13 @@
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
+          "$ref": "#/$defs/RenameTable"
+        },
+        {
           "$ref": "#/$defs/SelectFromColumns"
         },
         {
-          "$ref": "#/$defs/RenameTable"
+          "$ref": "#/$defs/ShowSchemas"
         }
       ]
     }
@@ -257,6 +260,38 @@
           },
           "additionalProperties": false,
           "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "ShowSchemas": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "ShowSchemas"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "catalog": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["name"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["catalog"]
         }
       },
       "additionalProperties": false,
