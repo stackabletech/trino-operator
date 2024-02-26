@@ -20,25 +20,6 @@ test_access_catalog if {
 	}
 }
 
-test_no_resource_action if {
-	every operation in {
-		"ExecuteQuery",
-		"ReadSystemInformation",
-		"WriteSystemInformation",
-	} {
-		trino.allow with input as {
-			"action": {"operation": operation},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-	}
-}
-
 test_filter_catalogs if {
 	trino.batch == {0, 1, 2, 3} with input as {
 		"action": {
@@ -93,6 +74,27 @@ test_filter_schemas if {
 	}
 }
 
+no_resource_actions := {
+	"ExecuteQuery",
+	"ReadSystemInformation",
+	"WriteSystemInformation",
+}
+
+test_no_resource_action if {
+	every operation in no_resource_actions {
+		trino.allow with input as {
+			"action": {"operation": operation},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+	}
+}
+
 test_select_from_columns if {
 	trino.allow with input as {
 		"action": {
@@ -127,5 +129,47 @@ test_show_schemas if {
 			},
 			"softwareStack": {"trinoVersion": "439"},
 		},
+	}
+}
+
+table_resource_actions := {
+	"AddColumn",
+	"AlterColumn",
+	"CreateView",
+	"DeleteFromTable",
+	"DropColumn",
+	"DropMaterializedView",
+	"DropTable",
+	"DropView",
+	"InsertIntoTable",
+	"RefreshMaterializedView",
+	"RenameColumn",
+	"SetColumnComment",
+	"SetTableComment",
+	"SetViewComment",
+	"ShowColumns",
+	"ShowCreateTable",
+	"TruncateTable",
+}
+
+test_table_resource_actions if {
+	every operation in table_resource_actions {
+		trino.allow with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"table": {
+					"catalogName": "system",
+					"schemaName": "information_schema",
+					"tableName": "schemata",
+				}},
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
 	}
 }

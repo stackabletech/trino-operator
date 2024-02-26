@@ -23,21 +23,16 @@ operation := action.operation
 # Required permissions
 
 # TODO Implement the following operations:
-# * AddColumn
-# * AlterColumn
 # * CreateCatalog
 # * CreateFunction
 # * CreateMaterializedView
 # * CreateSchema
 # * CreateTable
-# * CreateView
 # * CreateViewWithExecuteFunction
 # * CreateViewWithSelectFromColumns
 # * DeleteFromTable
 # * DropCatalog
-# * DropColumn
 # * DropFunction
-# * DropMaterializedView
 # * DropSchema
 # * DropTable
 # * DropView
@@ -49,30 +44,21 @@ operation := action.operation
 # * FilterTables
 # * FilterViewQueryOwnedBy
 # * ImpersonateUser
-# * InsertIntoTable
 # * KillQueryOwnedBy
-# * RefreshMaterializedView
-# * RenameColumn
 # * RenameMaterializedView
 # * RenameSchema
 # * RenameView
-# * SelectFromColumns
 # * SetCatalogSessionProperty
-# * SetColumnComment
 # * SetMaterializedViewProperties
 # * SetSchemaAuthorization
 # * SetSystemSessionProperty
 # * SetTableAuthorization
-# * SetTableComment
 # * SetTableProperties
 # * SetViewAuthorization
-# * SetViewComment
 # * ShowColumns
 # * ShowCreateSchema
-# * ShowCreateTable
 # * ShowFunctions
 # * ShowTables
-# * TruncateTable
 # * UpdateTableColumns
 # * ViewQueryOwnedBy
 
@@ -86,10 +72,62 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation in {
+		"AddColumn",
+		"AlterColumn",
+		"CreateView",
+		"DropColumn",
+		"DropMaterializedView",
+		"DropTable",
+		"DropView",
+		"RenameColumn",
+		"SetColumnComment",
+		"SetTableComment",
+		"SetViewComment",
+		"ShowCreateTable",
+	}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"allOf": {"OWNERSHIP"}},
+		},
+	}
+}
+
+required_permissions := permissions if {
+	operation in {
+		"DeleteFromTable",
+		"TruncateTable",
+	}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"allOf": {"DELETE"}},
+		},
+	}
+}
+
+required_permissions := permissions if {
 	operation == "ExecuteQuery"
 	permissions := {{
 		"resource": "query",
-		"allow": ["execute"],
+		"allow": {"execute"},
 	}}
 }
 
@@ -116,11 +154,47 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation == "InsertIntoTable"
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"allOf": {"INSERT"}},
+		},
+	}
+}
+
+required_permissions := permissions if {
 	operation == "ReadSystemInformation"
 	permissions := {{
 		"resource": "system_information",
-		"allow": ["read"],
+		"allow": {"read"},
 	}}
+}
+
+required_permissions := permissions if {
+	operation == "RefreshMaterializedView"
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"allOf": {"UPDATE"}},
+		},
+	}
 }
 
 required_permissions := permissions if {
@@ -141,16 +215,14 @@ required_permissions := permissions if {
 			"catalogName": action.resource.table.catalogName,
 			"schemaName": action.resource.table.schemaName,
 			"tableName": action.resource.table.tableName,
-			"columns": [],
-			"privileges": ["OWNERSHIP"],
+			"privileges": {"allOf": {"OWNERSHIP"}},
 		},
 		{
 			"resource": "table",
 			"catalogName": action.targetResource.table.catalogName,
 			"schemaName": action.targetResource.table.schemaName,
 			"tableName": action.targetResource.table.tableName,
-			"columns": [],
-			"privileges": ["OWNERSHIP"],
+			"privileges": {"allOf": {"OWNERSHIP"}},
 		},
 	}
 }
@@ -169,7 +241,32 @@ required_permissions := permissions if {
 			"schemaName": action.resource.table.schemaName,
 			"tableName": action.resource.table.tableName,
 			"columns": action.resource.table.columns,
-			"privileges": ["SELECT"],
+			"privileges": {"allOf": {"SELECT"}},
+		},
+	}
+}
+
+required_permissions := permissions if {
+	operation == "ShowColumns"
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"anyOf": {
+				"SELECT",
+				"INSERT",
+				"DELETE",
+				"UPDATE",
+				"OWNERSHIP",
+				"GRANT_SELECT",
+			}},
 		},
 	}
 }
@@ -187,7 +284,7 @@ required_permissions := permissions if {
 	operation == "WriteSystemInformation"
 	permissions := {{
 		"resource": "system_information",
-		"allow": ["write"],
+		"allow": {"write"},
 	}}
 }
 
@@ -306,7 +403,7 @@ table_privileges(catalog_name, schema_name, table_name, columns) := privileges i
 		restricted_columns = not_allowed_columns(column_constraints)
 		requested_columns & restricted_columns == set()
 	]
-	privileges := rules[0].privileges
+	privileges := {privilege | some privilege in rules[0].privileges}
 }
 
 # System information access of the first matching rule
@@ -342,9 +439,12 @@ allow if {
 			required_permission.catalogName,
 			required_permission.schemaName,
 			required_permission.tableName,
-			required_permission.columns,
+			object.get(required_permission, "columns", {}),
 		)
-		object.subset(privileges, required_permission.privileges)
+		all_of_required := object.get(required_permission.privileges, "allOf", set())
+		any_of_required := object.get(required_permission.privileges, "anyOf", privileges)
+		object.subset(privileges, all_of_required)
+		privileges & any_of_required != set()
 	}
 	every required_permission in required_system_information_permissions {
 		object.subset(system_information_access, required_permission.allow)

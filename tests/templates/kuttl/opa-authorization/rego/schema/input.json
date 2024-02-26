@@ -69,6 +69,9 @@
         },
         {
           "$ref": "#/$defs/ShowSchemas"
+        },
+        {
+          "$ref": "#/$defs/TableResourceActions"
         }
       ]
     }
@@ -107,23 +110,6 @@
       },
       "additionalProperties": false,
       "required": ["operation", "resource"]
-    },
-
-    "NoResourceAction": {
-      "description": "",
-      "type": "object",
-      "properties": {
-        "operation": {
-          "description": "",
-          "enum": [
-            "ExecuteQuery",
-            "ReadSystemInformation",
-            "WriteSystemInformation"
-          ]
-        }
-      },
-      "additionalProperties": false,
-      "required": ["operation"]
     },
 
     "FilterCatalogs": {
@@ -192,6 +178,23 @@
       },
       "additionalProperties": false,
       "required": ["operation", "resource"]
+    },
+
+    "NoResourceAction": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "ExecuteQuery",
+            "ReadSystemInformation",
+            "WriteSystemInformation"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation"]
     },
 
     "RenameTable": {
@@ -336,6 +339,65 @@
           },
           "additionalProperties": false,
           "required": ["catalog"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "TableResourceActions": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "AddColumn",
+            "AlterColumn",
+            "CreateView",
+            "DeleteFromTable",
+            "DropColumn",
+            "DropMaterializedView",
+            "DropTable",
+            "DropView",
+            "InsertIntoTable",
+            "RefreshMaterializedView",
+            "RenameColumn",
+            "SetColumnComment",
+            "SetTableComment",
+            "SetViewComment",
+            "ShowColumns",
+            "ShowCreateTable",
+            "TruncateTable"
+          ]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
         }
       },
       "additionalProperties": false,
