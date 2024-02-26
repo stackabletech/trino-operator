@@ -17,16 +17,8 @@ policies := {
 			"allow": "all",
 		},
 		{
-			"catalog": "secret_catalog",
-			"allow": "none",
-		},
-		{
-			"group": "some-group",
-			"catalog": "example_.*",
-			"allow": "all",
-		},
-		{
-			"group": "some-group",
+			"group": "users",
+			"catalog": "user_.*",
 			"allow": "read-only",
 		},
 	],
@@ -43,6 +35,10 @@ policies := {
 			"user": "admin",
 			"allow": ["execute", "kill", "view"],
 		},
+		{
+			"group": "users",
+			"allow": ["execute", "view"],
+		},
 	],
 	"schemas": [
 		{
@@ -58,14 +54,10 @@ policies := {
 			"owner": true,
 		},
 		{
-			"group": "some-group",
-			"catalog": "example_.*",
-			"schema": "example_.*",
+			"group": "users",
+			"catalog": "user_.*",
+			"schema": "user_.*",
 			"owner": true,
-		},
-		{
-			"schema": "archive",
-			"owner": false,
 		},
 	],
 	"tables": [
@@ -89,20 +81,12 @@ policies := {
 			],
 		},
 		{
-			"group": "some-group",
-			"table": "example_.*",
+			"group": "users",
+			"table": "user_.*",
 			"privileges": ["SELECT", "OWNERSHIP"],
 			"columns": [
 				{
-					"name": "column1",
-					"allow": true,
-				},
-				{
-					"name": "column2",
-					"allow": true,
-				},
-				{
-					"name": "column3",
+					"name": "public_column",
 					"allow": true,
 				},
 				{
@@ -110,11 +94,6 @@ policies := {
 					"allow": false,
 				},
 			],
-		},
-		{
-			"group": "some-group",
-			"table": "new_table_name",
-			"privileges": ["OWNERSHIP"],
 		},
 	],
 	"system_information": [
@@ -129,6 +108,10 @@ policies := {
 		{
 			"user": "admin",
 			"allow": ["read", "write"],
+		},
+		{
+			"group": "users",
+			"allow": ["read"],
 		},
 	],
 }
