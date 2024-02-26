@@ -2,6 +2,35 @@
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
+  name: oidc-$NAMESPACE
+spec:
+  provider:
+    oidc:
+      hostname: keycloak.$NAMESPACE.svc.cluster.local
+      port: 8443
+      rootPath: /realms/stackable
+      scopes:
+        - openid
+      principalClaim: preferred_username
+      tls:
+        verification:
+          server:
+            caCert:
+              secretClass: tls
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oidc-secret
+  namespace: $NAMESPACE
+type: kubernetes.io/opaque
+stringData:
+  clientId: trino
+  clientSecret: trino-client-secret
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
   name: password-$NAMESPACE
 spec:
   provider:

@@ -1,0 +1,109 @@
+# Keycloak configuration:
+#
+# {
+#   "realm": "stackable",
+#   "enabled": true,
+#   "users": [
+#     {
+#       "username": "test",
+#       "enabled": true,
+#       "credentials": [
+#         {
+#           "type": "password",
+#           "value": "test"
+#         }
+#       ],
+#       "realmRoles": [
+#         "user"
+#       ]
+#     }
+#   ],
+#   "roles": {
+#     "realm": [
+#       {
+#         "name": "user",
+#         "description": "User privileges"
+#       }
+#     ]
+#   },
+#   "clients": [
+#     {
+#       "clientId": "trino",
+#       "enabled": true,
+#       "clientAuthenticatorType": "client-secret",
+#       "secret": "trino-client-secret",
+#       "redirectUris": [
+#         "*"
+#       ],
+#       "webOrigins": [
+#         "*"
+#       ],
+#       "standardFlowEnabled": true,
+#       "protocol": "openid-connect",
+#     }
+#   ]
+# }
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: simple-trino-oidc
+spec:
+  provider:
+    oidc:
+      hostname: keycloak
+      port: 8080
+      rootPath: /realms/stackable
+      scopes: ["openid"]
+      principalClaim: preferred_username
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple-trino-oidc-secret
+type: kubernetes.io/opaque
+stringData:
+  clientId: trino
+  clientSecret: trino-client-secret
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: simple-trino-users
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: simple-trino-users-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: simple-trino-users-secret
+type: kubernetes.io/opaque
+stringData:
+  test: test
+  abc: abc
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: simple-trino
+spec:
+  image:
+    productVersion: "428"
+  clusterConfig:
+    authentication:
+      - authenticationClass: simple-trino-oidc
+        oidc:
+          clientCredentialsSecret: simple-trino-oidc-secret
+      - authenticationClass: simple-trino-users
+    catalogLabelSelector: {}
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    roleGroups:
+      default:
+        replicas: 1

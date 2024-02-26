@@ -34,8 +34,27 @@ spec:
                       items:
                         properties:
                           authenticationClass:
-                            description: An [AuthenticationClass](https://docs.stackable.tech/home/nightly/concepts/authentication) to use.
+                            description: A name/key which references an authentication class. To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be achieved by using [`ClientAuthenticationDetails::resolve_class`].
                             type: string
+                          oidc:
+                            description: |-
+                              This field contains authentication provider specific configuration.
+
+                              Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
+                            nullable: true
+                            properties:
+                              clientCredentialsSecret:
+                                description: A reference to the OIDC client credentials secret. The secret contains the client id and secret.
+                                type: string
+                              extraScopes:
+                                default: []
+                                description: An optional list of extra scopes which get merged with the scopes defined in the [`AuthenticationClass`].
+                                items:
+                                  type: string
+                                type: array
+                            required:
+                              - clientCredentialsSecret
+                            type: object
                         required:
                           - authenticationClass
                         type: object
@@ -108,8 +127,8 @@ spec:
                       type: string
                     tls:
                       default:
-                        serverSecretClass: tls
                         internalSecretClass: tls
+                        serverSecretClass: tls
                       description: TLS configuration options for server and internal communication.
                       properties:
                         internalSecretClass:
@@ -132,8 +151,8 @@ spec:
                   type: object
                 clusterOperation:
                   default:
-                    stopped: false
                     reconciliationPaused: false
+                    stopped: false
                   description: '[Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations) properties, allow stopping the product instance as well as pausing reconciliation.'
                   properties:
                     reconciliationPaused:
@@ -159,10 +178,10 @@ spec:
                       properties:
                         affinity:
                           default:
-                            podAffinity: null
-                            podAntiAffinity: null
                             nodeAffinity: null
                             nodeSelector: null
+                            podAffinity: null
+                            podAntiAffinity: null
                           description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                           properties:
                             nodeAffinity:
@@ -635,8 +654,8 @@ spec:
                           type: string
                         logging:
                           default:
-                            enableVectorAgent: null
                             containers: {}
+                            enableVectorAgent: null
                           description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                           properties:
                             containers:
@@ -725,12 +744,12 @@ spec:
                           type: string
                         resources:
                           default:
+                            cpu:
+                              max: null
+                              min: null
                             memory:
                               limit: null
                               runtimeLimits: {}
-                            cpu:
-                              min: null
-                              max: null
                             storage:
                               data:
                                 capacity: null
@@ -738,8 +757,8 @@ spec:
                           properties:
                             cpu:
                               default:
-                                min: null
                                 max: null
+                                min: null
                               properties:
                                 max:
                                   description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
@@ -3663,10 +3682,10 @@ spec:
                             properties:
                               affinity:
                                 default:
-                                  podAffinity: null
-                                  podAntiAffinity: null
                                   nodeAffinity: null
                                   nodeSelector: null
+                                  podAffinity: null
+                                  podAntiAffinity: null
                                 description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                                 properties:
                                   nodeAffinity:
@@ -4139,8 +4158,8 @@ spec:
                                 type: string
                               logging:
                                 default:
-                                  enableVectorAgent: null
                                   containers: {}
+                                  enableVectorAgent: null
                                 description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                                 properties:
                                   containers:
@@ -4229,12 +4248,12 @@ spec:
                                 type: string
                               resources:
                                 default:
+                                  cpu:
+                                    max: null
+                                    min: null
                                   memory:
                                     limit: null
                                     runtimeLimits: {}
-                                  cpu:
-                                    min: null
-                                    max: null
                                   storage:
                                     data:
                                       capacity: null
@@ -4242,8 +4261,8 @@ spec:
                                 properties:
                                   cpu:
                                     default:
-                                      min: null
                                       max: null
+                                      min: null
                                     properties:
                                       max:
                                         description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
@@ -7194,10 +7213,10 @@ spec:
                       properties:
                         affinity:
                           default:
-                            podAffinity: null
-                            podAntiAffinity: null
                             nodeAffinity: null
                             nodeSelector: null
+                            podAffinity: null
+                            podAntiAffinity: null
                           description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                           properties:
                             nodeAffinity:
@@ -7670,8 +7689,8 @@ spec:
                           type: string
                         logging:
                           default:
-                            enableVectorAgent: null
                             containers: {}
+                            enableVectorAgent: null
                           description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                           properties:
                             containers:
@@ -7760,12 +7779,12 @@ spec:
                           type: string
                         resources:
                           default:
+                            cpu:
+                              max: null
+                              min: null
                             memory:
                               limit: null
                               runtimeLimits: {}
-                            cpu:
-                              min: null
-                              max: null
                             storage:
                               data:
                                 capacity: null
@@ -7773,8 +7792,8 @@ spec:
                           properties:
                             cpu:
                               default:
-                                min: null
                                 max: null
+                                min: null
                               properties:
                                 max:
                                   description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
@@ -10698,10 +10717,10 @@ spec:
                             properties:
                               affinity:
                                 default:
-                                  podAffinity: null
-                                  podAntiAffinity: null
                                   nodeAffinity: null
                                   nodeSelector: null
+                                  podAffinity: null
+                                  podAntiAffinity: null
                                 description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                                 properties:
                                   nodeAffinity:
@@ -11174,8 +11193,8 @@ spec:
                                 type: string
                               logging:
                                 default:
-                                  enableVectorAgent: null
                                   containers: {}
+                                  enableVectorAgent: null
                                 description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
                                 properties:
                                   containers:
@@ -11264,12 +11283,12 @@ spec:
                                 type: string
                               resources:
                                 default:
+                                  cpu:
+                                    max: null
+                                    min: null
                                   memory:
                                     limit: null
                                     runtimeLimits: {}
-                                  cpu:
-                                    min: null
-                                    max: null
                                   storage:
                                     data:
                                       capacity: null
@@ -11277,8 +11296,8 @@ spec:
                                 properties:
                                   cpu:
                                     default:
-                                      min: null
                                       max: null
+                                      min: null
                                     properties:
                                       max:
                                         description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.

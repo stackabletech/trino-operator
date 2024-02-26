@@ -5,10 +5,7 @@ use stackable_operator::{
     builder::{
         resources::ResourceRequirementsBuilder, ContainerBuilder, VolumeBuilder, VolumeMountBuilder,
     },
-    commons::{
-        authentication::static_::AuthenticationProvider,
-        product_image_selection::ResolvedProductImage,
-    },
+    commons::{authentication::static_, product_image_selection::ResolvedProductImage},
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     product_logging::{self, spec::AutomaticContainerLogConfig},
     utils::COMMON_BASH_TRAP_FUNCTIONS,
@@ -26,11 +23,11 @@ const FILE_PASSWORD_FILE: &str = "file.password-file";
 #[derive(Clone, Debug)]
 pub struct FileAuthenticator {
     name: String,
-    file: AuthenticationProvider,
+    file: static_::AuthenticationProvider,
 }
 
 impl FileAuthenticator {
-    pub fn new(name: String, provider: AuthenticationProvider) -> Self {
+    pub fn new(name: String, provider: static_::AuthenticationProvider) -> Self {
         Self {
             name,
             file: provider,
@@ -201,7 +198,7 @@ mod tests {
     fn test_file_authenticator() {
         let authenticator = FileAuthenticator::new(
             AUTH_CLASS_NAME.to_string(),
-            AuthenticationProvider {
+            static_::AuthenticationProvider {
                 user_credentials_secret: UserCredentialsSecretRef {
                     name: "user_credentials".to_string(),
                 },

@@ -155,5 +155,5 @@ fn references_authentication_class(
         .cluster_config
         .authentication
         .iter()
-        .any(|a| a.authentication_class == authentication_class_name)
+        .any(|c| c.authentication_class_name() == &authentication_class_name)
 }

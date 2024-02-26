@@ -1,7 +1,7 @@
 use crate::authentication::password;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    commons::authentication::ldap::AuthenticationProvider,
+    commons::authentication::ldap,
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 use std::collections::BTreeMap;
@@ -37,11 +37,11 @@ pub enum Error {
 #[derive(Clone, Debug)]
 pub struct LdapAuthenticator {
     name: String,
-    ldap: AuthenticationProvider,
+    ldap: ldap::AuthenticationProvider,
 }
 
 impl LdapAuthenticator {
-    pub fn new(name: String, provider: AuthenticationProvider) -> Self {
+    pub fn new(name: String, provider: ldap::AuthenticationProvider) -> Self {
         Self {
             name,
             ldap: provider,
@@ -156,7 +156,7 @@ mod tests {
     const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
 
     fn setup_test_authenticator() -> LdapAuthenticator {
-        let auth_provider = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+        let auth_provider = serde_yaml::from_str::<ldap::AuthenticationProvider>(&format!(
             r#"
             hostname: {LDAP_HOST_NAME}
             searchBase: {LDAP_SEARCH_BASE}

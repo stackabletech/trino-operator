@@ -1,0 +1,50 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realms
+data:
+  keycloak-realm.json: |-
+    {
+      "realm": "stackable",
+      "enabled": true,
+      "users": [
+        {
+          "enabled": true,
+          "username": "test",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "test"
+            }
+          ],
+          "realmRoles": [
+            "user"
+          ]
+        }
+      ],
+      "roles": {
+        "realm": [
+          {
+            "name": "user",
+            "description": "User privileges"
+          }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": "trino",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "trino-client-secret",
+          "redirectUris": [
+            "*"
+          ],
+          "webOrigins": [
+            "*"
+          ],
+          "standardFlowEnabled": true,
+          "protocol": "openid-connect"
+        }
+      ]
+    }

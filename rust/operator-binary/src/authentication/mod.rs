@@ -1,4 +1,4 @@
-//! This module computes all resources required for Trino authentication (e.g. PASSWORD, CERTIFICATE).
+//! This module computes all resources required for Trino authentication (e.g. PASSWORD, OAUTH2).
 //!
 //! Computes a `TrinoAuthenticationConfig` containing required resources like for all authentication
 //! types like:
@@ -9,24 +9,29 @@
 //!
 use std::collections::{BTreeMap, HashMap};
 
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{ContainerBuilder, PodBuilder},
     commons::{
         authentication::{AuthenticationClass, AuthenticationClassProvider},
         product_image_selection::ResolvedProductImage,
     },
-    k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
+    k8s_openapi::api::core::v1::{Container, EnvVar, Volume, VolumeMount},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
 };
-use stackable_trino_crd::TrinoRole;
+use stackable_trino_crd::{authentication::ResolvedAuthenticationClassRef, TrinoRole};
+use strum::EnumDiscriminants;
 use tracing::trace;
 
-use crate::authentication::password::{
-    file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
-    TrinoPasswordAuthenticator,
+use crate::authentication::{
+    oidc::{OidcAuthenticator, TrinoOidcAuthentication},
+    password::{
+        file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
+        TrinoPasswordAuthenticator,
+    },
 };
 
+pub(crate) mod oidc;
 pub(crate) mod password;
 
 // trino properties
@@ -47,6 +52,12 @@ pub enum Error {
 
     #[snafu(display("Failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
+
+    #[snafu(display("Failed to configure trino OAuth2 authentication"))]
+    InvalidOauth2AuthenticationConfig { source: oidc::Error },
+
+    #[snafu(display("OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"))]
+    OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -62,6 +73,8 @@ pub struct TrinoAuthenticationConfig {
     config_properties: HashMap<TrinoRole, BTreeMap<String, String>>,
     /// All extra config files required for authentication for each role.
     config_files: HashMap<TrinoRole, BTreeMap<String, String>>,
+    /// Additional env variables for a certain role and container
+    env_vars: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<EnvVar>>>,
     /// All extra container commands for a certain role and container
     commands: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<String>>>,
     /// Additional volumes like secret mounts, user file database etc.
@@ -80,7 +93,7 @@ impl TrinoAuthenticationConfig {
     ) -> Result<Self, Error> {
         let mut authentication_config = TrinoAuthenticationConfig::default();
         // Represents properties of "http-server.authentication.type".
-        // Properties like PASSWORD, CERTIFICATE are only added once and the order is important
+        // Properties like PASSWORD, OAUTH2 are only added once and the order is important
         // due to Trino starting to evaluate the authenticators depending on the given order
         let mut http_server_authentication_types = vec![];
 
@@ -94,6 +107,11 @@ impl TrinoAuthenticationConfig {
                     password_auth
                         .password_authentication_config(resolved_product_image)
                         .context(InvalidPasswordAuthenticationConfigSnafu)?,
+                ),
+                TrinoAuthenticationType::Oauth2(oauth2_auth) => authentication_config.extend(
+                    oauth2_auth
+                        .oauth2_authentication_config()
+                        .context(InvalidOauth2AuthenticationConfigSnafu)?,
                 ),
             }
         }
@@ -179,6 +197,21 @@ impl TrinoAuthenticationConfig {
             .insert(file_name, file_content);
     }
 
+    /// Add env variables for a given role and container.
+    pub fn add_env_vars(
+        &mut self,
+        role: TrinoRole,
+        container: stackable_trino_crd::Container,
+        env_var: Vec<EnvVar>,
+    ) {
+        self.env_vars
+            .entry(role)
+            .or_default()
+            .entry(container)
+            .or_default()
+            .extend(env_var)
+    }
+
     /// Add additional commands for a given role and container.
     pub fn add_commands(
         &mut self,
@@ -198,6 +231,13 @@ impl TrinoAuthenticationConfig {
     pub fn add_volume(&mut self, volume: Volume) {
         if !self.volumes.iter().any(|v| v.name == volume.name) {
             self.volumes.push(volume);
+        }
+    }
+
+    /// Add additional volumes for the pod builder.
+    pub fn add_volumes(&mut self, volumes: Vec<Volume>) {
+        for volume in volumes {
+            self.add_volume(volume)
         }
     }
 
@@ -224,6 +264,19 @@ impl TrinoAuthenticationConfig {
         }
     }
 
+    /// Add additional volume mounts for a role and container.
+    /// Volume mounts are only added once and filtered for duplicates.
+    pub fn add_volume_mounts(
+        &mut self,
+        role: TrinoRole,
+        container: stackable_trino_crd::Container,
+        volume_mounts: Vec<VolumeMount>,
+    ) {
+        for volume_mount in volume_mounts {
+            self.add_volume_mount(role.clone(), container.clone(), volume_mount);
+        }
+    }
+
     /// Add an extra sidecar container for a given role
     pub fn add_sidecar_container(&mut self, role: TrinoRole, container: Container) {
         let containers_for_role = self.sidecar_containers.entry(role).or_default();
@@ -244,6 +297,21 @@ impl TrinoAuthenticationConfig {
     /// Retrieve additional config files for a given role.
     pub fn config_files(&self, role: &TrinoRole) -> BTreeMap<String, String> {
         self.config_files.get(role).cloned().unwrap_or_default()
+    }
+
+    /// Retrieve additional env vars for a given role and container.
+    pub fn env_vars(
+        &self,
+        role: &TrinoRole,
+        container: &stackable_trino_crd::Container,
+    ) -> Vec<EnvVar> {
+        self.env_vars
+            .get(role)
+            .cloned()
+            .unwrap_or_default()
+            .get(container)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Retrieve additional container commands for a given role and container.
@@ -297,7 +365,16 @@ impl TrinoAuthenticationConfig {
             self.config_files.entry(role).or_default().extend(data)
         }
 
-        self.volumes.extend(other.volumes);
+        for (role, containers) in other.env_vars {
+            for (container, env_vars) in containers {
+                self.env_vars
+                    .entry(role.clone())
+                    .or_default()
+                    .entry(container)
+                    .or_default()
+                    .extend(env_vars)
+            }
+        }
 
         for (role, containers) in other.commands {
             for (container, commands) in containers {
@@ -309,6 +386,8 @@ impl TrinoAuthenticationConfig {
                     .extend(commands)
             }
         }
+
+        self.volumes.extend(other.volumes);
 
         for (role, containers) in other.volume_mounts {
             for (container, data) in containers {
@@ -333,7 +412,7 @@ impl TrinoAuthenticationConfig {
 /// Representation of all Trino authentication types (e.g. PASSWORD).
 /// One authentication type may have multiple authenticators (e.g. file, ldap).
 /// These authenticators are summarized and handled in their respective struct.
-#[derive(Clone, Debug, strum::Display)]
+#[derive(Clone, Debug, strum::Display, EnumDiscriminants)]
 pub enum TrinoAuthenticationType {
     // #[strum(serialize = "CERTIFICATE")]
     // Certificate,
@@ -343,8 +422,8 @@ pub enum TrinoAuthenticationType {
     // Jwt,
     // #[strum(serialize = "KERBEROS")]
     // Kerberos,
-    // #[strum(serialize = "OAUTH2")]
-    // Oauth2,
+    #[strum(serialize = "OAUTH2")]
+    Oauth2(TrinoOidcAuthentication),
     #[strum(serialize = "PASSWORD")]
     Password(TrinoPasswordAuthentication),
 }
@@ -356,39 +435,106 @@ pub struct TrinoAuthenticationTypes {
     authentication_types: Vec<TrinoAuthenticationType>,
 }
 
-impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
+impl TrinoAuthenticationTypes {
+    /// Helper method to store the order of provided AuthenticationClasses in the CRD.
+    /// Trino will query all authentication methods in the order provided in
+    /// "http-server.authentication.type".
+    pub fn insert_auth_type_order(
+        store: &mut Vec<TrinoAuthenticationTypeDiscriminants>,
+        auth_type: TrinoAuthenticationTypeDiscriminants,
+    ) {
+        if !store.contains(&auth_type) {
+            store.push(auth_type);
+        }
+    }
+}
+
+impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
     type Error = Error;
 
-    fn try_from(auth_classes: Vec<AuthenticationClass>) -> std::result::Result<Self, Self::Error> {
+    fn try_from(
+        resolved_auth_classes: Vec<ResolvedAuthenticationClassRef>,
+    ) -> std::result::Result<Self, Self::Error> {
         let mut authentication_types = vec![];
-        let mut password_authenticators = vec![];
+        let mut authentication_types_order = Vec::<TrinoAuthenticationTypeDiscriminants>::new();
 
-        for auth_class in auth_classes {
-            let auth_class_name = auth_class.name_any();
-            match auth_class.spec.provider {
+        let mut password_authenticators = vec![];
+        // OAuth2 cannot be configured to have multiple IDPs and therefore does not need to be
+        // a vector in comparison to password authentication (file, ldap).
+        // This is still a vec to handle errors more granular in the OAuth2 module
+        let mut oidc_authenticators = vec![];
+
+        // Collect all provided AuthenticationClass providers into their respective authenticators
+        for resolved_auth_class in resolved_auth_classes {
+            let auth_class_name = resolved_auth_class.authentication_class.name_any();
+            match resolved_auth_class.authentication_class.spec.provider {
                 AuthenticationClassProvider::Static(provider) => {
                     password_authenticators.push(TrinoPasswordAuthenticator::File(
                         FileAuthenticator::new(auth_class_name, provider),
                     ));
+
+                    TrinoAuthenticationTypes::insert_auth_type_order(
+                        &mut authentication_types_order,
+                        TrinoAuthenticationTypeDiscriminants::Password,
+                    );
                 }
                 AuthenticationClassProvider::Ldap(provider) => {
                     password_authenticators.push(TrinoPasswordAuthenticator::Ldap(
                         LdapAuthenticator::new(auth_class_name, provider),
                     ));
+
+                    TrinoAuthenticationTypes::insert_auth_type_order(
+                        &mut authentication_types_order,
+                        TrinoAuthenticationTypeDiscriminants::Password,
+                    );
+                }
+                AuthenticationClassProvider::Oidc(provider) => {
+                    let oidc = resolved_auth_class.oidc.context(
+                        OidcAuthenticationDetailsNotSpecifiedSnafu {
+                            auth_class_name: auth_class_name.clone(),
+                        },
+                    )?;
+                    oidc_authenticators.push(OidcAuthenticator::new(
+                        auth_class_name,
+                        provider,
+                        oidc.client_credentials_secret_ref,
+                        oidc.extra_scopes,
+                    ));
+
+                    TrinoAuthenticationTypes::insert_auth_type_order(
+                        &mut authentication_types_order,
+                        TrinoAuthenticationTypeDiscriminants::Oauth2,
+                    );
                 }
                 _ => AuthenticationClassProviderNotSupportedSnafu {
-                    authentication_class_provider: auth_class.spec.provider.to_string(),
-                    authentication_class: ObjectRef::<AuthenticationClass>::from_obj(&auth_class),
+                    authentication_class_provider: resolved_auth_class
+                        .authentication_class
+                        .spec
+                        .provider
+                        .to_string(),
+                    authentication_class: ObjectRef::<AuthenticationClass>::from_obj(
+                        &resolved_auth_class.authentication_class,
+                    ),
                 }
                 .fail()?,
             }
         }
 
-        // Any password authenticators available?
-        if !password_authenticators.is_empty() {
-            authentication_types.push(TrinoAuthenticationType::Password(
-                TrinoPasswordAuthentication::new(password_authenticators),
-            ));
+        // We want to preserve the order of the provided AuthenticationClasses to determine
+        // which AuthenticationMethod Trino will try first.
+        for auth_type in authentication_types_order {
+            match auth_type {
+                TrinoAuthenticationTypeDiscriminants::Oauth2 => {
+                    authentication_types.push(TrinoAuthenticationType::Oauth2(
+                        TrinoOidcAuthentication::new(oidc_authenticators.clone()),
+                    ));
+                }
+                TrinoAuthenticationTypeDiscriminants::Password => {
+                    authentication_types.push(TrinoAuthenticationType::Password(
+                        TrinoPasswordAuthentication::new(password_authenticators.clone()),
+                    ));
+                }
+            }
         }
 
         Ok(TrinoAuthenticationTypes {
@@ -400,15 +546,19 @@ impl TryFrom<Vec<AuthenticationClass>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use stackable_operator::commons::authentication::oidc::ClientAuthenticationOptions;
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
 
+    const OIDC_AUTH_CLASS_1: &str = "oidc-auth-1";
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
     const FILE_AUTH_CLASS_2: &str = "file-auth-2";
     const LDAP_AUTH_CLASS_1: &str = "ldap-auth-1";
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
+    const HOST_NAME: &str = "my.server";
+    const SEARCH_BASE: &str = "searchbase";
 
-    fn setup_file_auth_class(name: &str) -> AuthenticationClass {
-        deserialize(&format!(
+    fn setup_file_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        let input = deserialize(&format!(
             r#"
         metadata:
           name: {name}
@@ -418,38 +568,88 @@ mod tests {
               userCredentialsSecret:
                 name: {name}
         "#
-        ))
+        ));
+
+        ResolvedAuthenticationClassRef {
+            authentication_class: input,
+            oidc: None,
+        }
     }
 
-    fn setup_ldap_auth_class(name: &str) -> AuthenticationClass {
-        deserialize(&format!(
+    fn setup_ldap_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        let input = deserialize(&format!(
             r#"
         metadata:
           name: {name}
         spec:
           provider:
             ldap:
-              hostname: openldap
+              hostname: {HOST_NAME}
+              searchBase: {SEARCH_BASE}
         "#
-        ))
+        ));
+
+        ResolvedAuthenticationClassRef {
+            authentication_class: input,
+            oidc: None,
+        }
     }
 
     fn setup_ldap_auth_class_with_bind_credentials_secret_class(
         name: &str,
         secret_class: &str,
-    ) -> AuthenticationClass {
-        deserialize(&format!(
+    ) -> ResolvedAuthenticationClassRef {
+        let input = deserialize(&format!(
             r#"
-        metadata:
-          name: {name}
-        spec:
-          provider:
-            ldap:
-              hostname: openldap
-              bindCredentials:
-                secretClass: {secret_class}
-        "#
-        ))
+            apiVersion: authentication.stackable.tech/v1alpha1
+            kind: AuthenticationClass
+            metadata:
+              name: {name}
+            spec:
+              provider:
+                ldap:
+                  hostname: {HOST_NAME}
+                  searchBase: {SEARCH_BASE}
+                  bindCredentials:
+                    secretClass: {secret_class}
+            "#
+        ));
+
+        ResolvedAuthenticationClassRef {
+            authentication_class: input,
+            oidc: None,
+        }
+    }
+
+    fn setup_oidc_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        let input = format!(
+            r#"
+            apiVersion: authentication.stackable.tech/v1alpha1
+            kind: AuthenticationClass
+            metadata:
+              name: {name}
+            spec:
+              provider:
+                oidc:
+                  hostname: {HOST_NAME}
+                  rootPath: /realms/master
+                  scopes: ["openid"]
+                  principalClaim: preferred_username
+            "#,
+        );
+        let deserializer = serde_yaml::Deserializer::from_str(&input);
+
+        ResolvedAuthenticationClassRef {
+            authentication_class: serde_yaml::with::singleton_map_recursive::deserialize(
+                deserializer,
+            )
+            .unwrap(),
+            oidc: Some(ClientAuthenticationOptions {
+                client_credentials_secret_ref: "my-oidc-secret".to_string(),
+                extra_scopes: Vec::new(),
+                product_specific_fields: (),
+            }),
+        }
     }
 
     fn resolved_product_image() -> ResolvedProductImage {
@@ -464,6 +664,7 @@ mod tests {
 
     fn setup_authentication_config() -> TrinoAuthenticationConfig {
         let auth_classes = vec![
+            setup_oidc_auth_class(OIDC_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
             setup_ldap_auth_class(LDAP_AUTH_CLASS_1),
@@ -479,6 +680,7 @@ mod tests {
 
     fn setup_authentication_config_bind_credentials() -> TrinoAuthenticationConfig {
         let auth_classes = vec![
+            setup_oidc_auth_class(OIDC_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_1),
             setup_file_auth_class(FILE_AUTH_CLASS_2),
             setup_ldap_auth_class_with_bind_credentials_secret_class(
@@ -503,9 +705,10 @@ mod tests {
         let config_properties =
             setup_authentication_config().config_properties(&TrinoRole::Coordinator);
 
+        // check if auth class order is preserved
         assert_eq!(
             config_properties.get(HTTP_SERVER_AUTHENTICATION_TYPE),
-            Some("PASSWORD".to_string()).as_ref(),
+            Some("OAUTH2,PASSWORD".to_string()).as_ref(),
         );
 
         let expected_config_file_names = format!(
@@ -543,14 +746,14 @@ mod tests {
         );
 
         assert_eq!(
-                config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://openldap\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
-            );
+            config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
+            Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
+        );
 
         assert_eq!(
             config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
-                Some("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${USER}))\nldap.url=ldap\\://openldap\\:389\nldap.user-base-dn=\npassword-authenticator.name=ldap\n".to_string()).as_ref()
-            );
+                Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
+        );
     }
 
     #[test]

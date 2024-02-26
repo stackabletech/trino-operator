@@ -1,0 +1,45 @@
+# yamllint disable-file
+---
+# tag::secret[]
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oidc-secret
+type: kubernetes.io/opaque
+stringData:
+  clientId: trino
+  clientSecret: trino-client-secret
+# end::secret[]
+---
+# tag::authentication_class[]
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: oidc
+spec:
+  provider:
+    oidc:
+      hostname: keycloak.default.svc.cluster.local
+      port: 8080
+      rootPath: /realms/stackable
+      scopes:
+      - openid
+      principalClaim: preferred_username
+...
+# end::authentication_class[]
+---
+# tag::trino[]
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino-with-ldap
+spec:
+  clusterConfig:
+    authentication:
+    - authenticationClass: oidc
+      oidc:
+        clientCredentialsSecret: oidc-secret
+    tls:
+      serverSecretClass: tls
+...
+# end::trino[]

@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Helm: support labels in values.yaml ([#528]).
 - Delta Lake connector ([#531]).
 - Support for version `439` ([#539]).
+- Add support for OpenID Connect ([#501]).
 
 ### Fixed
 
@@ -18,6 +19,7 @@ All notable changes to this project will be documented in this file.
 [#510]: https://github.com/stackabletech/trino-operator/pull/510
 [#526]: https://github.com/stackabletech/trino-operator/pull/526
 [#528]: https://github.com/stackabletech/trino-operator/pull/528
+[#501]: https://github.com/stackabletech/trino-operator/pull/501
 [#531]: https://github.com/stackabletech/trino-operator/pull/531
 [#539]: https://github.com/stackabletech/trino-operator/pull/539
 

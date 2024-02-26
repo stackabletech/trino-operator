@@ -3,7 +3,6 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use crate::authentication::TrinoAuthenticationClassRef;
 use crate::discovery::TrinoPodRef;
 
 use affinity::get_affinity;
@@ -13,6 +12,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
+        authentication::ClientAuthenticationDetails,
         cluster_operation::ClusterOperation,
         opa::OpaConfig,
         product_image_selection::ProductImage,
@@ -205,7 +205,7 @@ pub struct TrinoClusterConfig {
     /// Authentication options for Trino.
     /// Learn more in the [Trino authentication usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authentication).
     #[serde(default)]
-    pub authentication: Vec<TrinoAuthenticationClassRef>,
+    pub authentication: Vec<ClientAuthenticationDetails>,
 
     /// Authorization options for Trino.
     /// Learn more in the [Trino authorization usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authorization).
@@ -756,7 +756,7 @@ impl TrinoCluster {
     }
 
     /// Returns user provided authentication settings
-    pub fn get_authentication(&self) -> &Vec<TrinoAuthenticationClassRef> {
+    pub fn get_authentication(&self) -> &Vec<ClientAuthenticationDetails> {
         &self.spec.cluster_config.authentication
     }
 

@@ -5,8 +5,10 @@ use snafu::{OptionExt, ResultExt};
 use stackable_operator::{
     builder::{SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder},
     client::Client,
-    commons::authentication::tls::{CaCert, TlsServerVerification, TlsVerification},
-    commons::s3::{S3AccessStyle, S3ConnectionDef},
+    commons::{
+        authentication::tls::{CaCert, TlsServerVerification, TlsVerification},
+        s3::{S3AccessStyle, S3ConnectionDef},
+    },
     k8s_openapi::api::core::v1::ConfigMap,
 };
 use stackable_trino_crd::catalog::commons::{HdfsConnection, MetastoreConnection};

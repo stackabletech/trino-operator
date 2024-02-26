@@ -69,6 +69,31 @@ include::example$usage-guide/trino-ldap-auth-snippet.yaml[tag=trino]
 
 In the Trino CLI and web interface, LDAP users can now be used to log in.
 
+=== OAUTH2
+
+For using https://trino.io/docs/current/security/oauth2.html[OAuth 2.0 authentication], TLS must be enabled and a Secret with the client credentials must be created:
+
+[source,yaml]
+----
+include::example$usage-guide/trino-oidc-auth-snippet.yaml[tag=secret]
+----
+
+In the xref:home:concepts:authentication.adoc#authenticationclass[AuthenticationClass], an OpenID Connect (OIDC) provider can be specified:
+
+[source,yaml]
+----
+include::example$usage-guide/trino-oidc-auth-snippet.yaml[tag=authentication_class]
+----
+
+NOTE: There is no generic support for OAuth 2, only OpenID Connect providers are supported.
+
+The AuthenticationClass and the Secret with the client credentials must be referenced in the `authentication` section of the Trino cluster:
+
+[source,yaml]
+----
+include::example$usage-guide/trino-oidc-auth-snippet.yaml[tag=trino]
+----
+
 == [[authorization]]Authorization
 
 In order to authorize Trino via OPA, a ConfigMap containing a rego rule package for Trino has to be applied and referenced in the TrinoCluster resource.
