@@ -17,7 +17,7 @@ const HTTP_SERVER_AUTHENTICATION_OAUTH2_SCOPES: &str = "http-server.authenticati
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_PRINCIPAL_FIELD: &str =
     "http-server.authentication.oauth2.principal-field";
 // To enable OAuth 2.0 authentication for the Web UI, the following property must be be added:
-// web-ui.authentication.type=oidc
+// web-ui.authentication.type=oauth2
 const WEB_UI_AUTHENTICATION_TYPE: &str = "web-ui.authentication.type";
 
 #[derive(Snafu, Debug)]
