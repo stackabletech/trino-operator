@@ -111,3 +111,17 @@ table_privileges(catalog_name, schema_name, table_name, columns) := privileges i
 default system_information_access := []
 
 system_information_access := policies_matching_identity.system_information[0].allow
+
+# System session property access of the first matching rule
+default system_session_properties_access(_) := false
+
+system_session_properties_access(property_name) := access if {
+	rules := [rule |
+		some rule in policies_matching_identity.system_session_properties
+
+		property_name_pattern := object.get(rule, "property", ".*")
+
+		regex.match(property_name_pattern, property_name)
+	]
+	access := rules[0].allow
+}

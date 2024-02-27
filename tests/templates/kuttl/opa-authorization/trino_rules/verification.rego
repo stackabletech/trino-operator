@@ -14,6 +14,10 @@ default allow := false
 allow if {
 	# Fail if the required permissions for the given operation are not
 	# implemented yet
+	#
+	# The following operations are intentionally not supported:
+	# - CreateCatalog
+	# - DropCatalog
 	required_permissions
 
 	every required_permission in required_catalog_permissions {
@@ -49,6 +53,10 @@ allow if {
 	}
 	every required_permission in required_system_information_permissions {
 		object.subset(system_information_access, required_permission.allow)
+	}
+	every required_permission in required_system_session_properties_permissions {
+		access := system_session_properties_access(required_permission.propertyName)
+		required_permission.allow == access
 	}
 }
 

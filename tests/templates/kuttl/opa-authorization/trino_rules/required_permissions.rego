@@ -17,13 +17,11 @@ operation := action.operation
 # Required permissions
 
 # TODO Implement the following operations:
-# * CreateCatalog
 # * CreateFunction
 # * CreateSchema
 # * CreateViewWithExecuteFunction
 # * CreateViewWithSelectFromColumns
 # * DeleteFromTable
-# * DropCatalog
 # * DropFunction
 # * DropTable
 # * DropView
@@ -34,18 +32,15 @@ operation := action.operation
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
 # * ImpersonateUser
-# * KillQueryOwnedBy
 # * RenameMaterializedView
 # * RenameSchema
 # * RenameView
 # * SetCatalogSessionProperty
 # * SetSchemaAuthorization
-# * SetSystemSessionProperty
 # * SetTableAuthorization
 # * SetViewAuthorization
 # * ShowColumns
 # * UpdateTableColumns
-# * ViewQueryOwnedBy
 
 required_permissions := permissions if {
 	operation == "AccessCatalog"
@@ -329,6 +324,15 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation == "SetSystemSessionProperty"
+	permissions := {{
+		"resource": "system_session_properties",
+		"propertyName": action.resource.systemSessionProperty.name,
+		"allow": true,
+	}}
+}
+
+required_permissions := permissions if {
 	operation == "WriteSystemInformation"
 	permissions := {{
 		"resource": "system_information",
@@ -364,4 +368,9 @@ required_table_permissions contains permission if {
 required_system_information_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "system_information"
+}
+
+required_system_session_properties_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "system_session_properties"
 }

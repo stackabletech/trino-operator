@@ -56,19 +56,22 @@
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
-          "$ref": "#/$defs/SchemaResourceActions"
-        },
-        {
           "$ref": "#/$defs/NoResourceAction"
         },
         {
           "$ref": "#/$defs/RenameTable"
         },
         {
+          "$ref": "#/$defs/SchemaResourceActions"
+        },
+        {
           "$ref": "#/$defs/SelectFromColumns"
         },
         {
           "$ref": "#/$defs/ShowSchemas"
+        },
+        {
+          "$ref": "#/$defs/SetSystemSessionPropertyAction"
         },
         {
           "$ref": "#/$defs/TableResourceActions"
@@ -512,6 +515,38 @@
           },
           "additionalProperties": false,
           "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "SetSystemSessionPropertyAction": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SetSystemSessionProperty"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "systemSessionProperty": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "name": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["name"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["systemSessionProperty"]
         }
       },
       "additionalProperties": false,

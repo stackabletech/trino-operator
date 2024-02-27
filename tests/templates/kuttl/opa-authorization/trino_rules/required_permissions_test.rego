@@ -16,6 +16,7 @@ policies := {
 		"GRANT_SELECT",
 	]}],
 	"system_information": [{"allow": ["read", "write"]}],
+	"system_session_properties": [{"allow": true}],
 }
 
 test_access_catalog if {
@@ -342,4 +343,21 @@ test_schema_resource_actions if {
 				},
 			}
 	}
+}
+
+test_set_system_session_properties if {
+	trino.allow with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"operation": "SetSystemSessionProperty",
+				"resource": {"systemSessionProperty": {"name": "resource_name"}},
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
 }

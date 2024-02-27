@@ -123,4 +123,23 @@ policies := {
 			"allow": ["read"],
 		},
 	],
+	"system_session_properties": [
+		{
+			"user": "banned-user",
+			"allow": false,
+		},
+		{
+			"group": "banned-group",
+			"allow": false,
+		},
+		{
+			"user": "admin",
+			"allow": true,
+		},
+		{
+			"group": "users",
+			"property": "resource_overcommit",
+			"allow": true,
+		},
+	],
 }
