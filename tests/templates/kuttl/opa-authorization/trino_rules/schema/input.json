@@ -461,6 +461,54 @@
       },
       "additionalProperties": false,
       "required": ["operation", "resource"]
+    },
+
+    "IdentityResourceActions": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "KillQueryOwnedBy",
+            "ViewQueryOwnedBy"
+          ]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "user": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "groups": {
+                  "description": "",
+                  "type": "array",
+                  "items": {
+                    "description": "",
+                    "type": "string"
+                  },
+                  "uniqueItems": true
+                },
+                "user": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "groups",
+                "user"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
     }
   }
 }

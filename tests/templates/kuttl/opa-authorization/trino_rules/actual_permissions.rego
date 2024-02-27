@@ -45,9 +45,23 @@ catalog_access(catalog_name) := access if {
 }
 
 # Query access of the first matching rule
-default query_access := ["execute", "kill", "view"]
+default query_access := set()
 
 query_access := policies_matching_identity.queries[0].allow
+
+# Query access of the first matching rule
+default query_owned_by_access(_) := set()
+
+query_owned_by_access(user) := access if {
+	rules := [rule |
+		some rule in policies_matching_identity.queries
+
+		query_owner_pattern := object.get(rule, "queryOwner", ".*")
+
+		regex.match(query_owner_pattern, user)
+	]
+	access := rules[0].allow
+}
 
 # Schema ownership of the first matching rule
 default schema_owner(_, _) := false

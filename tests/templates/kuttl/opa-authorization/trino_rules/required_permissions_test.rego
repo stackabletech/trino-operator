@@ -5,6 +5,7 @@ import rego.v1
 
 policies := {
 	"catalogs": [{"allow": "all"}],
+	"queries": [{"allow": {"execute", "kill", "view"}}],
 	"schemas": [{"owner": true}],
 	"tables": [{"privileges": [
 		"SELECT",
@@ -216,6 +217,33 @@ test_table_with_properties_actions if {
 							"empty_item": null,
 							"boxed_number_item": 32,
 						},
+					}},
+				},
+				"context": {
+					"identity": {
+						"groups": [],
+						"user": "admin",
+					},
+					"softwareStack": {"trinoVersion": "439"},
+				},
+			}
+	}
+}
+
+identity_resource_actions := {
+	"KillQueryOwnedBy",
+	"ViewQueryOwnedBy",
+}
+
+test_identity_resource_actions if {
+	every operation in identity_resource_actions {
+		trino.allow with data.trino_policies.policies as policies
+			with input as {
+				"action": {
+					"operation": operation,
+					"resource": {"user": {
+						"user": "dummy-user",
+						"groups": ["some_group"],
 					}},
 				},
 				"context": {

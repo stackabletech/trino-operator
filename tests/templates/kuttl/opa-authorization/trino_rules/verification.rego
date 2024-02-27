@@ -23,6 +23,12 @@ allow if {
 	every required_permission in required_query_permissions {
 		object.subset(query_access, required_permission.allow)
 	}
+	every required_permission in required_query_owned_by_permissions {
+		object.subset(
+			query_owned_by_access(required_permission.user),
+			required_permission.allow,
+		)
+	}
 	every required_permission in required_schema_permissions {
 		schema_owner(
 			required_permission.catalogName,

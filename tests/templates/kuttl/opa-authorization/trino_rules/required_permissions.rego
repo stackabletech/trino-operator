@@ -126,6 +126,24 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation == "KillQueryOwnedBy"
+	permissions := {{
+		"resource": "query_owned_by",
+		"user": action.resource.user.user,
+		"allow": {"kill"},
+	}}
+}
+
+required_permissions := permissions if {
+	operation == "ViewQueryOwnedBy"
+	permissions := {{
+		"resource": "query_owned_by",
+		"user": action.resource.user.user,
+		"allow": {"view"},
+	}}
+}
+
+required_permissions := permissions if {
 	operation == "FilterCatalogs"
 	permissions := {{
 		"resource": "catalog",
@@ -290,6 +308,11 @@ required_catalog_permissions contains permission if {
 required_query_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "query"
+}
+
+required_query_owned_by_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "query_owned_by"
 }
 
 required_schema_permissions contains permission if {
