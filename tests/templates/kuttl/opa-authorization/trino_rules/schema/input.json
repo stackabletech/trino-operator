@@ -72,6 +72,9 @@
         },
         {
           "$ref": "#/$defs/TableResourceActions"
+        },
+        {
+          "$ref": "#/$defs/TableWithPropertiesActions"
         }
       ]
     }
@@ -394,6 +397,62 @@
               },
               "additionalProperties": false,
               "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "TableWithPropertiesActions": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "CreateMaterializedView",
+            "CreateTable",
+            "SetMaterializedViewProperties",
+            "SetTableProperties"
+          ]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "",
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "catalogName",
+                "properties",
+                "schemaName",
+                "tableName"
+              ]
             }
           },
           "additionalProperties": false,

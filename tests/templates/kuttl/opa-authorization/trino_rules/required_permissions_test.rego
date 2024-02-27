@@ -193,3 +193,38 @@ test_table_resource_actions if {
 			}
 	}
 }
+
+table_with_properties_actions := {
+	"CreateMaterializedView",
+	"CreateTable",
+	"SetMaterializedViewProperties",
+	"SetTableProperties",
+}
+
+test_table_with_properties_actions if {
+	every operation in table_with_properties_actions {
+		trino.allow with data.trino_policies.policies as policies
+			with input as {
+				"action": {
+					"operation": operation,
+					"resource": {"table": {
+						"catalogName": "system",
+						"schemaName": "information_schema",
+						"tableName": "schemata",
+						"properties": {
+							"string_item": "string_value",
+							"empty_item": null,
+							"boxed_number_item": 32,
+						},
+					}},
+				},
+				"context": {
+					"identity": {
+						"groups": [],
+						"user": "admin",
+					},
+					"softwareStack": {"trinoVersion": "439"},
+				},
+			}
+	}
+}
