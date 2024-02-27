@@ -21,6 +21,11 @@ policies := {
 			"catalog": "user_.*",
 			"allow": "read-only",
 		},
+		{
+			"user": "bob",
+			"catalog": "lakehouse",
+			"allow": "read-only",
+		},
 	],
 	"queries": [
 		{
@@ -37,6 +42,10 @@ policies := {
 		},
 		{
 			"group": "users",
+			"allow": ["execute", "view"],
+		},
+		{
+			"user": "bob",
 			"allow": ["execute", "view"],
 		},
 	],
