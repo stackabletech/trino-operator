@@ -25,7 +25,6 @@ operation := action.operation
 # * DeleteFromTable
 # * DropCatalog
 # * DropFunction
-# * DropSchema
 # * DropTable
 # * DropView
 # * ExecuteFunction
@@ -33,7 +32,6 @@ operation := action.operation
 # * ExecuteTableProcedure
 # * FilterColumns
 # * FilterFunctions
-# * FilterTables
 # * FilterViewQueryOwnedBy
 # * ImpersonateUser
 # * KillQueryOwnedBy
@@ -46,9 +44,6 @@ operation := action.operation
 # * SetTableAuthorization
 # * SetViewAuthorization
 # * ShowColumns
-# * ShowCreateSchema
-# * ShowFunctions
-# * ShowTables
 # * UpdateTableColumns
 # * ViewQueryOwnedBy
 
@@ -163,6 +158,35 @@ required_permissions := permissions if {
 		"catalogName": action.resource.schema.catalogName,
 		"allow": "read-only",
 	}}
+}
+
+required_permissions := permissions if {
+	operation == "FilterTables"
+	permissions := {{
+		"resource": "catalog",
+		"catalogName": action.resource.table.catalogName,
+		"allow": "read-only",
+	}}
+}
+
+required_permissions := permissions if {
+	operation in {
+		"ShowCreateSchema",
+		"DropSchema",
+	}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.schema.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "schema",
+			"catalogName": action.resource.schema.catalogName,
+			"schemaName": action.resource.schema.schemaName,
+			"owner": true,
+		},
+	}
 }
 
 required_permissions := permissions if {
@@ -288,6 +312,18 @@ required_permissions := permissions if {
 	permissions := {{
 		"resource": "catalog",
 		"catalogName": action.resource.catalog.name,
+		"allow": "read-only",
+	}}
+}
+
+required_permissions := permissions if {
+	operation in {
+		"ShowFunctions",
+		"ShowTables",
+	}
+	permissions := {{
+		"resource": "catalog",
+		"catalogName": action.resource.schema.catalogName,
 		"allow": "read-only",
 	}}
 }

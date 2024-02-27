@@ -33,7 +33,7 @@ allow if {
 		schema_owner(
 			required_permission.catalogName,
 			required_permission.schemaName,
-		)
+		) == required_permission.owner
 	}
 	every required_permission in required_table_permissions {
 		privileges := table_privileges(

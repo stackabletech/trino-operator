@@ -56,7 +56,7 @@
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
-          "$ref": "#/$defs/FilterSchemas"
+          "$ref": "#/$defs/SchemaResourceActions"
         },
         {
           "$ref": "#/$defs/NoResourceAction"
@@ -141,42 +141,6 @@
           },
           "additionalProperties": false,
           "required": ["catalog"]
-        }
-      },
-      "additionalProperties": false,
-      "required": ["operation", "resource"]
-    },
-
-    "FilterSchemas": {
-      "description": "",
-      "type": "object",
-      "properties": {
-        "operation": {
-          "const": "FilterSchemas"
-        },
-        "resource": {
-          "description": "",
-          "type": "object",
-          "properties": {
-            "schema": {
-              "description": "",
-              "type": "object",
-              "properties": {
-                "catalogName": {
-                  "description": "",
-                  "type": "string"
-                },
-                "schemaName": {
-                  "description": "",
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false,
-              "required": ["catalogName", "schemaName"]
-            }
-          },
-          "additionalProperties": false,
-          "required": ["schema"]
         }
       },
       "additionalProperties": false,
@@ -505,6 +469,49 @@
           },
           "additionalProperties": false,
           "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "SchemaResourceActions": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "DropSchema",
+            "FilterSchemas",
+            "ShowCreateSchema",
+            "ShowFunctions",
+            "ShowTables"
+          ]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "schema": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
         }
       },
       "additionalProperties": false,

@@ -91,6 +91,64 @@ test_filter_schemas if {
 		}
 }
 
+test_filter_tables if {
+	trino.batch == {0, 1, 2, 3, 4, 5, 6, 7} with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"filterResources": [
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "customer",
+					}},
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "orders",
+					}},
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "lineitem",
+					}},
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "part",
+					}},
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "partsupp",
+					}},
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "supplier",
+					}},
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "nation",
+					}},
+					{"table": {
+						"catalogName": "lakehouse",
+						"schemaName": "sf1",
+						"tableName": "region",
+					}},
+				],
+				"operation": "FilterTables",
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
 no_resource_actions := {
 	"ExecuteQuery",
 	"ReadSystemInformation",
@@ -244,6 +302,35 @@ test_identity_resource_actions if {
 					"resource": {"user": {
 						"user": "dummy-user",
 						"groups": ["some_group"],
+					}},
+				},
+				"context": {
+					"identity": {
+						"groups": [],
+						"user": "admin",
+					},
+					"softwareStack": {"trinoVersion": "439"},
+				},
+			}
+	}
+}
+
+schema_resource_actions := {
+	"DropSchema",
+	"ShowCreateSchema",
+	"ShowFunctions",
+	"ShowTables",
+}
+
+test_schema_resource_actions if {
+	every operation in schema_resource_actions {
+		trino.allow with data.trino_policies.policies as policies
+			with input as {
+				"action": {
+					"operation": operation,
+					"resource": {"schema": {
+						"catalogName": "system",
+						"schemaName": "information_schema",
 					}},
 				},
 				"context": {
