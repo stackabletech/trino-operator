@@ -97,12 +97,6 @@ class TestOpa:
         return cursor.fetchall()
 
 
-    def run_query_with_error(connection, query):
-        cursor = connection.cursor()
-        cursor.execute(query)
-        return cursor.fetchall()
-
-
     def get_connection(username, password, namespace):
         connection = trino.dbapi.connect(
             host="trino-coordinator.{0}.svc.cluster.local".format(namespace),
