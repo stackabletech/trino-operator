@@ -18,6 +18,7 @@ policies := {
 	"system_information": [{"allow": ["read", "write"]}],
 	"catalog_session_properties": [{"allow": true}],
 	"system_session_properties": [{"allow": true}],
+	"impersonation": [{"new_user": ".*"}],
 }
 
 test_access_catalog if {
@@ -372,6 +373,23 @@ test_set_system_session_properties if {
 			"action": {
 				"operation": "SetSystemSessionProperty",
 				"resource": {"systemSessionProperty": {"name": "resource_name"}},
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
+test_impersonate_user if {
+	trino.allow with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"operation": "ImpersonateUser",
+				"resource": {"user": {"user": "testuser"}},
 			},
 			"context": {
 				"identity": {

@@ -44,6 +44,40 @@ catalog_access(catalog_name) := access if {
 	access := catalog_access_map[rules[0].allow]
 }
 
+# Catalog access of the first matching rule
+default impersonation_access(_) := false
+
+impersonation_access(user) if {
+	user == identity.user
+}
+
+impersonation_access(user) := access if {
+	user != identity.user
+	rules := [rule |
+		some rule in policies_matching_identity.impersonation
+
+		original_user_pattern := object.get(rule, "original_user", ".*")
+		unsubstituted_new_user_pattern := object.get(rule, "new_user", ".*")
+
+		matches := regex.find_all_string_submatch_n(
+			original_user_pattern,
+			identity.user, -1,
+		)
+		matches[0][0] == identity.user
+		substitutes := {var: match |
+			some i, match in matches[0]
+			var := concat("", ["$", format_int(i, 10)])
+		}
+		new_user_pattern := strings.replace_n(
+			substitutes,
+			unsubstituted_new_user_pattern,
+		)
+
+		regex.match(new_user_pattern, user)
+	]
+	access := object.get(rules[0], "allow", true)
+}
+
 # Query access of the first matching rule
 default query_access := set()
 

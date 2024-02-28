@@ -31,7 +31,6 @@ operation := action.operation
 # * FilterColumns
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
-# * ImpersonateUser
 # * RenameMaterializedView
 # * RenameSchema
 # * RenameView
@@ -181,6 +180,15 @@ required_permissions := permissions if {
 			"owner": true,
 		},
 	}
+}
+
+required_permissions := permissions if {
+	operation == "ImpersonateUser"
+	permissions := {{
+		"resource": "impersonation",
+		"user": action.resource.user.user,
+		"allow": true,
+	}}
 }
 
 required_permissions := permissions if {
@@ -352,6 +360,11 @@ required_permissions := permissions if {
 required_catalog_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "catalog"
+}
+
+required_impersonation_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "impersonation"
 }
 
 required_query_permissions contains permission if {

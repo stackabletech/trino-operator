@@ -162,4 +162,16 @@ policies := {
 			"allow": true,
 		},
 	],
+	"impersonation": [
+		{
+			"original_user": "admin",
+			"new_user": ".*",
+			"allow": true,
+		},
+		{
+			"original_user": "team_(.*)",
+			"new_user": "team_$1_sandbox",
+			"allow": true,
+		},
+	],
 }

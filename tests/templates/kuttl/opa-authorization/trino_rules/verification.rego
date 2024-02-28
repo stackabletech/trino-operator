@@ -24,6 +24,10 @@ allow if {
 		access := catalog_access(required_permission.catalogName)
 		required_permission.allow in access
 	}
+	every required_permission in required_impersonation_permissions {
+		access := impersonation_access(required_permission.user)
+		required_permission.allow == access
+	}
 	every required_permission in required_query_permissions {
 		object.subset(query_access, required_permission.allow)
 	}
