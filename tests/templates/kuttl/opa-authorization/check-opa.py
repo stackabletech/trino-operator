@@ -1,69 +1,119 @@
 #!/usr/bin/env python
 import argparse
 import pytest
-
 import trino
+
+from datetime import datetime
 from trino.exceptions import TrinoUserError
 
 import urllib3
 urllib3.disable_warnings()
 
-USER_PASSWORDS = {
-    "admin": "admin",
-    "banned-user": "banned-user",
-}
+
+TEST_DATA = [
+    {
+        "user": {
+            "name": "admin",
+            "password": "admin",
+            "groups": ["admin"],
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "expected": [["lakehouse"],["system"],["tpcds"],["tpch"]],
+            },
+            {
+                "query": "SHOW SCHEMAS in lakehouse",
+                "expected": [["information_schema"],["sf1"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
+            },
+            {
+                "query": "SHOW SCHEMAS in system",
+                "expected": [["information_schema"],["jdbc"],["metadata"],["runtime"]],
+            },
+            {
+                "query": "SHOW SCHEMAS in tpcds",
+                "expected": [["information_schema"],["sf1"],["sf10"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
+            },    
+            {
+                "query": "SHOW TABLES in lakehouse.sf1",
+                "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
+            },                       
+        ]
+    },
+    {
+        "user": {
+            "name": "bob",
+            "password": "bob",
+            "groups": [],
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "expected": [["lakehouse"]],
+            },
+            {
+                "query": "SELECT * from lakehouse.sf1.customer",
+                "error": "Access Denied: Cannot select from columns",
+            },            
+        ]
+    }    
+]
+
+class TestOpa:
+
+    def __init__(self, test_data, namespace):
+        self.data = test_data
+        self.namespace = namespace
 
 
+    def run(self):
+        for test_case in self.data:
+            user = test_case["user"]["name"]
 
-def get_connection(username, namespace):
-    conn = trino.dbapi.connect(
-        host="trino-coordinator.{0}.svc.cluster.local".format(namespace),
-        port=8443,
-        user=username,
-        http_scheme="https",
-        auth=trino.auth.BasicAuthentication(username, USER_PASSWORDS[username]),
-        verify=False,
-    )
-    return conn
+            connection = TestOpa.get_connection(user, test_case["user"]["password"], self.namespace)
 
+            for test in test_case["tests"]:
+                query = test["query"]
 
-def run(connection, query):
-    cursor = connection.cursor()
-    cursor.execute(query)
-    return cursor.fetchall()
+                if "error" in test:
+                    error = test["error"]
+                    with pytest.raises(TrinoUserError, match=error):
+                        TestOpa.log(user, query)
+                        TestOpa.run_query(connection, query)
+                else:
+                    TestOpa.log(user, query)
+                    assert TestOpa.run_query(connection, query) == test["expected"]
 
+            print("")
 
-def test_can_execute_queries(namespace):
-    """Everyone should be able to execute queries"""
-    for username in USER_PASSWORDS.keys():
-        connection = get_connection(username, namespace)
-        assert run(connection, "select 42")[0][0] == 42
-
-
-def test_admin_access(namespace):
-    admin = get_connection("admin", namespace)
-    assert run(admin, "show catalogs")[:][:] == [["lakehouse"],["system"],["tpcds"],["tpch"]]
-    assert run(admin, "show schemas in system")[:][:] == [["information_schema"],["jdbc"],["metadata"],["runtime"]]
-    assert run(admin, "show schemas in tpcds")[:][:] == [["information_schema"],["sf1"],["sf10"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]]
-    assert run(admin, "show schemas in tpch")[:][:] == [["information_schema"],["sf1"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]]
-    assert run(admin, "show tables in lakehouse.sf1")[:][:] == [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]]
+    def log(user, query):
+        timestamp = datetime.utcnow().isoformat(sep=' ', timespec='milliseconds')
+        print(f'[{timestamp}] - {user:20s} -> {query}')
 
 
-def test_bannend_user_access(namespace):
-    banned_user = get_connection("banned-user", namespace)
-    with pytest.raises(TrinoUserError) as e:
-        run(banned_user, "show catalogs")
+    def run_query(connection, query):
+        cursor = connection.cursor()
+        cursor.execute(query)
+        return cursor.fetchall()
 
 
-# def test_data_analyst_1_access():
-#     for user in ["data-analyst-1", "data-analyst-1"]:
-#         admin = get_connection(user)
-#         assert run(admin, "show catalogs")[:][:] == [["lakehouse"],["system"],["tpch"]]
-#         assert run(admin, "show schemas in system")[:][:] == [["information_schema"],["jdbc"],["metadata"],["runtime"]]
-#         with pytest.raises(TrinoUserError) as e:
-#             run(admin, "show schemas in tpcds")
-#         assert run(admin, "show schemas in tpch")[:][:] == [["information_schema"],["sf1"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]]
+    def run_query_with_error(connection, query):
+        cursor = connection.cursor()
+        cursor.execute(query)
+        return cursor.fetchall()
 
+
+    def get_connection(username, password, namespace):
+        connection = trino.dbapi.connect(
+            host="trino-coordinator.{0}.svc.cluster.local".format(namespace),
+            port=8443,
+            user=username,
+            http_scheme="https",
+            auth=trino.auth.BasicAuthentication(username, password),
+            verify=False,
+        )
+        return connection
+    
 
 def main():
     # Construct an argument parser
@@ -76,11 +126,9 @@ def main():
     args = vars(all_args.parse_args())
     namespace = args["namespace"]
 
-    #test_can_execute_queries(namespace)
+    test = TestOpa(TEST_DATA, namespace)
+    test.run()
 
-    test_admin_access(namespace)
-
-    test_bannend_user_access(namespace)
 
 if __name__ == "__main__":
     main()
