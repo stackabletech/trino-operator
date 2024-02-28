@@ -63,17 +63,17 @@ stringData:
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  name: tpch
+  name: lakehouse
   labels:
     trino: trino
 spec:
   connector:
-    tpch: {}
+    tpch: {}  
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  name: lakehouse
+  name: tpch
   labels:
     trino: trino
 spec:
@@ -89,3 +89,17 @@ metadata:
 spec:
   connector:
     tpcds: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: iceberg
+  labels:
+    trino: trino
+spec:
+  connector:
+    iceberg:
+      metastore:
+        configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
+      s3:
+        reference: minio  

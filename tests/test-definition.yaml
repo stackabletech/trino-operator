@@ -92,6 +92,7 @@ tests:
   - name: opa-authorization
     dimensions:
       - trino-latest
+      - hive
       - opa
       - openshift      
 suites:

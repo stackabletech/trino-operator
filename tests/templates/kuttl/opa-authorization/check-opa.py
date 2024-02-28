@@ -15,15 +15,14 @@ TEST_DATA = [
         "user": {
             "name": "admin",
             "password": "admin",
-            "groups": ["admin"],
         },
         "tests": [
             {
                 "query": "SHOW CATALOGS",
-                "expected": [["lakehouse"],["system"],["tpcds"],["tpch"]],
+                "expected": [["iceberg"],["system"],["tpcds"],["tpch"]],
             },
             {
-                "query": "SHOW SCHEMAS in lakehouse",
+                "query": "SHOW SCHEMAS in tpch",
                 "expected": [["information_schema"],["sf1"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
             },
             {
@@ -35,16 +34,23 @@ TEST_DATA = [
                 "expected": [["information_schema"],["sf1"],["sf10"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
             },    
             {
-                "query": "SHOW TABLES in lakehouse.sf1",
+                "query": "SHOW TABLES in tpch.sf1",
                 "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
-            },                       
+            },
+            {
+                "query": "CREATE SCHEMA IF NOT EXISTS iceberg.sf1 WITH (location = 's3a://trino/sf1/')",
+                "expected": ["CREATED"],
+            },   
+            # {
+            #     "query": "CREATE VIEW iceberg.sf1.v_customer AS SELECT * FROM tpch.sf1.customer",
+            #     "expected": ["CREATED"],
+            # },                                  
         ]
     },
     {
         "user": {
             "name": "bob",
             "password": "bob",
-            "groups": [],
         },
         "tests": [
             {
