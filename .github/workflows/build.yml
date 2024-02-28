@@ -351,6 +351,8 @@ jobs:
         uses: sigstore/cosign-installer@9614fae9e5c5eddabb09f90a270fcb487c9f7149 # tag=v3.3.0
       - name: Install syft
         uses: anchore/sbom-action/download-syft@24b0d5238516480139aa8bc6f92eeb7b54a9eb0a # tag=v0.15.5
+      - name: Build Docker image and Helm chart
+        run: make -e build
       - name: Publish Docker image and Helm chart
         run: make -e publish
         # Output the name of the published image to the Job output for later use
@@ -374,3 +376,70 @@ jobs:
         run: ./preflight-linux-amd64 check container "$IMAGE_TAG" > preflight.out
       - name: "Passed?"
         run: '[ "$(./preflight-linux-amd64 check container "$IMAGE_TAG" | jq -r .passed)" == true ]'
+
+  openshift_tests:
+    name: Run integration tests
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    needs:
+      - package_and_publish
+    strategy:
+      fail-fast: false
+      matrix:
+        cluster: [
+          {
+            distribution: openshift,
+            version: 4.14.0-okd,
+            nodes: 3,
+            instances: r1.2xlarge
+          }]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # tag=v5.0.0
+        with:
+          python-version: '3.11'
+      - run: pip install beku-stackabletech
+
+      - name: Install test requirements
+        run: |
+          # Install requirements for the run_tests.sh script.
+          PATH=/usr/bin:$PATH
+
+          wget --no-verbose https://github.com/stackabletech/stackable-cockpit/releases/download/stackablectl-23.11.3/stackablectl-x86_64-unknown-linux-gnu
+          chmod +x stackablectl-x86_64-unknown-linux-gnu
+          sudo mv stackablectl-x86_64-unknown-linux-gnu /usr/bin/stackablectl
+
+          wget --no-verbose https://github.com/kudobuilder/kuttl/releases/download/v0.15.0/kubectl-kuttl_0.15.0_linux_x86_64
+          chmod +x kubectl-kuttl_0.15.0_linux_x86_64
+          sudo mv kubectl-kuttl_0.15.0_linux_x86_64 /usr/bin/kubectl-kuttl
+          kubectl-kuttl version
+
+      - name: Create Cluster
+        id: create-cluster
+        uses: replicatedhq/replicated-actions/create-cluster@v1
+        with:
+          api-token: ${{ secrets.REPLICATED_API_TOKEN }}
+          kubernetes-distribution: ${{ matrix.cluster.distribution }}
+          kubernetes-version: ${{ matrix.cluster.version }}
+          cluster-name: ${{ github.ref_name }}-${{ matrix.cluster.distribution }}-${{ matrix.cluster.version }}
+          timeout-minutes: 10
+          ttl: 2h
+          nodes: ${{ matrix.cluster.nodes }}
+          instance-type: ${{ matrix.cluster.instances }}
+          export-kubeconfig: true
+
+      - name: Run a test
+        run: |
+          PATH=/usr/bin:$PATH
+
+          scripts/run_tests.sh openshift
+
+      - name: Remove Cluster
+        if: always()
+        id: remove-cluster
+        uses: replicatedhq/replicated-actions/remove-cluster@v1
+        continue-on-error: true # It could be that the cluster is already removed
+        with:
+          api-token: ${{ secrets.REPLICATED_API_TOKEN }}
+          cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}
