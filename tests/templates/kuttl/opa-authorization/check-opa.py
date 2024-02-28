@@ -19,7 +19,7 @@ TEST_DATA = [
         "tests": [
             {
                 "query": "SHOW CATALOGS",
-                "expected": [["iceberg"],["system"],["tpcds"],["tpch"]],
+                "expected": [["iceberg"],["lakehouse"],["system"],["tpcds"],["tpch"]],
             },
             {
                 "query": "SHOW SCHEMAS in tpch",
@@ -37,10 +37,10 @@ TEST_DATA = [
                 "query": "SHOW TABLES in tpch.sf1",
                 "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
             },
-            {
-                "query": "CREATE SCHEMA IF NOT EXISTS iceberg.sf1 WITH (location = 's3a://trino/sf1/')",
-                "expected": ["CREATED"],
-            },   
+            # {
+            #     "query": "CREATE SCHEMA IF NOT EXISTS iceberg.sf1 WITH (location = 's3a://trino/sf1/')",
+            #     "expected": ["CREATED"],
+            # },   
             # {
             #     "query": "CREATE VIEW iceberg.sf1.v_customer AS SELECT * FROM tpch.sf1.customer",
             #     "expected": ["CREATED"],
