@@ -71,6 +71,9 @@
           "$ref": "#/$defs/ShowSchemas"
         },
         {
+          "$ref": "#/$defs/SetCatalogSessionPropertyAction"
+        },
+        {
           "$ref": "#/$defs/SetSystemSessionPropertyAction"
         },
         {
@@ -515,6 +518,42 @@
           },
           "additionalProperties": false,
           "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "SetCatalogSessionPropertyAction": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SetCatalogSessionProperty"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "catalogSessionProperty": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "propertyName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "propertyName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["systemSessionProperty"]
         }
       },
       "additionalProperties": false,

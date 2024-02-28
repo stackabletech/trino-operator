@@ -218,6 +218,43 @@
         "required": ["allow"]
       }
     },
+    "catalog_session_properties": {
+      "description": "",
+      "type": "array",
+      "items": {
+        "description": "",
+        "type": "object",
+        "properties": {
+          "user": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "property": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "allow": {
+            "description": "",
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": ["allow"]
+      }
+    },
     "system_session_properties": {
       "description": "",
       "type": "array",

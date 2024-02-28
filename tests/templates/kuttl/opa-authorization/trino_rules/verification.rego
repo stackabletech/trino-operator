@@ -54,6 +54,13 @@ allow if {
 	every required_permission in required_system_information_permissions {
 		object.subset(system_information_access, required_permission.allow)
 	}
+	every required_permission in required_catalog_session_properties_permissions {
+		access := catalog_session_properties_access(
+			required_permission.catalogName,
+			required_permission.propertyName,
+		)
+		required_permission.allow == access
+	}
 	every required_permission in required_system_session_properties_permissions {
 		access := system_session_properties_access(required_permission.propertyName)
 		required_permission.allow == access

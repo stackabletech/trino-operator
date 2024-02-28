@@ -35,7 +35,6 @@ operation := action.operation
 # * RenameMaterializedView
 # * RenameSchema
 # * RenameView
-# * SetCatalogSessionProperty
 # * SetSchemaAuthorization
 # * SetTableAuthorization
 # * SetViewAuthorization
@@ -324,6 +323,16 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation == "SetCatalogSessionProperty"
+	permissions := {{
+		"resource": "catalog_session_properties",
+		"catalogName": action.resource.catalogSessionProperty.catalogName,
+		"propertyName": action.resource.catalogSessionProperty.propertyName,
+		"allow": true,
+	}}
+}
+
+required_permissions := permissions if {
 	operation == "SetSystemSessionProperty"
 	permissions := {{
 		"resource": "system_session_properties",
@@ -368,6 +377,11 @@ required_table_permissions contains permission if {
 required_system_information_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "system_information"
+}
+
+required_catalog_session_properties_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "catalog_session_properties"
 }
 
 required_system_session_properties_permissions contains permission if {

@@ -123,6 +123,26 @@ policies := {
 			"allow": ["read"],
 		},
 	],
+	"catalog_session_properties": [
+		{
+			"user": "banned-user",
+			"allow": false,
+		},
+		{
+			"group": "banned-group",
+			"allow": false,
+		},
+		{
+			"user": "admin",
+			"allow": true,
+		},
+		{
+			"group": "users",
+			"catalog": "user_.*",
+			"property": "bucket_execution_enabled",
+			"allow": true,
+		},
+	],
 	"system_session_properties": [
 		{
 			"user": "banned-user",
