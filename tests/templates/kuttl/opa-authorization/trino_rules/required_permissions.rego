@@ -29,7 +29,6 @@ operation := action.operation
 # * FilterColumns
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
-# * SetSchemaAuthorization
 # * SetTableAuthorization
 # * SetViewAuthorization
 # * ShowColumns
@@ -177,8 +176,9 @@ required_permissions := permissions if {
 
 required_permissions := permissions if {
 	operation in {
-		"ShowCreateSchema",
 		"DropSchema",
+		"ShowCreateSchema",
+		"SetSchemaAuthorization",
 	}
 	permissions := {
 		{

@@ -121,8 +121,7 @@ policies := {
 		{
 			"group": "users",
 			"allow": ["read"],
-		}
-
+		},
 	],
 	"catalog_session_properties": [
 		{

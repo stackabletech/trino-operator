@@ -471,6 +471,30 @@ test_set_system_session_properties if {
 		}
 }
 
+test_set_schema_authorization if {
+	trino.allow with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"operation": "SetSchemaAuthorization",
+				"resource": {"schema": {
+					"catalogName": "my_catalog",
+					"schemaName": "my_schema",
+				}},
+				"grantee": {
+					"name": "user",
+					"type": "my_user",
+				},
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
 test_impersonate_user if {
 	trino.allow with data.trino_policies.policies as policies
 		with input as {

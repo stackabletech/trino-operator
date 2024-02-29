@@ -74,13 +74,16 @@
           "$ref": "#/$defs/SchemaResourceActions"
         },
         {
-          "$ref": "#/$defs/ShowSchemas"
-        },
-        {
           "$ref": "#/$defs/SetCatalogSessionPropertyAction"
         },
         {
           "$ref": "#/$defs/SetSystemSessionPropertyAction"
+        },
+        {
+          "$ref": "#/$defs/SetSchemaAuthorization"
+        },
+        {
+          "$ref": "#/$defs/ShowSchemas"
         },
         {
           "$ref": "#/$defs/TableResourceActions"
@@ -707,6 +710,58 @@
       },
       "additionalProperties": false,
       "required": ["operation", "resource"]
+    },
+
+    "SetSchemaAuthorization": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SetSchemaAuthorization"
+        },
+        "grantee": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "",
+              "type": "string"
+            },
+            "type": {
+              "description": "",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["name", "type"]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "schema": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "grantee", "resource"]
     },
 
     "ImpersonateUser": {
