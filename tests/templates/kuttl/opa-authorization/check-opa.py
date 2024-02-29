@@ -44,7 +44,19 @@ TEST_DATA = [
             {
                 "query": "CREATE OR REPLACE VIEW iceberg.sf1.v_customer AS SELECT * FROM tpch.sf1.customer",
                 "expected": [],
-            },                                  
+            },            
+            {
+                "query": "SELECT AVG(nationkey) FROM iceberg.sf1.v_customer",
+                "expected": [[12.0067]],
+            },     
+            {
+                "query": "DROP VIEW iceberg.sf1.v_customer",
+                "expected": [],
+            },     
+            {
+                "query": "DROP SCHEMA iceberg.sf1",
+                "expected": [],
+            },                 
         ]
     },
     {
@@ -61,6 +73,18 @@ TEST_DATA = [
                 "query": "SELECT * from lakehouse.sf1.customer",
                 "error": "Access Denied: Cannot select from columns",
             },            
+        ]
+    },
+    {
+        "user": {
+            "name": "banned-user",
+            "password": "banned-user",
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "error": "Access Denied: Cannot execute query",
+            },
         ]
     }    
 ]
