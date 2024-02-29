@@ -29,8 +29,6 @@ operation := action.operation
 # * FilterColumns
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
-# * RenameMaterializedView
-# * RenameView
 # * SetSchemaAuthorization
 # * SetTableAuthorization
 # * SetViewAuthorization
@@ -279,7 +277,11 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
-	operation == "RenameTable"
+	operation in {
+		"RenameMaterializedView",
+		"RenameTable",
+		"RenameView",
+	}
 	permissions := {
 		{
 			"resource": "catalog",

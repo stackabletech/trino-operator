@@ -376,6 +376,40 @@ test_schema_resource_actions if {
 	}
 }
 
+rename_table_like_object_actions := {
+	"RenameMaterializedView",
+	"RenameTable",
+	"RenameView",
+}
+
+test_rename_table_like_object if {
+	every operation in rename_table_like_object_actions {
+		trino.allow with data.trino_policies.policies as policies
+			with input as {
+				"action": {
+					"operation": operation,
+					"resource": {"table": {
+						"catalogName": "my_catalog",
+						"schemaName": "my_schema",
+						"tableName": "my_table",
+					}},
+					"targetResource": {"table": {
+						"catalogName": "my_catalog",
+						"schemaName": "new_schema_name",
+						"tableName": "new_table_name",
+					}},
+				},
+				"context": {
+					"identity": {
+						"groups": [],
+						"user": "admin",
+					},
+					"softwareStack": {"trinoVersion": "439"},
+				},
+			}
+	}
+}
+
 test_rename_schema if {
 	trino.allow with data.trino_policies.policies as policies
 		with input as {

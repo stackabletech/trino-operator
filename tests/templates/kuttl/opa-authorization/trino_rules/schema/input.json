@@ -68,7 +68,7 @@
           "$ref": "#/$defs/RenameSchema"
         },
         {
-          "$ref": "#/$defs/RenameTable"
+          "$ref": "#/$defs/RenameTableLikeObject"
         },
         {
           "$ref": "#/$defs/SchemaResourceActions"
@@ -330,12 +330,17 @@
       "required": ["operation", "resource", "targetResource"]
     },
 
-    "RenameTable": {
+    "RenameTableLikeObject": {
       "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "const": "RenameTable"
+          "description": "",
+          "enum": [
+            "RenameMaterializedView",
+            "RenameTable",
+            "RenameView"
+          ]
         },
         "resource": {
           "description": "",
