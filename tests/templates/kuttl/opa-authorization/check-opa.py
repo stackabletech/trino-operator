@@ -48,7 +48,23 @@ TEST_DATA = [
             {
                 "query": "SELECT AVG(nationkey) FROM iceberg.sf1.v_customer",
                 "expected": [[12.0067]],
-            },     
+            },
+            {
+                "query": "CREATE TABLE IF NOT EXISTS iceberg.sf1.small_customer (orderkey bigint)",
+                "expected": [],
+            },  
+            {
+                "query": "INSERT INTO iceberg.sf1.small_customer VALUES (2)",
+                "expected": [[1]],
+            }, 
+            {
+                "query": "SELECT * FROM iceberg.sf1.small_customer",
+                "expected": [[2]],
+            }, 
+            {
+                "query": "DROP TABLE iceberg.sf1.small_customer",
+                "expected": [],
+            }, 
             {
                 "query": "DROP VIEW iceberg.sf1.v_customer",
                 "expected": [],
@@ -56,7 +72,7 @@ TEST_DATA = [
             {
                 "query": "DROP SCHEMA iceberg.sf1",
                 "expected": [],
-            },                 
+            },             
         ]
     },
     {
