@@ -38,6 +38,27 @@ test_access_catalog if {
 		}
 }
 
+test_create_schema if {
+	trino.allow with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"operation": "CreateSchema",
+				"resource": {"schema": {
+					"catalogName": "my_catalog",
+					"schemaName": "my_schema",
+					"properties": {},
+				}},
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
 test_filter_catalogs if {
 	trino.batch == {0, 1, 2, 3} with data.trino_policies.policies as policies
 		with input as {

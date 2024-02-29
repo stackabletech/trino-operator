@@ -121,6 +121,47 @@
       "required": ["operation", "resource"]
     },
 
+    "CreateSchemaAction": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "CreateSchema"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "schema": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "properties": {
+                  "description": "",
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "properties", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
     "FilterCatalogs": {
       "description": "",
       "type": "object",

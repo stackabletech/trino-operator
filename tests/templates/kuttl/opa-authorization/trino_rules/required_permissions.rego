@@ -18,7 +18,6 @@ operation := action.operation
 
 # TODO Implement the following operations:
 # * CreateFunction
-# * CreateSchema
 # * CreateViewWithExecuteFunction
 # * CreateViewWithSelectFromColumns
 # * DeleteFromTable
@@ -47,6 +46,23 @@ required_permissions := permissions if {
 		"catalogName": action.resource.catalog.name,
 		"allow": "read-only",
 	}}
+}
+
+required_permissions := permissions if {
+	operation == "CreateSchema"
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.schema.catalogName,
+			"allow": "read-only",
+		},
+		{
+			"resource": "schema",
+			"catalogName": action.resource.schema.catalogName,
+			"schemaName": action.resource.schema.schemaName,
+			"owner": true,
+		},
+	}
 }
 
 required_permissions := permissions if {
