@@ -42,9 +42,9 @@ TEST_DATA = [
                 "expected": [],
             },
             {
-                "query": "CREATE VIEW iceberg.sf1.v_customer AS SELECT * FROM tpch.sf1.customer",
+                "query": "CREATE OR REPLACE VIEW iceberg.sf1.v_customer AS SELECT * FROM tpch.sf1.customer",
                 "expected": [],
-            },
+            },                                  
         ]
     },
     {
@@ -88,7 +88,9 @@ class TestOpa:
                         TestOpa.run_query(connection, query)
                 else:
                     TestOpa.log(user, query)
-                    assert TestOpa.run_query(connection, query) == test["expected"]
+                    result = TestOpa.run_query(connection, query)
+                    print(result)
+                    assert result == test["expected"]
 
             print("")
 
