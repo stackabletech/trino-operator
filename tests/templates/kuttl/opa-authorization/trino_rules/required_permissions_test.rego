@@ -376,6 +376,30 @@ test_schema_resource_actions if {
 	}
 }
 
+test_rename_schema if {
+	trino.allow with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"operation": "RenameSchema",
+				"resource": {"schema": {
+					"catalogName": "my_catalog",
+					"schemaName": "my_schema",
+				}},
+				"targetResource": {"schema": {
+					"catalogName": "my_catalog",
+					"schemaName": "new_schema_name",
+				}},
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
 test_set_catalog_session_properties if {
 	trino.allow with data.trino_policies.policies as policies
 		with input as {

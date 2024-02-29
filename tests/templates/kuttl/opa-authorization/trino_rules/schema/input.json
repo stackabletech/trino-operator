@@ -65,6 +65,9 @@
           "$ref": "#/$defs/NoResourceAction"
         },
         {
+          "$ref": "#/$defs/RenameSchema"
+        },
+        {
           "$ref": "#/$defs/RenameTable"
         },
         {
@@ -267,6 +270,66 @@
       "required": ["operation"]
     },
 
+    "RenameSchema": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "RenameSchema"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "schema": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        },
+        "targetResource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "schema": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource", "targetResource"]
+    },
+
     "RenameTable": {
       "description": "",
       "type": "object",
@@ -332,7 +395,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["operation", "resource"]
+      "required": ["operation", "resource", "targetResource"]
     },
 
     "ShowSchemas": {

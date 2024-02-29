@@ -30,7 +30,6 @@ operation := action.operation
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
 # * RenameMaterializedView
-# * RenameSchema
 # * RenameView
 # * SetSchemaAuthorization
 # * SetTableAuthorization
@@ -247,6 +246,34 @@ required_permissions := permissions if {
 			"schemaName": action.resource.table.schemaName,
 			"tableName": action.resource.table.tableName,
 			"privileges": {"allOf": {"UPDATE"}},
+		},
+	}
+}
+
+required_permissions := permissions if {
+	operation == "RenameSchema"
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.schema.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "catalog",
+			"catalogName": action.targetResource.schema.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "schema",
+			"catalogName": action.resource.schema.catalogName,
+			"schemaName": action.resource.schema.schemaName,
+			"owner": true,
+		},
+		{
+			"resource": "schema",
+			"catalogName": action.targetResource.schema.catalogName,
+			"schemaName": action.targetResource.schema.schemaName,
+			"owner": true,
 		},
 	}
 }
