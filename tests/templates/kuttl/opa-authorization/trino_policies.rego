@@ -22,8 +22,13 @@ policies := {
 			"allow": "read-only",
 		},
 		{
-			"user": "bob",
+			"user": "lakehouse",
 			"catalog": "lakehouse",
+			"allow": "read-only",
+		},
+		{
+			"user": "select-columns",
+			"catalog": "tpch",
 			"allow": "read-only",
 		},
 	],
@@ -45,7 +50,11 @@ policies := {
 			"allow": ["execute", "view"],
 		},
 		{
-			"user": "bob",
+			"user": "lakehouse",
+			"allow": ["execute", "view"],
+		},
+		{
+			"user": "select-columns",
 			"allow": ["execute", "view"],
 		},
 	],
@@ -66,6 +75,12 @@ policies := {
 			"group": "users",
 			"catalog": "user_.*",
 			"schema": "user_.*",
+			"owner": true,
+		},
+		{
+			"user": "select-columns",
+			"catalog": "tpch",
+			"schema": "sf1",
 			"owner": true,
 		},
 	],
@@ -104,6 +119,21 @@ policies := {
 				},
 			],
 		},
+		{
+			"user": "select-columns",
+			"table": "customer",
+			"privileges": ["SELECT", "OWNERSHIP"],
+			"columns": [
+				{
+					"name": "name",
+					"allow": true,
+				},
+				{
+					"name": "address",
+					"allow": false,
+				},
+			],
+		},		
 	],
 	"system_information": [
 		{
@@ -121,6 +151,10 @@ policies := {
 		{
 			"group": "users",
 			"allow": ["read"],
+		},
+		{
+			"user": "select-columns",
+			"allow": ["read", "write"],
 		},
 	],
 	"catalog_session_properties": [

@@ -77,8 +77,8 @@ TEST_DATA = [
     },
     {
         "user": {
-            "name": "bob",
-            "password": "bob",
+            "name": "lakehouse",
+            "password": "lakehouse",
         },
         "tests": [
             {
@@ -100,6 +100,26 @@ TEST_DATA = [
             {
                 "query": "SHOW CATALOGS",
                 "error": "Access Denied: Cannot execute query",
+            },
+        ]
+    },
+    {
+        "user": {
+            "name": "select-columns",
+            "password": "select-columns",
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "expected": [["tpch"]],
+            },
+            {
+                "query": "SELECT * FROM tpch.sf1.customer",
+                "error": "Access Denied: Cannot select from columns",
+            },
+            {
+                "query": "SELECT name FROM tpch.sf1.customer ORDER BY name LIMIT 1",
+                "expected": [["Customer#000000001"]],
             },
         ]
     }    
