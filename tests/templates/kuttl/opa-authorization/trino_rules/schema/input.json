@@ -53,6 +53,12 @@
           "$ref": "#/$defs/AccessCatalog"
         },
         {
+          "$ref": "#/$defs/ColumnOperationsOnTableLikeObject"
+        },
+        {
+          "$ref": "#/$defs/CreateSchema"
+        },
+        {
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
@@ -63,9 +69,6 @@
         },
         {
           "$ref": "#/$defs/SchemaResourceActions"
-        },
-        {
-          "$ref": "#/$defs/SelectFromColumns"
         },
         {
           "$ref": "#/$defs/ShowSchemas"
@@ -121,7 +124,60 @@
       "required": ["operation", "resource"]
     },
 
-    "CreateSchemaAction": {
+    "ColumnOperationsOnTableLikeObject": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "CreateViewWithSelectFromColumns",
+            "SelectFromColumns",
+            "UpdateTableColumns"
+          ]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "columns": {
+                  "description": "",
+                  "type": "array",
+                  "items": {
+                    "description": "",
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "CreateSchema": {
       "description": "",
       "type": "object",
       "properties": {
@@ -265,54 +321,6 @@
                 "tableName": {
                   "description": "",
                   "type": "string"
-                }
-              },
-              "additionalProperties": false,
-              "required": ["catalogName", "schemaName", "tableName"]
-            }
-          },
-          "additionalProperties": false,
-          "required": ["table"]
-        }
-      },
-      "additionalProperties": false,
-      "required": ["operation", "resource"]
-    },
-
-    "SelectFromColumns": {
-      "description": "",
-      "type": "object",
-      "properties": {
-        "operation": {
-          "const": "SelectFromColumns"
-        },
-        "resource": {
-          "description": "",
-          "type": "object",
-          "properties": {
-            "table": {
-              "description": "",
-              "type": "object",
-              "properties": {
-                "catalogName": {
-                  "description": "",
-                  "type": "string"
-                },
-                "schemaName": {
-                  "description": "",
-                  "type": "string"
-                },
-                "tableName": {
-                  "description": "",
-                  "type": "string"
-                },
-                "columns": {
-                  "description": "",
-                  "type": "array",
-                  "items": {
-                    "description": "",
-                    "type": "string"
-                  }
                 }
               },
               "additionalProperties": false,

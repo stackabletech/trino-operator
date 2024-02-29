@@ -195,26 +195,34 @@ test_no_resource_action if {
 	}
 }
 
-test_select_from_columns if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "SelectFromColumns",
-				"resource": {"table": {
-					"catalogName": "system",
-					"columns": ["schema_name"],
-					"schemaName": "information_schema",
-					"tableName": "schemata",
-				}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
+column_operations_on_table_like_objects := {
+	"CreateViewWithSelectFromColumns",
+	"SelectFromColumns",
+	"UpdateTableColumns",
+}
+
+test_column_operations_on_table_like_objects if {
+	every operation in no_resource_actions {
+		trino.allow with data.trino_policies.policies as policies
+			with input as {
+				"action": {
+					"operation": operation,
+					"resource": {"table": {
+						"catalogName": "system",
+						"columns": ["schema_name"],
+						"schemaName": "information_schema",
+						"tableName": "schemata",
+					}},
 				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
+				"context": {
+					"identity": {
+						"groups": [],
+						"user": "admin",
+					},
+					"softwareStack": {"trinoVersion": "439"},
+				},
+			}
+	}
 }
 
 test_show_schemas if {

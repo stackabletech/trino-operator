@@ -19,7 +19,6 @@ operation := action.operation
 # TODO Implement the following operations:
 # * CreateFunction
 # * CreateViewWithExecuteFunction
-# * CreateViewWithSelectFromColumns
 # * DeleteFromTable
 # * DropFunction
 # * DropTable
@@ -37,7 +36,6 @@ operation := action.operation
 # * SetTableAuthorization
 # * SetViewAuthorization
 # * ShowColumns
-# * UpdateTableColumns
 
 required_permissions := permissions if {
 	operation == "AccessCatalog"
@@ -69,8 +67,10 @@ required_permissions := permissions if {
 	operation in {
 		"AddColumn",
 		"AlterColumn",
+		"CreateMaterializedView",
 		"CreateTable",
 		"CreateView",
+		"CreateViewWithSelectFromColumns",
 		"DropColumn",
 		"DropMaterializedView",
 		"DropTable",
@@ -82,7 +82,7 @@ required_permissions := permissions if {
 		"SetTableProperties",
 		"SetViewComment",
 		"ShowCreateTable",
-		"CreateMaterializedView",
+		"UpdateTableColumns",
 	}
 	permissions := {
 		{
