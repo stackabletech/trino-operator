@@ -87,6 +87,56 @@ test_filter_catalogs if {
 		}
 }
 
+test_filter_columns if {
+	trino.batch == {0, 1} with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"filterResources": [{"table": {
+					"catalogName": "my_catalog",
+					"schemaName": "my_schema",
+					"tableName": "my_table",
+					"columns": ["column_one", "column_two"],
+				}}],
+				"operation": "FilterColumns",
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
+test_filter_functions if {
+	trino.batch == {0, 1} with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"filterResources": [
+					{"function": {
+						"catalogName": "my_catalog",
+						"schemaName": "my_schema",
+						"functionName": "function_one",
+					}},
+					{"function": {
+						"catalogName": "my_catalog",
+						"schemaName": "my_schema",
+						"functionName": "function_two",
+					}},
+				],
+				"operation": "FilterFunctions",
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
 test_filter_schemas if {
 	trino.batch == {0, 1, 2, 3} with data.trino_policies.policies as policies
 		with input as {
@@ -168,6 +218,32 @@ test_filter_tables if {
 					}},
 				],
 				"operation": "FilterTables",
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
+test_filter_view_query_owned_by if {
+	trino.batch == {0, 1} with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"filterResources": [
+					{"user": {
+						"user": "user_one",
+						"groups": [],
+					}},
+					{"user": {
+						"user": "user_two",
+						"groups": [],
+					}},
+				],
+				"operation": "FilterViewQueryOwnedBy",
 			},
 			"context": {
 				"identity": {
@@ -263,7 +339,7 @@ column_operations_on_table_like_objects := {
 }
 
 test_column_operations_on_table_like_objects if {
-	every operation in no_resource_actions {
+	every operation in column_operations_on_table_like_objects {
 		trino.allow with data.trino_policies.policies as policies
 			with input as {
 				"action": {

@@ -62,6 +62,34 @@ catalog_access(catalog_name) := access if {
 	access := catalog_access_map[rules[0].allow]
 }
 
+not_allowed_columns(columns) := {column.name |
+	some column in columns
+	not column.allow
+}
+
+# Column access of the first matching rule
+default column_access(_, _, _, _) := false
+
+column_access(catalog_name, schema_name, table_name, column_name) if {
+	rules := [rule |
+		some rule in policies_matching_identity.tables
+
+		catalog_pattern := object.get(rule, "catalog", ".*")
+		schema_pattern := object.get(rule, "schema", ".*")
+		table_pattern := object.get(rule, "table", ".*")
+
+		regex.match(catalog_pattern, catalog_name)
+		regex.match(schema_pattern, schema_name)
+		regex.match(table_pattern, table_name)
+	]
+
+	count(rules[0].privileges) != 0
+
+	column_constraints := object.get(rules[0], "columns", {})
+	restricted_columns := not_allowed_columns(column_constraints)
+	not column_name in restricted_columns
+}
+
 # Function privileges of the first matching rule
 default function_privileges(_, _, _) := set()
 
@@ -77,7 +105,7 @@ function_privileges(catalog_name, schema_name, function_name) := privileges if {
 		regex.match(schema_pattern, schema_name)
 		regex.match(function_pattern, function_name)
 	]
-	privileges := rules[0].privileges
+	privileges := {privilege | some privilege in rules[0].privileges}
 }
 
 # Impersonation access of the first matching rule
@@ -148,30 +176,20 @@ schema_owner(catalog_name, schema_name) := owner if {
 	owner := rules[0].owner
 }
 
-not_allowed_columns(columns) := {column.name |
-	some column in columns
-	column.allow == false
-}
-
 # Table privileges of the first matching rule
-default table_privileges(_, _, _, _) := []
+default table_privileges(_, _, _) := []
 
-table_privileges(catalog_name, schema_name, table_name, columns) := privileges if {
+table_privileges(catalog_name, schema_name, table_name) := privileges if {
 	rules := [rule |
 		some rule in policies_matching_identity.tables
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
 		table_pattern := object.get(rule, "table", ".*")
-		column_constraints := object.get(rule, "columns", {})
 
 		regex.match(catalog_pattern, catalog_name)
 		regex.match(schema_pattern, schema_name)
 		regex.match(table_pattern, table_name)
-
-		requested_columns := {column | some column in columns}
-		restricted_columns = not_allowed_columns(column_constraints)
-		requested_columns & restricted_columns == set()
 	]
 	privileges := {privilege | some privilege in rules[0].privileges}
 }

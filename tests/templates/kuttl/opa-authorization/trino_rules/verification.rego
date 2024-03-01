@@ -28,6 +28,15 @@ allow if {
 		access := catalog_access(required_permission.catalogName)
 		required_permission.allow in access
 	}
+	every required_permission in required_column_permissions {
+		access := column_access(
+			required_permission.catalogName,
+			required_permission.schemaName,
+			required_permission.tableName,
+			required_permission.columnName,
+		)
+		required_permission.allow == access
+	}
 	every required_permission in required_function_permissions {
 		privileges := function_privileges(
 			required_permission.catalogName,
@@ -60,7 +69,6 @@ allow if {
 			required_permission.catalogName,
 			required_permission.schemaName,
 			required_permission.tableName,
-			object.get(required_permission, "columns", {}),
 		)
 		all_of_required := object.get(required_permission.privileges, "allOf", set())
 		any_of_required := object.get(required_permission.privileges, "anyOf", privileges)
@@ -87,6 +95,22 @@ allow if {
 # description: Comparision of required and actual permissions
 # entrypoint: true
 batch contains index if {
+	input.action.operation != "FilterColumns"
+
 	some index, resource in input.action.filterResources
 	allow with input.action.resource as resource
+}
+
+batch contains index if {
+	input.action.operation == "FilterColumns"
+
+	table := input.action.filterResources[0].table
+	some index, column_name in table.columns
+
+	allow with input.action.resource as {"table": {
+		"catalogName": table.catalogName,
+		"schemaName": table.schemaName,
+		"tableName": table.tableName,
+		"columnName": column_name,
+	}}
 }

@@ -16,13 +16,11 @@ operation := action.operation
 
 # Required permissions
 
-# TODO Implement the following operations:
-# * FilterColumns
-# * FilterFunctions
-# * FilterViewQueryOwnedBy
-
 required_permissions := permissions if {
-	operation == "AccessCatalog"
+	operation in {
+		"AccessCatalog",
+		"FilterCatalogs",
+	}
 	permissions := {{
 		"resource": "catalog",
 		"catalogName": action.resource.catalog.name,
@@ -121,42 +119,37 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation == "FilterColumns"
+	permissions := {{
+		"resource": "column",
+		"catalogName": action.resource.table.catalogName,
+		"schemaName": action.resource.table.schemaName,
+		"tableName": action.resource.table.tableName,
+		"columnName": action.resource.table.columnName,
+		"allow": true,
+	}}
+}
+
+required_permissions := permissions if {
 	operation == "KillQueryOwnedBy"
 	permissions := {{
 		"resource": "query_owned_by",
 		"user": action.resource.user.user,
+		"groups": action.resource.user.groups,
 		"allow": {"kill"},
 	}}
 }
 
 required_permissions := permissions if {
-	operation == "ViewQueryOwnedBy"
+	operation in {
+		"FilterViewQueryOwnedBy",
+		"ViewQueryOwnedBy",
+	}
 	permissions := {{
 		"resource": "query_owned_by",
 		"user": action.resource.user.user,
+		"groups": action.resource.user.groups,
 		"allow": {"view"},
-	}}
-}
-
-required_permissions := permissions if {
-	operation == "FilterCatalogs"
-	permissions := {{
-		"resource": "catalog",
-		"catalogName": action.resource.catalog.name,
-		"allow": "read-only",
-	}}
-}
-
-required_permissions := permissions if {
-	operation == "FilterSchemas"
-
-	# SHOW SCHEMAS requires read-only access on the catalog. Ownership
-	# of the schema is not required and therefore the schemaName is not
-	# checked.
-	permissions := {{
-		"resource": "catalog",
-		"catalogName": action.resource.schema.catalogName,
-		"allow": "read-only",
 	}}
 }
 
@@ -194,6 +187,7 @@ required_permissions := permissions if {
 	operation in {
 		"ExecuteFunction",
 		"ExecuteProcedure",
+		"FilterFunctions",
 	}
 	permissions := {{
 		"resource": "function",
@@ -352,6 +346,17 @@ required_permissions := permissions if {
 
 required_permissions := permissions if {
 	operation == "SelectFromColumns"
+	column_permissions := {
+	{
+		"resource": "column",
+		"catalogName": action.resource.table.catalogName,
+		"schemaName": action.resource.table.schemaName,
+		"tableName": action.resource.table.tableName,
+		"columnName": columnName,
+		"allow": true,
+	} |
+		some columnName in action.resource.table.columns
+	}
 	permissions := {
 		{
 			"resource": "catalog",
@@ -363,10 +368,9 @@ required_permissions := permissions if {
 			"catalogName": action.resource.table.catalogName,
 			"schemaName": action.resource.table.schemaName,
 			"tableName": action.resource.table.tableName,
-			"columns": action.resource.table.columns,
 			"privileges": {"allOf": {"SELECT"}},
 		},
-	}
+	} | column_permissions
 }
 
 required_permissions := permissions if {
@@ -455,6 +459,7 @@ required_permissions := permissions if {
 
 required_permissions := permissions if {
 	operation in {
+		"FilterSchemas",
 		"ShowFunctions",
 		"ShowTables",
 	}
@@ -500,6 +505,11 @@ required_authorization_permissions contains permission if {
 required_catalog_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "catalog"
+}
+
+required_column_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "column"
 }
 
 required_function_permissions contains permission if {
