@@ -352,10 +352,10 @@ required_permissions := permissions if {
 		"catalogName": action.resource.table.catalogName,
 		"schemaName": action.resource.table.schemaName,
 		"tableName": action.resource.table.tableName,
-		"columnName": columnName,
+		"columnName": column_name,
 		"allow": true,
 	} |
-		some columnName in action.resource.table.columns
+		some column_name in action.resource.table.columns
 	}
 	permissions := {
 		{
