@@ -29,8 +29,6 @@ operation := action.operation
 # * FilterColumns
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
-# * SetTableAuthorization
-# * SetViewAuthorization
 # * ShowColumns
 
 required_permissions := permissions if {
@@ -178,7 +176,6 @@ required_permissions := permissions if {
 	operation in {
 		"DropSchema",
 		"ShowCreateSchema",
-		"SetSchemaAuthorization",
 	}
 	permissions := {
 		{
@@ -330,6 +327,56 @@ required_permissions := permissions if {
 }
 
 required_permissions := permissions if {
+	operation == "SetSchemaAuthorization"
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.schema.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "schema",
+			"catalogName": action.resource.schema.catalogName,
+			"schemaName": action.resource.schema.schemaName,
+			"owner": true,
+		},
+		{
+			"resource": "authorization",
+			"granteeName": action.grantee.name,
+			"granteeType": action.grantee.type,
+			"allow": true,
+		},
+	}
+}
+
+required_permissions := permissions if {
+	operation in {
+		"SetTableAuthorization",
+		"SetViewAuthorization",
+	}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"allOf": {"OWNERSHIP"}},
+		},
+		{
+			"resource": "authorization",
+			"granteeName": action.grantee.name,
+			"granteeType": action.grantee.type,
+			"allow": true,
+		},
+	}
+}
+
+required_permissions := permissions if {
 	operation == "ShowColumns"
 	permissions := {
 		{
@@ -400,6 +447,11 @@ required_permissions := permissions if {
 		"resource": "system_information",
 		"allow": {"write"},
 	}}
+}
+
+required_authorization_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "authorization"
 }
 
 required_catalog_permissions contains permission if {

@@ -19,6 +19,7 @@ policies := {
 	"catalog_session_properties": [{"allow": true}],
 	"system_session_properties": [{"allow": true}],
 	"impersonation": [{"new_user": ".*"}],
+	"authorization": [{"new_user": ".*"}],
 }
 
 test_access_catalog if {
@@ -493,6 +494,38 @@ test_set_schema_authorization if {
 				"softwareStack": {"trinoVersion": "439"},
 			},
 		}
+}
+
+set_authorization_on_table_like_object_actions := {
+	"SetTableAuthorization",
+	"SetViewAuthorization",
+}
+
+test_set_authorization_on_table_like_object if {
+	every operation in set_authorization_on_table_like_object_actions {
+		trino.allow with data.trino_policies.policies as policies
+			with input as {
+				"action": {
+					"operation": operation,
+					"resource": {"table": {
+						"catalogName": "my_catalog",
+						"schemaName": "my_schema",
+						"tableName": "my_table",
+					}},
+					"grantee": {
+						"name": "user",
+						"type": "my_user",
+					},
+				},
+				"context": {
+					"identity": {
+						"groups": [],
+						"user": "admin",
+					},
+					"softwareStack": {"trinoVersion": "439"},
+				},
+			}
+	}
 }
 
 test_impersonate_user if {

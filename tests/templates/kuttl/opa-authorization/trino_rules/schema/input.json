@@ -74,6 +74,9 @@
           "$ref": "#/$defs/SchemaResourceActions"
         },
         {
+          "$ref": "#/$defs/SetAuthorizationOnTableLikeObject"
+        },
+        {
           "$ref": "#/$defs/SetCatalogSessionPropertyAction"
         },
         {
@@ -642,6 +645,66 @@
       },
       "additionalProperties": false,
       "required": ["operation", "resource"]
+    },
+
+    "SetAuthorizationOnTableLikeObject": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "SetTableAuthorization",
+            "SetViewAuthorization"
+          ]
+        },
+        "grantee": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "",
+              "type": "string"
+            },
+            "type": {
+              "description": "",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["name", "type"]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "grantee", "resource"]
     },
 
     "SetCatalogSessionPropertyAction": {

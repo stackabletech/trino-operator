@@ -312,6 +312,37 @@
         "additionalProperties": false,
         "required": ["new_user"]
       }
+    },
+    "authorization": {
+      "description": "",
+      "type": "array",
+      "items": {
+        "description": "",
+        "type": "object",
+        "properties": {
+          "original_user": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "original_group": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "new_user": {
+            "description": "",
+            "type": "string"
+          },
+          "allow": {
+            "description": "",
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "required": ["new_user"]
+      }
     }
   },
   "additionalProperties": false

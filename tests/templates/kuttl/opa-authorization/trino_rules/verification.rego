@@ -20,6 +20,10 @@ allow if {
 	# - DropCatalog
 	required_permissions
 
+	every required_permission in required_authorization_permissions {
+		permission := authorization_permission(required_permission.granteeName)
+		required_permission.allow == permission
+	}
 	every required_permission in required_catalog_permissions {
 		access := catalog_access(required_permission.catalogName)
 		required_permission.allow in access

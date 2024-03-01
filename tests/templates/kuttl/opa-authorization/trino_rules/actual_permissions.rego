@@ -15,9 +15,13 @@ policies_matching_identity[resource] := matching_rules if {
 
 		user_pattern := object.get(rule, "user", ".*")
 		group_pattern := object.get(rule, "group", ".*")
+		original_user_pattern := object.get(rule, "original_user", ".*")
+		original_group_pattern := object.get(rule, "original_group", ".*")
 
 		regex.match(user_pattern, identity.user)
 		regex.match(group_pattern, group)
+		regex.match(original_user_pattern, identity.user)
+		regex.match(original_group_pattern, group)
 	]
 }
 
@@ -28,6 +32,20 @@ catalog_access_map := {
 	"all": {"all", "read-only"},
 	"read-only": {"read-only"},
 	"none": {"none"},
+}
+
+# Authorization permission of the first matching rule
+default authorization_permission(_) := false
+
+authorization_permission(grantee_name) := permission if {
+	rules := [rule |
+		some rule in policies_matching_identity.authorization
+
+		new_user_pattern := object.get(rule, "new_user", ".*")
+
+		regex.match(new_user_pattern, grantee_name)
+	]
+	permission := object.get(rules[0], "allow", true)
 }
 
 # Catalog access of the first matching rule
@@ -63,7 +81,6 @@ impersonation_access(user) := access if {
 			original_user_pattern,
 			identity.user, -1,
 		)
-		matches[0][0] == identity.user
 		substitutes := {var: match |
 			some i, match in matches[0]
 			var := concat("", ["$", format_int(i, 10)])

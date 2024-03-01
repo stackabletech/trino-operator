@@ -133,7 +133,7 @@ policies := {
 					"allow": false,
 				},
 			],
-		},		
+		},
 	],
 	"system_information": [
 		{
@@ -208,4 +208,9 @@ policies := {
 			"allow": true,
 		},
 	],
+	"authorization": [{
+		"original_user": "admin",
+		"new_user": ".*",
+		"allow": true,
+	}],
 }
