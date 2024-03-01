@@ -20,6 +20,11 @@ policies := {
 	"system_session_properties": [{"allow": true}],
 	"impersonation": [{"new_user": ".*"}],
 	"authorization": [{"new_user": ".*"}],
+	"functions": [{"privileges": [
+		"EXECUTE",
+		"GRANT_EXECUTE",
+		"OWNERSHIP",
+	]}],
 }
 
 test_access_catalog if {
@@ -172,6 +177,37 @@ test_filter_tables if {
 				"softwareStack": {"trinoVersion": "439"},
 			},
 		}
+}
+
+function_resource_actions := {
+	"ExecuteProcedure",
+	"CreateFunction",
+	"DropFunction",
+	"ExecuteFunction",
+	"CreateViewWithExecuteFunction",
+}
+
+test_function_resource_actions if {
+	every operation in function_resource_actions {
+		trino.allow with data.trino_policies.policies as policies
+			with input as {
+				"action": {
+					"operation": operation,
+					"resource": {"function": {
+						"catalogName": "my_catalog",
+						"schemaName": "my_schema",
+						"functionName": "my_function",
+					}},
+				},
+				"context": {
+					"identity": {
+						"groups": [],
+						"user": "admin",
+					},
+					"softwareStack": {"trinoVersion": "439"},
+				},
+			}
+	}
 }
 
 no_resource_actions := {

@@ -213,4 +213,15 @@ policies := {
 		"new_user": ".*",
 		"allow": true,
 	}],
+	"functions": [{
+		"user": "admin",
+		"catalog": ".*",
+		"schema": ".*",
+		"function": ".*",
+		"privileges": [
+			"EXECUTE",
+			"GRANT_EXECUTE",
+			"OWNERSHIP",
+		],
+	}],
 }

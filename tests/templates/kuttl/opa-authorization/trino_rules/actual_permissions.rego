@@ -28,12 +28,6 @@ policies_matching_identity[resource] := matching_rules if {
 # Functions are used instead of rules to avoid the binding to a specific
 # property in the actions structure.
 
-catalog_access_map := {
-	"all": {"all", "read-only"},
-	"read-only": {"read-only"},
-	"none": {"none"},
-}
-
 # Authorization permission of the first matching rule
 default authorization_permission(_) := false
 
@@ -46,6 +40,12 @@ authorization_permission(grantee_name) := permission if {
 		regex.match(new_user_pattern, grantee_name)
 	]
 	permission := object.get(rules[0], "allow", true)
+}
+
+catalog_access_map := {
+	"all": {"all", "read-only"},
+	"read-only": {"read-only"},
+	"none": {"none"},
 }
 
 # Catalog access of the first matching rule
@@ -62,7 +62,25 @@ catalog_access(catalog_name) := access if {
 	access := catalog_access_map[rules[0].allow]
 }
 
-# Catalog access of the first matching rule
+# Function privileges of the first matching rule
+default function_privileges(_, _, _) := set()
+
+function_privileges(catalog_name, schema_name, function_name) := privileges if {
+	rules := [rule |
+		some rule in policies_matching_identity.functions
+
+		catalog_pattern := object.get(rule, "catalog", ".*")
+		schema_pattern := object.get(rule, "schema", ".*")
+		function_pattern := object.get(rule, "function", ".*")
+
+		regex.match(catalog_pattern, catalog_name)
+		regex.match(schema_pattern, schema_name)
+		regex.match(function_pattern, function_name)
+	]
+	privileges := rules[0].privileges
+}
+
+# Impersonation access of the first matching rule
 default impersonation_access(_) := false
 
 impersonation_access(user) if {

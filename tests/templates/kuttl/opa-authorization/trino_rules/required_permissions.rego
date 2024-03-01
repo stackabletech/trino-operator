@@ -17,19 +17,10 @@ operation := action.operation
 # Required permissions
 
 # TODO Implement the following operations:
-# * CreateFunction
-# * CreateViewWithExecuteFunction
-# * DeleteFromTable
-# * DropFunction
-# * DropTable
-# * DropView
-# * ExecuteFunction
-# * ExecuteProcedure
 # * ExecuteTableProcedure
 # * FilterColumns
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
-# * ShowColumns
 
 required_permissions := permissions if {
 	operation == "AccessCatalog"
@@ -169,6 +160,52 @@ required_permissions := permissions if {
 		"resource": "catalog",
 		"catalogName": action.resource.table.catalogName,
 		"allow": "read-only",
+	}}
+}
+
+required_permissions := permissions if {
+	operation in {
+		"CreateFunction",
+		"DropFunction",
+	}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.function.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "function",
+			"catalogName": action.resource.function.catalogName,
+			"schemaName": action.resource.function.schemaName,
+			"functionName": action.resource.function.functionName,
+			"privileges": {"OWNERSHIP"},
+		},
+	}
+}
+
+required_permissions := permissions if {
+	operation in {
+		"ExecuteFunction",
+		"ExecuteProcedure",
+	}
+	permissions := {{
+		"resource": "function",
+		"catalogName": action.resource.function.catalogName,
+		"schemaName": action.resource.function.schemaName,
+		"functionName": action.resource.function.functionName,
+		"privileges": {"EXECUTE"},
+	}}
+}
+
+required_permissions := permissions if {
+	operation == "CreateViewWithExecuteFunction"
+	permissions := {{
+		"resource": "function",
+		"catalogName": action.resource.function.catalogName,
+		"schemaName": action.resource.function.schemaName,
+		"functionName": action.resource.function.functionName,
+		"privileges": {"GRANT_EXECUTE"},
 	}}
 }
 
@@ -457,6 +494,11 @@ required_authorization_permissions contains permission if {
 required_catalog_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "catalog"
+}
+
+required_function_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "function"
 }
 
 required_impersonation_permissions contains permission if {

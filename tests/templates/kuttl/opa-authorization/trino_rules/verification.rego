@@ -28,6 +28,14 @@ allow if {
 		access := catalog_access(required_permission.catalogName)
 		required_permission.allow in access
 	}
+	every required_permission in required_function_permissions {
+		privileges := function_privileges(
+			required_permission.catalogName,
+			required_permission.schemaName,
+			required_permission.functionName,
+		)
+		object.subset(privileges, required_permission.privileges)
+	}
 	every required_permission in required_impersonation_permissions {
 		access := impersonation_access(required_permission.user)
 		required_permission.allow == access

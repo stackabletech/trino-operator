@@ -62,6 +62,9 @@
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
+          "$ref": "#/$defs/FunctionResourceActions"
+        },
+        {
           "$ref": "#/$defs/NoResourceAction"
         },
         {
@@ -253,6 +256,53 @@
           },
           "additionalProperties": false,
           "required": ["catalog"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "FunctionResourceActions": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "description": "",
+          "enum": [
+            "CreateFunction",
+            "CreateViewWithExecuteFunction",
+            "DropFunction",
+            "ExecuteFunction",
+            "ExecuteProcedure"
+          ]
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "function": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "functionName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "functionName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["function"]
         }
       },
       "additionalProperties": false,
