@@ -17,7 +17,6 @@ operation := action.operation
 # Required permissions
 
 # TODO Implement the following operations:
-# * ExecuteTableProcedure
 # * FilterColumns
 # * FilterFunctions
 # * FilterViewQueryOwnedBy
@@ -112,6 +111,13 @@ required_permissions := permissions if {
 		"resource": "query",
 		"allow": {"execute"},
 	}}
+}
+
+required_permissions := permissions if {
+	operation == "ExecuteTableProcedure"
+
+	# Executing table procedures is always allowed
+	permissions := set()
 }
 
 required_permissions := permissions if {

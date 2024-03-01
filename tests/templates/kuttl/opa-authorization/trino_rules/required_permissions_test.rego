@@ -232,6 +232,30 @@ test_no_resource_action if {
 	}
 }
 
+test_execute_table_procedure if {
+	trino.allow with data.trino_policies.policies as policies
+		with input as {
+			"action": {
+				"operation": "ExecuteTableProcedure",
+				"resource": {
+					"table": {
+						"catalogName": "my_catalog",
+						"schemaName": "my_schema",
+						"tableName": "my_table",
+					},
+					"function": {"functionName": "my_procedure"},
+				},
+			},
+			"context": {
+				"identity": {
+					"groups": [],
+					"user": "admin",
+				},
+				"softwareStack": {"trinoVersion": "439"},
+			},
+		}
+}
+
 column_operations_on_table_like_objects := {
 	"CreateViewWithSelectFromColumns",
 	"SelectFromColumns",

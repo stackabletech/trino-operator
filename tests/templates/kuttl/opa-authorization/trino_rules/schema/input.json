@@ -230,6 +230,58 @@
       "required": ["operation", "resource"]
     },
 
+    "ExecuteTableProcedure": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "ExecuteTableProcedure"
+        },
+        "resource": {
+          "description": "",
+          "type": "object",
+          "properties": {
+            "table": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "schemaName": {
+                  "description": "",
+                  "type": "string"
+                },
+                "tableName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            },
+            "function": {
+              "description": "",
+              "type": "object",
+              "properties": {
+                "functionName": {
+                  "description": "",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["functionName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table", "function"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
     "FilterCatalogs": {
       "description": "",
       "type": "object",
