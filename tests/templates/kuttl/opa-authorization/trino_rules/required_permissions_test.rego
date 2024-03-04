@@ -3,32 +3,21 @@ package required_permissions_test
 import data.trino
 import rego.v1
 
+# Allow everything
 policies := {
-	"catalogs": [{"allow": "all"}],
-	"queries": [{"allow": {"execute", "kill", "view"}}],
-	"schemas": [{"owner": true}],
-	"tables": [{"privileges": [
-		"SELECT",
-		"INSERT",
-		"DELETE",
-		"UPDATE",
-		"OWNERSHIP",
-		"GRANT_SELECT",
-	]}],
-	"system_information": [{"allow": ["read", "write"]}],
-	"catalog_session_properties": [{"allow": true}],
-	"system_session_properties": [{"allow": true}],
-	"impersonation": [{"new_user": ".*"}],
 	"authorization": [{"new_user": ".*"}],
 	"functions": [{"privileges": [
 		"EXECUTE",
 		"GRANT_EXECUTE",
 		"OWNERSHIP",
 	]}],
+	"impersonation": [{"new_user": ".*"}],
 	"procedures": [{"privileges": [
 		"EXECUTE",
 		"GRANT_EXECUTE",
 	]}],
+	"queries": [{"allow": {"execute", "kill", "view"}}],
+	"system_information": [{"allow": ["read", "write"]}],
 }
 
 test_access_catalog if {

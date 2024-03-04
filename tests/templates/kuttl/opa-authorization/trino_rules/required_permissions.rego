@@ -2,6 +2,8 @@ package trino
 
 import rego.v1
 
+# TODO Rename to requested_permissions.rego
+
 # These rules replicate the file-based access control
 # (https://trino.io/docs/current/security/file-system-access-control.html#table-rules).
 #
