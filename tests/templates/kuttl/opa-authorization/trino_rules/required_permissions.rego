@@ -186,11 +186,21 @@ required_permissions := permissions if {
 required_permissions := permissions if {
 	operation in {
 		"ExecuteFunction",
-		"ExecuteProcedure",
 		"FilterFunctions",
 	}
 	permissions := {{
 		"resource": "function",
+		"catalogName": action.resource.function.catalogName,
+		"schemaName": action.resource.function.schemaName,
+		"functionName": action.resource.function.functionName,
+		"privileges": {"EXECUTE"},
+	}}
+}
+
+required_permissions := permissions if {
+	operation == "ExecuteProcedure"
+	permissions := {{
+		"resource": "procedure",
 		"catalogName": action.resource.function.catalogName,
 		"schemaName": action.resource.function.schemaName,
 		"functionName": action.resource.function.functionName,
@@ -520,6 +530,11 @@ required_function_permissions contains permission if {
 required_impersonation_permissions contains permission if {
 	some permission in required_permissions
 	permission.resource == "impersonation"
+}
+
+required_procedure_permissions contains permission if {
+	some permission in required_permissions
+	permission.resource == "procedure"
 }
 
 required_query_permissions contains permission if {

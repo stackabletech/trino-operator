@@ -141,6 +141,29 @@ impersonation_access(user) := access if {
 	access := object.get(rules[0], "allow", true)
 }
 
+# Procedure privileges of the first matching rule
+default procedure_privileges(_, _, _) := set()
+
+# Matching the "function name" with the "procedure pattern" is intended.
+# The requested procedure name is contained in
+# `input.action.resource.function.functionName`. A rule applies if this
+# name matches the pattern in
+# `data.trino_policies.policies.procedures[_].procedure`.
+procedure_privileges(catalog_name, schema_name, function_name) := privileges if {
+	rules := [rule |
+		some rule in policies_matching_identity.procedures
+
+		catalog_pattern := object.get(rule, "catalog", ".*")
+		schema_pattern := object.get(rule, "schema", ".*")
+		procedure_pattern := object.get(rule, "procedure", ".*")
+
+		regex.match(catalog_pattern, catalog_name)
+		regex.match(schema_pattern, schema_name)
+		regex.match(procedure_pattern, function_name)
+	]
+	privileges := {privilege | some privilege in rules[0].privileges}
+}
+
 # Query access of the first matching rule
 default query_access := set()
 

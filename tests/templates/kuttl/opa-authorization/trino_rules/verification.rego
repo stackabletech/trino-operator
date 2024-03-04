@@ -49,6 +49,14 @@ allow if {
 		access := impersonation_access(required_permission.user)
 		required_permission.allow == access
 	}
+	every required_permission in required_procedure_permissions {
+		privileges := procedure_privileges(
+			required_permission.catalogName,
+			required_permission.schemaName,
+			required_permission.functionName,
+		)
+		object.subset(privileges, required_permission.privileges)
+	}
 	every required_permission in required_query_permissions {
 		object.subset(query_access, required_permission.allow)
 	}

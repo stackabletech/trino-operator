@@ -224,4 +224,14 @@ policies := {
 			"OWNERSHIP",
 		],
 	}],
+	"procedures": [{
+		"user": "admin",
+		"catalog": ".*",
+		"schema": ".*",
+		"procedure": ".*",
+		"privileges": [
+			"EXECUTE",
+			"GRANT_EXECUTE",
+		],
+	}],
 }

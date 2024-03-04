@@ -25,6 +25,10 @@ policies := {
 		"GRANT_EXECUTE",
 		"OWNERSHIP",
 	]}],
+	"procedures": [{"privileges": [
+		"EXECUTE",
+		"GRANT_EXECUTE",
+	]}],
 }
 
 test_access_catalog if {

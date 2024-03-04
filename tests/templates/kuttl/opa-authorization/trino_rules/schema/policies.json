@@ -393,6 +393,55 @@
         "additionalProperties": false,
         "required": ["privileges"]
       }
+    },
+    "procedures": {
+      "description": "",
+      "type": "array",
+      "items": {
+        "description": "",
+        "type": "object",
+        "properties": {
+          "user": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "schema": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "procedure": {
+            "description": "",
+            "type": "string",
+            "default": ".*"
+          },
+          "privileges": {
+            "description": "",
+            "type": "array",
+            "items": {
+              "description": "",
+              "enum": [
+                "EXECUTE",
+                "GRANT_EXECUTE"
+              ]
+            },
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "required": ["privileges"]
+      }
     }
   },
   "additionalProperties": false
