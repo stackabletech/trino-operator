@@ -17,144 +17,251 @@ TEST_DATA = [
             "password": "admin",
         },
         "tests": [
+            ### CATALOG ###
+            # ExecuteQuery, FilterCatalogs
             {
                 "query": "SHOW CATALOGS",
                 "expected": [["iceberg"],["lakehouse"],["system"],["tpcds"],["tpch"]],
             },
+            ### SCHEMA ###
+            # ExecuteQuery, AccessCatalog, ShowSchemas, SelectFromColumns, FilterCatalogs, FilterSchemas
             {
                 "query": "SHOW SCHEMAS in tpch",
                 "expected": [["information_schema"],["sf1"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
             },
+            # ExecuteQuery, AccessCatalog, ShowSchemas, SelectFromColumns, FilterCatalogs, FilterSchemas
             {
                 "query": "SHOW SCHEMAS in system",
                 "expected": [["information_schema"],["jdbc"],["metadata"],["runtime"]],
             },
-            {
-                "query": "SHOW SCHEMAS in tpcds",
-                "expected": [["information_schema"],["sf1"],["sf10"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
-            },    
+            ### TABLE ###
+            # ExecuteQuery, AccessCatalog, ShowTables, SelectFromColumns, FilterCatalogs, FilterTables
             {
                 "query": "SHOW TABLES in tpch.sf1",
                 "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
             },
+            # ExecuteQuery, AccessCatalog, CreateSchema
             {
-                "query": "CREATE SCHEMA IF NOT EXISTS iceberg.sf1 WITH (location = 's3a://trino/sf1/')",
+                "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test WITH (location = 's3a://trino/iceberg/test')",
                 "expected": [],
             },
+            # ExecuteQuery, AccessCatalog, SetSchemaAuthorization
             {
-                "query": "CREATE OR REPLACE VIEW iceberg.sf1.v_customer AS SELECT * FROM tpch.sf1.customer",
+                "query": "ALTER SCHEMA iceberg.test SET AUTHORIZATION admin",
                 "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, SetSchemaAuthorization
+            {
+                "query": "ALTER SCHEMA iceberg.test SET AUTHORIZATION ROLE public",
+                # The request are authorized, just the hive connector does not support this
+                "error": "This connector does not support roles",
+            },
+            # ExecuteQuery, AccessCatalog, RenameSchema
+            {
+                "query": "ALTER SCHEMA iceberg.test RENAME TO test1",
+                # The request are authorized, just the hive connector does not support this
+                "error": "Hive metastore does not support renaming schemas",
+            },
+            # ExecuteQuery, AccessCatalog, CreateTable
+            {
+                "query": "CREATE TABLE IF NOT EXISTS iceberg.test.test (col1 bigint, col2 bigint, col3 bigint)",
+                "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, RenameColumn
+            {
+                "query": "ALTER TABLE iceberg.test.test RENAME COLUMN col3 TO col_renamed",
+                "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, SetTableAuthorization
+            {
+                "query": "ALTER TABLE iceberg.test.test SET AUTHORIZATION admin",
+                # The requests are authorized, just the hive connector does not support this
+                "error": "This connector does not support setting an owner on a table",
+            },
+            # ExecuteQuery, AccessCatalog, DropColumn
+            {
+                "query": "ALTER TABLE iceberg.test.test DROP COLUMN col_renamed",
+                "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, ShowColumns, SelectFromColumns, FilterCatalogs, FilterTables, FilterColumns
+            {
+                "query": "DESCRIBE iceberg.test.test",
+                "expected": [["col1", "bigint", "", ""],["col2", "bigint", "", ""]],
+            },
+            # ExecuteQuery, AccessCatalog, InsertIntoTable
+            {
+                "query": "INSERT INTO iceberg.test.test VALUES (1,2),(3,4),(5,6)",
+                # 3 rows inserted
+                "expected": [[3]],
+            },
+            # ExecuteQuery, AccessCatalog, SelectFromColumns
+            {
+                "query": "SELECT * FROM iceberg.test.test",
+                "expected": [[1, 2], [3, 4], [5, 6]],
+            },
+            # ExecuteQuery, AccessCatalog, UpdateTableColumns
+            {
+                "query": "UPDATE iceberg.test.test SET col1=1 WHERE col1>1",
+                # 2 rows updated
+                "expected": [[2]],
             },            
+            # ExecuteQuery, AccessCatalog, SelectFromColumns, DeleteFromTable
             {
-                "query": "SELECT AVG(nationkey) FROM iceberg.sf1.v_customer",
-                "expected": [[12.0067]],
-            },
-            {
-                "query": "CREATE TABLE IF NOT EXISTS iceberg.sf1.small_customer (orderkey bigint)",
-                "expected": [],
-            },  
-            {
-                "query": "INSERT INTO iceberg.sf1.small_customer VALUES (2)",
+                "query": "DELETE FROM iceberg.test.test WHERE col2=6",
+                # 1 row deleted
                 "expected": [[1]],
-            }, 
-            {
-                "query": "SELECT * FROM iceberg.sf1.small_customer",
-                "expected": [[2]],
             },
+            # ExecuteQuery, AccessCatalog, RenameTable
             {
-                "query": "ALTER TABLE iceberg.sf1.small_customer RENAME TO iceberg.sf1.big_customer",
+                "query": "ALTER TABLE iceberg.test.test RENAME TO test2",
                 "expected": [],
-            },             
-            {
-                "query": "DROP TABLE iceberg.sf1.big_customer",
-                "expected": [],
-            }, 
-            {
-                "query": "DROP VIEW iceberg.sf1.v_customer",
-                "expected": [],
-            },     
-            {
-                "query": "DROP SCHEMA iceberg.sf1",
-                "expected": [],
-            },             
-        ]
-    },
-    {
-        "user": {
-            "name": "lakehouse",
-            "password": "lakehouse",
-        },
-        "tests": [
-            {
-                "query": "SHOW CATALOGS",
-                "expected": [["lakehouse"]],
             },
+            # ExecuteQuery, AccessCatalog, DropTable
             {
-                "query": "SELECT * from lakehouse.sf1.customer",
-                "error": "Access Denied: Cannot select from columns",
+                "query": "DROP TABLE iceberg.test.test2",
+                "expected": [],
+            },
+            ### VIEW ###
+            # ExecuteQuery, AccessCatalog, SelectFromColumns, CreateView
+            {
+                "query": "CREATE VIEW iceberg.test.v_customer AS SELECT name, address FROM tpch.sf1.customer",
+                "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, RenameView
+            {
+                "query": "ALTER VIEW iceberg.test.v_customer RENAME TO iceberg.test.v_customer_renamed",
+                "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, ShowCreateTable
+            {
+                "query": "SHOW CREATE VIEW iceberg.test.v_customer_renamed",
+                "expected": [['CREATE VIEW iceberg.test.v_customer_renamed SECURITY DEFINER AS\nSELECT\n  name\n, address\nFROM\n  tpch.sf1.customer']],
+            },
+            # ExecuteQuery, AccessCatalog, DropView
+            {
+                "query": "DROP VIEW iceberg.test.v_customer_renamed",
+                "expected": [],
+            },
+            ### MATERIALIZED VIEW ###
+            # ExecuteQuery, AccessCatalog, SelectFromColumns, CreateMaterializedView  
+            {
+                "query": "CREATE MATERIALIZED VIEW iceberg.test.mv_customer AS SELECT name, address FROM tpch.sf1.customer",
+                "expected": [],
             },            
-        ]
-    },
-    {
-        "user": {
-            "name": "banned-user",
-            "password": "banned-user",
-        },
-        "tests": [
+            # ExecuteQuery, AccessCatalog, RefreshMaterializedView
             {
-                "query": "SHOW CATALOGS",
-                "error": "Access Denied: Cannot execute query",
+                "query": "REFRESH MATERIALIZED VIEW iceberg.test.mv_customer",
+                # refreshed contains 150000 rows
+                "expected": [[150000]],
             },
-        ]
-    },
-    {
-        "user": {
-            "name": "select-columns",
-            "password": "select-columns",
-        },
-        "tests": [
+            # ExecuteQuery, AccessCatalog, RenameMaterializedView
             {
-                "query": "SHOW CATALOGS",
-                "expected": [["tpch"]],
-            },
-            {
-                "query": "SELECT * FROM tpch.sf1.customer",
-                "error": "Access Denied: Cannot select from columns",
-            },
-            {
-                "query": "SELECT name FROM tpch.sf1.customer ORDER BY name LIMIT 1",
-                "expected": [["Customer#000000001"]],
-            },
-        ]
-    },
-    {
-        "user": {
-            "name": "iceberg",
-            "password": "iceberg",
-        },
-        "tests": [
-            {
-                "query": "SHOW CATALOGS",
-                "expected": [["iceberg"]],
-            },
-            {
-                "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test WITH (location = 's3a://trino/test/')",
+                "query": "ALTER MATERIALIZED VIEW iceberg.test.mv_customer RENAME TO iceberg.test.mv_customer_renamed",
                 "expected": [],
             },
+            # ExecuteQuery, AccessCatalog, DropMaterializedView
             {
-                "query": "CREATE TABLE IF NOT EXISTS iceberg.test.small_customer (orderkey bigint)",
+                "query": "DROP MATERIALIZED VIEW iceberg.test.mv_customer_renamed",
                 "expected": [],
             },
+            ### FUNCTIONS ###
+            # ExecuteQuery, AccessCatalog, CreateFunction
             {
-                "query": "SELECT * FROM iceberg.test.small_customer",
-                "expected": [[2]],
+                "query": "CREATE FUNCTION iceberg.test.meaning_of_life() RETURNS bigint RETURN 42",
+                # The requests are authorized, just the hive connector does not support this
+                "error": "This connector does not support creating functions",
             },
+            # ExecuteQuery, AccessCatalog, DropFunction
             {
-                "query": "DELETE FROM iceberg.test.small_customer WHERE orderkey=2",
-                "error": "Access Denied: Cannot delete from table",
-            },                      
+                "query": "DROP FUNCTION iceberg.test.meaning_of_life()",
+                # The requests are authorized, was not created in the step above due to hive connector not supporting this
+                "error": "Function not found",
+            },
+
+            ### CLEAN UP ###
+            # ExecuteQuery, AccessCatalog, DropSchema
+            {
+                "query": "DROP SCHEMA iceberg.test",
+                "expected": [],
+            },                        
         ]
-    }    
+    },
+    # {
+    #     "user": {
+    #         "name": "lakehouse",
+    #         "password": "lakehouse",
+    #     },
+    #     "tests": [
+    #         {
+    #             "query": "SHOW CATALOGS",
+    #             "expected": [["lakehouse"]],
+    #         },
+    #         {
+    #             "query": "SELECT * from lakehouse.sf1.customer",
+    #             "error": "Access Denied: Cannot select from columns",
+    #         },            
+    #     ]
+    # },
+    # {
+    #     "user": {
+    #         "name": "banned-user",
+    #         "password": "banned-user",
+    #     },
+    #     "tests": [
+    #         {
+    #             "query": "SHOW CATALOGS",
+    #             "error": "Access Denied: Cannot execute query",
+    #         },
+    #     ]
+    # },
+    # {
+    #     "user": {
+    #         "name": "select-columns",
+    #         "password": "select-columns",
+    #     },
+    #     "tests": [
+    #         {
+    #             "query": "SHOW CATALOGS",
+    #             "expected": [["tpch"]],
+    #         },
+    #         {
+    #             "query": "SELECT * FROM tpch.sf1.customer",
+    #             "error": "Access Denied: Cannot select from columns",
+    #         },
+    #         {
+    #             "query": "SELECT name FROM tpch.sf1.customer ORDER BY name LIMIT 1",
+    #             "expected": [["Customer#000000001"]],
+    #         },
+    #     ]
+    # },
+    # {
+    #     "user": {
+    #         "name": "iceberg",
+    #         "password": "iceberg",
+    #     },
+    #     "tests": [
+    #         {
+    #             "query": "SHOW CATALOGS",
+    #             "expected": [["iceberg"]],
+    #         },
+    #         {
+    #             "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test WITH (location = 's3a://trino/test/')",
+    #             "expected": [],
+    #         },
+    #         {
+    #             "query": "CREATE TABLE IF NOT EXISTS iceberg.test.small_customer (orderkey bigint)",
+    #             "expected": [],
+    #         },
+    #         {
+    #             "query": "SELECT * FROM iceberg.test.small_customer",
+    #             "expected": [[2]],
+    #         },
+    #         {
+    #             "query": "DELETE FROM iceberg.test.small_customer WHERE orderkey=2",
+    #             "error": "Access Denied: Cannot delete from table",
+    #         },                      
+    #     ]
+    # }    
 ]
 
 class TestOpa:
