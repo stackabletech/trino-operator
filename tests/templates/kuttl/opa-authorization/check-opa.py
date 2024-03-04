@@ -39,6 +39,11 @@ TEST_DATA = [
                 "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test WITH (location = 's3a://trino/iceberg/test')",
                 "expected": [],
             },
+            # ExecuteQuery, AccessCatalog, ShowCreateSchema
+            {
+                "query": "SHOW CREATE SCHEMA iceberg.test",
+                "expected": [["CREATE SCHEMA iceberg.test\nAUTHORIZATION USER admin\nWITH (\n   location = 's3a://trino/iceberg/test'\n)"]],
+            },            
             # ExecuteQuery, AccessCatalog, SetSchemaAuthorization
             {
                 "query": "ALTER SCHEMA iceberg.test SET AUTHORIZATION admin",
@@ -197,6 +202,11 @@ TEST_DATA = [
                 "expected": [],
             },
             ### FUNCTIONS ###
+            # ExecuteQuery, AccessCatalog, ShowFunctions
+            {
+                "query": "SHOW FUNCTIONS IN iceberg.test",
+                "expected": [],
+            },
             # ExecuteQuery, AccessCatalog, CreateFunction
             {
                 "query": "CREATE FUNCTION iceberg.test.meaning_of_life() RETURNS bigint RETURN 42",
@@ -215,7 +225,13 @@ TEST_DATA = [
                 "query": "SET SESSION optimize_hash_generation = true",
                 "expected": [],
             },
-
+            ### PROCEDURES ###
+            # ExecuteQuery, AccessCatalog, ExecuteProcedure
+            {
+                "query": "CALL system.runtime.kill_query(query_id => '20151207_215727_00146_tx3nr', message => 'Using too many resources')",
+                # The requests are authorized, task did not exist..              
+                "error": "Target query not found: 20151207_215727_00146_tx3nr",
+            },
             ### ROLES / GRANTS ###
 
 
