@@ -31,6 +31,11 @@ policies := {
 			"catalog": "tpch",
 			"allow": "read-only",
 		},
+		{
+			"user": "iceberg",
+			"catalog": "iceberg",
+			"allow": "all",
+		},
 	],
 	"queries": [
 		{
@@ -57,6 +62,10 @@ policies := {
 			"user": "select-columns",
 			"allow": ["execute", "view"],
 		},
+		{
+			"user": "iceberg",
+			"allow": ["execute", "view"],
+		},		
 	],
 	"schemas": [
 		{
@@ -83,6 +92,12 @@ policies := {
 			"schema": "sf1",
 			"owner": true,
 		},
+		{
+			"user": "iceberg",
+			"catalog": "iceberg",
+			"schema": "test",
+			"owner": true,
+		},		
 	],
 	"tables": [
 		{
@@ -134,6 +149,11 @@ policies := {
 				},
 			],
 		},
+		{
+			"user": "iceberg",
+			"table": "small_customer",
+			"privileges": ["SELECT", "INSERT", "OWNERSHIP"],
+		},		
 	],
 	"system_information": [
 		{

@@ -60,9 +60,13 @@ TEST_DATA = [
             {
                 "query": "SELECT * FROM iceberg.sf1.small_customer",
                 "expected": [[2]],
-            }, 
+            },
             {
-                "query": "DROP TABLE iceberg.sf1.small_customer",
+                "query": "ALTER TABLE iceberg.sf1.small_customer RENAME TO iceberg.sf1.big_customer",
+                "expected": [],
+            },             
+            {
+                "query": "DROP TABLE iceberg.sf1.big_customer",
                 "expected": [],
             }, 
             {
@@ -121,6 +125,34 @@ TEST_DATA = [
                 "query": "SELECT name FROM tpch.sf1.customer ORDER BY name LIMIT 1",
                 "expected": [["Customer#000000001"]],
             },
+        ]
+    },
+    {
+        "user": {
+            "name": "iceberg",
+            "password": "iceberg",
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "expected": [["iceberg"]],
+            },
+            {
+                "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test WITH (location = 's3a://trino/test/')",
+                "expected": [],
+            },
+            {
+                "query": "CREATE TABLE IF NOT EXISTS iceberg.test.small_customer (orderkey bigint)",
+                "expected": [],
+            },
+            {
+                "query": "SELECT * FROM iceberg.test.small_customer",
+                "expected": [[2]],
+            },
+            {
+                "query": "DELETE FROM iceberg.test.small_customer WHERE orderkey=2",
+                "error": "Access Denied: Cannot delete from table",
+            },                      
         ]
     }    
 ]
