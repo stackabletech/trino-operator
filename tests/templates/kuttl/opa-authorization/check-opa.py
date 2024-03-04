@@ -34,12 +34,6 @@ TEST_DATA = [
                 "query": "SHOW SCHEMAS in system",
                 "expected": [["information_schema"],["jdbc"],["metadata"],["runtime"]],
             },
-            ### TABLE ###
-            # ExecuteQuery, AccessCatalog, ShowTables, SelectFromColumns, FilterCatalogs, FilterTables
-            {
-                "query": "SHOW TABLES in tpch.sf1",
-                "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
-            },
             # ExecuteQuery, AccessCatalog, CreateSchema
             {
                 "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test WITH (location = 's3a://trino/iceberg/test')",
@@ -61,15 +55,26 @@ TEST_DATA = [
                 "query": "ALTER SCHEMA iceberg.test RENAME TO test1",
                 # The request are authorized, just the hive connector does not support this
                 "error": "Hive metastore does not support renaming schemas",
+            },            
+            ### TABLE ###
+            # ExecuteQuery, AccessCatalog, ShowTables, SelectFromColumns, FilterCatalogs, FilterTables
+            {
+                "query": "SHOW TABLES in tpch.sf1",
+                "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
             },
             # ExecuteQuery, AccessCatalog, CreateTable
             {
-                "query": "CREATE TABLE IF NOT EXISTS iceberg.test.test (col1 bigint, col2 bigint, col3 bigint)",
+                "query": "CREATE TABLE IF NOT EXISTS iceberg.test.test (col1 bigint, col2 bigint)",
                 "expected": [],
             },
-            # ExecuteQuery, AccessCatalog, RenameColumn
+            # ExecuteQuery, AccessCatalog, SetTableComment
             {
-                "query": "ALTER TABLE iceberg.test.test RENAME COLUMN col3 TO col_renamed",
+                "query": "COMMENT ON TABLE iceberg.test.test IS 'This is a test table!'",
+                "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, SetColumnComment 
+            {
+                "query": "COMMENT ON COLUMN iceberg.test.test.col1 IS 'This is a column comment!'",
                 "expected": [],
             },
             # ExecuteQuery, AccessCatalog, SetTableAuthorization
@@ -77,6 +82,16 @@ TEST_DATA = [
                 "query": "ALTER TABLE iceberg.test.test SET AUTHORIZATION admin",
                 # The requests are authorized, just the hive connector does not support this
                 "error": "This connector does not support setting an owner on a table",
+            },
+            # ExecuteQuery, AccessCatalog, AddColumn
+            {
+                "query": "ALTER TABLE iceberg.test.test ADD COLUMN col3 bigint",
+                "expected": [],
+            },            
+            # ExecuteQuery, AccessCatalog, RenameColumn
+            {
+                "query": "ALTER TABLE iceberg.test.test RENAME COLUMN col3 TO col_renamed",
+                "expected": [],
             },
             # ExecuteQuery, AccessCatalog, DropColumn
             {
@@ -86,7 +101,7 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, ShowColumns, SelectFromColumns, FilterCatalogs, FilterTables, FilterColumns
             {
                 "query": "DESCRIBE iceberg.test.test",
-                "expected": [["col1", "bigint", "", ""],["col2", "bigint", "", ""]],
+                "expected": [["col1", "bigint", "", "This is a column comment!"],["col2", "bigint", "", ""]],
             },
             # ExecuteQuery, AccessCatalog, InsertIntoTable
             {
@@ -116,6 +131,12 @@ TEST_DATA = [
                 "query": "ALTER TABLE iceberg.test.test RENAME TO test2",
                 "expected": [],
             },
+            # ExecuteQuery, AccessCatalog, TruncateTable
+            {
+                "query": "TRUNCATE TABLE iceberg.test.test2",
+                # The requests are authorized, just the hive connector does not support this
+                "error": "This connector does not support truncating tables",
+            },            
             # ExecuteQuery, AccessCatalog, DropTable
             {
                 "query": "DROP TABLE iceberg.test.test2",
@@ -127,6 +148,17 @@ TEST_DATA = [
                 "query": "CREATE VIEW iceberg.test.v_customer AS SELECT name, address FROM tpch.sf1.customer",
                 "expected": [],
             },
+            # ExecuteQuery, AccessCatalog, SetViewComment
+            {
+                "query": "COMMENT ON VIEW iceberg.test.v_customer IS 'This is a test view!'",
+                "expected": [],
+            },
+            # ExecuteQuery, AccessCatalog, SetViewAuthorization
+            {
+                "query": "ALTER VIEW iceberg.test.v_customer SET AUTHORIZATION admin",
+                # The requests are authorized, just the hive connector does not support this                
+                "error": "This connector does not support setting an owner on a table",
+            }, 
             # ExecuteQuery, AccessCatalog, RenameView
             {
                 "query": "ALTER VIEW iceberg.test.v_customer RENAME TO iceberg.test.v_customer_renamed",
@@ -135,7 +167,7 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, ShowCreateTable
             {
                 "query": "SHOW CREATE VIEW iceberg.test.v_customer_renamed",
-                "expected": [['CREATE VIEW iceberg.test.v_customer_renamed SECURITY DEFINER AS\nSELECT\n  name\n, address\nFROM\n  tpch.sf1.customer']],
+                "expected": [["CREATE VIEW iceberg.test.v_customer_renamed COMMENT 'This is a test view!' SECURITY DEFINER AS\nSELECT\n  name\n, address\nFROM\n  tpch.sf1.customer"]],
             },
             # ExecuteQuery, AccessCatalog, DropView
             {
@@ -177,6 +209,15 @@ TEST_DATA = [
                 # The requests are authorized, was not created in the step above due to hive connector not supporting this
                 "error": "Function not found",
             },
+            ### SystemSessionProperties ###
+            # ExecuteQuery, SetSystemSessionProperty
+            {
+                "query": "SET SESSION optimize_hash_generation = true",
+                "expected": [],
+            },
+
+            ### ROLES / GRANTS ###
+
 
             ### CLEAN UP ###
             # ExecuteQuery, AccessCatalog, DropSchema
