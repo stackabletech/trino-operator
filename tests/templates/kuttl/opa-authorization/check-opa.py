@@ -250,8 +250,12 @@ TEST_DATA = [
                 # The requests are authorized, task did not exist..              
                 "error": "Target query not found: 20151207_215727_00146_tx3nr",
             },
-            ### ROLES / GRANTS ###
-
+            ### QUERIES ###
+            # ExecuteQuery, AccessCatalog, SelectFromColumns, FilterViewQueryOwnedBy
+            {
+                "query": "SELECT COUNT(*) FROM (SELECT * FROM system.runtime.queries LIMIT 1)",
+                "expected": [[1]],
+            },
 
             ### CLEAN UP ###
             # ExecuteQuery, AccessCatalog, DropSchema
