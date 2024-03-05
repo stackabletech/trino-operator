@@ -23,6 +23,12 @@ TEST_DATA = [
                 "query": "SHOW CATALOGS",
                 "expected": [["iceberg"],["lakehouse"],["system"],["tpcds"],["tpch"]],
             },
+            # ExecuteQuery, FilterCatalogs, ImpersonateUser
+            {
+                "query": "SHOW CATALOGS",
+                "expected": [["iceberg"]],
+                "impersonation": "iceberg",
+            },
             # ExecuteQuery, AccessCatalog, SetCatalogSessionProperty
             {
                 "query": "SET SESSION iceberg.test=true",
@@ -344,10 +350,15 @@ class TestOpa:
         for test_case in self.data:
             user = test_case["user"]["name"]
 
-            connection = TestOpa.get_connection(user, test_case["user"]["password"], self.namespace)
-
             for test in test_case["tests"]:
+                impersonation = None
                 query = test["query"]
+
+                if "impersonation" in test:
+                    impersonation = test["impersonation"]
+
+                # could be optimized to not create a connection for every call (currently due to user impersonation)
+                connection = TestOpa.get_connection(user, test_case["user"]["password"], self.namespace, impersonation)
 
                 if "error" in test:
                     error = test["error"]
@@ -373,11 +384,11 @@ class TestOpa:
         return cursor.fetchall()
 
 
-    def get_connection(username, password, namespace):
+    def get_connection(username, password, namespace, impersonation=None):
         connection = trino.dbapi.connect(
             host="trino-coordinator.{0}.svc.cluster.local".format(namespace),
             port=8443,
-            user=username,
+            user=impersonation if impersonation != None else username,
             http_scheme="https",
             auth=trino.auth.BasicAuthentication(username, password),
             verify=False,
