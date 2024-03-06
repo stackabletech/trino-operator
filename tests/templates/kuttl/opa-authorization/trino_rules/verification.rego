@@ -7,100 +7,100 @@ package trino
 import rego.v1
 
 # METADATA
-# description: Comparision of required and actual permissions
+# description: Comparision of requested and actual permissions
 # entrypoint: true
 default allow := false
 
 allow if {
-	# Fail if the required permissions for the given operation are not
+	# Fail if the requested permissions for the given operation are not
 	# implemented yet
 	#
 	# The following operations are intentionally not supported:
 	# - CreateCatalog
 	# - DropCatalog
-	required_permissions
+	requested_permissions
 
-	every required_permission in required_authorization_permissions {
-		permission := authorization_permission(required_permission.granteeName)
-		required_permission.allow == permission
+	every requested_permission in requested_authorization_permissions {
+		permission := authorization_permission(requested_permission.granteeName)
+		requested_permission.allow == permission
 	}
-	every required_permission in required_catalog_permissions {
-		access := catalog_access(required_permission.catalogName)
-		required_permission.allow in access
+	every requested_permission in requested_catalog_permissions {
+		access := catalog_access(requested_permission.catalogName)
+		requested_permission.allow in access
 	}
-	every required_permission in required_column_permissions {
+	every requested_permission in requested_column_permissions {
 		access := column_access(
-			required_permission.catalogName,
-			required_permission.schemaName,
-			required_permission.tableName,
-			required_permission.columnName,
+			requested_permission.catalogName,
+			requested_permission.schemaName,
+			requested_permission.tableName,
+			requested_permission.columnName,
 		)
-		required_permission.allow == access
+		requested_permission.allow == access
 	}
-	every required_permission in required_function_permissions {
+	every requested_permission in requested_function_permissions {
 		privileges := function_privileges(
-			required_permission.catalogName,
-			required_permission.schemaName,
-			required_permission.functionName,
+			requested_permission.catalogName,
+			requested_permission.schemaName,
+			requested_permission.functionName,
 		)
-		object.subset(privileges, required_permission.privileges)
+		object.subset(privileges, requested_permission.privileges)
 	}
-	every required_permission in required_impersonation_permissions {
-		access := impersonation_access(required_permission.user)
-		required_permission.allow == access
+	every requested_permission in requested_impersonation_permissions {
+		access := impersonation_access(requested_permission.user)
+		requested_permission.allow == access
 	}
-	every required_permission in required_procedure_permissions {
+	every requested_permission in requested_procedure_permissions {
 		privileges := procedure_privileges(
-			required_permission.catalogName,
-			required_permission.schemaName,
-			required_permission.functionName,
+			requested_permission.catalogName,
+			requested_permission.schemaName,
+			requested_permission.functionName,
 		)
-		object.subset(privileges, required_permission.privileges)
+		object.subset(privileges, requested_permission.privileges)
 	}
-	every required_permission in required_query_permissions {
-		object.subset(query_access, required_permission.allow)
+	every requested_permission in requested_query_permissions {
+		object.subset(query_access, requested_permission.allow)
 	}
-	every required_permission in required_query_owned_by_permissions {
+	every requested_permission in requested_query_owned_by_permissions {
 		object.subset(
-			query_owned_by_access(required_permission.user),
-			required_permission.allow,
+			query_owned_by_access(requested_permission.user),
+			requested_permission.allow,
 		)
 	}
-	every required_permission in required_schema_permissions {
+	every requested_permission in requested_schema_permissions {
 		schema_owner(
-			required_permission.catalogName,
-			required_permission.schemaName,
-		) == required_permission.owner
+			requested_permission.catalogName,
+			requested_permission.schemaName,
+		) == requested_permission.owner
 	}
-	every required_permission in required_table_permissions {
+	every requested_permission in requested_table_permissions {
 		privileges := table_privileges(
-			required_permission.catalogName,
-			required_permission.schemaName,
-			required_permission.tableName,
+			requested_permission.catalogName,
+			requested_permission.schemaName,
+			requested_permission.tableName,
 		)
-		all_of_required := object.get(required_permission.privileges, "allOf", set())
-		any_of_required := object.get(required_permission.privileges, "anyOf", privileges)
-		object.subset(privileges, all_of_required)
-		privileges & any_of_required != set()
+		all_of_requested := object.get(requested_permission.privileges, "allOf", set())
+		any_of_requested := object.get(requested_permission.privileges, "anyOf", privileges)
+		object.subset(privileges, all_of_requested)
+		privileges & any_of_requested != set()
 	}
-	every required_permission in required_system_information_permissions {
-		object.subset(system_information_access, required_permission.allow)
+	every requested_permission in requested_system_information_permissions {
+		object.subset(system_information_access, requested_permission.allow)
 	}
-	every required_permission in required_catalog_session_properties_permissions {
+	every requested_permission in requested_catalog_session_properties_permissions {
 		access := catalog_session_properties_access(
-			required_permission.catalogName,
-			required_permission.propertyName,
+			requested_permission.catalogName,
+			requested_permission.propertyName,
 		)
-		required_permission.allow == access
+		requested_permission.allow == access
 	}
-	every required_permission in required_system_session_properties_permissions {
-		access := system_session_properties_access(required_permission.propertyName)
-		required_permission.allow == access
+	every requested_permission in requested_system_session_properties_permissions {
+		access := system_session_properties_access(requested_permission.propertyName)
+		requested_permission.allow == access
 	}
 }
 
 # METADATA
-# description: Comparision of required and actual permissions
+# description: Comparision of requested and actual permissions
 # entrypoint: true
 batch contains index if {
 	input.action.operation != "FilterColumns"

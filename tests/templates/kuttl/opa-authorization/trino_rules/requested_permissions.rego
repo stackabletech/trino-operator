@@ -2,8 +2,6 @@ package trino
 
 import rego.v1
 
-# TODO Rename to requested_permissions.rego
-
 # These rules replicate the file-based access control
 # (https://trino.io/docs/current/security/file-system-access-control.html#table-rules).
 #
@@ -16,9 +14,7 @@ action := input.action
 
 operation := action.operation
 
-# Required permissions
-
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"AccessCatalog",
 		"FilterCatalogs",
@@ -30,7 +26,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "CreateSchema"
 	permissions := {
 		{
@@ -47,7 +43,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"AddColumn",
 		"AlterColumn",
@@ -84,7 +80,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"DeleteFromTable",
 		"TruncateTable",
@@ -105,7 +101,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "ExecuteQuery"
 	permissions := {{
 		"resource": "query",
@@ -113,14 +109,14 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "ExecuteTableProcedure"
 
 	# Executing table procedures is always allowed
 	permissions := set()
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "FilterColumns"
 	permissions := {{
 		"resource": "column",
@@ -132,7 +128,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "KillQueryOwnedBy"
 	permissions := {{
 		"resource": "query_owned_by",
@@ -142,7 +138,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"FilterViewQueryOwnedBy",
 		"ViewQueryOwnedBy",
@@ -155,7 +151,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "FilterTables"
 	permissions := {{
 		"resource": "catalog",
@@ -164,7 +160,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"CreateFunction",
 		"DropFunction",
@@ -185,7 +181,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"ExecuteFunction",
 		"FilterFunctions",
@@ -199,7 +195,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "ExecuteProcedure"
 	permissions := {{
 		"resource": "procedure",
@@ -210,7 +206,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "CreateViewWithExecuteFunction"
 	permissions := {{
 		"resource": "function",
@@ -221,7 +217,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"DropSchema",
 		"ShowCreateSchema",
@@ -241,7 +237,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "ImpersonateUser"
 	permissions := {{
 		"resource": "impersonation",
@@ -250,7 +246,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "InsertIntoTable"
 	permissions := {
 		{
@@ -268,7 +264,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "ReadSystemInformation"
 	permissions := {{
 		"resource": "system_information",
@@ -276,7 +272,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "RefreshMaterializedView"
 	permissions := {
 		{
@@ -294,7 +290,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "RenameSchema"
 	permissions := {
 		{
@@ -322,7 +318,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"RenameMaterializedView",
 		"RenameTable",
@@ -356,7 +352,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "SelectFromColumns"
 	column_permissions := {
 	{
@@ -385,7 +381,7 @@ required_permissions := permissions if {
 	} | column_permissions
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "SetSchemaAuthorization"
 	permissions := {
 		{
@@ -408,7 +404,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"SetTableAuthorization",
 		"SetViewAuthorization",
@@ -435,7 +431,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "ShowColumns"
 	permissions := {
 		{
@@ -460,7 +456,7 @@ required_permissions := permissions if {
 	}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "ShowSchemas"
 	permissions := {{
 		"resource": "catalog",
@@ -469,7 +465,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation in {
 		"FilterSchemas",
 		"ShowFunctions",
@@ -482,7 +478,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "SetCatalogSessionProperty"
 	permissions := {{
 		"resource": "catalog_session_properties",
@@ -492,7 +488,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "SetSystemSessionProperty"
 	permissions := {{
 		"resource": "system_session_properties",
@@ -501,7 +497,7 @@ required_permissions := permissions if {
 	}}
 }
 
-required_permissions := permissions if {
+requested_permissions := permissions if {
 	operation == "WriteSystemInformation"
 	permissions := {{
 		"resource": "system_information",
@@ -509,67 +505,67 @@ required_permissions := permissions if {
 	}}
 }
 
-required_authorization_permissions contains permission if {
-	some permission in required_permissions
+requested_authorization_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "authorization"
 }
 
-required_catalog_permissions contains permission if {
-	some permission in required_permissions
+requested_catalog_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "catalog"
 }
 
-required_column_permissions contains permission if {
-	some permission in required_permissions
+requested_column_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "column"
 }
 
-required_function_permissions contains permission if {
-	some permission in required_permissions
+requested_function_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "function"
 }
 
-required_impersonation_permissions contains permission if {
-	some permission in required_permissions
+requested_impersonation_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "impersonation"
 }
 
-required_procedure_permissions contains permission if {
-	some permission in required_permissions
+requested_procedure_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "procedure"
 }
 
-required_query_permissions contains permission if {
-	some permission in required_permissions
+requested_query_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "query"
 }
 
-required_query_owned_by_permissions contains permission if {
-	some permission in required_permissions
+requested_query_owned_by_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "query_owned_by"
 }
 
-required_schema_permissions contains permission if {
-	some permission in required_permissions
+requested_schema_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "schema"
 }
 
-required_table_permissions contains permission if {
-	some permission in required_permissions
+requested_table_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "table"
 }
 
-required_system_information_permissions contains permission if {
-	some permission in required_permissions
+requested_system_information_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "system_information"
 }
 
-required_catalog_session_properties_permissions contains permission if {
-	some permission in required_permissions
+requested_catalog_session_properties_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "catalog_session_properties"
 }
 
-required_system_session_properties_permissions contains permission if {
-	some permission in required_permissions
+requested_system_session_properties_permissions contains permission if {
+	some permission in requested_permissions
 	permission.resource == "system_session_properties"
 }

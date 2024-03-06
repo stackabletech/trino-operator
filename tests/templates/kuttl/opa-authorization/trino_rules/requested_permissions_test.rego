@@ -1,4 +1,4 @@
-package required_permissions_test
+package requested_permissions_test
 
 import data.trino
 import rego.v1
