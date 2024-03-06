@@ -65,7 +65,7 @@ policies := {
 		{
 			"user": "iceberg",
 			"allow": ["execute", "view"],
-		},		
+		},
 	],
 	"schemas": [
 		{
@@ -97,7 +97,7 @@ policies := {
 			"catalog": "iceberg",
 			"schema": "test",
 			"owner": true,
-		},		
+		},
 	],
 	"tables": [
 		{
@@ -153,7 +153,7 @@ policies := {
 			"user": "iceberg",
 			"table": "small_customer",
 			"privileges": ["SELECT", "INSERT", "OWNERSHIP"],
-		},		
+		},
 	],
 	"system_information": [
 		{

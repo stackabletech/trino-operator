@@ -6,35 +6,31 @@ identity := input.context.identity
 
 raw_policies := data.trino_policies.policies
 
-filter_by_user_group(resource) := matching_rules if {
-	matching_rules := [rule |
-		some rule in resource
+filter_by_user_group(resource) := [rule |
+	some rule in resource
 
-		# Add an empty dummy group to iterate at least once
-		some group in array.concat(identity.groups, [""])
+	# Add an empty dummy group to iterate at least once
+	some group in array.concat(identity.groups, [""])
 
-		user_pattern := object.get(rule, "user", ".*")
-		group_pattern := object.get(rule, "group", ".*")
+	user_pattern := object.get(rule, "user", ".*")
+	group_pattern := object.get(rule, "group", ".*")
 
-		regex.match(user_pattern, identity.user)
-		regex.match(group_pattern, group)
-	]
-}
+	regex.match(user_pattern, identity.user)
+	regex.match(group_pattern, group)
+]
 
-filter_by_original_user_group(resource) := matching_rules if {
-	matching_rules := [rule |
-		some rule in resource
+filter_by_original_user_group(resource) := [rule |
+	some rule in resource
 
-		# Add an empty dummy group to iterate at least once
-		some group in array.concat(identity.groups, [""])
+	# Add an empty dummy group to iterate at least once
+	some group in array.concat(identity.groups, [""])
 
-		user_pattern := object.get(rule, "original_user", ".*")
-		group_pattern := object.get(rule, "original_group", ".*")
+	user_pattern := object.get(rule, "original_user", ".*")
+	group_pattern := object.get(rule, "original_group", ".*")
 
-		regex.match(user_pattern, identity.user)
-		regex.match(group_pattern, group)
-	]
-}
+	regex.match(user_pattern, identity.user)
+	regex.match(group_pattern, group)
+]
 
 default authorization_rules := []
 
@@ -253,9 +249,19 @@ default table_rules := [{"privileges": [
 table_rules := filter_by_user_group(raw_policies.tables)
 
 # Table privileges of the first matching rule
-default table_privileges(_, _, _) := []
+default table_privileges(_, _, _) := set()
+
+table_privileges(_, "information_schema", _) := {
+	"DELETE",
+	"GRANT_SELECT",
+	"INSERT",
+	"OWNERSHIP",
+	"SELECT",
+	"UPDATE",
+}
 
 table_privileges(catalog_name, schema_name, table_name) := privileges if {
+	schema_name != "information_schema"
 	rules := [rule |
 		some rule in table_rules
 
@@ -278,7 +284,10 @@ not_allowed_columns(columns) := {column.name |
 # Column access of the first matching rule
 default column_access(_, _, _, _) := false
 
+column_access(_, "information_schema", _, _)
+
 column_access(catalog_name, schema_name, table_name, column_name) if {
+	schema_name != "information_schema"
 	rules := [rule |
 		some rule in table_rules
 
@@ -303,7 +312,7 @@ default system_information_rules := []
 system_information_rules := filter_by_user_group(raw_policies.system_information)
 
 # System information access of the first matching rule
-default system_information_access := []
+default system_information_access := set()
 
 system_information_access := system_information_rules[0].allow
 
