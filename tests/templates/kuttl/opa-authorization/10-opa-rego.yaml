@@ -7,7 +7,7 @@ commands:
       kubectl create configmap trino-opa-rules \
         --namespace=$NAMESPACE \
         --from-file=trino_rules/actual_permissions.rego \
-        --from-file=trino_rules/required_permissions.rego \
+        --from-file=trino_rules/requested_permissions.rego \
         --from-file=trino_rules/verification.rego
       kubectl label configmaps trino-opa-rules \
         opa.stackable.tech/bundle=trino \

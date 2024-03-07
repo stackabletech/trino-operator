@@ -32,7 +32,7 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, SetCatalogSessionProperty
             {
                 "query": "SET SESSION iceberg.test=true",
-                # The request are authorized, just a fake property
+                # The requests are authorized, just a fake property
                 "error": "Session property 'iceberg.test' does not exist",
             },
             ### SCHEMA ###
@@ -64,13 +64,13 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, SetSchemaAuthorization
             {
                 "query": "ALTER SCHEMA iceberg.test SET AUTHORIZATION ROLE public",
-                # The request are authorized, just the hive connector does not support this
+                # The requests are authorized, just the hive connector does not support this
                 "error": "This connector does not support roles",
             },
             # ExecuteQuery, AccessCatalog, RenameSchema
             {
                 "query": "ALTER SCHEMA iceberg.test RENAME TO test1",
-                # The request are authorized, just the hive connector does not support this
+                # The requests are authorized, just the hive connector does not support this
                 "error": "Hive metastore does not support renaming schemas",
             },            
             ### TABLE ###
@@ -200,7 +200,7 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, RefreshMaterializedView
             {
                 "query": "REFRESH MATERIALIZED VIEW iceberg.test.mv_customer",
-                # refreshed contains 150000 rows
+                # refreshed 150000 rows
                 "expected": [[150000]],
             },
             # ExecuteQuery, AccessCatalog, SetMaterializedViewProperties
