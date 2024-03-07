@@ -3,6 +3,16 @@ package actual_permissions_test
 import data.trino
 import rego.v1
 
+test_match_entire if {
+	trino.match_entire(`a`, "a")
+	trino.match_entire(`^a`, "a")
+	trino.match_entire(`a$`, "a")
+	trino.match_entire(`^a$`, "a")
+	not trino.match_entire(`a`, "abc")
+	not trino.match_entire(`b`, "abc")
+	not trino.match_entire(`c`, "abc")
+}
+
 test_impersonation_access_allow_specified_user if {
 	trino.impersonation_access("testuser") with data.trino_policies.policies as {"impersonation": [{
 		"original_user": "admin",

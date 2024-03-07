@@ -6,6 +6,13 @@ identity := input.context.identity
 
 raw_policies := data.trino_policies.policies
 
+match_entire(pattern, value) if {
+	# Add the anchors ^ and $
+	pattern_with_anchors := concat("", ["^", pattern, "$"])
+
+	regex.match(pattern_with_anchors, value)
+}
+
 filter_by_user_group(resource) := [rule |
 	some rule in resource
 
@@ -15,8 +22,8 @@ filter_by_user_group(resource) := [rule |
 	user_pattern := object.get(rule, "user", ".*")
 	group_pattern := object.get(rule, "group", ".*")
 
-	regex.match(user_pattern, identity.user)
-	regex.match(group_pattern, group)
+	match_entire(user_pattern, identity.user)
+	match_entire(group_pattern, group)
 ]
 
 filter_by_original_user_group(resource) := [rule |
@@ -28,8 +35,8 @@ filter_by_original_user_group(resource) := [rule |
 	user_pattern := object.get(rule, "original_user", ".*")
 	group_pattern := object.get(rule, "original_group", ".*")
 
-	regex.match(user_pattern, identity.user)
-	regex.match(group_pattern, group)
+	match_entire(user_pattern, identity.user)
+	match_entire(group_pattern, group)
 ]
 
 default authorization_rules := []
@@ -45,7 +52,7 @@ authorization_permission(grantee_name) := permission if {
 
 		new_user_pattern := object.get(rule, "new_user", ".*")
 
-		regex.match(new_user_pattern, grantee_name)
+		match_entire(new_user_pattern, grantee_name)
 	]
 	permission := object.get(rules[0], "allow", true)
 }
@@ -69,7 +76,7 @@ catalog_access(catalog_name) := access if {
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 
-		regex.match(catalog_pattern, catalog_name)
+		match_entire(catalog_pattern, catalog_name)
 	]
 	access := catalog_access_map[rules[0].allow]
 }
@@ -88,8 +95,8 @@ catalog_session_properties_access(catalog_name, property_name) := access if {
 		catalog_name_pattern := object.get(rule, "catalogName", ".*")
 		property_name_pattern := object.get(rule, "propertyName", ".*")
 
-		regex.match(catalog_name_pattern, catalog_name)
-		regex.match(property_name_pattern, property_name)
+		match_entire(catalog_name_pattern, catalog_name)
+		match_entire(property_name_pattern, property_name)
 	]
 	access := rules[0].allow
 }
@@ -116,9 +123,9 @@ function_privileges(catalog_name, schema_name, function_name) := privileges if {
 		schema_pattern := object.get(rule, "schema", ".*")
 		function_pattern := object.get(rule, "function", ".*")
 
-		regex.match(catalog_pattern, catalog_name)
-		regex.match(schema_pattern, schema_name)
-		regex.match(function_pattern, function_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
+		match_entire(function_pattern, function_name)
 	]
 	privileges := {privilege | some privilege in rules[0].privileges}
 }
@@ -155,7 +162,7 @@ impersonation_access(user) := access if {
 			unsubstituted_new_user_pattern,
 		)
 
-		regex.match(new_user_pattern, user)
+		match_entire(new_user_pattern, user)
 	]
 	access := object.get(rules[0], "allow", true)
 }
@@ -187,9 +194,9 @@ procedure_privileges(catalog_name, schema_name, function_name) := privileges if 
 		schema_pattern := object.get(rule, "schema", ".*")
 		procedure_pattern := object.get(rule, "procedure", ".*")
 
-		regex.match(catalog_pattern, catalog_name)
-		regex.match(schema_pattern, schema_name)
-		regex.match(procedure_pattern, function_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
+		match_entire(procedure_pattern, function_name)
 	]
 	privileges := {privilege | some privilege in rules[0].privileges}
 }
@@ -212,7 +219,7 @@ query_owned_by_access(user) := access if {
 
 		query_owner_pattern := object.get(rule, "queryOwner", ".*")
 
-		regex.match(query_owner_pattern, user)
+		match_entire(query_owner_pattern, user)
 	]
 	access := rules[0].allow
 }
@@ -231,8 +238,8 @@ schema_owner(catalog_name, schema_name) := owner if {
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
 
-		regex.match(catalog_pattern, catalog_name)
-		regex.match(schema_pattern, schema_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
 	]
 	owner := rules[0].owner
 }
@@ -269,9 +276,9 @@ table_privileges(catalog_name, schema_name, table_name) := privileges if {
 		schema_pattern := object.get(rule, "schema", ".*")
 		table_pattern := object.get(rule, "table", ".*")
 
-		regex.match(catalog_pattern, catalog_name)
-		regex.match(schema_pattern, schema_name)
-		regex.match(table_pattern, table_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
+		match_entire(table_pattern, table_name)
 	]
 	privileges := {privilege | some privilege in rules[0].privileges}
 }
@@ -295,9 +302,9 @@ column_access(catalog_name, schema_name, table_name, column_name) if {
 		schema_pattern := object.get(rule, "schema", ".*")
 		table_pattern := object.get(rule, "table", ".*")
 
-		regex.match(catalog_pattern, catalog_name)
-		regex.match(schema_pattern, schema_name)
-		regex.match(table_pattern, table_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
+		match_entire(table_pattern, table_name)
 	]
 
 	count(rules[0].privileges) != 0
@@ -329,7 +336,7 @@ system_session_properties_access(property_name) := access if {
 
 		property_name_pattern := object.get(rule, "name", ".*")
 
-		regex.match(property_name_pattern, property_name)
+		match_entire(property_name_pattern, property_name)
 	]
 	access := rules[0].allow
 }
