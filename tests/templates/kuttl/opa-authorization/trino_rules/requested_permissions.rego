@@ -81,6 +81,7 @@ requested_permissions := permissions if {
 
 requested_permissions := permissions if {
 	operation in {
+		"RefreshMaterializedView",
 		"UpdateTableColumns",
 	}
 	permissions := {
@@ -289,24 +290,6 @@ requested_permissions := permissions if {
 		"resource": "system_information",
 		"allow": {"read"},
 	}}
-}
-
-requested_permissions := permissions if {
-	operation == "RefreshMaterializedView"
-	permissions := {
-		{
-			"resource": "catalog",
-			"catalogName": action.resource.table.catalogName,
-			"allow": "all",
-		},
-		{
-			"resource": "table",
-			"catalogName": action.resource.table.catalogName,
-			"schemaName": action.resource.table.schemaName,
-			"tableName": action.resource.table.tableName,
-			"privileges": {"allOf": {"UPDATE"}},
-		},
-	}
 }
 
 requested_permissions := permissions if {
