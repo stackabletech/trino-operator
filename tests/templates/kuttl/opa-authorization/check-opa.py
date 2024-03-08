@@ -277,7 +277,7 @@ TEST_DATA = [
         ]
     },
     {
-        # User lakehouse can: 
+        # User iceberg can: 
         # - execute queries
         # - only access read-only lakehouse catalog
         # - access schemas tiny and sf1 in catalog lakehouse
