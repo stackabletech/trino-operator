@@ -69,7 +69,7 @@ catalog_access_map := {
 }
 
 # Catalog access of the first matching rule
-default catalog_access(_) := "none"
+default catalog_access(_) := {"none"}
 
 catalog_access(catalog_name) := access if {
 	rules := [rule |

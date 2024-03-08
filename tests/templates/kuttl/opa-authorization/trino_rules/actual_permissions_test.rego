@@ -61,7 +61,7 @@ test_filter_by_user_group_with_default_user_and_group_pattern if {
 
 test_filter_by_user_group_with_no_group_memberships if {
 	rules := [
-		{"group": "banned_group", "allow": "none"},
+		{"group": "othergroup", "allow": "none"},
 		{"allow": "all"},
 	]
 	identity := {"user": "testuser", "groups": []}
@@ -131,7 +131,7 @@ test_filter_by_original_user_group_with_default_user_and_group_pattern if {
 
 test_filter_by_original_user_group_with_no_group_memberships if {
 	rules := [
-		{"original_group": "banned_group", "allow": "none"},
+		{"original_group": "othergroup", "allow": "none"},
 		{"allow": "all"},
 	]
 	identity := {"user": "testuser", "groups": []}
@@ -182,12 +182,22 @@ test_filter_by_original_user_group_with_matching_user_and_groups_regexes if {
 }
 
 test_authorization_permission_with_matching_rule if {
-	policies := {"authorization": [{
-		"original_user": "test.*",
-		"original_group": "test.*",
-		"new_user": "other.*",
-		"allow": true,
-	}]}
+	policies := {"authorization": [
+		{
+			"new_user": "non_matching_user",
+			"allow": false,
+		},
+		{
+			"original_user": "test.*",
+			"original_group": "test.*",
+			"new_user": "other.*",
+			"allow": true,
+		},
+		{
+			"new_user": ".*",
+			"allow": false,
+		},
+	]}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	grantee_name := "otheruser"
 
@@ -218,12 +228,80 @@ test_authorization_permission_with_no_matching_rule if {
 	not allowed
 }
 
+test_catalog_access_with_matching_rule if {
+	policies := {"catalogs": [
+		{
+			"catalog": "non_matching_catalog",
+			"allow": "all",
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"catalog": "testcatalog",
+			"allow": "read-only",
+		},
+		{"allow": "none"},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+
+	access := trino.catalog_access(catalog_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == {"read-only"}
+}
+
+test_catalog_access_with_no_matching_rule if {
+	policies := {"catalogs": [
+		{
+			"user": "non_matching_user",
+			"allow": "all",
+		},
+		{
+			"group": "non_matching_group",
+			"allow": "all",
+		},
+		{
+			"catalog": "non_matching_catalog",
+			"allow": "all",
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+
+	access := trino.catalog_access(catalog_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == {"none"}
+}
+
+test_catalog_access_with_no_rules if {
+	policies := set()
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+
+	access := trino.catalog_access(catalog_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == {"all", "read-only"}
+}
+
 test_impersonation_access_with_matching_user if {
-	policies := {"impersonation": [{
-		"original_user": "testuser",
-		"new_user": "otheruser",
-		"allow": true,
-	}]}
+	policies := {"impersonation": [
+		{
+			"new_user": "non_matching_user",
+			"allow": false,
+		},
+		{
+			"original_user": "testuser",
+			"new_user": "otheruser",
+			"allow": true,
+		},
+		{
+			"new_user": ".*",
+			"allow": false,
+		},
+	]}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	user := "otheruser"
 
@@ -249,11 +327,21 @@ test_impersonation_access_with_self_impersonation if {
 }
 
 test_impersonation_access_with_matching_capture_groups if {
-	policies := {"impersonation": [{
-		"original_user": "user_(a)(b)(c)(d)(e)(f)(g)(h)(i)",
-		"new_user": "user_$9$8$7$6$5$4$3$2$1",
-		"allow": true,
-	}]}
+	policies := {"impersonation": [
+		{
+			"new_user": "non_matching_user",
+			"allow": false,
+		},
+		{
+			"original_user": "user_(a)(b)(c)(d)(e)(f)(g)(h)(i)",
+			"new_user": "user_$9$8$7$6$5$4$3$2$1",
+			"allow": true,
+		},
+		{
+			"new_user": ".*",
+			"allow": false,
+		},
+	]}
 	identity := {"user": "user_abcdefghi", "groups": ["testgroup1", "testgroup2"]}
 	user := "user_ihgfedcba"
 
