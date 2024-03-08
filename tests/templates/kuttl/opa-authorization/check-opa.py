@@ -401,6 +401,7 @@ class TestOpa:
     def run(self):
         for test_case in self.data:
             user = test_case["user"]["name"]
+            password = test_case["user"]["password"]
 
             for test in test_case["tests"]:
                 impersonation = None
@@ -410,7 +411,7 @@ class TestOpa:
                     impersonation = test["impersonation"]
 
                 # could be optimized to not create a connection for every call (currently due to user impersonation)
-                connection = TestOpa.get_connection(user, test_case["user"]["password"], self.namespace, impersonation)
+                connection = TestOpa.get_connection(user, password, self.namespace, impersonation)
 
                 if "error" in test:
                     error = test["error"]
