@@ -174,7 +174,7 @@ policies := {
 		{
 			"user": "iceberg",
 			"catalog": "iceberg",
-			"privileges": ["SELECT", "INSERT", "DELETE"],
+			"privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP"],
 		},
 	],
 	"system_information": [

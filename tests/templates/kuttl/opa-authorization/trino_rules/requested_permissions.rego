@@ -62,7 +62,6 @@ requested_permissions := permissions if {
 		"SetTableProperties",
 		"SetViewComment",
 		"ShowCreateTable",
-		"UpdateTableColumns",
 	}
 	permissions := {
 		{
@@ -76,6 +75,26 @@ requested_permissions := permissions if {
 			"schemaName": action.resource.table.schemaName,
 			"tableName": action.resource.table.tableName,
 			"privileges": {"allOf": {"OWNERSHIP"}},
+		},
+	}
+}
+
+requested_permissions := permissions if {
+	operation in {
+		"UpdateTableColumns",
+	}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "all",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"allOf": {"UPDATE"}},
 		},
 	}
 }

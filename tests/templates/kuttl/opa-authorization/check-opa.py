@@ -365,7 +365,7 @@ TEST_DATA = [
             },
             {
                 "query": "INSERT INTO iceberg.test2.test VALUES (1),(2)",
-                "expected": [2],
+                "expected": [[2]],
             },
             {
                 "query": "SELECT * FROM iceberg.test2.test",
@@ -373,12 +373,20 @@ TEST_DATA = [
             },
             {
                 "query": "UPDATE iceberg.test2.test SET test=3 WHERE test=2",
-                "error": "Access Denied: Cannot update columns [test] in table iceberg.test2.test",
+                "error": "Access Denied: Cannot update columns",
             },                      
             {
                 "query": "DELETE FROM iceberg.test2.test WHERE test=2",
                 "expected": [[1]],
-            },                      
+            },
+            {
+                "query": "DROP TABLE iceberg.test2.test",
+                "expected": [],
+            },
+            {
+                "query": "DROP SCHEMA iceberg.test2",
+                "expected": [],
+            },   
         ]
     }    
 ]
