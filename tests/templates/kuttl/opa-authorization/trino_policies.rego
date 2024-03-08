@@ -173,7 +173,8 @@ policies := {
 		},		
 		{
 			"user": "iceberg",
-			"privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP"],
+			"catalog": "iceberg",
+			"privileges": ["SELECT", "INSERT", "DELETE"],
 		},
 	],
 	"system_information": [

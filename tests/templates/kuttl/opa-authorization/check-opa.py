@@ -327,66 +327,60 @@ TEST_DATA = [
             }
         ]
     },
-    # {
-    #     "user": {
-    #         "name": "banned-user",
-    #         "password": "banned-user",
-    #     },
-    #     "tests": [
-    #         {
-    #             "query": "SHOW CATALOGS",
-    #             "error": "Access Denied: Cannot execute query",
-    #         },
-    #     ]
-    # },
-    # {
-    #     "user": {
-    #         "name": "select-columns",
-    #         "password": "select-columns",
-    #     },
-    #     "tests": [
-    #         {
-    #             "query": "SHOW CATALOGS",
-    #             "expected": [["tpch"]],
-    #         },
-    #         {
-    #             "query": "SELECT * FROM tpch.sf1.customer",
-    #             "error": "Access Denied: Cannot select from columns",
-    #         },
-    #         {
-    #             "query": "SELECT name FROM tpch.sf1.customer ORDER BY name LIMIT 1",
-    #             "expected": [["Customer#000000001"]],
-    #         },
-    #     ]
-    # },
-    # {
-    #     "user": {
-    #         "name": "iceberg",
-    #         "password": "iceberg",
-    #     },
-    #     "tests": [
-    #         {
-    #             "query": "SHOW CATALOGS",
-    #             "expected": [["iceberg"]],
-    #         },
-    #         {
-    #             "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test WITH (location = 's3a://trino/test/')",
-    #             "expected": [],
-    #         },
-    #         {
-    #             "query": "CREATE TABLE IF NOT EXISTS iceberg.test.small_customer (orderkey bigint)",
-    #             "expected": [],
-    #         },
-    #         {
-    #             "query": "SELECT * FROM iceberg.test.small_customer",
-    #             "expected": [[2]],
-    #         },
-    #         {
-    #             "query": "DELETE FROM iceberg.test.small_customer WHERE orderkey=2",
-    #             "error": "Access Denied: Cannot delete from table",
-    #         },                      
-    #     ]
-    # }    
+    {
+        # User banned-user cannot do anything
+        "user": {
+            "name": "banned-user",
+            "password": "banned-user",
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "error": "Access Denied: Cannot execute query",
+            },
+        ]
+    },
+    {
+        # User lakehouse can: 
+        # - execute queries
+        # - access iceberg catalog
+        # - create, drop and access all schemas
+        # - select, insert, delete in all tables in iceberg.*
+        "user": {
+            "name": "iceberg",
+            "password": "iceberg",
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "expected": [["iceberg"]],
+            },
+            {
+                "query": "CREATE SCHEMA IF NOT EXISTS iceberg.test2 WITH (location = 's3a://trino/test2/')",
+                "expected": [],
+            },
+            {
+                "query": "CREATE TABLE IF NOT EXISTS iceberg.test2.test (test bigint)",
+                "expected": [],
+            },
+            {
+                "query": "INSERT INTO iceberg.test2.test VALUES (1),(2)",
+                "expected": [2],
+            },
+            {
+                "query": "SELECT * FROM iceberg.test2.test",
+                "expected": [[1],[2]],
+            },
+            {
+                "query": "UPDATE iceberg.test2.test SET test=3 WHERE test=2",
+                "error": "Access Denied: Cannot update columns [test] in table iceberg.test2.test",
+            },                      
+            {
+                "query": "DELETE FROM iceberg.test2.test WHERE test=2",
+                "expected": [[1]],
+            },                      
+        ]
+    }    
 ]
 
 class TestOpa:
