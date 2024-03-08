@@ -13,30 +13,31 @@ match_entire(pattern, value) if {
 	regex.match(pattern_with_anchors, value)
 }
 
+match_any_group(group_pattern) if {
+	# Add an empty dummy group because the default pattern ".*" should
+	# match even if the user is not a member of a group.
+	some group in array.concat(identity.groups, [""])
+	match_entire(group_pattern, group)
+}
+
 filter_by_user_group(resource) := [rule |
 	some rule in resource
-
-	# Add an empty dummy group to iterate at least once
-	some group in array.concat(identity.groups, [""])
 
 	user_pattern := object.get(rule, "user", ".*")
 	group_pattern := object.get(rule, "group", ".*")
 
 	match_entire(user_pattern, identity.user)
-	match_entire(group_pattern, group)
+	match_any_group(group_pattern)
 ]
 
 filter_by_original_user_group(resource) := [rule |
 	some rule in resource
 
-	# Add an empty dummy group to iterate at least once
-	some group in array.concat(identity.groups, [""])
-
 	user_pattern := object.get(rule, "original_user", ".*")
 	group_pattern := object.get(rule, "original_group", ".*")
 
 	match_entire(user_pattern, identity.user)
-	match_entire(group_pattern, group)
+	match_any_group(group_pattern)
 ]
 
 default authorization_rules := []
