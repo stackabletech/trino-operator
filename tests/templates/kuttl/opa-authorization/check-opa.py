@@ -9,9 +9,20 @@ from trino.exceptions import TrinoUserError
 import urllib3
 urllib3.disable_warnings()
 
-
+# Currently missing operation checks:
+#
+# CreateViewWithExecuteFunction
+# CreateViewWithSelectFromColumns
+# ExecuteFunction
+# ExecuteTableProcedure
+# FilterFunctions
+# KillQueryOwnedBy
+# ReadSystemInformation
+# ViewQueryOwnedBy
+# WriteSystemInformation
 TEST_DATA = [
     {
+        # Admin user with all permissions
         "user": {
             "name": "admin",
             "password": "admin",
@@ -265,22 +276,57 @@ TEST_DATA = [
             },                        
         ]
     },
-    # {
-    #     "user": {
-    #         "name": "lakehouse",
-    #         "password": "lakehouse",
-    #     },
-    #     "tests": [
-    #         {
-    #             "query": "SHOW CATALOGS",
-    #             "expected": [["lakehouse"]],
-    #         },
-    #         {
-    #             "query": "SELECT * from lakehouse.sf1.customer",
-    #             "error": "Access Denied: Cannot select from columns",
-    #         },            
-    #     ]
-    # },
+    {
+        # User lakehouse can: 
+        # - execute queries
+        # - only access read-only lakehouse catalog
+        # - access schemas tiny and sf1 in catalog lakehouse
+        # - select only the column name in table 'customer' in schema lakehouse.tiny (not in lakehouse.sf1)
+        # - select all columns in table 'customer' in lakehouse.sf1
+        "user": {
+            "name": "lakehouse",
+            "password": "lakehouse",
+        },
+        "tests": [
+            {
+                "query": "SHOW CATALOGS",
+                "expected": [["lakehouse"]],
+            },
+            {
+                "query": "SHOW SCHEMAS IN lakehouse",
+                "expected": [["information_schema"],["sf1"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
+            },
+            {
+                "query": "SHOW SCHEMAS IN tpch",
+                "error": "Access Denied: Cannot access catalog tpch",
+            },
+            {
+                "query": "SHOW TABLES in lakehouse.sf1",
+                "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
+            },            
+            {
+                "query": "SELECT name from lakehouse.tiny.customer ORDER BY name LIMIT 1",
+                "expected": [["Customer#000000001"]],
+            },
+            {
+                "query": "SELECT * from lakehouse.tiny.customer ORDER BY name LIMIT 1",
+                "error": "Access Denied: Cannot select from columns",
+            },
+            {
+                "query": "SELECT * from lakehouse.sf1.customer ORDER BY name LIMIT 1",
+                "expected": [[1, 'Customer#000000001', 'IVhzIApeRb ot,c,E', 15, '25-989-741-2988', 711.56, 'BUILDING', 'to the even, regular platelets. regular, ironic epitaphs nag e']],
+            },
+            {
+                "query": "SELECT * from tpch.tiny.customer ORDER BY name LIMIT 1",
+                "error": "Access Denied: Cannot access catalog tpch",
+            },
+            {
+                # fake values, authorization is checked first
+                "query": "INSERT INTO lakehouse.tiny.customer VALUES(1)",
+                "error": "Access Denied: Cannot insert into table lakehouse.tiny.customer",
+            }
+        ]
+    },
     # {
     #     "user": {
     #         "name": "banned-user",

@@ -27,11 +27,6 @@ policies := {
 			"allow": "read-only",
 		},
 		{
-			"user": "select-columns",
-			"catalog": "tpch",
-			"allow": "read-only",
-		},
-		{
 			"user": "iceberg",
 			"catalog": "iceberg",
 			"allow": "all",
@@ -56,11 +51,7 @@ policies := {
 		},
 		{
 			"user": "lakehouse",
-			"allow": ["execute", "view"],
-		},
-		{
-			"user": "select-columns",
-			"allow": ["execute", "view"],
+			"allow": ["execute"],
 		},
 		{
 			"user": "iceberg",
@@ -87,15 +78,13 @@ policies := {
 			"owner": true,
 		},
 		{
-			"user": "select-columns",
-			"catalog": "tpch",
-			"schema": "sf1",
-			"owner": true,
+			"user": "lakehouse",
+			"catalog": "lakehouse",
+			"schema": "sf1|tiny",
 		},
 		{
 			"user": "iceberg",
 			"catalog": "iceberg",
-			"schema": "test",
 			"owner": true,
 		},
 	],
@@ -135,24 +124,56 @@ policies := {
 			],
 		},
 		{
-			"user": "select-columns",
+			"user": "lakehouse",
+			"catalog": "lakehouse",
+			"schema": "tiny",
 			"table": "customer",
-			"privileges": ["SELECT", "OWNERSHIP"],
+			"privileges": ["SELECT"],
 			"columns": [
 				{
 					"name": "name",
 					"allow": true,
 				},
 				{
+					"name": "custkey",
+					"allow": false,
+				},
+				{
 					"name": "address",
 					"allow": false,
 				},
+				{
+					"name": "nationkey",
+					"allow": false,
+				},
+				{
+					"name": "phone",
+					"allow": false,
+				},
+				{
+					"name": "acctbal",
+					"allow": false,
+				},
+				{
+					"name": "mktsegment",
+					"allow": false,
+				},
+				{
+					"name": "comment",
+					"allow": false,
+				},	
 			],
 		},
 		{
+			"user": "lakehouse",
+			"catalog": "lakehouse",
+			"schema": "sf1",
+			"table": "customer",
+			"privileges": ["SELECT"],
+		},		
+		{
 			"user": "iceberg",
-			"table": "small_customer",
-			"privileges": ["SELECT", "INSERT", "OWNERSHIP"],
+			"privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP"],
 		},
 	],
 	"system_information": [
@@ -171,10 +192,6 @@ policies := {
 		{
 			"group": "users",
 			"allow": ["read"],
-		},
-		{
-			"user": "select-columns",
-			"allow": ["read", "write"],
 		},
 	],
 	"catalog_session_properties": [
