@@ -524,3 +524,90 @@ test_impersonation_access_with_no_matching_rule if {
 
 	not allowed
 }
+
+test_procedure_privileges_with_matching_rule if {
+	policies := {"procedures": [
+		{
+			"procedure": "non_matching_procedure",
+			"privileges": [],
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"catalog": "testcatalog",
+			"schema": "testschema",
+			"procedure": "testprocedure",
+			"privileges": ["EXECUTE"],
+		},
+		{"privileges": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	function_name := "testprocedure"
+
+	privileges := trino.procedure_privileges(catalog_name, schema_name, function_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == {"EXECUTE"}
+}
+
+test_procedure_privileges_with_no_matching_rule if {
+	policies := {"procedures": [
+		{
+			"user": "non_matching_user",
+			"privileges": ["GRANT_EXECUTE", "EXECUTE"],
+		},
+		{
+			"group": "non_matching_group",
+			"privileges": ["GRANT_EXECUTE", "EXECUTE"],
+		},
+		{
+			"catalog": "non_matching_catalog",
+			"privileges": ["GRANT_EXECUTE", "EXECUTE"],
+		},
+		{
+			"schema": "non_matching_schema",
+			"privileges": ["GRANT_EXECUTE", "EXECUTE"],
+		},
+		{
+			"procedure": "non_matching_function",
+			"privileges": ["GRANT_EXECUTE", "EXECUTE"],
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	function_name := "testprocedure"
+
+	privileges := trino.procedure_privileges(catalog_name, schema_name, function_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == set()
+}
+
+test_procedure_privileges_with_no_rules if {
+	policies := set()
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	function_name := "testprocedure"
+
+	privileges := trino.procedure_privileges(catalog_name, schema_name, function_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == set()
+}
+
+test_procedure_privileges_with_no_rules_on_system_builtin if {
+	policies := set()
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "system"
+	schema_name := "builtin"
+	function_name := "testprocedure"
+
+	privileges := trino.procedure_privileges(catalog_name, schema_name, function_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == {"GRANT_EXECUTE", "EXECUTE"}
+}
