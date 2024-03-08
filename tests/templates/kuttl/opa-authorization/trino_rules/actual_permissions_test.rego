@@ -228,6 +228,17 @@ test_authorization_permission_with_no_matching_rule if {
 	not allowed
 }
 
+test_authorization_permission_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	grantee_name := "otheruser"
+
+	allowed := trino.authorization_permission(grantee_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
+}
+
 test_catalog_access_with_matching_rule if {
 	policies := {"catalogs": [
 		{
@@ -276,7 +287,7 @@ test_catalog_access_with_no_matching_rule if {
 }
 
 test_catalog_access_with_no_rules if {
-	policies := set()
+	policies := {}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	catalog_name := "testcatalog"
 
@@ -341,7 +352,7 @@ test_catalog_session_properties_access_with_no_matching_rule if {
 }
 
 test_catalog_session_properties_access_with_no_rules if {
-	policies := set()
+	policies := {}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	catalog_name := "testcatalog"
 	property_name := "testproperty"
@@ -414,7 +425,7 @@ test_function_privileges_with_no_matching_rule if {
 }
 
 test_function_privileges_with_no_rules if {
-	policies := set()
+	policies := {}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	catalog_name := "testcatalog"
 	schema_name := "testschema"
@@ -427,7 +438,7 @@ test_function_privileges_with_no_rules if {
 }
 
 test_function_privileges_with_no_rules_on_system_builtin if {
-	policies := set()
+	policies := {}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	catalog_name := "system"
 	schema_name := "builtin"
@@ -525,6 +536,17 @@ test_impersonation_access_with_no_matching_rule if {
 	not allowed
 }
 
+test_impersonation_access_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "otheruser"
+
+	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
+}
+
 test_procedure_privileges_with_matching_rule if {
 	policies := {"procedures": [
 		{
@@ -587,7 +609,7 @@ test_procedure_privileges_with_no_matching_rule if {
 }
 
 test_procedure_privileges_with_no_rules if {
-	policies := set()
+	policies := {}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	catalog_name := "testcatalog"
 	schema_name := "testschema"
@@ -600,7 +622,7 @@ test_procedure_privileges_with_no_rules if {
 }
 
 test_procedure_privileges_with_no_rules_on_system_builtin if {
-	policies := set()
+	policies := {}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	catalog_name := "system"
 	schema_name := "builtin"
