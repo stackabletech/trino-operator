@@ -93,11 +93,11 @@ catalog_session_properties_access(catalog_name, property_name) := access if {
 	rules := [rule |
 		some rule in catalog_session_property_rules
 
-		catalog_name_pattern := object.get(rule, "catalogName", ".*")
-		property_name_pattern := object.get(rule, "propertyName", ".*")
+		catalog_pattern := object.get(rule, "catalog", ".*")
+		property_pattern := object.get(rule, "property", ".*")
 
-		match_entire(catalog_name_pattern, catalog_name)
-		match_entire(property_name_pattern, property_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(property_pattern, property_name)
 	]
 	access := rules[0].allow
 }

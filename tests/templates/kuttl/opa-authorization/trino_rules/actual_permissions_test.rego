@@ -286,6 +286,72 @@ test_catalog_access_with_no_rules if {
 	access == {"all", "read-only"}
 }
 
+test_catalog_session_properties_access_with_matching_rule if {
+	policies := {"catalog_session_properties": [
+		{
+			"catalog": "non_matching_catalog",
+			"allow": false,
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"catalog": "testcatalog",
+			"property": "testproperty",
+			"allow": true,
+		},
+		{"allow": false},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	property_name := "testproperty"
+
+	allowed := trino.catalog_session_properties_access(catalog_name, property_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}
+
+test_catalog_session_properties_access_with_no_matching_rule if {
+	policies := {"catalog_session_properties": [
+		{
+			"user": "non_matching_user",
+			"allow": true,
+		},
+		{
+			"group": "non_matching_group",
+			"allow": true,
+		},
+		{
+			"catalog": "non_matching_catalog",
+			"allow": true,
+		},
+		{
+			"property": "non_matching_property",
+			"allow": true,
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	property_name := "testproperty"
+
+	allowed := trino.catalog_session_properties_access(catalog_name, property_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
+}
+
+test_catalog_session_properties_access_with_no_rules if {
+	policies := set()
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	property_name := "testproperty"
+
+	allowed := trino.catalog_session_properties_access(catalog_name, property_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}
+
 test_impersonation_access_with_matching_user if {
 	policies := {"impersonation": [
 		{
