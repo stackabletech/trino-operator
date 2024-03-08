@@ -649,10 +649,10 @@ test_query_access_with_matching_rule if {
 	]}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
-	privileges := trino.query_access with data.trino_policies.policies as policies
+	access := trino.query_access with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == {"execute"}
+	access == {"execute"}
 }
 
 test_query_access_with_no_matching_rule if {
@@ -668,18 +668,92 @@ test_query_access_with_no_matching_rule if {
 	]}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
-	privileges := trino.query_access with data.trino_policies.policies as policies
+	access := trino.query_access with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == set()
+	access == set()
 }
 
 test_query_access_with_no_rules if {
 	policies := {}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
-	privileges := trino.query_access with data.trino_policies.policies as policies
+	access := trino.query_access with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == {"execute", "kill", "view"}
+	access == {"execute", "kill", "view"}
+}
+
+test_query_owned_by_access_with_matching_rule if {
+	policies := {"queries": [
+		{
+			"queryOwner": "non_matching_query_owner",
+			"allow": [],
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"queryOwner": "testowner",
+			"allow": ["view"],
+		},
+		{"allow": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "testowner"
+
+	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == {"view"}
+}
+
+test_query_owned_by_access_with_no_matching_rule if {
+	policies := {"queries": [
+		{
+			"user": "non_matching_user",
+			"allow": ["kill", "view"],
+		},
+		{
+			"group": "non_matching_group",
+			"allow": ["kill", "view"],
+		},
+		{
+			"queryOwner": "non_matching_query_owner",
+			"allow": ["kill", "view"],
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "testowner"
+
+	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == set()
+}
+
+test_query_owned_by_access_with_self_ownership if {
+	policies := {"queries": [{
+		"user": "testuser",
+		"group": "testgroup1",
+		"queryOwner": "testuser",
+		"allow": [],
+	}]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "testuser"
+
+	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == {"kill", "view"}
+}
+
+test_query_owned_by_access_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "testowner"
+
+	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == {"execute", "kill", "view"}
 }

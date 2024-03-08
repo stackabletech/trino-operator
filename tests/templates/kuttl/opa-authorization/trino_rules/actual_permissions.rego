@@ -214,7 +214,12 @@ query_access := {access | some access in query_rules[0].allow}
 # Query access of the first matching rule
 default query_owned_by_access(_) := set()
 
+query_owned_by_access(user) := {"kill", "view"} if {
+	user == identity.user
+}
+
 query_owned_by_access(user) := access if {
+	user != identity.user
 	rules := [rule |
 		some rule in query_rules
 
@@ -222,7 +227,7 @@ query_owned_by_access(user) := access if {
 
 		match_entire(query_owner_pattern, user)
 	]
-	access := rules[0].allow
+	access := {access | some access in rules[0].allow}
 }
 
 default schema_rules := [{"owner": true}]
