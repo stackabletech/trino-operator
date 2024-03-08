@@ -28,14 +28,14 @@ test_match_any_group_with_no_group_memberships_and_a_specific_group_pattern if {
 }
 
 test_match_any_group_with_groups if {
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
-	group_pattern := "group2"
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	group_pattern := "testgroup2"
 
 	trino.match_any_group(group_pattern) with input.context.identity as identity
 }
 
 test_match_any_group_with_no_matching_group if {
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	group_pattern := "othergroup"
 
 	not trino.match_any_group(group_pattern) with input.context.identity as identity
@@ -43,7 +43,7 @@ test_match_any_group_with_no_matching_group if {
 
 test_filter_by_user_group_with_no_rules if {
 	rules := []
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
 	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
 
@@ -52,7 +52,7 @@ test_filter_by_user_group_with_no_rules if {
 
 test_filter_by_user_group_with_default_user_and_group_pattern if {
 	rules := [{"allow": "all"}]
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
 	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
 
@@ -74,20 +74,20 @@ test_filter_by_user_group_with_no_group_memberships if {
 test_filter_by_user_group_with_matching_user_and_groups if {
 	rules := [
 		{"user": "testuser"},
-		{"group": "group2"},
-		{"user": "testuser", "group": "group1"},
+		{"group": "testgroup2"},
+		{"user": "testuser", "group": "testgroup1"},
 		{"user": "otheruser"},
 		{"group": "othergroup"},
 		{"user": "otheruser", "group": "othergroup"},
 	]
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
 	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
 
 	filtered_rules == [
 		{"user": "testuser"},
-		{"group": "group2"},
-		{"user": "testuser", "group": "group1"},
+		{"group": "testgroup2"},
+		{"user": "testuser", "group": "testgroup1"},
 	]
 }
 
@@ -113,7 +113,7 @@ test_filter_by_user_group_with_matching_user_and_groups_regexes if {
 
 test_filter_by_original_user_group_with_no_rules if {
 	rules := []
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
 	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
 
@@ -122,7 +122,7 @@ test_filter_by_original_user_group_with_no_rules if {
 
 test_filter_by_original_user_group_with_default_user_and_group_pattern if {
 	rules := [{"allow": "all"}]
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
 	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
 
@@ -144,20 +144,20 @@ test_filter_by_original_user_group_with_no_group_memberships if {
 test_filter_by_original_user_group_with_matching_user_and_groups if {
 	rules := [
 		{"original_user": "testuser"},
-		{"original_group": "group2"},
-		{"original_user": "testuser", "original_group": "group1"},
+		{"original_group": "testgroup2"},
+		{"original_user": "testuser", "original_group": "testgroup1"},
 		{"original_user": "otheruser"},
 		{"original_group": "othergroup"},
 		{"original_user": "otheruser", "original_group": "othergroup"},
 	]
-	identity := {"user": "testuser", "groups": ["group1", "group2"]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 
 	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
 
 	filtered_rules == [
 		{"original_user": "testuser"},
-		{"original_group": "group2"},
-		{"original_user": "testuser", "original_group": "group1"},
+		{"original_group": "testgroup2"},
+		{"original_user": "testuser", "original_group": "testgroup1"},
 	]
 }
 
@@ -181,38 +181,105 @@ test_filter_by_original_user_group_with_matching_user_and_groups_regexes if {
 	]
 }
 
-test_impersonation_access_allow_specified_user if {
-	trino.impersonation_access("testuser") with data.trino_policies.policies as {"impersonation": [{
-		"original_user": "admin",
-		"new_user": "testuser",
+test_authorization_permission_with_matching_rule if {
+	policies := {"authorization": [{
+		"original_user": "test.*",
+		"original_group": "test.*",
+		"new_user": "other.*",
 		"allow": true,
 	}]}
-		with input as {"context": {"identity": {
-			"user": "admin",
-			"groups": [],
-		}}}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	grantee_name := "otheruser"
+
+	allowed := trino.authorization_permission(grantee_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
 }
 
-test_impersonation_access_allow_self if {
-	trino.impersonation_access("admin") with data.trino_policies.policies as {"impersonation": [{
-		"original_user": "admin",
-		"new_user": "admin",
+test_authorization_permission_with_no_matching_rule if {
+	policies := {"authorization": [
+		{
+			"original_user": "non_matching_user",
+			"new_user": ".*",
+		},
+		{
+			"original_group": "non_matching_group",
+			"new_user": ".*",
+		},
+		{"new_user": "non_matching_user"},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	grantee_name := "otheruser"
+
+	allowed := trino.authorization_permission(grantee_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
+}
+
+test_impersonation_access_with_matching_user if {
+	policies := {"impersonation": [{
+		"original_user": "testuser",
+		"new_user": "otheruser",
+		"allow": true,
+	}]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "otheruser"
+
+	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}
+
+test_impersonation_access_with_self_impersonation if {
+	policies := {"impersonation": [{
+		"original_user": "testuser",
+		"new_user": "testuser",
 		"allow": false,
 	}]}
-		with input as {"context": {"identity": {
-			"user": "admin",
-			"groups": [],
-		}}}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "testuser"
+
+	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
 }
 
-test_impersonation_access_allow_matching_user if {
-	trino.impersonation_access("user_ihgfedcba") with data.trino_policies.policies as {"impersonation": [{
+test_impersonation_access_with_matching_capture_groups if {
+	policies := {"impersonation": [{
 		"original_user": "user_(a)(b)(c)(d)(e)(f)(g)(h)(i)",
 		"new_user": "user_$9$8$7$6$5$4$3$2$1",
 		"allow": true,
 	}]}
-		with input as {"context": {"identity": {
-			"user": "user_abcdefghi",
-			"groups": [],
-		}}}
+	identity := {"user": "user_abcdefghi", "groups": ["testgroup1", "testgroup2"]}
+	user := "user_ihgfedcba"
+
+	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}
+
+test_impersonation_access_with_no_matching_rule if {
+	policies := {"impersonation": [
+		{
+			"original_user": "non_matching_user",
+			"new_user": "otheruser",
+			"allow": true,
+		},
+		{
+			"new_user": "non_matching_user",
+			"allow": true,
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	user := "otheruser"
+
+	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
 }
