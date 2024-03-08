@@ -301,23 +301,23 @@ TEST_DATA = [
                 "error": "Access Denied: Cannot access catalog tpch",
             },
             {
-                "query": "SHOW TABLES in lakehouse.sf1",
+                "query": "SHOW TABLES IN lakehouse.sf1",
                 "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
             },            
             {
-                "query": "SELECT name from lakehouse.tiny.customer ORDER BY name LIMIT 1",
+                "query": "SELECT name FROM lakehouse.tiny.customer ORDER BY name LIMIT 1",
                 "expected": [["Customer#000000001"]],
             },
             {
-                "query": "SELECT * from lakehouse.tiny.customer ORDER BY name LIMIT 1",
+                "query": "SELECT * FROM lakehouse.tiny.customer ORDER BY name LIMIT 1",
                 "error": "Access Denied: Cannot select from columns",
             },
             {
-                "query": "SELECT * from lakehouse.sf1.customer ORDER BY name LIMIT 1",
+                "query": "SELECT * FROM lakehouse.sf1.customer ORDER BY name LIMIT 1",
                 "expected": [[1, 'Customer#000000001', 'IVhzIApeRb ot,c,E', 15, '25-989-741-2988', 711.56, 'BUILDING', 'to the even, regular platelets. regular, ironic epitaphs nag e']],
             },
             {
-                "query": "SELECT * from tpch.tiny.customer ORDER BY name LIMIT 1",
+                "query": "SELECT * FROM tpch.tiny.customer ORDER BY name LIMIT 1",
                 "error": "Access Denied: Cannot access catalog tpch",
             },
             {
@@ -345,7 +345,7 @@ TEST_DATA = [
         # - execute queries
         # - access iceberg catalog
         # - create, drop and access all schemas
-        # - select, insert, delete in all tables in iceberg.*
+        # - select, insert, delete in all tables in iceberg.* (not update!)
         "user": {
             "name": "iceberg",
             "password": "iceberg",
