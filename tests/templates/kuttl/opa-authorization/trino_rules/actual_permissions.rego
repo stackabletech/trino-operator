@@ -202,14 +202,14 @@ procedure_privileges(catalog_name, schema_name, function_name) := privileges if 
 	privileges := {privilege | some privilege in rules[0].privileges}
 }
 
-default query_rules := []
+default query_rules := [{"allow": ["execute", "kill", "view"]}]
 
 query_rules := filter_by_user_group(raw_policies.queries)
 
 # Query access of the first matching rule
 default query_access := set()
 
-query_access := query_rules[0].allow
+query_access := {access | some access in query_rules[0].allow}
 
 # Query access of the first matching rule
 default query_owned_by_access(_) := set()

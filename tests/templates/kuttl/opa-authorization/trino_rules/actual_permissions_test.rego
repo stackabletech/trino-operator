@@ -633,3 +633,53 @@ test_procedure_privileges_with_no_rules_on_system_builtin if {
 
 	privileges == {"GRANT_EXECUTE", "EXECUTE"}
 }
+
+test_query_access_with_matching_rule if {
+	policies := {"queries": [
+		{
+			"user": "non_matching_user",
+			"allow": [],
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"allow": ["execute"],
+		},
+		{"allow": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+
+	privileges := trino.query_access with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == {"execute"}
+}
+
+test_query_access_with_no_matching_rule if {
+	policies := {"queries": [
+		{
+			"user": "non_matching_user",
+			"allow": ["execute", "kill", "view"],
+		},
+		{
+			"group": "non_matching_group",
+			"allow": ["execute", "kill", "view"],
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+
+	privileges := trino.query_access with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == set()
+}
+
+test_query_access_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+
+	privileges := trino.query_access with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == {"execute", "kill", "view"}
+}
