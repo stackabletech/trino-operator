@@ -1108,3 +1108,61 @@ test_system_information_access_with_no_rules if {
 
 	access == set()
 }
+
+test_system_session_properties_access_with_matching_rule if {
+	policies := {"system_session_properties": [
+		{
+			"property": "non_matching_property",
+			"allow": false,
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"property": "testproperty",
+			"allow": true,
+		},
+		{"allow": false},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	property_name := "testproperty"
+
+	allowed := trino.system_session_properties_access(property_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}
+
+test_system_session_properties_access_with_no_matching_rule if {
+	policies := {"system_session_properties": [
+		{
+			"user": "non_matching_user",
+			"allow": true,
+		},
+		{
+			"group": "non_matching_group",
+			"allow": true,
+		},
+		{
+			"property": "non_matching_property",
+			"allow": true,
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	property_name := "testproperty"
+
+	allowed := trino.system_session_properties_access(property_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
+}
+
+test_system_session_properties_access_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	property_name := "testproperty"
+
+	allowed := trino.system_session_properties_access(property_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}

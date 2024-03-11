@@ -343,7 +343,7 @@ system_session_properties_access(property_name) := access if {
 	rules := [rule |
 		some rule in system_session_property_rules
 
-		property_name_pattern := object.get(rule, "name", ".*")
+		property_name_pattern := object.get(rule, "property", ".*")
 
 		match_entire(property_name_pattern, property_name)
 	]
