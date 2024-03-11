@@ -826,3 +826,104 @@ test_schema_owner_with_no_rules if {
 
 	owner
 }
+
+test_table_privileges_with_matching_rule if {
+	policies := {"tables": [
+		{
+			"table": "non_matching_table",
+			"privileges": [],
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"catalog": "testcatalog",
+			"schema": "testschema",
+			"table": "testtable",
+			"privileges": ["DELETE", "INSERT", "SELECT"],
+		},
+		{"privileges": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	table_name := "testtable"
+
+	privileges := trino.table_privileges(catalog_name, schema_name, table_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == {"DELETE", "INSERT", "SELECT"}
+}
+
+test_table_privileges_with_no_matching_rule if {
+	policies := {"tables": [
+		{
+			"user": "non_matching_user",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"group": "non_matching_group",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"catalog": "non_matching_catalog",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"schema": "non_matching_schema",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"table": "non_matching_table",
+			"privileges": ["OWNERSHIP"],
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	table_name := "testtable"
+
+	privileges := trino.table_privileges(catalog_name, schema_name, table_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == set()
+}
+
+test_table_privileges_with_information_schema if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "information_schema"
+	table_name := "testtable"
+
+	privileges := trino.table_privileges(catalog_name, schema_name, table_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == {
+		"DELETE",
+		"GRANT_SELECT",
+		"INSERT",
+		"OWNERSHIP",
+		"SELECT",
+		"UPDATE",
+	}
+}
+
+test_table_privileges_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	table_name := "testtable"
+
+	privileges := trino.table_privileges(catalog_name, schema_name, table_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	privileges == {
+		"DELETE",
+		"GRANT_SELECT",
+		"INSERT",
+		"OWNERSHIP",
+		"SELECT",
+		"UPDATE",
+	}
+}
