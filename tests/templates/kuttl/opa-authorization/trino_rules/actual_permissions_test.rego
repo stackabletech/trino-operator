@@ -889,7 +889,10 @@ test_table_privileges_with_no_matching_rule if {
 }
 
 test_table_privileges_with_information_schema if {
-	policies := {}
+	policies := {"tables": [{
+		"schema": "information_schema",
+		"privileges": [],
+	}]}
 	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
 	catalog_name := "testcatalog"
 	schema_name := "information_schema"
@@ -926,4 +929,139 @@ test_table_privileges_with_no_rules if {
 		"SELECT",
 		"UPDATE",
 	}
+}
+
+test_column_access_with_matching_rule_that_allows_access if {
+	policies := {"tables": [
+		{
+			"table": "non_matching_table",
+			"privileges": [],
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"catalog": "testcatalog",
+			"schema": "testschema",
+			"table": "testtable",
+			"columns": [{
+				"name": "testcolumn",
+				"allow": true,
+			}],
+			"privileges": ["DELETE", "INSERT", "SELECT"],
+		},
+		{"privileges": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	table_name := "testtable"
+	column_name := "testcolumn"
+
+	allowed := trino.column_access(catalog_name, schema_name, table_name, column_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}
+
+test_column_access_with_matching_rule_that_denies_access if {
+	policies := {"tables": [
+		{
+			"table": "non_matching_table",
+			"privileges": [],
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"catalog": "testcatalog",
+			"schema": "testschema",
+			"table": "testtable",
+			"columns": [{
+				"name": "testcolumn",
+				"allow": false,
+			}],
+			"privileges": ["DELETE", "INSERT", "SELECT"],
+		},
+		{"privileges": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	table_name := "testtable"
+	column_name := "testcolumn"
+
+	allowed := trino.column_access(catalog_name, schema_name, table_name, column_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
+}
+
+test_column_access_with_no_matching_rule if {
+	policies := {"tables": [
+		{
+			"user": "non_matching_user",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"group": "non_matching_group",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"catalog": "non_matching_catalog",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"schema": "non_matching_schema",
+			"privileges": ["OWNERSHIP"],
+		},
+		{
+			"table": "non_matching_table",
+			"privileges": ["OWNERSHIP"],
+		},
+		{"privileges": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	table_name := "testtable"
+	column_name := "testcolumn"
+
+	allowed := trino.column_access(catalog_name, schema_name, table_name, column_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not allowed
+}
+
+test_column_access_with_information_schema if {
+	policies := {"tables": [{
+		"schema": "information_schema",
+		"columns": [{
+			"name": "testcolumn",
+			"allow": false,
+		}],
+		"privileges": ["DELETE", "INSERT", "SELECT"],
+	}]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "information_schema"
+	table_name := "testtable"
+	column_name := "testcolumn"
+
+	allowed := trino.column_access(catalog_name, schema_name, table_name, column_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
+}
+
+test_column_access_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+	table_name := "testtable"
+	column_name := "testcolumn"
+
+	allowed := trino.column_access(catalog_name, schema_name, table_name, column_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	allowed
 }
