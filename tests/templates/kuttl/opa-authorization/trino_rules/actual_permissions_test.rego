@@ -760,3 +760,69 @@ test_query_owned_by_access_with_no_rules if {
 
 	access == {"execute", "kill", "view"}
 }
+
+test_schema_owner_with_matching_rule if {
+	policies := {"schemas": [
+		{
+			"schema": "non_matching_schema",
+			"owner": false,
+		},
+		{
+			"user": "testuser",
+			"group": "testgroup1",
+			"catalog": "testcatalog",
+			"schema": "testschema",
+			"owner": true,
+		},
+		{"owner": false},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+
+	owner := trino.schema_owner(catalog_name, schema_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	owner
+}
+
+test_schema_owner_with_no_matching_rule if {
+	policies := {"schemas": [
+		{
+			"user": "non_matching_user",
+			"owner": true,
+		},
+		{
+			"group": "non_matching_group",
+			"owner": true,
+		},
+		{
+			"catalog": "non_matching_catalog",
+			"owner": true,
+		},
+		{
+			"schema": "non_matching_schema",
+			"owner": true,
+		},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+
+	owner := trino.schema_owner(catalog_name, schema_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	not owner
+}
+
+test_schema_owner_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+
+	owner := trino.schema_owner(catalog_name, schema_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	owner
+}
