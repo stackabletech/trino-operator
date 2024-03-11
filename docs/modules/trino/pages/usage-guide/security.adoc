@@ -98,7 +98,7 @@ include::example$usage-guide/trino-oidc-auth-snippet.yaml[tag=trino]
 
 In order to authorize Trino via OPA, a ConfigMap containing a rego rule package for Trino has to be applied and referenced in the TrinoCluster resource.
 The following example is an all-access Rego rule for testing with the user `admin`. Do not use it in production!
-The rego rules below are written using Rego V1 to be compatible with the OPA v1.0.0 release. 
+The rego rules below are written using Rego V1 to be compatible with the OPA v1.0.0 release.
 
 NOTE: Due to changes in the Trino OPA authorizer, rego rules differ between version 414, 428 and newer versions.
 
@@ -116,11 +116,11 @@ include::example$usage-guide/opa-bundle-trino-cm-414.yaml[]
 include::example$usage-guide/opa-bundle-trino-cm-428.yaml[]
 ----
 
-=== Rego for Trino version 439
+=== Rego for Trino version 400
 
 [source,yaml]
 ----
-include::example$usage-guide/opa-bundle-trino-cm-439.yaml[]
+include::example$usage-guide/opa-bundle-trino-cm-440.yaml[]
 ----
 
 Reference the package in the Trino cluster:
