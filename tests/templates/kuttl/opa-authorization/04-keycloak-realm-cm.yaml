@@ -1,0 +1,93 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-info-fetcher-client-credentials
+stringData:
+  clientId: user-info-fetcher
+  clientSecret: user-info-fetcher-client-secret
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-my-dataspace-realm
+data:
+  realm.json: |
+    {
+      "realm" : "my-dataspace",
+      "enabled" : true,
+      "groups" : [ {
+        "name" : "superset-admin",
+        "path" : "/superset-admin"
+      } ],
+      "users" : [ {
+        "username" : "alice",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "Alice",
+        "lastName" : "Adams",
+        "email" : "alice@example.org",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"hogrQRLTAPBws9RgxZF/d3+EvPvUc7AN1egnmMnuWBQ=\",\"salt\":\"DYkgbXwZ2uhvJ+k94Xr7lg==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/superset-admin" ]
+      }, {
+        "username" : "bob",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "Bob",
+        "lastName" : "Bush",
+        "email" : "bob@example.org",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"FC3TRP//H5izxRRQsYnBDucCI65OVxMy4GgG3qyl/Ek=\",\"salt\":\"kcwgkKFSJ83xlwDtOACoZQ==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ ]
+      }, {
+        "username" : "service-account-user-info-fetcher",
+        "enabled" : true,
+        "totp" : false,
+        "emailVerified" : false,
+        "serviceAccountClientId" : "user-info-fetcher",
+        "credentials" : [ ],
+        "disableableCredentialTypes" : [ ],
+        "requiredActions" : [ ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "clientRoles" : {
+          "realm-management" : [
+            "view-users"
+          ]
+        },
+        "notBefore" : 0,
+        "groups" : [ ]
+      } ],
+      "clients" : [ {
+        "clientId" : "${USER_INFO_FETCHER_CLIENT_ID}",
+        "surrogateAuthRequired" : false,
+        "enabled" : true,
+        "alwaysDisplayInConsole" : false,
+        "clientAuthenticatorType" : "client-secret",
+        "secret" : "${USER_INFO_FETCHER_CLIENT_SECRET}",
+        "redirectUris" : [ "/*" ],
+        "webOrigins" : [ "/*" ],
+        "notBefore" : 0,
+        "bearerOnly" : false,
+        "serviceAccountsEnabled" : true,
+        "publicClient" : false,
+        "frontchannelLogout" : true,
+        "protocol" : "openid-connect",
+        "attributes" : {
+          "oidc.ciba.grant.enabled" : "true",
+          "oauth2.device.authorization.grant.enabled" : "false"
+        },
+        "authenticationFlowBindingOverrides" : { },
+        "fullScopeAllowed" : true
+      } ]
+    }

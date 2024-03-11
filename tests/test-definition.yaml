@@ -31,6 +31,9 @@ dimensions:
   - name: zookeeper
     values:
       - 3.8.3
+  - name: keycloak
+    values:
+      - 23.0.1      
   - name: s3-use-tls
     values:
       - "true"
@@ -94,6 +97,7 @@ tests:
       - trino-latest
       - hive
       - opa
+      - keycloak
       - openshift      
 suites:
   - name: nightly
