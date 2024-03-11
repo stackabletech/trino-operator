@@ -21,7 +21,6 @@ All notable changes to this project will be documented in this file.
 [#528]: https://github.com/stackabletech/trino-operator/pull/528
 [#501]: https://github.com/stackabletech/trino-operator/pull/501
 [#531]: https://github.com/stackabletech/trino-operator/pull/531
-[#539]: https://github.com/stackabletech/trino-operator/pull/539
 [#552]: https://github.com/stackabletech/trino-operator/pull/552
 
 ## [23.11.0] - 2023-11-24
