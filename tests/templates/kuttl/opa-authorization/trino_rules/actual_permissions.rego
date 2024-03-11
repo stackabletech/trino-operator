@@ -330,7 +330,7 @@ system_information_rules := filter_by_user_group(raw_policies.system_information
 # System information access of the first matching rule
 default system_information_access := set()
 
-system_information_access := system_information_rules[0].allow
+system_information_access := {access | some access in system_information_rules[0].allow}
 
 default system_session_property_rules := [{"allow": true}]
 

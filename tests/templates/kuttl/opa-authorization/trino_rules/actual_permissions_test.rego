@@ -1065,3 +1065,46 @@ test_column_access_with_no_rules if {
 
 	allowed
 }
+
+test_system_information_access_with_matching_rule if {
+	policies := {"system_information": [
+		{
+			"user": "non_matching_user",
+			"allow": [],
+		},
+		{
+			"user": "testuser",
+			"allow": ["read", "write"],
+		},
+		{"allow": []},
+	]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+
+	access := trino.system_information_access with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == {"read", "write"}
+}
+
+test_system_information_access_with_no_matching_rule if {
+	policies := {"system_information": [{
+		"user": "non_matching_user",
+		"allow": ["read", "write"],
+	}]}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+
+	access := trino.system_information_access with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == set()
+}
+
+test_system_information_access_with_no_rules if {
+	policies := {}
+	identity := {"user": "testuser", "groups": ["testgroup1", "testgroup2"]}
+
+	access := trino.system_information_access with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == set()
+}
