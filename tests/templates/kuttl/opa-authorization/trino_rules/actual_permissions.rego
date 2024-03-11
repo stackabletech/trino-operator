@@ -158,6 +158,9 @@ impersonation_access(user) := access if {
 			some i, match in matches[0]
 			var := concat("", ["$", format_int(i, 10)])
 		}
+
+		# strings.replace_n replaces "$10" with "$1" followed by "0".
+		# Therefore only nine capture groups are supported.
 		new_user_pattern := strings.replace_n(
 			substitutes,
 			unsubstituted_new_user_pattern,

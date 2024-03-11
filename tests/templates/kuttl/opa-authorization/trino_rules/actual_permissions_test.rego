@@ -497,8 +497,8 @@ test_impersonation_access_with_matching_capture_groups if {
 			"allow": false,
 		},
 		{
-			"original_user": "user_(a)(b)(c)(d)(e)(f)(g)(h)(i)",
-			"new_user": "user_$9$8$7$6$5$4$3$2$1",
+			"original_user": "user_(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)",
+			"new_user": "user_$10$9$8$7$6$5$4$3$2$1",
 			"allow": true,
 		},
 		{
@@ -506,8 +506,11 @@ test_impersonation_access_with_matching_capture_groups if {
 			"allow": false,
 		},
 	]}
-	identity := {"user": "user_abcdefghi", "groups": ["testgroup1", "testgroup2"]}
-	user := "user_ihgfedcba"
+	identity := {"user": "user_abcdefghij", "groups": ["testgroup1", "testgroup2"]}
+
+	# Only nine capture groups are supported, therefore "$10" is seen as
+	# "$1" and "0" and will be substituted with "a0" and not "j":
+	user := "user_a0ihgfedcba"
 
 	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
 		with input.context.identity as identity
