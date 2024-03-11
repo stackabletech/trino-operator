@@ -29,7 +29,7 @@ pub enum Error {
     },
 }
 
-// Currently works for all supported versions (414, 428, 440 as of 2024-02-08) but maybe be changed
+// Currently works for all supported versions (414, 428, 440 as of 2024-03-11) but maybe be changed
 // in the future depending on the role and version.
 pub fn jvm_config(
     _resolved_product_image: &ResolvedProductImage,
