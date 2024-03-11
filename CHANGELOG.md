@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 - Various documentation of the CRD ([#510]).
 - Helm: support labels in values.yaml ([#528]).
 - Delta Lake connector ([#531]).
-- Support for version `440` ([#XXX]).
+- Support for version `440` ([#552]).
 - Add support for OpenID Connect ([#501]).
 
 ### Fixed
@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 [#501]: https://github.com/stackabletech/trino-operator/pull/501
 [#531]: https://github.com/stackabletech/trino-operator/pull/531
 [#539]: https://github.com/stackabletech/trino-operator/pull/539
+[#552]: https://github.com/stackabletech/trino-operator/pull/552
 
 ## [23.11.0] - 2023-11-24
 
