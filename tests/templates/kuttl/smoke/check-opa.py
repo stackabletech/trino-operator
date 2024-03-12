@@ -23,6 +23,10 @@ def get_connection(username, password, namespace):
         http_scheme="https",
         auth=trino.auth.BasicAuthentication(username, password),
         verify=False,
+        # Commented out because it apparently breaks the OPA rules.
+        # With this enabled, the script fails to validate that user bob can
+        # show catalogs.
+        # session_properties={"query_max_execution_time": "60s"},
     )
     return conn
 
