@@ -2,33 +2,26 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://stackable.tech/policies.trino.opa.schema.json",
   "title": "Trino OPA policies",
-  "description": "",
   "type": "object",
   "properties": {
     "catalogs": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "catalog": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "allow": {
-            "description": "",
             "enum": ["all", "read-only", "none"],
             "default": "none"
           }
@@ -38,27 +31,21 @@
       }
     },
     "queries": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "allow": {
-            "description": "",
             "type": "array",
             "items": {
-              "description": "",
               "enum": [
                 "execute",
                 "kill",
@@ -73,34 +60,27 @@
       }
     },
     "schemas": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "catalog": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "schema": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "owner": {
-            "description": "",
             "type": "boolean",
             "default": false
           }
@@ -110,42 +90,33 @@
       }
     },
     "tables": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "catalog": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "schema": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "table": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "privileges": {
-            "description": "",
             "type": "array",
             "items": {
-              "description": "",
               "enum": [
                 "SELECT",
                 "INSERT",
@@ -158,18 +129,14 @@
             "default": []
           },
           "columns": {
-            "description": "",
             "type": "array",
             "items": {
-              "description": "",
               "type": "object",
               "properties": {
                 "name": {
-                  "description": "",
                   "type": "string"
                 },
                 "allow": {
-                  "description": "",
                   "type": "boolean",
                   "default": true
                 }
@@ -185,27 +152,21 @@
       }
     },
     "system_information": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "allow": {
-            "description": "",
             "type": "array",
             "items": {
-              "description": "",
               "enum": [
                 "read",
                 "write"
@@ -219,34 +180,27 @@
       }
     },
     "catalog_session_properties": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "catalog": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "property": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "allow": {
-            "description": "",
             "type": "boolean",
             "default": false
           }
@@ -256,29 +210,23 @@
       }
     },
     "system_session_properties": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "property": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "allow": {
-            "description": "",
             "type": "boolean",
             "default": false
           }
@@ -288,23 +236,18 @@
       }
     },
     "impersonation": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "original_user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "new_user": {
-            "description": "",
             "type": "string"
           },
           "allow": {
-            "description": "",
             "type": "boolean",
             "default": true
           }
@@ -314,28 +257,22 @@
       }
     },
     "authorization": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "original_user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "original_group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "new_user": {
-            "description": "",
             "type": "string"
           },
           "allow": {
-            "description": "",
             "type": "boolean",
             "default": true
           }
@@ -345,42 +282,33 @@
       }
     },
     "functions": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "catalog": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "schema": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "function": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "privileges": {
-            "description": "",
             "type": "array",
             "items": {
-              "description": "",
               "enum": [
                 "EXECUTE",
                 "GRANT_EXECUTE",
@@ -395,42 +323,33 @@
       }
     },
     "procedures": {
-      "description": "",
       "type": "array",
       "items": {
-        "description": "",
         "type": "object",
         "properties": {
           "user": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "group": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "catalog": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "schema": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "procedure": {
-            "description": "",
             "type": "string",
             "default": ".*"
           },
           "privileges": {
-            "description": "",
             "type": "array",
             "items": {
-              "description": "",
               "enum": [
                 "EXECUTE",
                 "GRANT_EXECUTE"

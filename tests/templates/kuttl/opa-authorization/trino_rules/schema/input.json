@@ -2,26 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://stackable.tech/request.trino.opa.schema.json",
   "title": "Trino OPA request",
-  "description": "",
   "type": "object",
   "properties": {
     "context": {
-      "description": "",
       "type": "object",
       "properties": {
         "identity": {
-          "description": "",
           "type": "object",
           "properties": {
             "user": {
-              "description": "",
               "type": "string"
             },
             "groups": {
-              "description": "",
               "type": "array",
               "items": {
-                "description": "",
                 "type": "string"
               },
               "uniqueItems": true
@@ -31,11 +25,9 @@
           "required": ["user", "groups"]
         },
         "softwareStack": {
-          "description": "",
           "type": "object",
           "properties": {
             "trinoVersion": {
-              "description": "",
               "type": "string"
             }
           },
@@ -47,7 +39,6 @@
       "required": ["identity", "softwareStack"]
     },
     "action": {
-      "description": "",
       "oneOf": [
         {
           "$ref": "#/$defs/AccessCatalog"
@@ -114,22 +105,18 @@
 
   "$defs": {
     "AccessCatalog": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "AccessCatalog"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "catalog": {
-              "description": "",
               "type": "object",
               "properties": {
                 "name": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -146,11 +133,9 @@
     },
 
     "ColumnOperationsOnTableLikeObject": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "CreateViewWithSelectFromColumns",
             "SelectFromColumns",
@@ -158,30 +143,23 @@
           ]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "table": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "tableName": {
-                  "description": "",
                   "type": "string"
                 },
                 "columns": {
-                  "description": "",
                   "type": "array",
                   "items": {
-                    "description": "",
                     "type": "string"
                   },
                   "uniqueItems": true
@@ -200,31 +178,25 @@
     },
 
     "CreateSchema": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "CreateSchema"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "schema": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "properties": {
-                  "description": "",
                   "type": "object",
                   "additionalProperties": true
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -241,30 +213,24 @@
     },
 
     "ExecuteTableProcedure": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "ExecuteTableProcedure"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "table": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "tableName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -272,11 +238,9 @@
               "required": ["catalogName", "schemaName", "tableName"]
             },
             "function": {
-              "description": "",
               "type": "object",
               "properties": {
                 "functionName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -293,25 +257,20 @@
     },
 
     "FilterCatalogs": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "FilterCatalogs"
         },
         "filterResources": {
-          "description": "",
           "type": "array",
           "items": {
-            "description": "",
             "type": "object",
             "properties": {
               "catalog": {
-                "description": "",
                 "type": "object",
                 "properties": {
                   "name": {
-                    "description": "",
                     "type": "string"
                   }
                 },
@@ -329,42 +288,33 @@
     },
 
     "FilterColumns": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "FilterColumns"
         },
         "filterResources": {
-          "description": "",
           "type": "array",
           "items": {
-            "description": "",
             "type": "object",
             "properties": {
               "table": {
-                "description": "",
                 "type": "object",
                 "properties": {
                   "catalogName": {
-                    "description": "",
                     "type": "string"
                   },
                   "columns": {
-                    "description": "",
                     "type": "array",
                     "items": {
-                      "description": "",
                       "type": "string"
                     },
                     "uniqueItems": true
                   },
                   "schemaName": {
-                    "description": "",
                     "type": "string"
                   },
                   "tableName": {
-                    "description": "",
                     "type": "string"
                   }
                 },
@@ -387,33 +337,26 @@
     },
 
     "FilterFunctions": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "FilterFunctions"
         },
         "filterResources": {
-          "description": "",
           "type": "array",
           "items": {
-            "description": "",
             "type": "object",
             "properties": {
               "function": {
-                "description": "",
                 "type": "object",
                 "properties": {
                   "catalogName": {
-                    "description": "",
                     "type": "string"
                   },
                   "functionName": {
-                    "description": "",
                     "type": "string"
                   },
                   "schemaName": {
-                    "description": "",
                     "type": "string"
                   }
                 },
@@ -435,33 +378,26 @@
     },
 
     "FilterTables": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "FilterTables"
         },
         "filterResources": {
-          "description": "",
           "type": "array",
           "items": {
-            "description": "",
             "type": "object",
             "properties": {
               "table": {
-                "description": "",
                 "type": "object",
                 "properties": {
                   "catalogName": {
-                    "description": "",
                     "type": "string"
                   },
                   "schemaName": {
-                    "description": "",
                     "type": "string"
                   },
                   "tableName": {
-                    "description": "",
                     "type": "string"
                   }
                 },
@@ -483,33 +419,26 @@
     },
 
     "FilterViewQueryOwnedBy": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "FilterViewQueryOwnedBy"
         },
         "filterResources": {
-          "description": "",
           "type": "array",
           "items": {
-            "description": "",
             "type": "object",
             "properties": {
               "user": {
-                "description": "",
                 "type": "object",
                 "properties": {
                   "groups": {
-                    "description": "",
                     "type": "array",
                     "items": {
-                      "description": "",
                       "type": "string"
                     }
                   },
                   "user": {
-                    "description": "",
                     "type": "string"
                   }
                 },
@@ -530,11 +459,9 @@
     },
 
     "FunctionResourceActions": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "CreateFunction",
             "CreateViewWithExecuteFunction",
@@ -544,23 +471,18 @@
           ]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "function": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "functionName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -577,11 +499,9 @@
     },
 
     "NoResourceAction": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "ExecuteQuery",
             "ReadSystemInformation",
@@ -594,26 +514,21 @@
     },
 
     "RenameSchema": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "RenameSchema"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "schema": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -625,19 +540,15 @@
           "required": ["schema"]
         },
         "targetResource": {
-          "description": "",
           "type": "object",
           "properties": {
             "schema": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -654,11 +565,9 @@
     },
 
     "RenameTableLikeObject": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "RenameMaterializedView",
             "RenameTable",
@@ -666,23 +575,18 @@
           ]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "table": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "tableName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -694,23 +598,18 @@
           "required": ["table"]
         },
         "targetResource": {
-          "description": "",
           "type": "object",
           "properties": {
             "table": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "tableName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -727,22 +626,18 @@
     },
 
     "ShowSchemas": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "ShowSchemas"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "catalog": {
-              "description": "",
               "type": "object",
               "properties": {
                 "name": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -759,11 +654,9 @@
     },
 
     "TableResourceActions": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "AddColumn",
             "AlterColumn",
@@ -785,23 +678,18 @@
           ]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "table": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "tableName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -818,11 +706,9 @@
     },
 
     "TableWithPropertiesActions": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "CreateMaterializedView",
             "CreateTable",
@@ -831,28 +717,22 @@
           ]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "table": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "properties": {
-                  "description": "",
                   "type": "object",
                   "additionalProperties": true
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "tableName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -874,35 +754,28 @@
     },
 
     "IdentityResourceActions": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "KillQueryOwnedBy",
             "ViewQueryOwnedBy"
           ]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "user": {
-              "description": "",
               "type": "object",
               "properties": {
                 "groups": {
-                  "description": "",
                   "type": "array",
                   "items": {
-                    "description": "",
                     "type": "string"
                   },
                   "uniqueItems": true
                 },
                 "user": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -922,11 +795,9 @@
     },
 
     "SchemaResourceActions": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "DropSchema",
             "FilterSchemas",
@@ -936,19 +807,15 @@
           ]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "schema": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -965,26 +832,21 @@
     },
 
     "SetAuthorizationOnTableLikeObject": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
-          "description": "",
           "enum": [
             "SetTableAuthorization",
             "SetViewAuthorization"
           ]
         },
         "grantee": {
-          "description": "",
           "type": "object",
           "properties": {
             "name": {
-              "description": "",
               "type": "string"
             },
             "type": {
-              "description": "",
               "type": "string"
             }
           },
@@ -992,23 +854,18 @@
           "required": ["name", "type"]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "table": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 },
                 "tableName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -1025,26 +882,21 @@
     },
 
     "SetCatalogSessionPropertyAction": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "SetCatalogSessionProperty"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "catalogSessionProperty": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "propertyName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -1061,22 +913,18 @@
     },
 
     "SetSystemSessionPropertyAction": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "SetSystemSessionProperty"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "systemSessionProperty": {
-              "description": "",
               "type": "object",
               "properties": {
                 "name": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -1093,22 +941,18 @@
     },
 
     "SetSchemaAuthorization": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "SetSchemaAuthorization"
         },
         "grantee": {
-          "description": "",
           "type": "object",
           "properties": {
             "name": {
-              "description": "",
               "type": "string"
             },
             "type": {
-              "description": "",
               "type": "string"
             }
           },
@@ -1116,19 +960,15 @@
           "required": ["name", "type"]
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "schema": {
-              "description": "",
               "type": "object",
               "properties": {
                 "catalogName": {
-                  "description": "",
                   "type": "string"
                 },
                 "schemaName": {
-                  "description": "",
                   "type": "string"
                 }
               },
@@ -1145,22 +985,18 @@
     },
 
     "ImpersonateUser": {
-      "description": "",
       "type": "object",
       "properties": {
         "operation": {
           "const": "ImpersonateUser"
         },
         "resource": {
-          "description": "",
           "type": "object",
           "properties": {
             "user": {
-              "description": "",
               "type": "object",
               "properties": {
                 "user": {
-                  "description": "",
                   "type": "string"
                 }
               },
