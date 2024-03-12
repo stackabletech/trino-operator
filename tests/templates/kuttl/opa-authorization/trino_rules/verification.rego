@@ -28,6 +28,13 @@ allow if {
 		access := catalog_access(requested_permission.catalogName)
 		requested_permission.allow in access
 	}
+	every requested_permission in requested_catalog_session_properties_permissions {
+		access := catalog_session_properties_access(
+			requested_permission.catalogName,
+			requested_permission.propertyName,
+		)
+		requested_permission.allow == access
+	}
 	every requested_permission in requested_column_permissions {
 		access := column_access(
 			requested_permission.catalogName,
@@ -85,13 +92,6 @@ allow if {
 	}
 	every requested_permission in requested_system_information_permissions {
 		object.subset(system_information_access, requested_permission.allow)
-	}
-	every requested_permission in requested_catalog_session_properties_permissions {
-		access := catalog_session_properties_access(
-			requested_permission.catalogName,
-			requested_permission.propertyName,
-		)
-		requested_permission.allow == access
 	}
 	every requested_permission in requested_system_session_properties_permissions {
 		access := system_session_properties_access(requested_permission.propertyName)

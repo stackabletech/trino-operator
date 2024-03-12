@@ -509,6 +509,11 @@ requested_catalog_permissions contains permission if {
 	permission.resource == "catalog"
 }
 
+requested_catalog_session_properties_permissions contains permission if {
+	some permission in requested_permissions
+	permission.resource == "catalog_session_properties"
+}
+
 requested_column_permissions contains permission if {
 	some permission in requested_permissions
 	permission.resource == "column"
@@ -552,11 +557,6 @@ requested_table_permissions contains permission if {
 requested_system_information_permissions contains permission if {
 	some permission in requested_permissions
 	permission.resource == "system_information"
-}
-
-requested_catalog_session_properties_permissions contains permission if {
-	some permission in requested_permissions
-	permission.resource == "catalog_session_properties"
 }
 
 requested_system_session_properties_permissions contains permission if {

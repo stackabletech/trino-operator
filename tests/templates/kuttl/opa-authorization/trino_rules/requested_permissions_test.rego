@@ -309,12 +309,12 @@ test_filter_columns if {
 
 test_function_resource_actions if {
 	operations := {
-		"ExecuteProcedure",
 		"CreateFunction",
+		"CreateViewWithExecuteFunction",
 		"DropFunction",
 		"ExecuteFunction",
+		"ExecuteProcedure",
 		"FilterFunctions",
-		"CreateViewWithExecuteFunction",
 	}
 	every operation in operations {
 		permissions := trino.requested_permissions with input as {
@@ -380,9 +380,9 @@ test_column_operations_on_table_like_objects if {
 				"operation": operation,
 				"resource": {"table": {
 					"catalogName": "testcatalog",
-					"columns": ["testcolumn1", "testcolumn2"],
 					"schemaName": "testschema",
 					"tableName": "testtable",
+					"columns": ["testcolumn1", "testcolumn2"],
 				}},
 			},
 			"context": testcontext,
