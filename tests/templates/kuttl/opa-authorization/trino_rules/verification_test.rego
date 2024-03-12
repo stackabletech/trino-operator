@@ -246,3 +246,64 @@ test_allow_with_system_session_properties_request if {
 	not trino.allow with input as request
 		with data.trino_policies.policies as {"system_session_properties": [{"allow": false}]}
 }
+
+test_batch if {
+	request := {
+		"action": {
+			"operation": "FilterCatalogs",
+			"filterResources": [
+				{"catalog": {"name": "testcatalog1"}},
+				{"catalog": {"name": "testcatalog2"}},
+				{"catalog": {"name": "testcatalog3"}},
+			],
+		},
+		"context": testcontext,
+	}
+
+	trino.batch == {0, 2} with input as request
+		with data.trino_policies.policies as {"catalogs": [
+			{
+				"catalog": "testcatalog1",
+				"allow": "all",
+			},
+			{
+				"catalog": "testcatalog2",
+				"allow": "none",
+			},
+			{"allow": "read-only"},
+		]}
+}
+
+test_batch_with_filter_columns if {
+	request := {
+		"action": {
+			"operation": "FilterColumns",
+			"filterResources": [{"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"columns": [
+					"testcolumn1",
+					"testcolumn2",
+					"testcolumn3",
+				],
+			}}],
+		},
+		"context": testcontext,
+	}
+
+	trino.batch == {0, 2} with input as request
+		with data.trino_policies.policies as {"tables": [{
+			"privileges": ["SELECT"],
+			"columns": [
+				{
+					"name": "testcolumn1",
+					"allow": true,
+				},
+				{
+					"name": "testcolumn2",
+					"allow": false,
+				},
+			],
+		}]}
+}
