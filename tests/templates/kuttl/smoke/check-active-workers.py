@@ -16,6 +16,7 @@ def get_connection(username, password, namespace):
         user=username,
         http_scheme='https',
         auth=trino.auth.BasicAuthentication(username, password),
+        session_properties={"query_max_execution_time": "60s"},
     )
     conn._http_session.verify = False
     return conn
