@@ -2,14 +2,6 @@ package trino
 
 import rego.v1
 
-# These rules replicate the file-based access control
-# (https://trino.io/docs/current/security/file-system-access-control.html#table-rules).
-#
-# But there are differences:
-# * Only `user` and `group` are matched but not `role`.
-# * Filters and masks are not supported.
-# * The visibility is not checked.
-
 action := input.action
 
 operation := action.operation

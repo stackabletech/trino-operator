@@ -3,673 +3,647 @@ package requested_permissions_test
 import data.trino
 import rego.v1
 
-# Allow everything
-policies := {
-	"authorization": [{"new_user": ".*"}],
-	"functions": [{"privileges": [
-		"EXECUTE",
-		"GRANT_EXECUTE",
-		"OWNERSHIP",
-	]}],
-	"impersonation": [{"new_user": ".*"}],
-	"procedures": [{"privileges": [
-		"EXECUTE",
-		"GRANT_EXECUTE",
-	]}],
-	"queries": [{"allow": {"execute", "kill", "view"}}],
-	"system_information": [{"allow": ["read", "write"]}],
-}
+# These tests check that the returned rules are well-formed. Typos and
+# copy-and-paste errors should be detected. It is not checked if the
+# rules are sensible, e.g. that the InsertIntoTable operation requests
+# the INSERT privilege.
 
-test_access_catalog if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "AccessCatalog",
-				"resource": {"catalog": {"name": "system"}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
+default permissions_valid(_) := false
 
-test_create_schema if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "CreateSchema",
-				"resource": {"schema": {
-					"catalogName": "my_catalog",
-					"schemaName": "my_schema",
-					"properties": {},
-				}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
-
-test_filter_catalogs if {
-	trino.batch == {0, 1, 2, 3} with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"filterResources": [
-					{"catalog": {"name": "tpcds"}},
-					{"catalog": {"name": "system"}},
-					{"catalog": {"name": "lakehouse"}},
-					{"catalog": {"name": "tpch"}},
-				],
-				"operation": "FilterCatalogs",
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
-
-test_filter_columns if {
-	trino.batch == {0, 1} with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"filterResources": [{"table": {
-					"catalogName": "my_catalog",
-					"schemaName": "my_schema",
-					"tableName": "my_table",
-					"columns": ["column_one", "column_two"],
-				}}],
-				"operation": "FilterColumns",
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
-
-test_filter_functions if {
-	trino.batch == {0, 1} with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"filterResources": [
-					{"function": {
-						"catalogName": "my_catalog",
-						"schemaName": "my_schema",
-						"functionName": "function_one",
-					}},
-					{"function": {
-						"catalogName": "my_catalog",
-						"schemaName": "my_schema",
-						"functionName": "function_two",
-					}},
-				],
-				"operation": "FilterFunctions",
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
-
-test_filter_schemas if {
-	trino.batch == {0, 1, 2, 3} with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"filterResources": [
-					{"schema": {
-						"catalogName": "system",
-						"schemaName": "information_schema",
-					}},
-					{"schema": {
-						"catalogName": "system",
-						"schemaName": "runtime",
-					}},
-					{"schema": {
-						"catalogName": "system",
-						"schemaName": "metadata",
-					}},
-					{"schema": {
-						"catalogName": "system",
-						"schemaName": "jdbc",
-					}},
-				],
-				"operation": "FilterSchemas",
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
-
-test_filter_tables if {
-	trino.batch == {0, 1, 2, 3, 4, 5, 6, 7} with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"filterResources": [
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "customer",
-					}},
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "orders",
-					}},
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "lineitem",
-					}},
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "part",
-					}},
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "partsupp",
-					}},
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "supplier",
-					}},
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "nation",
-					}},
-					{"table": {
-						"catalogName": "lakehouse",
-						"schemaName": "sf1",
-						"tableName": "region",
-					}},
-				],
-				"operation": "FilterTables",
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
-
-test_filter_view_query_owned_by if {
-	trino.batch == {0, 1} with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"filterResources": [
-					{"user": {
-						"user": "user_one",
-						"groups": [],
-					}},
-					{"user": {
-						"user": "user_two",
-						"groups": [],
-					}},
-				],
-				"operation": "FilterViewQueryOwnedBy",
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
-
-function_resource_actions := {
-	"ExecuteProcedure",
-	"CreateFunction",
-	"DropFunction",
-	"ExecuteFunction",
-	"CreateViewWithExecuteFunction",
-}
-
-test_function_resource_actions if {
-	every operation in function_resource_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"function": {
-						"catalogName": "my_catalog",
-						"schemaName": "my_schema",
-						"functionName": "my_function",
-					}},
-				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+permissions_valid(permissions) if {
+	every permission in permissions {
+		permission_valid(permission)
 	}
 }
 
-no_resource_actions := {
-	"ExecuteQuery",
-	"ReadSystemInformation",
-	"WriteSystemInformation",
+default permission_valid(_) := false
+
+permission_valid(permission) if {
+	permission.resource == "authorization"
+
+	object.keys(permission) == {
+		"resource",
+		"granteeName",
+		"granteeType",
+		"allow",
+	}
+
+	is_string(permission.granteeName)
+	is_string(permission.granteeType)
+	is_boolean(permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "catalog"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"allow",
+	}
+
+	is_string(permission.catalogName)
+	permission.allow in {"all", "read-only", "none"}
+}
+
+permission_valid(permission) if {
+	permission.resource == "catalog_session_properties"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"propertyName",
+		"allow",
+	}
+
+	is_string(permission.catalogName)
+	is_string(permission.propertyName)
+	is_boolean(permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "column"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"schemaName",
+		"tableName",
+		"columnName",
+		"allow",
+	}
+
+	is_string(permission.catalogName)
+	is_string(permission.schemaName)
+	is_string(permission.tableName)
+	is_string(permission.columnName)
+	is_boolean(permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "function"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"schemaName",
+		"functionName",
+		"privileges",
+	}
+
+	is_string(permission.catalogName)
+	is_string(permission.schemaName)
+	is_string(permission.functionName)
+	object.subset({"GRANT_EXECUTE", "EXECUTE", "OWNERSHIP"}, permission.privileges)
+}
+
+permission_valid(permission) if {
+	permission.resource == "impersonation"
+
+	object.keys(permission) == {
+		"resource",
+		"user",
+		"allow",
+	}
+
+	is_string(permission.user)
+	is_boolean(permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "procedure"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"schemaName",
+		"functionName",
+		"privileges",
+	}
+
+	is_string(permission.catalogName)
+	is_string(permission.schemaName)
+	is_string(permission.functionName)
+	object.subset({"GRANT_EXECUTE", "EXECUTE"}, permission.privileges)
+}
+
+permission_valid(permission) if {
+	permission.resource == "query"
+
+	object.keys(permission) == {
+		"resource",
+		"allow",
+	}
+
+	object.subset({"execute", "kill", "view"}, permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "query_owned_by"
+
+	object.keys(permission) == {
+		"resource",
+		"user",
+		"groups",
+		"allow",
+	}
+
+	is_string(permission.user)
+	is_array(permission.groups)
+	object.subset({"kill", "view"}, permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "schema"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"schemaName",
+		"owner",
+	}
+
+	is_string(permission.catalogName)
+	is_string(permission.schemaName)
+	is_boolean(permission.owner)
+}
+
+permission_valid(permission) if {
+	permission.resource == "system_information"
+
+	object.keys(permission) == {
+		"resource",
+		"allow",
+	}
+
+	object.subset({"read", "write"}, permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "system_session_properties"
+
+	object.keys(permission) == {
+		"resource",
+		"propertyName",
+		"allow",
+	}
+
+	is_string(permission.propertyName)
+	is_boolean(permission.allow)
+}
+
+permission_valid(permission) if {
+	permission.resource == "table"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"schemaName",
+		"tableName",
+		"privileges",
+	}
+	object.keys(permission.privileges) == {"allOf"}
+
+	is_string(permission.catalogName)
+	is_string(permission.schemaName)
+	is_string(permission.tableName)
+	object.subset(
+		{
+			"DELETE",
+			"GRANT_SELECT",
+			"INSERT",
+			"OWNERSHIP",
+			"SELECT",
+			"UPDATE",
+		},
+		permission.privileges.allOf,
+	)
+}
+
+permission_valid(permission) if {
+	permission.resource == "table"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"schemaName",
+		"tableName",
+		"privileges",
+	}
+	object.keys(permission.privileges) == {"anyOf"}
+
+	is_string(permission.catalogName)
+	is_string(permission.schemaName)
+	is_string(permission.tableName)
+	object.subset(
+		{
+			"DELETE",
+			"GRANT_SELECT",
+			"INSERT",
+			"OWNERSHIP",
+			"SELECT",
+			"UPDATE",
+		},
+		permission.privileges.anyOf,
+	)
+}
+
+testcontext := {
+	"identity": {
+		"groups": ["testgroup1", "testgroup2"],
+		"user": "testuser",
+	},
+	"softwareStack": {"trinoVersion": "440"},
+}
+
+test_access_filter_catalog if {
+	operations := {
+		"AccessCatalog",
+		"FilterCatalogs",
+	}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"catalog": {"name": "testcatalog"}},
+			},
+			"context": testcontext,
+		}
+
+		permissions_valid(permissions)
+	}
+}
+
+test_create_schema if {
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "CreateSchema",
+			"resource": {"schema": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"properties": {},
+			}},
+		},
+		"context": testcontext,
+	}
+
+	permissions_valid(permissions)
+}
+
+test_filter_columns if {
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "FilterColumns",
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"columnName": "testcolumn",
+			}},
+		},
+		"context": testcontext,
+	}
+
+	permissions_valid(permissions)
+}
+
+test_function_resource_actions if {
+	operations := {
+		"ExecuteProcedure",
+		"CreateFunction",
+		"DropFunction",
+		"ExecuteFunction",
+		"FilterFunctions",
+		"CreateViewWithExecuteFunction",
+	}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"function": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"functionName": "testfunction",
+				}},
+			},
+			"context": testcontext,
+		}
+
+		permissions_valid(permissions)
+	}
 }
 
 test_no_resource_action if {
-	every operation in no_resource_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {"operation": operation},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+	operations := {
+		"ExecuteQuery",
+		"ReadSystemInformation",
+		"WriteSystemInformation",
+	}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {"operation": operation},
+			"context": testcontext,
+		}
+
+		permissions_valid(permissions)
 	}
 }
 
 test_execute_table_procedure if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "ExecuteTableProcedure",
-				"resource": {
-					"table": {
-						"catalogName": "my_catalog",
-						"schemaName": "my_schema",
-						"tableName": "my_table",
-					},
-					"function": {"functionName": "my_procedure"},
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "ExecuteTableProcedure",
+			"resource": {
+				"table": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
 				},
+				"function": {"functionName": "testprocedure"},
 			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
+		},
+		"context": testcontext,
+	}
 
-column_operations_on_table_like_objects := {
-	"CreateViewWithSelectFromColumns",
-	"SelectFromColumns",
-	"UpdateTableColumns",
+	permissions_valid(permissions)
 }
 
 test_column_operations_on_table_like_objects if {
-	every operation in column_operations_on_table_like_objects {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"table": {
-						"catalogName": "system",
-						"columns": ["schema_name"],
-						"schemaName": "information_schema",
-						"tableName": "schemata",
-					}},
-				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+	operations := {
+		"CreateViewWithSelectFromColumns",
+		"SelectFromColumns",
+		"UpdateTableColumns",
+	}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"table": {
+					"catalogName": "testcatalog",
+					"columns": ["testcolumn1", "testcolumn2"],
+					"schemaName": "testschema",
+					"tableName": "testtable",
+				}},
+			},
+			"context": testcontext,
+		}
+
+		permissions_valid(permissions)
 	}
 }
 
 test_show_schemas if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "ShowSchemas",
-				"resource": {"catalog": {"name": "system"}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "ShowSchemas",
+			"resource": {"catalog": {"name": "testcatalog"}},
+		},
+		"context": testcontext,
+	}
 
-table_resource_actions := {
-	"AddColumn",
-	"AlterColumn",
-	"CreateView",
-	"DeleteFromTable",
-	"DropColumn",
-	"DropMaterializedView",
-	"DropTable",
-	"DropView",
-	"InsertIntoTable",
-	"RefreshMaterializedView",
-	"RenameColumn",
-	"SetColumnComment",
-	"SetTableComment",
-	"SetViewComment",
-	"ShowColumns",
-	"ShowCreateTable",
-	"TruncateTable",
+	permissions_valid(permissions)
 }
 
 test_table_resource_actions if {
-	every operation in table_resource_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"table": {
-						"catalogName": "system",
-						"schemaName": "information_schema",
-						"tableName": "schemata",
-					}},
-				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+	operations := {
+		"AddColumn",
+		"AlterColumn",
+		"CreateView",
+		"DeleteFromTable",
+		"DropColumn",
+		"DropMaterializedView",
+		"DropTable",
+		"DropView",
+		"FilterTables",
+		"InsertIntoTable",
+		"RefreshMaterializedView",
+		"RenameColumn",
+		"SetColumnComment",
+		"SetTableComment",
+		"SetViewComment",
+		"ShowColumns",
+		"ShowCreateTable",
+		"TruncateTable",
 	}
-}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"table": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+				}},
+			},
+			"context": testcontext,
+		}
 
-table_with_properties_actions := {
-	"CreateMaterializedView",
-	"CreateTable",
-	"SetMaterializedViewProperties",
-	"SetTableProperties",
+		permissions_valid(permissions)
+	}
 }
 
 test_table_with_properties_actions if {
-	every operation in table_with_properties_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"table": {
-						"catalogName": "system",
-						"schemaName": "information_schema",
-						"tableName": "schemata",
-						"properties": {
-							"string_item": "string_value",
-							"empty_item": null,
-							"boxed_number_item": 32,
-						},
-					}},
-				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+	operations := {
+		"CreateMaterializedView",
+		"CreateTable",
+		"SetMaterializedViewProperties",
+		"SetTableProperties",
 	}
-}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"table": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+					"properties": {
+						"string_item": "string_value",
+						"empty_item": null,
+						"boxed_number_item": 32,
+					},
+				}},
+			},
+			"context": testcontext,
+		}
 
-identity_resource_actions := {
-	"KillQueryOwnedBy",
-	"ViewQueryOwnedBy",
+		permissions_valid(permissions)
+	}
 }
 
 test_identity_resource_actions if {
-	every operation in identity_resource_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"user": {
-						"user": "dummy-user",
-						"groups": ["some_group"],
-					}},
-				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+	operations := {
+		"FilterViewQueryOwnedBy",
+		"KillQueryOwnedBy",
+		"ViewQueryOwnedBy",
 	}
-}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"user": {
+					"user": "testuser",
+					"groups": ["testgroup1", "testgroup2"],
+				}},
+			},
+			"context": testcontext,
+		}
 
-schema_resource_actions := {
-	"DropSchema",
-	"ShowCreateSchema",
-	"ShowFunctions",
-	"ShowTables",
+		permissions_valid(permissions)
+	}
 }
 
 test_schema_resource_actions if {
-	every operation in schema_resource_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"schema": {
-						"catalogName": "system",
-						"schemaName": "information_schema",
-					}},
-				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+	operations := {
+		"DropSchema",
+		"FilterSchemas",
+		"ShowCreateSchema",
+		"ShowFunctions",
+		"ShowTables",
+	}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"schema": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+				}},
+			},
+			"context": testcontext,
+		}
+
+		permissions_valid(permissions)
 	}
 }
 
-rename_table_like_object_actions := {
-	"RenameMaterializedView",
-	"RenameTable",
-	"RenameView",
-}
-
 test_rename_table_like_object if {
-	every operation in rename_table_like_object_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"table": {
-						"catalogName": "my_catalog",
-						"schemaName": "my_schema",
-						"tableName": "my_table",
-					}},
-					"targetResource": {"table": {
-						"catalogName": "my_catalog",
-						"schemaName": "new_schema_name",
-						"tableName": "new_table_name",
-					}},
-				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+	operations := {
+		"RenameMaterializedView",
+		"RenameTable",
+		"RenameView",
+	}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"table": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+				}},
+				"targetResource": {"table": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "newtesttable",
+				}},
+			},
+			"context": testcontext,
+		}
+
+		permissions_valid(permissions)
 	}
 }
 
 test_rename_schema if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "RenameSchema",
-				"resource": {"schema": {
-					"catalogName": "my_catalog",
-					"schemaName": "my_schema",
-				}},
-				"targetResource": {"schema": {
-					"catalogName": "my_catalog",
-					"schemaName": "new_schema_name",
-				}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "RenameSchema",
+			"resource": {"schema": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+			}},
+			"targetResource": {"schema": {
+				"catalogName": "testcatalog",
+				"schemaName": "newtestschema",
+			}},
+		},
+		"context": testcontext,
+	}
+
+	permissions_valid(permissions)
 }
 
 test_set_catalog_session_properties if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "SetCatalogSessionProperty",
-				"resource": {"catalogSessionProperty": {
-					"catalogName": "my_catalog",
-					"propertyName": "my_property",
-				}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "SetCatalogSessionProperty",
+			"resource": {"catalogSessionProperty": {
+				"catalogName": "testcatalog",
+				"propertyName": "testproperty",
+			}},
+		},
+		"context": testcontext,
+	}
+
+	permissions_valid(permissions)
 }
 
 test_set_system_session_properties if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "SetSystemSessionProperty",
-				"resource": {"systemSessionProperty": {"name": "resource_name"}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "SetSystemSessionProperty",
+			"resource": {"systemSessionProperty": {"name": "testproperty"}},
+		},
+		"context": testcontext,
+	}
+
+	permissions_valid(permissions)
 }
 
 test_set_schema_authorization if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "SetSchemaAuthorization",
-				"resource": {"schema": {
-					"catalogName": "my_catalog",
-					"schemaName": "my_schema",
-				}},
-				"grantee": {
-					"name": "user",
-					"type": "my_user",
-				},
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "SetSchemaAuthorization",
+			"resource": {"schema": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+			}},
+			"grantee": {
+				"name": "testuser",
+				"type": "testusertype",
 			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
-}
+		},
+		"context": testcontext,
+	}
 
-set_authorization_on_table_like_object_actions := {
-	"SetTableAuthorization",
-	"SetViewAuthorization",
+	permissions_valid(permissions)
 }
 
 test_set_authorization_on_table_like_object if {
-	every operation in set_authorization_on_table_like_object_actions {
-		trino.allow with data.trino_policies.policies as policies
-			with input as {
-				"action": {
-					"operation": operation,
-					"resource": {"table": {
-						"catalogName": "my_catalog",
-						"schemaName": "my_schema",
-						"tableName": "my_table",
-					}},
-					"grantee": {
-						"name": "user",
-						"type": "my_user",
-					},
+	operations := {
+		"SetTableAuthorization",
+		"SetViewAuthorization",
+	}
+	every operation in operations {
+		permissions := trino.requested_permissions with input as {
+			"action": {
+				"operation": operation,
+				"resource": {"table": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+				}},
+				"grantee": {
+					"name": "testuser",
+					"type": "testusertype",
 				},
-				"context": {
-					"identity": {
-						"groups": [],
-						"user": "admin",
-					},
-					"softwareStack": {"trinoVersion": "439"},
-				},
-			}
+			},
+			"context": testcontext,
+		}
+
+		permissions_valid(permissions)
 	}
 }
 
 test_impersonate_user if {
-	trino.allow with data.trino_policies.policies as policies
-		with input as {
-			"action": {
-				"operation": "ImpersonateUser",
-				"resource": {"user": {"user": "testuser"}},
-			},
-			"context": {
-				"identity": {
-					"groups": [],
-					"user": "admin",
-				},
-				"softwareStack": {"trinoVersion": "439"},
-			},
-		}
+	permissions := trino.requested_permissions with input as {
+		"action": {
+			"operation": "ImpersonateUser",
+			"resource": {"user": {"user": "testuser"}},
+		},
+		"context": testcontext,
+	}
+
+	permissions_valid(permissions)
 }
