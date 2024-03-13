@@ -94,7 +94,14 @@ permission_valid(permission) if {
 	is_string(permission.catalogName)
 	is_string(permission.schemaName)
 	is_string(permission.functionName)
-	object.subset({"GRANT_EXECUTE", "EXECUTE", "OWNERSHIP"}, permission.privileges)
+	object.subset(
+		{
+			"GRANT_EXECUTE",
+			"EXECUTE",
+			"OWNERSHIP",
+		},
+		permission.privileges,
+	)
 }
 
 permission_valid(permission) if {

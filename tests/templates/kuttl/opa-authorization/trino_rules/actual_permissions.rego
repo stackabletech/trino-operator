@@ -97,7 +97,10 @@ catalog_session_property_rules := filter_by_user_group(raw_policies.catalog_sess
 # Catalog session property access of the first matching rule
 default catalog_session_properties_access(_, _) := false
 
-catalog_session_properties_access(catalog_name, property_name) := access if {
+catalog_session_properties_access(
+	catalog_name,
+	property_name,
+) := access if {
 	rules := [rule |
 		some rule in catalog_session_property_rules
 
@@ -124,7 +127,11 @@ function_rules := filter_by_user_group(raw_policies.functions)
 # Function privileges of the first matching rule
 default function_privileges(_, _, _) := set()
 
-function_privileges(catalog_name, schema_name, function_name) := privileges if {
+function_privileges(
+	catalog_name,
+	schema_name,
+	function_name,
+) := privileges if {
 	rules := [rule |
 		some rule in function_rules
 
@@ -198,7 +205,11 @@ default procedure_privileges(_, _, _) := set()
 # `input.action.resource.function.functionName`. A rule applies if this
 # name matches the pattern in
 # `data.trino_policies.policies.procedures[_].procedure`.
-procedure_privileges(catalog_name, schema_name, function_name) := privileges if {
+procedure_privileges(
+	catalog_name,
+	schema_name,
+	function_name,
+) := privileges if {
 	rules := [rule |
 		some rule in procedure_rules
 
@@ -284,7 +295,11 @@ table_privileges(_, "information_schema", _) := {
 	"UPDATE",
 }
 
-table_privileges(catalog_name, schema_name, table_name) := privileges if {
+table_privileges(
+	catalog_name,
+	schema_name,
+	table_name,
+) := privileges if {
 	schema_name != "information_schema"
 	rules := [rule |
 		some rule in table_rules
@@ -338,7 +353,9 @@ system_information_rules := filter_by_user_group(raw_policies.system_information
 # System information access of the first matching rule
 default system_information_access := set()
 
-system_information_access := {access | some access in system_information_rules[0].allow}
+system_information_access := {access |
+	some access in system_information_rules[0].allow
+}
 
 default system_session_property_rules := [{"allow": true}]
 

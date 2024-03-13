@@ -85,13 +85,24 @@ allow if {
 			requested_permission.schemaName,
 			requested_permission.tableName,
 		)
-		all_of_requested := object.get(requested_permission.privileges, "allOf", set())
-		any_of_requested := object.get(requested_permission.privileges, "anyOf", privileges)
+		all_of_requested := object.get(
+			requested_permission.privileges,
+			"allOf",
+			set(),
+		)
+		any_of_requested := object.get(
+			requested_permission.privileges,
+			"anyOf",
+			privileges,
+		)
 		object.subset(privileges, all_of_requested)
 		privileges & any_of_requested != set()
 	}
 	every requested_permission in requested_system_information_permissions {
-		object.subset(system_information_access, requested_permission.allow)
+		object.subset(
+			system_information_access,
+			requested_permission.allow,
+		)
 	}
 	every requested_permission in requested_system_session_properties_permissions {
 		access := system_session_properties_access(requested_permission.propertyName)
