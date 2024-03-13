@@ -4,7 +4,7 @@
 #   - data.trino_policies.policies: schema.policies
 package trino_row_filters
 
-import data.util.match_entire
+import data.util
 import rego.v1
 
 policies := data.trino_policies.policies
@@ -18,9 +18,9 @@ matching_rules := [rule |
 	schema_pattern := object.get(rule, "schema", ".*")
 	table_pattern := object.get(rule, "table", ".*")
 
-	match_entire(catalog_pattern, requested_table.catalogName)
-	match_entire(schema_pattern, requested_table.schemaName)
-	match_entire(table_pattern, requested_table.tableName)
+	util.match_entire(catalog_pattern, requested_table.catalogName)
+	util.match_entire(schema_pattern, requested_table.schemaName)
+	util.match_entire(table_pattern, requested_table.tableName)
 ]
 
 first_matching_rule := matching_rules[0]

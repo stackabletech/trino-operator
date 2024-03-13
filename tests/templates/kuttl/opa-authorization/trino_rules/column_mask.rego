@@ -4,7 +4,7 @@
 #   - data.trino_policies.policies: schema.policies
 package trino_column_mask
 
-import data.util.match_entire
+import data.util
 import rego.v1
 
 policies := data.trino_policies.policies
@@ -18,9 +18,9 @@ matching_rules := [rule |
 	schema_pattern := object.get(rule, "schema", ".*")
 	table_pattern := object.get(rule, "table", ".*")
 
-	match_entire(catalog_pattern, requested_column.catalogName)
-	match_entire(schema_pattern, requested_column.schemaName)
-	match_entire(table_pattern, requested_column.tableName)
+	util.match_entire(catalog_pattern, requested_column.catalogName)
+	util.match_entire(schema_pattern, requested_column.schemaName)
+	util.match_entire(table_pattern, requested_column.tableName)
 ]
 
 first_matching_rule := matching_rules[0]

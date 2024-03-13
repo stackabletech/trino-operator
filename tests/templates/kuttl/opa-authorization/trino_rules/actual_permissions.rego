@@ -1,6 +1,6 @@
 package trino
 
-import data.util.match_entire
+import data.util
 import rego.v1
 
 # These rules replicate the file-based access control
@@ -19,7 +19,7 @@ match_any_group(group_pattern) if {
 	# Add an empty dummy group because the default pattern ".*" should
 	# match even if the user is not a member of a group.
 	some group in array.concat(identity.groups, [""])
-	match_entire(group_pattern, group)
+	util.match_entire(group_pattern, group)
 }
 
 filter_by_user_group(resource) := [rule |
@@ -28,7 +28,7 @@ filter_by_user_group(resource) := [rule |
 	user_pattern := object.get(rule, "user", ".*")
 	group_pattern := object.get(rule, "group", ".*")
 
-	match_entire(user_pattern, identity.user)
+	util.match_entire(user_pattern, identity.user)
 	match_any_group(group_pattern)
 ]
 
@@ -38,7 +38,7 @@ filter_by_original_user_group(resource) := [rule |
 	user_pattern := object.get(rule, "original_user", ".*")
 	group_pattern := object.get(rule, "original_group", ".*")
 
-	match_entire(user_pattern, identity.user)
+	util.match_entire(user_pattern, identity.user)
 	match_any_group(group_pattern)
 ]
 
@@ -55,7 +55,7 @@ authorization_permission(grantee_name) := permission if {
 
 		new_user_pattern := object.get(rule, "new_user", ".*")
 
-		match_entire(new_user_pattern, grantee_name)
+		util.match_entire(new_user_pattern, grantee_name)
 	]
 	permission := object.get(rules[0], "allow", true)
 }
@@ -79,7 +79,7 @@ catalog_access(catalog_name) := access if {
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 
-		match_entire(catalog_pattern, catalog_name)
+		util.match_entire(catalog_pattern, catalog_name)
 	]
 	access := catalog_access_map[rules[0].allow]
 }
@@ -101,8 +101,8 @@ catalog_session_properties_access(
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		property_pattern := object.get(rule, "property", ".*")
 
-		match_entire(catalog_pattern, catalog_name)
-		match_entire(property_pattern, property_name)
+		util.match_entire(catalog_pattern, catalog_name)
+		util.match_entire(property_pattern, property_name)
 	]
 	access := rules[0].allow
 }
@@ -133,9 +133,9 @@ function_privileges(
 		schema_pattern := object.get(rule, "schema", ".*")
 		function_pattern := object.get(rule, "function", ".*")
 
-		match_entire(catalog_pattern, catalog_name)
-		match_entire(schema_pattern, schema_name)
-		match_entire(function_pattern, function_name)
+		util.match_entire(catalog_pattern, catalog_name)
+		util.match_entire(schema_pattern, schema_name)
+		util.match_entire(function_pattern, function_name)
 	]
 	privileges := {privilege | some privilege in rules[0].privileges}
 }
@@ -175,7 +175,7 @@ impersonation_access(user) := access if {
 			unsubstituted_new_user_pattern,
 		)
 
-		match_entire(new_user_pattern, user)
+		util.match_entire(new_user_pattern, user)
 	]
 	access := object.get(rules[0], "allow", true)
 }
@@ -211,9 +211,9 @@ procedure_privileges(
 		schema_pattern := object.get(rule, "schema", ".*")
 		procedure_pattern := object.get(rule, "procedure", ".*")
 
-		match_entire(catalog_pattern, catalog_name)
-		match_entire(schema_pattern, schema_name)
-		match_entire(procedure_pattern, function_name)
+		util.match_entire(catalog_pattern, catalog_name)
+		util.match_entire(schema_pattern, schema_name)
+		util.match_entire(procedure_pattern, function_name)
 	]
 	privileges := {privilege | some privilege in rules[0].privileges}
 }
@@ -241,7 +241,7 @@ query_owned_by_access(user) := access if {
 
 		query_owner_pattern := object.get(rule, "queryOwner", ".*")
 
-		match_entire(query_owner_pattern, user)
+		util.match_entire(query_owner_pattern, user)
 	]
 	access := {access | some access in rules[0].allow}
 }
@@ -260,8 +260,8 @@ schema_owner(catalog_name, schema_name) := owner if {
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
 
-		match_entire(catalog_pattern, catalog_name)
-		match_entire(schema_pattern, schema_name)
+		util.match_entire(catalog_pattern, catalog_name)
+		util.match_entire(schema_pattern, schema_name)
 	]
 	owner := rules[0].owner
 }
@@ -302,9 +302,9 @@ table_privileges(
 		schema_pattern := object.get(rule, "schema", ".*")
 		table_pattern := object.get(rule, "table", ".*")
 
-		match_entire(catalog_pattern, catalog_name)
-		match_entire(schema_pattern, schema_name)
-		match_entire(table_pattern, table_name)
+		util.match_entire(catalog_pattern, catalog_name)
+		util.match_entire(schema_pattern, schema_name)
+		util.match_entire(table_pattern, table_name)
 	]
 	privileges := {privilege | some privilege in rules[0].privileges}
 }
@@ -328,9 +328,9 @@ column_access(catalog_name, schema_name, table_name, column_name) if {
 		schema_pattern := object.get(rule, "schema", ".*")
 		table_pattern := object.get(rule, "table", ".*")
 
-		match_entire(catalog_pattern, catalog_name)
-		match_entire(schema_pattern, schema_name)
-		match_entire(table_pattern, table_name)
+		util.match_entire(catalog_pattern, catalog_name)
+		util.match_entire(schema_pattern, schema_name)
+		util.match_entire(table_pattern, table_name)
 	]
 
 	count(rules[0].privileges) != 0
@@ -364,7 +364,7 @@ system_session_properties_access(property_name) := access if {
 
 		property_name_pattern := object.get(rule, "property", ".*")
 
-		match_entire(property_name_pattern, property_name)
+		util.match_entire(property_name_pattern, property_name)
 	]
 	access := rules[0].allow
 }
