@@ -1,5 +1,6 @@
 package trino
 
+import data.util.match_entire
 import rego.v1
 
 # These rules replicate the file-based access control
@@ -13,13 +14,6 @@ import rego.v1
 identity := input.context.identity
 
 raw_policies := data.trino_policies.policies
-
-match_entire(pattern, value) if {
-	# Add the anchors ^ and $
-	pattern_with_anchors := concat("", ["^", pattern, "$"])
-
-	regex.match(pattern_with_anchors, value)
-}
 
 match_any_group(group_pattern) if {
 	# Add an empty dummy group because the default pattern ".*" should

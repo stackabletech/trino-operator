@@ -3,16 +3,6 @@ package actual_permissions_test
 import data.trino
 import rego.v1
 
-test_match_entire if {
-	trino.match_entire(`a`, "a")
-	trino.match_entire(`^a`, "a")
-	trino.match_entire(`a$`, "a")
-	trino.match_entire(`^a$`, "a")
-	not trino.match_entire(`a`, "abc")
-	not trino.match_entire(`b`, "abc")
-	not trino.match_entire(`c`, "abc")
-}
-
 test_match_any_group_with_no_group_memberships_and_the_default_group_pattern if {
 	identity := {"user": "testuser", "groups": []}
 	group_pattern := ".*"

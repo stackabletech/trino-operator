@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stackable.tech/request.trino.opa.schema.json",
+  "title": "Trino OPA request for getting row filters",
+  "type": "object",
+  "properties": {
+    "operation": {
+      "const": "GetRowFilters"
+    },
+    "resource": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "object",
+          "properties": {
+            "catalogName": {
+              "type": "string"
+            },
+            "schemaName": {
+              "type": "string"
+            },
+            "tableName": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["catalogName", "schemaName", "tableName"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["table"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["operation", "resource"]
+}

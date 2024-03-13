@@ -145,6 +145,19 @@
               "required": ["name"]
             },
             "default": []
+          },
+          "filter": {
+            "type": "string"
+          },
+          "filter_environment": {
+            "type": "object",
+            "properties": {
+              "user": {
+                  "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": ["user"]
           }
         },
         "additionalProperties": false,

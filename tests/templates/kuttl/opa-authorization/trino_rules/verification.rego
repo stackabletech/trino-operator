@@ -1,7 +1,7 @@
 # METADATA
 # schemas:
 #   - input: schema.input
-#   - data.policies: schema.policies
+#   - data.trino_policies.policies: schema.policies
 package trino
 
 import rego.v1
