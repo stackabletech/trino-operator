@@ -7,7 +7,7 @@ package trino
 import rego.v1
 
 # METADATA
-# description: Comparision of requested and actual permissions
+# description: Comparison of requested and actual permissions
 # entrypoint: true
 default allow := false
 
@@ -111,7 +111,7 @@ allow if {
 }
 
 # METADATA
-# description: Comparision of requested and actual permissions
+# description: Comparison of requested and actual permissions
 # entrypoint: true
 batch contains index if {
 	input.action.operation != "FilterColumns"
