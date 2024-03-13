@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stackable.tech/request.trino.opa.schema.json",
+  "title": "Trino OPA request for getting the column mask",
+  "type": "object",
+  "properties": {
+    "operation": {
+      "const": "GetColumnMask"
+    },
+    "resource": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "object",
+          "properties": {
+            "catalogName": {
+              "type": "string"
+            },
+            "schemaName": {
+              "type": "string"
+            },
+            "tableName": {
+              "type": "string"
+            },
+            "columnName": {
+              "type": "string"
+            },
+            "columnType": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "catalogName",
+            "schemaName",
+            "tableName",
+            "columnName",
+            "columnType"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["column"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["operation", "resource"]
+}

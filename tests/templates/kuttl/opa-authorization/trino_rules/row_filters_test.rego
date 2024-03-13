@@ -87,6 +87,36 @@ test_row_filters_with_matching_rule_and_no_environment if {
 	response == {{"expression": "testfilter4"}}
 }
 
+test_row_filters_with_matching_rule_and_no_filter if {
+	policies := {"tables": [
+		# This is the first matching rule even if no filter is defined.
+		{
+			"catalog": "testcatalog",
+			"schema": "testschema",
+			"table": "testtable",
+		},
+		{
+			"catalog": "testcatalog",
+			"schema": "testschema",
+			"table": "testtable",
+			"filter": "testfilter",
+		},
+	]}
+	request := {
+		"operation": "GetRowFilters",
+		"resource": {"table": {
+			"catalogName": "testcatalog",
+			"schemaName": "testschema",
+			"tableName": "testtable",
+		}},
+	}
+
+	response := trino_row_filters.row_filters with input as request
+		with data.trino_policies.policies as policies
+
+	response == set()
+}
+
 test_row_filters_with_no_matching_rule if {
 	policies := {"tables": [
 		{
@@ -101,11 +131,7 @@ test_row_filters_with_no_matching_rule if {
 			"table": "non_matching_table",
 			"filter": "testfilter3",
 		},
-		{
-			"catalog": "testcatalog",
-			"schema": "testschema",
-			"table": "testtable",
-		},
+		{"filter_environment": {"user": "testuser"}},
 	]}
 	request := {
 		"operation": "GetRowFilters",

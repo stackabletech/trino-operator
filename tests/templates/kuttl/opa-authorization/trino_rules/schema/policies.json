@@ -139,6 +139,17 @@
                 "allow": {
                   "type": "boolean",
                   "default": true
+                },
+                "mask": {
+                  "type": "string"
+                },
+                "mask_environment": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                        "type": "string"
+                    }
+                  }
                 }
               },
               "additionalProperties": false,
