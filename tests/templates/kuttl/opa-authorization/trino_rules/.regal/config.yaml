@@ -9,6 +9,11 @@ rules:
       # `opa fmt` puts the first `with` statement on the same line which
       # creates long lines.
       max-line-length: 120
+    prefer-snake-case:
+      ignore:
+        files:
+          # Entrypoints are named `columnMask` and `rowFilters`.
+          - verification.rego
     rule-length:
       ignore:
         files:

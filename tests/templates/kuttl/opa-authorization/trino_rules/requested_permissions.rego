@@ -563,3 +563,22 @@ requested_system_session_properties_permissions contains permission if {
 	some permission in requested_permissions
 	permission.resource == "system_session_properties"
 }
+
+requested_column_mask := request if {
+	operation == "GetColumnMask"
+	request := {
+		"catalogName": action.resource.column.catalogName,
+		"schemaName": action.resource.column.schemaName,
+		"tableName": action.resource.column.tableName,
+		"columnName": action.resource.column.columnName,
+	}
+}
+
+requested_row_filters := request if {
+	operation == "GetRowFilters"
+	request := {
+		"catalogName": action.resource.table.catalogName,
+		"schemaName": action.resource.table.schemaName,
+		"tableName": action.resource.table.tableName,
+	}
+}

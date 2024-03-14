@@ -133,3 +133,69 @@ batch contains index if {
 		"columnName": column_name,
 	}}
 }
+
+# METADATA
+# description: Column mask for a given column
+# entrypoint: true
+columnMask := column_mask if {
+	column := column_constraints(
+		requested_column_mask.catalogName,
+		requested_column_mask.schemaName,
+		requested_column_mask.tableName,
+		requested_column_mask.columnName,
+	)
+
+	is_string(column.mask)
+	is_string(column.mask_environment.user)
+
+	column_mask := {
+		"expression": column.mask,
+		"identity": column.mask_environment.user,
+	}
+}
+
+columnMask := column_mask if {
+	column := column_constraints(
+		requested_column_mask.catalogName,
+		requested_column_mask.schemaName,
+		requested_column_mask.tableName,
+		requested_column_mask.columnName,
+	)
+
+	is_string(column.mask)
+	is_null(column.mask_environment.user)
+
+	column_mask := {"expression": column.mask}
+}
+
+# METADATA
+# description: Row filters for a given table
+# entrypoint: true
+rowFilters := row_filter if {
+	rule := first_matching_table_rule(
+		requested_row_filters.catalogName,
+		requested_row_filters.schemaName,
+		requested_row_filters.tableName,
+	)
+
+	is_string(rule.filter)
+	is_string(rule.filter_environment.user)
+
+	row_filter := {
+		"expression": rule.filter,
+		"identity": rule.filter_environment.user,
+	}
+}
+
+rowFilters := row_filter if {
+	rule := first_matching_table_rule(
+		requested_row_filters.catalogName,
+		requested_row_filters.schemaName,
+		requested_row_filters.tableName,
+	)
+
+	is_string(rule.filter)
+	is_null(rule.filter_environment.user)
+
+	row_filter := {"expression": rule.filter}
+}

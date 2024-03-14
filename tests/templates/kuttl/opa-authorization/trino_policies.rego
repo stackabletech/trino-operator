@@ -161,7 +161,7 @@ policies := {
 				{
 					"name": "comment",
 					"allow": false,
-				},	
+				},
 			],
 		},
 		{
@@ -170,7 +170,7 @@ policies := {
 			"schema": "sf1",
 			"table": "customer",
 			"privileges": ["SELECT"],
-		},		
+		},
 		{
 			"user": "iceberg",
 			"catalog": "iceberg",

@@ -654,3 +654,41 @@ test_impersonate_user if {
 
 	permissions_valid(permissions)
 }
+
+test_get_column_mask if {
+	request := trino.requested_column_mask with input as {
+		"action": {
+			"operation": "GetColumnMask",
+			"resource": {"column": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"columnName": "testcolumn",
+			}},
+		},
+		"context": testcontext,
+	}
+
+	request.catalogName == "testcatalog"
+	request.schemaName == "testschema"
+	request.tableName == "testtable"
+	request.columnName == "testcolumn"
+}
+
+test_get_row_filters if {
+	request := trino.requested_row_filters with input as {
+		"action": {
+			"operation": "GetRowFilters",
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+			}},
+		},
+		"context": testcontext,
+	}
+
+	request.catalogName == "testcatalog"
+	request.schemaName == "testschema"
+	request.tableName == "testtable"
+}

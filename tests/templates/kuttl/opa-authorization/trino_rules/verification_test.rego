@@ -307,3 +307,148 @@ test_batch_with_filter_columns if {
 			],
 		}]}
 }
+
+test_column_mask_with_expression_and_identity if {
+	request := {
+		"action": {
+			"operation": "GetColumnMask",
+			"resource": {"column": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"columnName": "testcolumn",
+			}},
+		},
+		"context": testcontext,
+	}
+	policies := {"tables": [{
+		"privileges": ["SELECT"],
+		"columns": [{
+			"name": "testcolumn",
+			"mask": "testmask",
+			"mask_environment": {"user": "testmaskenvironmentuser"},
+		}],
+	}]}
+
+	column_mask := trino.columnMask with input as request
+		with data.trino_policies.policies as policies
+
+	column_mask == {
+		"expression": "testmask",
+		"identity": "testmaskenvironmentuser",
+	}
+}
+
+test_column_mask_with_expression_and_no_identity if {
+	request := {
+		"action": {
+			"operation": "GetColumnMask",
+			"resource": {"column": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"columnName": "testcolumn",
+			}},
+		},
+		"context": testcontext,
+	}
+	policies := {"tables": [{
+		"privileges": ["SELECT"],
+		"columns": [{
+			"name": "testcolumn",
+			"mask": "testmask",
+		}],
+	}]}
+
+	column_mask := trino.columnMask with input as request
+		with data.trino_policies.policies as policies
+
+	column_mask == {"expression": "testmask"}
+}
+
+test_column_mask_with_no_matching_rule if {
+	request := {
+		"action": {
+			"operation": "GetColumnMask",
+			"resource": {"column": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"columnName": "testcolumn",
+			}},
+		},
+		"context": testcontext,
+	}
+	policies := {}
+
+	not trino.columnMask with input as request
+		with data.trino_policies.policies as policies
+}
+
+test_row_filters_with_expression_and_identity if {
+	request := {
+		"action": {
+			"operation": "GetRowFilters",
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+			}},
+		},
+		"context": testcontext,
+	}
+	policies := {"tables": [{
+		"privileges": ["SELECT"],
+		"filter": "testfilter",
+		"filter_environment": {"user": "testfilterenvironmentuser"},
+	}]}
+
+	row_filters := trino.rowFilters with input as request
+		with data.trino_policies.policies as policies
+
+	row_filters == {
+		"expression": "testfilter",
+		"identity": "testfilterenvironmentuser",
+	}
+}
+
+test_row_filters_with_expression_and_no_identity if {
+	request := {
+		"action": {
+			"operation": "GetRowFilters",
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+			}},
+		},
+		"context": testcontext,
+	}
+	policies := {"tables": [{
+		"privileges": ["SELECT"],
+		"filter": "testfilter",
+	}]}
+
+	row_filters := trino.rowFilters with input as request
+		with data.trino_policies.policies as policies
+
+	row_filters == {"expression": "testfilter"}
+}
+
+test_row_filters_with_no_matching_rule if {
+	request := {
+		"action": {
+			"operation": "GetColumnMask",
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+			}},
+		},
+		"context": testcontext,
+	}
+	policies := {}
+
+	not trino.rowFilters with input as request
+		with data.trino_policies.policies as policies
+}

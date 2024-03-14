@@ -50,10 +50,16 @@
           "$ref": "#/$defs/CreateSchema"
         },
         {
+          "$ref": "#/$defs/ExecuteTableProcedure"
+        },
+        {
           "$ref": "#/$defs/FilterCatalogs"
         },
         {
           "$ref": "#/$defs/FilterColumns"
+        },
+        {
+          "$ref": "#/$defs/FilterFunctions"
         },
         {
           "$ref": "#/$defs/FilterTables"
@@ -65,7 +71,19 @@
           "$ref": "#/$defs/FunctionResourceActions"
         },
         {
-          "$ref": "#/$defs/NoResourceAction"
+          "$ref": "#/$defs/GetColumnMask"
+        },
+        {
+          "$ref": "#/$defs/GetRowFilters"
+        },
+        {
+          "$ref": "#/$defs/IdentityResourceActions"
+        },
+        {
+          "$ref": "#/$defs/ImpersonateUser"
+        },
+        {
+          "$ref": "#/$defs/NoResourceActions"
         },
         {
           "$ref": "#/$defs/RenameSchema"
@@ -498,7 +516,156 @@
       "required": ["operation", "resource"]
     },
 
-    "NoResourceAction": {
+    "GetColumnMask": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "GetColumnMask"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "column": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                },
+                "columnName": {
+                  "type": "string"
+                },
+                "columnType": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "catalogName",
+                "schemaName",
+                "tableName",
+                "columnName",
+                "columnType"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["column"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "GetRowFilters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "GetRowFilters"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "IdentityResourceActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "KillQueryOwnedBy",
+            "ViewQueryOwnedBy"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "object",
+              "properties": {
+                "groups": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "uniqueItems": true
+                },
+                "user": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "groups",
+                "user"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "ImpersonateUser": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "ImpersonateUser"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "object",
+              "properties": {
+                "user": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["user"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["user"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "NoResourceActions": {
       "type": "object",
       "properties": {
         "operation": {
@@ -623,175 +790,6 @@
       },
       "additionalProperties": false,
       "required": ["operation", "resource", "targetResource"]
-    },
-
-    "ShowSchemas": {
-      "type": "object",
-      "properties": {
-        "operation": {
-          "const": "ShowSchemas"
-        },
-        "resource": {
-          "type": "object",
-          "properties": {
-            "catalog": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false,
-              "required": ["name"]
-            }
-          },
-          "additionalProperties": false,
-          "required": ["catalog"]
-        }
-      },
-      "additionalProperties": false,
-      "required": ["operation", "resource"]
-    },
-
-    "TableResourceActions": {
-      "type": "object",
-      "properties": {
-        "operation": {
-          "enum": [
-            "AddColumn",
-            "AlterColumn",
-            "CreateView",
-            "DeleteFromTable",
-            "DropColumn",
-            "DropMaterializedView",
-            "DropTable",
-            "DropView",
-            "InsertIntoTable",
-            "RefreshMaterializedView",
-            "RenameColumn",
-            "SetColumnComment",
-            "SetTableComment",
-            "SetViewComment",
-            "ShowColumns",
-            "ShowCreateTable",
-            "TruncateTable"
-          ]
-        },
-        "resource": {
-          "type": "object",
-          "properties": {
-            "table": {
-              "type": "object",
-              "properties": {
-                "catalogName": {
-                  "type": "string"
-                },
-                "schemaName": {
-                  "type": "string"
-                },
-                "tableName": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false,
-              "required": ["catalogName", "schemaName", "tableName"]
-            }
-          },
-          "additionalProperties": false,
-          "required": ["table"]
-        }
-      },
-      "additionalProperties": false,
-      "required": ["operation", "resource"]
-    },
-
-    "TableWithPropertiesActions": {
-      "type": "object",
-      "properties": {
-        "operation": {
-          "enum": [
-            "CreateMaterializedView",
-            "CreateTable",
-            "SetMaterializedViewProperties",
-            "SetTableProperties"
-          ]
-        },
-        "resource": {
-          "type": "object",
-          "properties": {
-            "table": {
-              "type": "object",
-              "properties": {
-                "catalogName": {
-                  "type": "string"
-                },
-                "properties": {
-                  "type": "object",
-                  "additionalProperties": true
-                },
-                "schemaName": {
-                  "type": "string"
-                },
-                "tableName": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "catalogName",
-                "properties",
-                "schemaName",
-                "tableName"
-              ]
-            }
-          },
-          "additionalProperties": false,
-          "required": ["table"]
-        }
-      },
-      "additionalProperties": false,
-      "required": ["operation", "resource"]
-    },
-
-    "IdentityResourceActions": {
-      "type": "object",
-      "properties": {
-        "operation": {
-          "enum": [
-            "KillQueryOwnedBy",
-            "ViewQueryOwnedBy"
-          ]
-        },
-        "resource": {
-          "type": "object",
-          "properties": {
-            "user": {
-              "type": "object",
-              "properties": {
-                "groups": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "uniqueItems": true
-                },
-                "user": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "groups",
-                "user"
-              ]
-            }
-          },
-          "additionalProperties": false,
-          "required": ["table"]
-        }
-      },
-      "additionalProperties": false,
-      "required": ["operation", "resource"]
     },
 
     "SchemaResourceActions": {
@@ -984,28 +982,128 @@
       "required": ["operation", "grantee", "resource"]
     },
 
-    "ImpersonateUser": {
+    "ShowSchemas": {
       "type": "object",
       "properties": {
         "operation": {
-          "const": "ImpersonateUser"
+          "const": "ShowSchemas"
         },
         "resource": {
           "type": "object",
           "properties": {
-            "user": {
+            "catalog": {
               "type": "object",
               "properties": {
-                "user": {
+                "name": {
                   "type": "string"
                 }
               },
               "additionalProperties": false,
-              "required": ["user"]
+              "required": ["name"]
             }
           },
           "additionalProperties": false,
-          "required": ["user"]
+          "required": ["catalog"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "TableResourceActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "AddColumn",
+            "AlterColumn",
+            "CreateView",
+            "DeleteFromTable",
+            "DropColumn",
+            "DropMaterializedView",
+            "DropTable",
+            "DropView",
+            "InsertIntoTable",
+            "RefreshMaterializedView",
+            "RenameColumn",
+            "SetColumnComment",
+            "SetTableComment",
+            "SetViewComment",
+            "ShowColumns",
+            "ShowCreateTable",
+            "TruncateTable"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "TableWithPropertiesActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "CreateMaterializedView",
+            "CreateTable",
+            "SetMaterializedViewProperties",
+            "SetTableProperties"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "properties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "catalogName",
+                "properties",
+                "schemaName",
+                "tableName"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
         }
       },
       "additionalProperties": false,
