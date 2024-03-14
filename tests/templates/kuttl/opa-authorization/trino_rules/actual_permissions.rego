@@ -8,19 +8,27 @@ import rego.v1
 #
 # But there are differences:
 # * Only `user` and `group` are matched but not `role`.
-# * Filters and masks are not yet supported.
 # * The visibility is not checked.
 
 identity := input.context.identity
 
 policies := data.trino_policies.policies
 
+default extra_groups := []
+
+extra_groups := data.trino_policies.extra_groups
+
+# Add an empty dummy group because the default pattern ".*" should match
+# even if the user is not a member of a group.
+groups := array.concat(
+	array.concat(identity.groups, extra_groups),
+	[""],
+)
+
 default match_any_group(_) := false
 
 match_any_group(group_pattern) if {
-	# Add an empty dummy group because the default pattern ".*" should
-	# match even if the user is not a member of a group.
-	some group in array.concat(identity.groups, [""])
+	some group in groups
 	util.match_entire(group_pattern, group)
 }
 
