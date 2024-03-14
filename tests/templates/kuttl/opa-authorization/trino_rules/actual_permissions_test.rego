@@ -7,14 +7,18 @@ test_match_any_group_with_no_group_memberships_and_the_default_group_pattern if 
 	identity := {"user": "testuser", "groups": []}
 	group_pattern := ".*"
 
-	trino.match_any_group(group_pattern) with input.context.identity as identity
+	matches := trino.match_any_group(group_pattern) with input.context.identity as identity
+
+	matches == true
 }
 
 test_match_any_group_with_no_group_memberships_and_a_specific_group_pattern if {
 	identity := {"user": "testuser", "groups": []}
 	group_pattern := "testgroup"
 
-	not trino.match_any_group(group_pattern) with input.context.identity as identity
+	matches := trino.match_any_group(group_pattern) with input.context.identity as identity
+
+	matches == false
 }
 
 test_match_any_group_with_groups if {
@@ -27,7 +31,9 @@ test_match_any_group_with_groups if {
 	}
 	group_pattern := "testgroup2"
 
-	trino.match_any_group(group_pattern) with input.context.identity as identity
+	matches := trino.match_any_group(group_pattern) with input.context.identity as identity
+
+	matches == true
 }
 
 test_match_any_group_with_no_matching_group if {
@@ -40,11 +46,12 @@ test_match_any_group_with_no_matching_group if {
 	}
 	group_pattern := "othergroup"
 
-	not trino.match_any_group(group_pattern) with input.context.identity as identity
+	matches := trino.match_any_group(group_pattern) with input.context.identity as identity
+
+	matches == false
 }
 
-test_filter_by_user_group_with_no_rules if {
-	rules := []
+test_match_user_group_with_default_user_and_group_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -53,13 +60,12 @@ test_filter_by_user_group_with_no_rules if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
+	matches := trino.match_user_group({}) with input.context.identity as identity
 
-	filtered_rules == []
+	matches == true
 }
 
-test_filter_by_user_group_with_default_user_and_group_pattern if {
-	rules := [{"allow": "all"}]
+test_match_user_group_with_user_and_group_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -68,32 +74,26 @@ test_filter_by_user_group_with_default_user_and_group_pattern if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
+	matches_user_and_group := trino.match_user_group({
+		"user": "test.*",
+		"group": "test.*",
+	}) with input.context.identity as identity
+	matches_user_and_group == true
 
-	filtered_rules == [{"allow": "all"}]
+	matches_other_group := trino.match_user_group({
+		"user": "test.*",
+		"group": "other.*",
+	}) with input.context.identity as identity
+	matches_other_group == false
+
+	matches_other_user := trino.match_user_group({
+		"user": "other.*",
+		"group": "test.*",
+	}) with input.context.identity as identity
+	matches_other_user == false
 }
 
-test_filter_by_user_group_with_no_group_memberships if {
-	rules := [
-		{"group": "othergroup", "allow": "none"},
-		{"allow": "all"},
-	]
-	identity := {"user": "testuser", "groups": []}
-
-	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
-
-	filtered_rules == [{"allow": "all"}]
-}
-
-test_filter_by_user_group_with_matching_user_and_groups if {
-	rules := [
-		{"user": "testuser"},
-		{"group": "testgroup2"},
-		{"user": "testuser", "group": "testgroup1"},
-		{"user": "otheruser"},
-		{"group": "othergroup"},
-		{"user": "otheruser", "group": "othergroup"},
-	]
+test_match_user_group_with_user_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -102,24 +102,14 @@ test_filter_by_user_group_with_matching_user_and_groups if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
+	matches_user := trino.match_user_group({"user": "test.*"}) with input.context.identity as identity
+	matches_user == true
 
-	filtered_rules == [
-		{"user": "testuser"},
-		{"group": "testgroup2"},
-		{"user": "testuser", "group": "testgroup1"},
-	]
+	matches_other_user := trino.match_user_group({"user": "other.*"}) with input.context.identity as identity
+	matches_other_user == false
 }
 
-test_filter_by_user_group_with_matching_user_and_groups_regexes if {
-	rules := [
-		{"user": "test.*"},
-		{"group": "test.*"},
-		{"user": "test.*", "group": "test.*"},
-		{"user": "other.*"},
-		{"group": "other.*"},
-		{"user": "other.*", "group": "other.*"},
-	]
+test_match_user_group_with_group_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -128,17 +118,14 @@ test_filter_by_user_group_with_matching_user_and_groups_regexes if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_user_group(rules) with input.context.identity as identity
+	matches_group := trino.match_user_group({"group": "test.*"}) with input.context.identity as identity
+	matches_group == true
 
-	filtered_rules == [
-		{"user": "test.*"},
-		{"group": "test.*"},
-		{"user": "test.*", "group": "test.*"},
-	]
+	matches_other_group := trino.match_user_group({"group": "other.*"}) with input.context.identity as identity
+	matches_other_group == false
 }
 
-test_filter_by_original_user_group_with_no_rules if {
-	rules := []
+test_match_original_user_group_with_default_user_and_group_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -147,13 +134,12 @@ test_filter_by_original_user_group_with_no_rules if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
+	matches := trino.match_original_user_group({}) with input.context.identity as identity
 
-	filtered_rules == []
+	matches == true
 }
 
-test_filter_by_original_user_group_with_default_user_and_group_pattern if {
-	rules := [{"allow": "all"}]
+test_match_original_user_group_with_user_and_group_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -162,32 +148,26 @@ test_filter_by_original_user_group_with_default_user_and_group_pattern if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
+	matches_user_and_group := trino.match_original_user_group({
+		"original_user": "test.*",
+		"original_group": "test.*",
+	}) with input.context.identity as identity
+	matches_user_and_group == true
 
-	filtered_rules == [{"allow": "all"}]
+	matches_other_group := trino.match_original_user_group({
+		"original_user": "test.*",
+		"original_group": "other.*",
+	}) with input.context.identity as identity
+	matches_other_group == false
+
+	matches_other_user := trino.match_original_user_group({
+		"original_user": "other.*",
+		"original_group": "test.*",
+	}) with input.context.identity as identity
+	matches_other_user == false
 }
 
-test_filter_by_original_user_group_with_no_group_memberships if {
-	rules := [
-		{"original_group": "othergroup", "allow": "none"},
-		{"allow": "all"},
-	]
-	identity := {"user": "testuser", "groups": []}
-
-	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
-
-	filtered_rules == [{"allow": "all"}]
-}
-
-test_filter_by_original_user_group_with_matching_user_and_groups if {
-	rules := [
-		{"original_user": "testuser"},
-		{"original_group": "testgroup2"},
-		{"original_user": "testuser", "original_group": "testgroup1"},
-		{"original_user": "otheruser"},
-		{"original_group": "othergroup"},
-		{"original_user": "otheruser", "original_group": "othergroup"},
-	]
+test_match_original_user_group_with_user_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -196,24 +176,14 @@ test_filter_by_original_user_group_with_matching_user_and_groups if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
+	matches_user := trino.match_original_user_group({"original_user": "test.*"}) with input.context.identity as identity
+	matches_user == true
 
-	filtered_rules == [
-		{"original_user": "testuser"},
-		{"original_group": "testgroup2"},
-		{"original_user": "testuser", "original_group": "testgroup1"},
-	]
+	matches_other_user := trino.match_original_user_group({"original_user": "other.*"}) with input.context.identity as identity
+	matches_other_user == false
 }
 
-test_filter_by_original_user_group_with_matching_user_and_groups_regexes if {
-	rules := [
-		{"original_user": "test.*"},
-		{"original_group": "test.*"},
-		{"original_user": "test.*", "original_group": "test.*"},
-		{"original_user": "other.*"},
-		{"original_group": "other.*"},
-		{"original_user": "other.*", "original_group": "other.*"},
-	]
+test_match_original_user_group_with_group_pattern if {
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -222,13 +192,11 @@ test_filter_by_original_user_group_with_matching_user_and_groups_regexes if {
 		],
 	}
 
-	filtered_rules := trino.filter_by_original_user_group(rules) with input.context.identity as identity
+	matches_group := trino.match_original_user_group({"original_group": "test.*"}) with input.context.identity as identity
+	matches_group == true
 
-	filtered_rules == [
-		{"original_user": "test.*"},
-		{"original_group": "test.*"},
-		{"original_user": "test.*", "original_group": "test.*"},
-	]
+	matches_other_group := trino.match_original_user_group({"original_group": "other.*"}) with input.context.identity as identity
+	matches_other_group == false
 }
 
 test_first_matching_authorization_rule_with_matching_rule if {
@@ -308,7 +276,7 @@ test_first_matching_authorization_rule_with_no_rules if {
 		with input.context.identity as identity
 }
 
-test_authorization_permission_allowed if {
+test_authorization_permission if {
 	policies := {"authorization": [{"new_user": "other.*"}]}
 	identity := {
 		"user": "testuser",
@@ -322,29 +290,10 @@ test_authorization_permission_allowed if {
 	allowed := trino.authorization_permission(grantee_name) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	allowed == true
 }
 
-test_authorization_permission_not_allowed if {
-	policies := {}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	grantee_name := "otheruser"
-
-	allowed := trino.authorization_permission(grantee_name) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	not allowed
-}
-
-# TODO Update the following test cases according to the authorization ones
-
-test_catalog_access_with_matching_rule if {
+test_first_matching_catalog_rule_with_matching_rule if {
 	policies := {"catalogs": [
 		{
 			"catalog": "non_matching_catalog",
@@ -367,13 +316,18 @@ test_catalog_access_with_matching_rule if {
 	}
 	catalog_name := "testcatalog"
 
-	access := trino.catalog_access(catalog_name) with data.trino_policies.policies as policies
+	rule := trino.first_matching_catalog_rule(catalog_name) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	access == {"read-only"}
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"catalog": "testcatalog",
+		"allow": "read-only",
+	}
 }
 
-test_catalog_access_with_no_matching_rule if {
+test_first_matching_catalog_rule_with_no_matching_rule if {
 	policies := {"catalogs": [
 		{
 			"user": "non_matching_user",
@@ -397,14 +351,29 @@ test_catalog_access_with_no_matching_rule if {
 	}
 	catalog_name := "testcatalog"
 
-	access := trino.catalog_access(catalog_name) with data.trino_policies.policies as policies
+	not trino.first_matching_catalog_rule(catalog_name) with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	access == {"none"}
 }
 
-test_catalog_access_with_no_rules if {
+test_first_matching_catalog_rule_with_no_rules if {
 	policies := {}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+	catalog_name := "testcatalog"
+
+	rule := trino.first_matching_catalog_rule(catalog_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	rule == {"allow": "all"}
+}
+
+test_catalog_access if {
+	policies := {"catalogs": [{"allow": "all"}]}
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -420,7 +389,7 @@ test_catalog_access_with_no_rules if {
 	access == {"all", "read-only"}
 }
 
-test_catalog_session_properties_access_with_matching_rule if {
+test_first_matching_catalog_session_properties_rule_with_matching_rule if {
 	policies := {"catalog_session_properties": [
 		{
 			"catalog": "non_matching_catalog",
@@ -445,16 +414,22 @@ test_catalog_session_properties_access_with_matching_rule if {
 	catalog_name := "testcatalog"
 	property_name := "testproperty"
 
-	allowed := trino.catalog_session_properties_access(
+	rule := trino.first_matching_catalog_session_properties_rule(
 		catalog_name,
 		property_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"catalog": "testcatalog",
+		"property": "testproperty",
+		"allow": true,
+	}
 }
 
-test_catalog_session_properties_access_with_no_matching_rule if {
+test_first_matching_catalog_session_properties_rule_with_no_matching_rule if {
 	policies := {"catalog_session_properties": [
 		{
 			"user": "non_matching_user",
@@ -483,16 +458,14 @@ test_catalog_session_properties_access_with_no_matching_rule if {
 	catalog_name := "testcatalog"
 	property_name := "testproperty"
 
-	allowed := trino.catalog_session_properties_access(
+	not trino.first_matching_catalog_session_properties_rule(
 		catalog_name,
 		property_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	not allowed
 }
 
-test_catalog_session_properties_access_with_no_rules if {
+test_first_matching_catalog_session_properties_rule_with_no_rules if {
 	policies := {}
 	identity := {
 		"user": "testuser",
@@ -504,16 +477,37 @@ test_catalog_session_properties_access_with_no_rules if {
 	catalog_name := "testcatalog"
 	property_name := "testproperty"
 
-	allowed := trino.catalog_session_properties_access(
+	rule := trino.first_matching_catalog_session_properties_rule(
 		catalog_name,
 		property_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	rule == {"allow": true}
 }
 
-test_function_privileges_with_matching_rule if {
+test_catalog_session_properties_access if {
+	policies := {"catalog_session_properties": [{"allow": true}]}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+	catalog_name := "testcatalog"
+	property_name := "testproperty"
+
+	access := trino.catalog_session_properties_access(
+		catalog_name,
+		property_name,
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == true
+}
+
+test_first_matching_function_rule_with_matching_rule if {
 	policies := {"functions": [
 		{
 			"function": "non_matching_function",
@@ -540,17 +534,24 @@ test_function_privileges_with_matching_rule if {
 	schema_name := "testschema"
 	function_name := "testfunction"
 
-	privileges := trino.function_privileges(
+	rule := trino.first_matching_function_rule(
 		catalog_name,
 		schema_name,
 		function_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == {"GRANT_EXECUTE", "EXECUTE", "OWNERSHIP"}
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"catalog": "testcatalog",
+		"schema": "testschema",
+		"function": "testfunction",
+		"privileges": ["GRANT_EXECUTE", "EXECUTE", "OWNERSHIP"],
+	}
 }
 
-test_function_privileges_with_no_matching_rule if {
+test_first_matching_function_rule_with_no_matching_rule if {
 	policies := {"functions": [
 		{
 			"user": "non_matching_user",
@@ -584,18 +585,46 @@ test_function_privileges_with_no_matching_rule if {
 	schema_name := "testschema"
 	function_name := "testfunction"
 
-	privileges := trino.function_privileges(
+	not trino.first_matching_function_rule(
+		catalog_name,
+		schema_name,
+		function_name,
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+}
+
+test_first_matching_function_rule_with_no_rules if {
+	policies := {}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+	catalog_name := "system"
+	schema_name := "builtin"
+	function_name := "testfunction"
+
+	rule := trino.first_matching_function_rule(
 		catalog_name,
 		schema_name,
 		function_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == set()
+	rule == {
+		"catalog": "system",
+		"schema": "builtin",
+		"privileges": [
+			"GRANT_EXECUTE",
+			"EXECUTE",
+		],
+	}
 }
 
-test_function_privileges_with_no_rules if {
-	policies := {}
+test_function_privileges if {
+	policies := {"functions": [{"privileges": ["GRANT_EXECUTE", "EXECUTE", "OWNERSHIP"]}]}
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -614,85 +643,10 @@ test_function_privileges_with_no_rules if {
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == set()
+	privileges == {"GRANT_EXECUTE", "EXECUTE", "OWNERSHIP"}
 }
 
-test_function_privileges_with_no_rules_on_system_builtin if {
-	policies := {}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	catalog_name := "system"
-	schema_name := "builtin"
-	function_name := "testfunction"
-
-	privileges := trino.function_privileges(
-		catalog_name,
-		schema_name,
-		function_name,
-	) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	privileges == {"GRANT_EXECUTE", "EXECUTE"}
-}
-
-test_impersonation_access_with_matching_user if {
-	policies := {"impersonation": [
-		{
-			"new_user": "non_matching_user",
-			"allow": false,
-		},
-		{
-			"original_user": "testuser",
-			"new_user": "otheruser",
-			"allow": true,
-		},
-		{
-			"new_user": ".*",
-			"allow": false,
-		},
-	]}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	user := "otheruser"
-
-	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	allowed
-}
-
-test_impersonation_access_with_self_impersonation if {
-	policies := {"impersonation": [{
-		"original_user": "testuser",
-		"new_user": "testuser",
-		"allow": false,
-	}]}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	user := "testuser"
-
-	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	allowed
-}
-
-test_impersonation_access_with_matching_capture_groups if {
+test_first_matching_impersonation_rule_with_matching_rule if {
 	policies := {"impersonation": [
 		{
 			"new_user": "non_matching_user",
@@ -701,7 +655,7 @@ test_impersonation_access_with_matching_capture_groups if {
 		{
 			"original_user": "user_(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)",
 			"new_user": "user_$10$9$8$7$6$5$4$3$2$1",
-			"allow": true,
+			"allow": false,
 		},
 		{
 			"new_user": ".*",
@@ -720,13 +674,17 @@ test_impersonation_access_with_matching_capture_groups if {
 	# "$1" and "0" and will be substituted with "a0" and not "j":
 	user := "user_a0ihgfedcba"
 
-	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+	rule := trino.first_matching_impersonation_rule(user) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	rule == {
+		"original_user": "user_(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)",
+		"new_user": "user_$10$9$8$7$6$5$4$3$2$1",
+		"allow": false,
+	}
 }
 
-test_impersonation_access_with_no_matching_rule if {
+test_first_matching_impersonation_rule_with_no_matching_rule if {
 	policies := {"impersonation": [
 		{
 			"original_user": "non_matching_user",
@@ -747,13 +705,11 @@ test_impersonation_access_with_no_matching_rule if {
 	}
 	user := "otheruser"
 
-	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+	not trino.first_matching_impersonation_rule(user) with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	not allowed
 }
 
-test_impersonation_access_with_no_rules if {
+test_first_matching_impersonation_rule_with_no_rules if {
 	policies := {}
 	identity := {
 		"user": "testuser",
@@ -764,13 +720,30 @@ test_impersonation_access_with_no_rules if {
 	}
 	user := "otheruser"
 
-	allowed := trino.impersonation_access(user) with data.trino_policies.policies as policies
+	not trino.impersonation_access(user) with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	not allowed
 }
 
-test_procedure_privileges_with_matching_rule if {
+test_impersonation_access if {
+	policies := {"impersonation": [{"new_user": "otheruser"}]}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+
+	impersonate_as_otheruser := trino.impersonation_access("otheruser") with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	impersonate_as_otheruser == true
+
+	impersonate_as_self := trino.impersonation_access("testuser") with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	impersonate_as_self == true
+}
+
+test_first_matching_procedure_rule_with_matching_rule if {
 	policies := {"procedures": [
 		{
 			"procedure": "non_matching_procedure",
@@ -797,17 +770,24 @@ test_procedure_privileges_with_matching_rule if {
 	schema_name := "testschema"
 	function_name := "testprocedure"
 
-	privileges := trino.procedure_privileges(
+	rule := trino.first_matching_procedure_rule(
 		catalog_name,
 		schema_name,
 		function_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == {"EXECUTE"}
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"catalog": "testcatalog",
+		"schema": "testschema",
+		"procedure": "testprocedure",
+		"privileges": ["EXECUTE"],
+	}
 }
 
-test_procedure_privileges_with_no_matching_rule if {
+test_first_matching_procedure_rule_with_no_matching_rule if {
 	policies := {"procedures": [
 		{
 			"user": "non_matching_user",
@@ -841,18 +821,46 @@ test_procedure_privileges_with_no_matching_rule if {
 	schema_name := "testschema"
 	function_name := "testprocedure"
 
-	privileges := trino.procedure_privileges(
+	not trino.first_matching_procedure_rule(
+		catalog_name,
+		schema_name,
+		function_name,
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+}
+
+test_first_matching_procedure_rule_with_no_rules if {
+	policies := {}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+	catalog_name := "system"
+	schema_name := "builtin"
+	function_name := "testprocedure"
+
+	rule := trino.first_matching_procedure_rule(
 		catalog_name,
 		schema_name,
 		function_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == set()
+	rule == {
+		"catalog": "system",
+		"schema": "builtin",
+		"privileges": [
+			"GRANT_EXECUTE",
+			"EXECUTE",
+		],
+	}
 }
 
-test_procedure_privileges_with_no_rules if {
-	policies := {}
+test_procedure_privileges if {
+	policies := {"procedures": [{"privileges": ["EXECUTE"]}]}
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -871,33 +879,10 @@ test_procedure_privileges_with_no_rules if {
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	privileges == set()
+	privileges == {"EXECUTE"}
 }
 
-test_procedure_privileges_with_no_rules_on_system_builtin if {
-	policies := {}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	catalog_name := "system"
-	schema_name := "builtin"
-	function_name := "testprocedure"
-
-	privileges := trino.procedure_privileges(
-		catalog_name,
-		schema_name,
-		function_name,
-	) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	privileges == {"GRANT_EXECUTE", "EXECUTE"}
-}
-
-test_query_access_with_matching_rule if {
+test_first_matching_query_rule_with_matching_rule if {
 	policies := {"queries": [
 		{
 			"user": "non_matching_user",
@@ -918,13 +903,17 @@ test_query_access_with_matching_rule if {
 		],
 	}
 
-	access := trino.query_access with data.trino_policies.policies as policies
+	rule := trino.first_matching_query_rule with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	access == {"execute"}
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"allow": ["execute"],
+	}
 }
 
-test_query_access_with_no_matching_rule if {
+test_first_matching_query_rule_with_no_matching_rule if {
 	policies := {"queries": [
 		{
 			"user": "non_matching_user",
@@ -943,14 +932,28 @@ test_query_access_with_no_matching_rule if {
 		],
 	}
 
-	access := trino.query_access with data.trino_policies.policies as policies
+	not trino.first_matching_query_rule with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	access == set()
 }
 
-test_query_access_with_no_rules if {
+test_first_matching_query_rule_with_no_rules if {
 	policies := {}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+
+	rule := trino.first_matching_query_rule with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	rule == {"allow": ["execute", "kill", "view"]}
+}
+
+test_query_access if {
+	policies := {"queries": [{"allow": ["execute"]}]}
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -962,10 +965,10 @@ test_query_access_with_no_rules if {
 	access := trino.query_access with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	access == {"execute", "kill", "view"}
+	access == {"execute"}
 }
 
-test_query_owned_by_access_with_matching_rule if {
+test_first_matching_query_owned_by_rule_with_matching_rule if {
 	policies := {"queries": [
 		{
 			"queryOwner": "non_matching_query_owner",
@@ -988,13 +991,18 @@ test_query_owned_by_access_with_matching_rule if {
 	}
 	user := "testowner"
 
-	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
+	rule := trino.first_matching_query_owned_by_rule(user) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	access == {"view"}
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"queryOwner": "testowner",
+		"allow": ["view"],
+	}
 }
 
-test_query_owned_by_access_with_no_matching_rule if {
+test_first_matching_query_owned_by_rule_with_no_matching_rule if {
 	policies := {"queries": [
 		{
 			"user": "non_matching_user",
@@ -1018,35 +1026,11 @@ test_query_owned_by_access_with_no_matching_rule if {
 	}
 	user := "testowner"
 
-	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
+	not trino.first_matching_query_owned_by_rule(user) with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	access == set()
 }
 
-test_query_owned_by_access_with_self_ownership if {
-	policies := {"queries": [{
-		"user": "testuser",
-		"group": "testgroup1",
-		"queryOwner": "testuser",
-		"allow": [],
-	}]}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	user := "testuser"
-
-	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	access == {"kill", "view"}
-}
-
-test_query_owned_by_access_with_no_rules if {
+test_first_matching_query_owned_by_rule_with_no_rules if {
 	policies := {}
 	identity := {
 		"user": "testuser",
@@ -1057,13 +1041,32 @@ test_query_owned_by_access_with_no_rules if {
 	}
 	user := "testowner"
 
-	access := trino.query_owned_by_access(user) with data.trino_policies.policies as policies
+	rule := trino.first_matching_query_owned_by_rule(user) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	access == {"execute", "kill", "view"}
+	rule == {"allow": ["execute", "kill", "view"]}
 }
 
-test_schema_owner_with_matching_rule if {
+test_query_owned_by_access if {
+	policies := {"queries": [{"allow": ["view"]}]}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+
+	access_owned_by_other := trino.query_owned_by_access("testowner") with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	access_owned_by_other == {"view"}
+
+	access_owned_by_self := trino.query_owned_by_access("testuser") with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	access_owned_by_self == {"kill", "view"}
+}
+
+test_first_matching_schema_rule_with_matching_rule if {
 	policies := {"schemas": [
 		{
 			"schema": "non_matching_schema",
@@ -1088,16 +1091,22 @@ test_schema_owner_with_matching_rule if {
 	catalog_name := "testcatalog"
 	schema_name := "testschema"
 
-	owner := trino.schema_owner(
+	rule := trino.first_matching_schema_rule(
 		catalog_name,
 		schema_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	owner
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"catalog": "testcatalog",
+		"schema": "testschema",
+		"owner": true,
+	}
 }
 
-test_schema_owner_with_no_matching_rule if {
+test_first_matching_schema_rule_with_no_matching_rule if {
 	policies := {"schemas": [
 		{
 			"user": "non_matching_user",
@@ -1126,17 +1135,36 @@ test_schema_owner_with_no_matching_rule if {
 	catalog_name := "testcatalog"
 	schema_name := "testschema"
 
-	owner := trino.schema_owner(
+	not trino.first_matching_schema_rule(
+		catalog_name,
+		schema_name,
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+}
+
+test_first_matching_schema_rule_with_no_rules if {
+	policies := {}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+	catalog_name := "testcatalog"
+	schema_name := "testschema"
+
+	rule := trino.first_matching_schema_rule(
 		catalog_name,
 		schema_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	not owner
+	rule == {"owner": true}
 }
 
-test_schema_owner_with_no_rules if {
-	policies := {}
+test_schema_owner if {
+	policies := {"schemas": [{"owner": true}]}
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -1153,7 +1181,7 @@ test_schema_owner_with_no_rules if {
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	owner
+	owner == true
 }
 
 test_first_matching_table_rule_with_matching_rule if {
@@ -1395,141 +1423,9 @@ test_column_constraints_with_matching_rule_and_required_fields if {
 	}
 }
 
-test_column_access_allowed if {
-	policies := {"tables": [{"privileges": ["SELECT"]}]}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	catalog_name := "testcatalog"
-	schema_name := "testschema"
-	table_name := "testtable"
-	column_name := "testcolumn"
-
-	allowed := trino.column_access(
-		catalog_name,
-		schema_name,
-		table_name,
-		column_name,
-	) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	allowed
-}
-
-test_column_access_not_allowed if {
+test_column_constraints_with_no_matching_column if {
 	policies := {"tables": [{
-		"columns": [{
-			"name": "testcolumn",
-			"allow": false,
-		}],
-		"privileges": ["SELECT"],
-	}]}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	catalog_name := "testcatalog"
-	schema_name := "testschema"
-	table_name := "testtable"
-	column_name := "testcolumn"
-
-	allowed := trino.column_access(
-		catalog_name,
-		schema_name,
-		table_name,
-		column_name,
-	) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	not allowed
-}
-
-test_column_access_not_allowed_due_to_missing_privileges if {
-	policies := {"tables": [{"privileges": []}]}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	catalog_name := "testcatalog"
-	schema_name := "testschema"
-	table_name := "testtable"
-	column_name := "testcolumn"
-
-	allowed := trino.column_access(
-		catalog_name,
-		schema_name,
-		table_name,
-		column_name,
-	) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	not allowed
-}
-
-test_column_access_with_no_matching_rule if {
-	policies := {"tables": [
-		{
-			"user": "non_matching_user",
-			"privileges": ["OWNERSHIP"],
-		},
-		{
-			"group": "non_matching_group",
-			"privileges": ["OWNERSHIP"],
-		},
-		{
-			"catalog": "non_matching_catalog",
-			"privileges": ["OWNERSHIP"],
-		},
-		{
-			"schema": "non_matching_schema",
-			"privileges": ["OWNERSHIP"],
-		},
-		{
-			"table": "non_matching_table",
-			"privileges": ["OWNERSHIP"],
-		},
-		{"privileges": []},
-	]}
-	identity := {
-		"user": "testuser",
-		"groups": [
-			"testgroup1",
-			"testgroup2",
-		],
-	}
-	catalog_name := "testcatalog"
-	schema_name := "testschema"
-	table_name := "testtable"
-	column_name := "testcolumn"
-
-	allowed := trino.column_access(
-		catalog_name,
-		schema_name,
-		table_name,
-		column_name,
-	) with data.trino_policies.policies as policies
-		with input.context.identity as identity
-
-	not allowed
-}
-
-test_column_access_with_information_schema if {
-	policies := {"tables": [{
-		"schema": "information_schema",
-		"columns": [{
-			"name": "testcolumn",
-			"allow": false,
-		}],
+		"columns": [{"name": "non_matching_column"}],
 		"privileges": ["DELETE", "INSERT", "SELECT"],
 	}]}
 	identity := {
@@ -1540,11 +1436,11 @@ test_column_access_with_information_schema if {
 		],
 	}
 	catalog_name := "testcatalog"
-	schema_name := "information_schema"
+	schema_name := "testschema"
 	table_name := "testtable"
 	column_name := "testcolumn"
 
-	allowed := trino.column_access(
+	column := trino.column_constraints(
 		catalog_name,
 		schema_name,
 		table_name,
@@ -1552,11 +1448,15 @@ test_column_access_with_information_schema if {
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	column == {
+		"allow": true,
+		"mask": null,
+		"mask_environment": {"user": null},
+	}
 }
 
-test_column_access_with_no_rules if {
-	policies := {}
+test_table_privileges if {
+	policies := {"tables": [{"privileges": ["DELETE", "INSERT", "SELECT"]}]}
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -1567,20 +1467,94 @@ test_column_access_with_no_rules if {
 	catalog_name := "testcatalog"
 	schema_name := "testschema"
 	table_name := "testtable"
-	column_name := "testcolumn"
 
-	allowed := trino.column_access(
+	privileges := trino.table_privileges(
 		catalog_name,
 		schema_name,
 		table_name,
-		column_name,
 	) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	privileges == {"DELETE", "INSERT", "SELECT"}
 }
 
-test_system_information_access_with_matching_rule if {
+test_column_access if {
+	policies := {"tables": [
+		{
+			"table": "testtable1",
+			"columns": [
+				{
+					"name": "testcolumn1",
+					"allow": true,
+				},
+				{
+					"name": "testcolumn2",
+					"allow": false,
+				},
+			],
+			"privileges": ["SELECT"],
+		},
+		{
+			"table": "testtable2",
+			"columns": [
+				{
+					"name": "testcolumn1",
+					"allow": true,
+				},
+				{
+					"name": "testcolumn2",
+					"allow": false,
+				},
+			],
+			"privileges": [],
+		},
+	]}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+
+	access_allowed_column_with_privileges := trino.column_access(
+		"testcatalog",
+		"testschema",
+		"testtable1",
+		"testcolumn1",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	access_allowed_column_with_privileges == true
+
+	access_disallowed_column_with_privileges := trino.column_access(
+		"testcatalog",
+		"testschema",
+		"testtable1",
+		"testcolumn2",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	access_disallowed_column_with_privileges == false
+
+	access_allowed_column_without_privileges := trino.column_access(
+		"testcatalog",
+		"testschema",
+		"testtable2",
+		"testcolumn1",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	access_allowed_column_without_privileges == false
+
+	access_disallowed_column_without_privileges := trino.column_access(
+		"testcatalog",
+		"testschema",
+		"testtable2",
+		"testcolumn2",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	access_disallowed_column_without_privileges == false
+}
+
+test_first_matching_system_information_rule_with_matching_rule if {
 	policies := {"system_information": [
 		{
 			"user": "non_matching_user",
@@ -1600,13 +1574,16 @@ test_system_information_access_with_matching_rule if {
 		],
 	}
 
-	access := trino.system_information_access with data.trino_policies.policies as policies
+	rule := trino.first_matching_system_information_rule with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	access == {"read", "write"}
+	rule == {
+		"user": "testuser",
+		"allow": ["read", "write"],
+	}
 }
 
-test_system_information_access_with_no_matching_rule if {
+test_first_matching_system_information_rule_with_no_matching_rule if {
 	policies := {"system_information": [{
 		"user": "non_matching_user",
 		"allow": ["read", "write"],
@@ -1619,14 +1596,26 @@ test_system_information_access_with_no_matching_rule if {
 		],
 	}
 
-	access := trino.system_information_access with data.trino_policies.policies as policies
+	not trino.first_matching_system_information_rule with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	access == set()
 }
 
-test_system_information_access_with_no_rules if {
+test_first_matching_system_information_rule_with_no_rules if {
 	policies := {}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+
+	not trino.first_matching_system_information_rule with data.trino_policies.policies as policies
+		with input.context.identity as identity
+}
+
+test_system_information_access if {
+	policies := {"system_information": [{"allow": ["read", "write"]}]}
 	identity := {
 		"user": "testuser",
 		"groups": [
@@ -1638,10 +1627,10 @@ test_system_information_access_with_no_rules if {
 	access := trino.system_information_access with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	access == set()
+	access == {"read", "write"}
 }
 
-test_system_session_properties_access_with_matching_rule if {
+test_first_matching_system_session_properties_rule_with_matching_rule if {
 	policies := {"system_session_properties": [
 		{
 			"property": "non_matching_property",
@@ -1664,13 +1653,18 @@ test_system_session_properties_access_with_matching_rule if {
 	}
 	property_name := "testproperty"
 
-	allowed := trino.system_session_properties_access(property_name) with data.trino_policies.policies as policies
+	rule := trino.first_matching_system_session_properties_rule(property_name) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	rule == {
+		"user": "testuser",
+		"group": "testgroup1",
+		"property": "testproperty",
+		"allow": true,
+	}
 }
 
-test_system_session_properties_access_with_no_matching_rule if {
+test_first_matching_system_session_properties_rule_with_no_matching_rule if {
 	policies := {"system_session_properties": [
 		{
 			"user": "non_matching_user",
@@ -1694,13 +1688,11 @@ test_system_session_properties_access_with_no_matching_rule if {
 	}
 	property_name := "testproperty"
 
-	allowed := trino.system_session_properties_access(property_name) with data.trino_policies.policies as policies
+	not trino.first_matching_system_session_properties_rule(property_name) with data.trino_policies.policies as policies
 		with input.context.identity as identity
-
-	not allowed
 }
 
-test_system_session_properties_access_with_no_rules if {
+test_first_matching_system_session_properties_rule_with_no_rules if {
 	policies := {}
 	identity := {
 		"user": "testuser",
@@ -1711,8 +1703,25 @@ test_system_session_properties_access_with_no_rules if {
 	}
 	property_name := "testproperty"
 
-	allowed := trino.system_session_properties_access(property_name) with data.trino_policies.policies as policies
+	rule := trino.first_matching_system_session_properties_rule(property_name) with data.trino_policies.policies as policies
 		with input.context.identity as identity
 
-	allowed
+	rule == {"allow": true}
+}
+
+test_system_session_properties_access if {
+	policies := {"system_session_properties": [{"allow": true}]}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+	property_name := "testproperty"
+
+	access := trino.system_session_properties_access(property_name) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	access == true
 }

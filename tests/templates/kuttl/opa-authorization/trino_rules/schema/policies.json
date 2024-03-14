@@ -33,30 +33,63 @@
     "queries": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "user": {
-            "type": "string",
-            "default": ".*"
-          },
-          "group": {
-            "type": "string",
-            "default": ".*"
-          },
-          "allow": {
-            "type": "array",
-            "items": {
-              "enum": [
-                "execute",
-                "kill",
-                "view"
-              ]
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "string",
+                "default": ".*"
+              },
+              "group": {
+                "type": "string",
+                "default": ".*"
+              },
+              "allow": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "execute",
+                    "kill",
+                    "view"
+                  ]
+                },
+                "default": ["execute", "kill", "view"]
+              }
             },
-            "default": ["execute", "kill", "view"]
+            "additionalProperties": false,
+            "required": ["allow"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "string",
+                "default": ".*"
+              },
+              "group": {
+                "type": "string",
+                "default": ".*"
+              },
+              "queryOwner": {
+                "type": "string",
+                "default": ".*"
+              },
+              "allow": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "kill",
+                    "view"
+                  ]
+                },
+                "default": ["kill", "view"]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["allow"]
           }
-        },
-        "additionalProperties": false,
-        "required": ["allow"]
+        ]
       }
     },
     "schemas": {

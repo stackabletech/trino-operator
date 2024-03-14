@@ -13,7 +13,9 @@ import rego.v1
 
 identity := input.context.identity
 
-raw_policies := data.trino_policies.policies
+policies := data.trino_policies.policies
+
+default match_any_group(_) := false
 
 match_any_group(group_pattern) if {
 	# Add an empty dummy group because the default pattern ".*" should
@@ -22,33 +24,35 @@ match_any_group(group_pattern) if {
 	util.match_entire(group_pattern, group)
 }
 
-filter_by_user_group(resource) := [rule |
-	some rule in resource
+default match_user_group(_) := false
 
+match_user_group(rule) if {
 	user_pattern := object.get(rule, "user", ".*")
 	group_pattern := object.get(rule, "group", ".*")
 
 	util.match_entire(user_pattern, identity.user)
 	match_any_group(group_pattern)
-]
+}
 
-filter_by_original_user_group(resource) := [rule |
-	some rule in resource
+default match_original_user_group(_) := false
 
+match_original_user_group(rule) if {
 	user_pattern := object.get(rule, "original_user", ".*")
 	group_pattern := object.get(rule, "original_group", ".*")
 
 	util.match_entire(user_pattern, identity.user)
 	match_any_group(group_pattern)
-]
+}
 
 default authorization_rules := []
 
-authorization_rules := filter_by_original_user_group(raw_policies.authorization)
+authorization_rules := policies.authorization
 
 first_matching_authorization_rule(grantee_name) := rule if {
 	rules := [rule |
 		some rule in authorization_rules
+
+		match_original_user_group(rule)
 
 		new_user_pattern := object.get(rule, "new_user", ".*")
 
@@ -67,17 +71,13 @@ authorization_permission(grantee_name) := first_matching_authorization_rule(gran
 
 default catalog_rules := [{"allow": "all"}]
 
-catalog_rules := filter_by_user_group(raw_policies.catalogs)
-
-catalog_access_map := {
-	"all": {"all", "read-only"},
-	"read-only": {"read-only"},
-	"none": {"none"},
-}
+catalog_rules := policies.catalogs
 
 first_matching_catalog_rule(catalog_name) := rule if {
 	rules := [rule |
 		some rule in catalog_rules
+
+		match_user_group(rule)
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 
@@ -86,21 +86,29 @@ first_matching_catalog_rule(catalog_name) := rule if {
 	rule := rules[0]
 }
 
+catalog_access_map := {
+	"all": {"all", "read-only"},
+	"read-only": {"read-only"},
+	"none": {"none"},
+}
+
 # Catalog access of the first matching rule
 default catalog_access(_) := {"none"}
 
 catalog_access(catalog_name) := catalog_access_map[first_matching_catalog_rule(catalog_name).allow]
 
-default catalog_session_property_rules := [{"allow": true}]
+default catalog_session_properties_rules := [{"allow": true}]
 
-catalog_session_property_rules := filter_by_user_group(raw_policies.catalog_session_properties)
+catalog_session_properties_rules := policies.catalog_session_properties
 
-first_matching_catalog_session_property_rule(
+first_matching_catalog_session_properties_rule(
 	catalog_name,
 	property_name,
 ) := rule if {
 	rules := [rule |
-		some rule in catalog_session_property_rules
+		some rule in catalog_session_properties_rules
+
+		match_user_group(rule)
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		property_pattern := object.get(rule, "property", ".*")
@@ -117,7 +125,7 @@ default catalog_session_properties_access(_, _) := false
 catalog_session_properties_access(
 	catalog_name,
 	property_name,
-) := first_matching_catalog_session_property_rule(
+) := first_matching_catalog_session_properties_rule(
 	catalog_name,
 	property_name,
 ).allow
@@ -131,7 +139,7 @@ default function_rules := [{
 	],
 }]
 
-function_rules := filter_by_user_group(raw_policies.functions)
+function_rules := policies.functions
 
 first_matching_function_rule(
 	catalog_name,
@@ -140,6 +148,8 @@ first_matching_function_rule(
 ) := rule if {
 	rules := [rule |
 		some rule in function_rules
+
+		match_user_group(rule)
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
@@ -169,11 +179,13 @@ function_privileges(
 
 default impersonation_rules := []
 
-impersonation_rules := filter_by_original_user_group(raw_policies.impersonation)
+impersonation_rules := policies.impersonation
 
 first_matching_impersonation_rule(user) := rule if {
 	rules := [rule |
 		some rule in impersonation_rules
+
+		match_original_user_group(rule)
 
 		original_user_pattern := object.get(rule, "original_user", ".*")
 		unsubstituted_new_user_pattern := object.get(rule, "new_user", ".*")
@@ -223,7 +235,7 @@ default procedure_rules := [{
 	],
 }]
 
-procedure_rules := filter_by_user_group(raw_policies.procedures)
+procedure_rules := policies.procedures
 
 # Matching the "function name" with the "procedure pattern" is intended.
 # The requested procedure name is contained in
@@ -237,6 +249,8 @@ first_matching_procedure_rule(
 ) := rule if {
 	rules := [rule |
 		some rule in procedure_rules
+
+		match_user_group(rule)
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
@@ -266,15 +280,13 @@ procedure_privileges(
 
 default query_rules := [{"allow": ["execute", "kill", "view"]}]
 
-query_rules := filter_by_user_group(raw_policies.queries)
+query_rules := policies.queries
 
-first_matching_query_owned_by_rule(user) := rule if {
+first_matching_query_rule := rule if {
 	rules := [rule |
 		some rule in query_rules
 
-		query_owner_pattern := object.get(rule, "queryOwner", ".*")
-
-		util.match_entire(query_owner_pattern, user)
+		match_user_group(rule)
 	]
 	rule := rules[0]
 }
@@ -282,7 +294,20 @@ first_matching_query_owned_by_rule(user) := rule if {
 # Query access of the first matching rule
 default query_access := set()
 
-query_access := {access | some access in query_rules[0].allow}
+query_access := {access | some access in first_matching_query_rule.allow}
+
+first_matching_query_owned_by_rule(user) := rule if {
+	rules := [rule |
+		some rule in query_rules
+
+		match_user_group(rule)
+
+		query_owner_pattern := object.get(rule, "queryOwner", ".*")
+
+		util.match_entire(query_owner_pattern, user)
+	]
+	rule := rules[0]
+}
 
 # Query access of the first matching rule
 default query_owned_by_access(_) := set()
@@ -300,11 +325,13 @@ query_owned_by_access(user) := access if {
 
 default schema_rules := [{"owner": true}]
 
-schema_rules := filter_by_user_group(raw_policies.schemas)
+schema_rules := policies.schemas
 
 first_matching_schema_rule(catalog_name, schema_name) := rule if {
 	rules := [rule |
 		some rule in schema_rules
+
+		match_user_group(rule)
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
@@ -336,7 +363,7 @@ default table_rules := [{
 	"filter_environment": {"user": null},
 }]
 
-table_rules := filter_by_user_group(raw_policies.tables)
+table_rules := policies.tables
 
 first_matching_table_rule(_, "information_schema", _) := {
 	"schema": "information_schema",
@@ -360,6 +387,8 @@ first_matching_table_rule(
 	schema_name != "information_schema"
 	rules := [rule |
 		some rule in table_rules
+
+		match_user_group(rule)
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
@@ -433,13 +462,11 @@ column_access(
 	table_name,
 	column_name,
 ) := access if {
-	rule := first_matching_table_rule(
+	table_privileges(
 		catalog_name,
 		schema_name,
 		table_name,
-	)
-
-	count(rule.privileges) != 0
+	) != set()
 
 	column := column_constraints(
 		catalog_name,
@@ -453,9 +480,16 @@ column_access(
 
 default system_information_rules := []
 
-system_information_rules := filter_by_user_group(raw_policies.system_information)
+system_information_rules := policies.system_information
 
-first_matching_system_information_rule := system_information_rules[0]
+first_matching_system_information_rule := rule if {
+	rules := [rule |
+		some rule in system_information_rules
+
+		match_user_group(rule)
+	]
+	rule := rules[0]
+}
 
 # System information access of the first matching rule
 default system_information_access := set()
@@ -464,13 +498,15 @@ system_information_access := {access |
 	some access in first_matching_system_information_rule.allow
 }
 
-default system_session_property_rules := [{"allow": true}]
+default system_session_properties_rules := [{"allow": true}]
 
-system_session_property_rules := filter_by_user_group(raw_policies.system_session_properties)
+system_session_properties_rules := policies.system_session_properties
 
 first_matching_system_session_properties_rule(property_name) := rule if {
 	rules := [rule |
-		some rule in system_session_property_rules
+		some rule in system_session_properties_rules
+
+		match_user_group(rule)
 
 		property_name_pattern := object.get(rule, "property", ".*")
 

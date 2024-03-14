@@ -8,7 +8,7 @@ rules:
     line-length:
       # `opa fmt` puts the first `with` statement on the same line which
       # creates long lines.
-      max-line-length: 120
+      max-line-length: 130
     prefer-snake-case:
       ignore:
         files:
