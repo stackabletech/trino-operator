@@ -31,6 +31,9 @@ dimensions:
   - name: zookeeper
     values:
       - 3.9.1
+  - name: keycloak
+    values:
+      - 23.0.1    
   - name: s3-use-tls
     values:
       - "true"
