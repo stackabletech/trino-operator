@@ -1477,3 +1477,148 @@ fn tls_volume_mounts(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_overrides() {
+        let trino_yaml = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "440"
+          clusterConfig:
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
+          coordinators:
+            configOverrides:
+              config.properties:
+                foo: bar
+                level: role
+                hello-from-role: "true"
+                internal-communication.https.keystore.path: /my/custom/internal-truststore.p12
+            roleGroups:
+              default:
+                configOverrides:
+                  config.properties:
+                    foo: bar
+                    level: role-group
+                    hello-from-role-group: "true"
+                    http-server.https.truststore.path: /my/custom/truststore.p12
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+        let cm = build_config_map(trino_yaml).data.unwrap();
+        let config = cm.get("config.properties").unwrap();
+        assert!(config.contains("foo=bar"));
+        assert!(config.contains("level=role-group"));
+        assert!(config.contains("hello-from-role=true"));
+        assert!(config.contains("hello-from-role-group=true"));
+        assert!(config.contains("http-server.https.enabled=true"));
+        assert!(
+            config.contains("http-server.https.keystore.path=/stackable/server_tls/keystore.p12")
+        );
+        // FIXME: configOverrides at role level are not working correctly! The core problem is product-config machinery
+        // and adding stuff in `compute_files`, which can not be overwritten at role level!
+        assert!(!config.contains(
+            "internal-communication.https.keystore.path=/my/custom/internal-truststore.p12"
+        ));
+        // Overwritten by configOverrides from role (does work)
+        assert!(config.contains("http-server.https.truststore.path=/my/custom/truststore.p12"));
+
+        assert!(cm.contains_key("jvm.config"));
+        assert!(cm.contains_key("security.properties"));
+        assert!(cm.contains_key("node.properties"));
+        assert!(cm.contains_key("log.properties"));
+    }
+
+    fn build_config_map(trino_yaml: &str) -> ConfigMap {
+        let mut trino: TrinoCluster = serde_yaml::from_str(trino_yaml).expect("illegal test input");
+        trino.metadata.namespace = Some("default".to_owned());
+        trino.metadata.uid = Some("42".to_owned());
+
+        let resolved_product_image = trino
+            .spec
+            .image
+            .resolve(DOCKER_IMAGE_BASE_NAME, "0.0.0-dev");
+
+        let config_files = vec![
+            PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
+            PropertyNameKind::File(NODE_PROPERTIES.to_string()),
+            PropertyNameKind::File(JVM_CONFIG.to_string()),
+            PropertyNameKind::File(LOG_PROPERTIES.to_string()),
+            PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
+        ];
+        let validated_config = validate_all_roles_and_groups_config(
+            // The Trino version is a single number like 396.
+            // The product config expects semver formatted version strings.
+            // That is why we just add minor and patch version 0 here.
+            &format!("{}.0.0", resolved_product_image.product_version),
+            &transform_all_roles_to_config(
+                &trino,
+                [
+                    (
+                        TrinoRole::Coordinator.to_string(),
+                        (
+                            config_files.clone(),
+                            trino.spec.coordinators.clone().unwrap(),
+                        ),
+                    ),
+                    (
+                        TrinoRole::Worker.to_string(),
+                        (config_files, trino.spec.workers.clone().unwrap()),
+                    ),
+                ]
+                .into(),
+            )
+            .unwrap(),
+            // Using this instead of ProductConfigManager::from_yaml_file, as that did not find the file
+            &ProductConfigManager::from_str(include_str!(
+                "../../../deploy/config-spec/properties.yaml"
+            ))
+            .unwrap(),
+            false,
+            false,
+        )
+        .unwrap();
+
+        let role = TrinoRole::Coordinator;
+        let rolegroup_ref = RoleGroupRef {
+            cluster: ObjectRef::from_obj(&trino),
+            role: role.to_string(),
+            role_group: "default".to_string(),
+        };
+        let trino_authentication_config = TrinoAuthenticationConfig::new(
+            &resolved_product_image,
+            TrinoAuthenticationTypes::try_from(Vec::new()).unwrap(),
+        )
+        .unwrap();
+        let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
+
+        build_rolegroup_config_map(
+            &trino,
+            &resolved_product_image,
+            &role,
+            &rolegroup_ref,
+            validated_config
+                .get("coordinator")
+                .unwrap()
+                .get("default")
+                .unwrap(),
+            &merged_config,
+            &trino_authentication_config,
+            &None,
+            None,
+        )
+        .unwrap()
+    }
+}
