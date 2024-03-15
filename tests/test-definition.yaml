@@ -15,10 +15,10 @@ dimensions:
     values:
       - 414
       - 428
-      - 440
+      - 442
   - name: trino-latest
     values:
-      - 440
+      - 442
   - name: hive
     values:
       - 3.1.3
