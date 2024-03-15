@@ -1,0 +1,14 @@
+package util_test
+
+import data.util
+import rego.v1
+
+test_match_entire if {
+	util.match_entire(`a`, "a")
+	util.match_entire(`^a`, "a")
+	util.match_entire(`a$`, "a")
+	util.match_entire(`^a$`, "a")
+	not util.match_entire(`a`, "abc")
+	not util.match_entire(`b`, "abc")
+	not util.match_entire(`c`, "abc")
+}

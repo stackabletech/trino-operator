@@ -19,6 +19,8 @@ pub struct TrinoOpaConfig {
     opa_authorizer_name: String,
     non_batched_connection_string: String,
     batched_connection_string: Option<String>,
+    row_filters_connection_string: Option<String>,
+    column_masking_connection_string: Option<String>,
     allow_permission_management_operations: bool,
 }
 
@@ -43,6 +45,8 @@ impl TrinoOpaConfig {
                 opa_authorizer_name: "tech.stackable.trino.opa.OpaAuthorizer".to_string(),
                 non_batched_connection_string,
                 batched_connection_string: None,
+                row_filters_connection_string: None,
+                column_masking_connection_string: None,
                 allow_permission_management_operations: false,
             })
         } else if PRODUCT_VERSIONS_WITH_INTERMEDIATE_AUTHORIZER
@@ -63,6 +67,8 @@ impl TrinoOpaConfig {
                 opa_authorizer_name: "opa".to_string(),
                 non_batched_connection_string,
                 batched_connection_string: Some(batched_connection_string),
+                row_filters_connection_string: None,
+                column_masking_connection_string: None,
                 allow_permission_management_operations: false,
             })
         } else {
@@ -78,10 +84,30 @@ impl TrinoOpaConfig {
                     OpaApiVersion::V1,
                 )
                 .await?;
+            let row_filters_connection_string = opa_config
+                .full_document_url_from_config_map(
+                    client,
+                    trino,
+                    // Sticking to https://github.com/trinodb/trino/blob/440/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L44
+                    Some("rowFilters"),
+                    OpaApiVersion::V1,
+                )
+                .await?;
+            let column_masking_connection_string = opa_config
+                .full_document_url_from_config_map(
+                    client,
+                    trino,
+                    // Sticking to https://github.com/trinodb/trino/blob/440/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L45
+                    Some("columnMask"),
+                    OpaApiVersion::V1,
+                )
+                .await?;
             Ok(TrinoOpaConfig {
                 opa_authorizer_name: "opa".to_string(),
                 non_batched_connection_string,
                 batched_connection_string: Some(batched_connection_string),
+                row_filters_connection_string: Some(row_filters_connection_string),
+                column_masking_connection_string: Some(column_masking_connection_string),
                 allow_permission_management_operations: true,
             })
         }
@@ -102,6 +128,18 @@ impl TrinoOpaConfig {
             config.insert(
                 "opa.policy.batched-uri".to_string(),
                 Some(batched_connection_string.clone()),
+            );
+        }
+        if let Some(row_filters_connection_string) = &self.row_filters_connection_string {
+            config.insert(
+                "opa.policy.row-filters-uri".to_string(),
+                Some(row_filters_connection_string.clone()),
+            );
+        }
+        if let Some(column_masking_connection_string) = &self.column_masking_connection_string {
+            config.insert(
+                "opa.policy.column-masking-uri".to_string(),
+                Some(column_masking_connection_string.clone()),
             );
         }
         if self.allow_permission_management_operations {

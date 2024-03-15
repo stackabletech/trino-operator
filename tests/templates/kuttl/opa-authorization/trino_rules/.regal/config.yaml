@@ -1,0 +1,21 @@
+rules:
+  style:
+    file-length:
+      ignore:
+        files:
+          # We do not want to split this file.
+          - requested_permissions.rego
+    line-length:
+      # `opa fmt` puts the first `with` statement on the same line which
+      # creates long lines.
+      max-line-length: 130
+    prefer-snake-case:
+      ignore:
+        files:
+          # Entrypoints are named `columnMask` and `rowFilters`.
+          - verification.rego
+    rule-length:
+      ignore:
+        files:
+          # The test data is sometimes lengthy but readable.
+          - "*_test.rego"

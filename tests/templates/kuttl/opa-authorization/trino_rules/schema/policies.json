@@ -1,0 +1,424 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stackable.tech/policies.trino.opa.schema.json",
+  "title": "Trino OPA policies",
+  "type": "object",
+  "properties": {
+    "catalogs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "type": "string",
+            "default": ".*"
+          },
+          "allow": {
+            "enum": ["all", "read-only", "none"],
+            "default": "none"
+          }
+        },
+        "additionalProperties": false,
+        "required": ["allow"]
+      }
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "string",
+                "default": ".*"
+              },
+              "group": {
+                "type": "string",
+                "default": ".*"
+              },
+              "allow": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "execute",
+                    "kill",
+                    "view"
+                  ]
+                },
+                "default": ["execute", "kill", "view"]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["allow"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "string",
+                "default": ".*"
+              },
+              "group": {
+                "type": "string",
+                "default": ".*"
+              },
+              "queryOwner": {
+                "type": "string",
+                "default": ".*"
+              },
+              "allow": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "kill",
+                    "view"
+                  ]
+                },
+                "default": ["kill", "view"]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["allow"]
+          }
+        ]
+      }
+    },
+    "schemas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "type": "string",
+            "default": ".*"
+          },
+          "schema": {
+            "type": "string",
+            "default": ".*"
+          },
+          "owner": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": ["owner"]
+      }
+    },
+    "tables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "type": "string",
+            "default": ".*"
+          },
+          "schema": {
+            "type": "string",
+            "default": ".*"
+          },
+          "table": {
+            "type": "string",
+            "default": ".*"
+          },
+          "privileges": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "SELECT",
+                "INSERT",
+                "DELETE",
+                "UPDATE",
+                "OWNERSHIP",
+                "GRANT_SELECT"
+              ]
+            },
+            "default": []
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "allow": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "mask": {
+                  "type": "string"
+                },
+                "mask_environment": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                        "type": "string"
+                    }
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": ["name"]
+            },
+            "default": []
+          },
+          "filter": {
+            "type": "string"
+          },
+          "filter_environment": {
+            "type": "object",
+            "properties": {
+              "user": {
+                  "type": "string"
+              }
+            },
+            "additionalProperties": false,
+            "required": ["user"]
+          }
+        },
+        "additionalProperties": false,
+        "required": ["privileges"]
+      }
+    },
+    "system_information": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "allow": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "read",
+                "write"
+              ]
+            },
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "required": ["allow"]
+      }
+    },
+    "catalog_session_properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "type": "string",
+            "default": ".*"
+          },
+          "property": {
+            "type": "string",
+            "default": ".*"
+          },
+          "allow": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": ["allow"]
+      }
+    },
+    "system_session_properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "property": {
+            "type": "string",
+            "default": ".*"
+          },
+          "allow": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": ["allow"]
+      }
+    },
+    "impersonation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "original_user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "new_user": {
+            "type": "string"
+          },
+          "allow": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "required": ["new_user"]
+      }
+    },
+    "authorization": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "original_user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "original_group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "new_user": {
+            "type": "string"
+          },
+          "allow": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "required": ["new_user"]
+      }
+    },
+    "functions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "type": "string",
+            "default": ".*"
+          },
+          "schema": {
+            "type": "string",
+            "default": ".*"
+          },
+          "function": {
+            "type": "string",
+            "default": ".*"
+          },
+          "privileges": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "EXECUTE",
+                "GRANT_EXECUTE",
+                "OWNERSHIP"
+              ]
+            },
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "required": ["privileges"]
+      }
+    },
+    "procedures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "default": ".*"
+          },
+          "group": {
+            "type": "string",
+            "default": ".*"
+          },
+          "catalog": {
+            "type": "string",
+            "default": ".*"
+          },
+          "schema": {
+            "type": "string",
+            "default": ".*"
+          },
+          "procedure": {
+            "type": "string",
+            "default": ".*"
+          },
+          "privileges": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "EXECUTE",
+                "GRANT_EXECUTE"
+              ]
+            },
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "required": ["privileges"]
+      }
+    }
+  },
+  "additionalProperties": false
+}

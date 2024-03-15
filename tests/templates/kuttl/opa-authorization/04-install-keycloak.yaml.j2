@@ -1,0 +1,133 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      kubectl apply -n $NAMESPACE -f - << EOF
+      ---
+      apiVersion: secrets.stackable.tech/v1alpha1
+      kind: SecretClass
+      metadata:
+        name: keycloak-tls-$NAMESPACE
+      spec:
+        backend:
+          autoTls:
+            ca:
+              autoGenerate: true
+              secret:
+                name: keycloak-tls-ca-$NAMESPACE
+                namespace: $NAMESPACE
+      ---
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: keycloak
+        labels:
+          app: keycloak
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: keycloak
+        template:
+          metadata:
+            labels:
+              app: keycloak
+          spec:
+            containers:
+              - name: keycloak
+                image: quay.io/keycloak/keycloak:{{ test_scenario['values']['keycloak'] }}
+                args:
+                  - start
+                  - --hostname-strict=false
+                  - --https-key-store-file=/tls/keystore.p12
+                  - --https-key-store-password=changeit
+                  - --import-realm
+                env:
+                  - name: KEYCLOAK_ADMIN
+                    value: admin
+                  - name: KEYCLOAK_ADMIN_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: keycloak-admin-credentials
+                        key: admin
+                  - name: USER_INFO_FETCHER_CLIENT_ID
+                    valueFrom:
+                      secretKeyRef:
+                        name: user-info-fetcher-client-credentials
+                        key: clientId
+                  - name: USER_INFO_FETCHER_CLIENT_SECRET
+                    valueFrom:
+                      secretKeyRef:
+                        name: user-info-fetcher-client-credentials
+                        key: clientSecret
+                ports:
+                  - name: https
+                    containerPort: 8443
+                readinessProbe:
+                  httpGet:
+                    scheme: HTTPS
+                    path: /realms/master
+                    port: https
+                resources:
+                  limits:
+                    cpu: 1
+                    memory: 512Mi
+                  requests:
+                    cpu: 500m
+                    memory: 512Mi
+                volumeMounts:
+                  - name: data
+                    mountPath: /opt/keycloak/data/
+                  - name: tls
+                    mountPath: /tls/
+                  - name: realm-volume
+                    mountPath: /opt/keycloak/data/import
+            securityContext:
+              fsGroup: 1000
+              runAsGroup: 1000
+              runAsUser: 1000
+            volumes:
+              - name: data
+                emptyDir: {}
+              - name: tls
+                ephemeral:
+                  volumeClaimTemplate:
+                    metadata:
+                      annotations:
+                        secrets.stackable.tech/class: keycloak-tls-$NAMESPACE
+                        secrets.stackable.tech/format: tls-pkcs12
+                        secrets.stackable.tech/format.compatibility.tls-pkcs12.password: changeit
+                        secrets.stackable.tech/scope: service=keycloak,node
+                    spec:
+                      storageClassName: secrets.stackable.tech
+                      accessModes:
+                        - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: "1"
+              - name: realm-volume
+                configMap:
+                  name: keycloak-my-dataspace-realm
+      ---
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: keycloak-admin-credentials
+      stringData:
+        admin: "adminadmin"
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: keycloak
+        labels:
+          app: keycloak
+      spec:
+        ports:
+          - name: https
+            port: 8443
+            targetPort: 8443
+        selector:
+          app: keycloak
+      EOF

@@ -1,0 +1,18 @@
+---
+apiVersion: opa.stackable.tech/v1alpha1
+kind: OpaCluster
+metadata:
+  name: opa
+spec:
+  image:
+    productVersion: "{{ test_scenario['values']['opa'] }}"
+    pullPolicy: IfNotPresent
+  clusterOperation:
+    reconciliationPaused: true      
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+  clusterConfig:
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  servers:
+    roleGroups:
+      default: {}

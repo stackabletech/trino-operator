@@ -1,0 +1,23 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      # Trino Rego rules provided by the Stackable Data Platform
+      kubectl create configmap trino-opa-rules \
+        --namespace=$NAMESPACE \
+        --from-file=trino_rules/actual_permissions.rego \
+        --from-file=trino_rules/requested_permissions.rego \
+        --from-file=trino_rules/util.rego \
+        --from-file=trino_rules/verification.rego
+      kubectl label configmaps trino-opa-rules \
+        opa.stackable.tech/bundle=trino \
+        --namespace=$NAMESPACE
+
+      # Trino policies provided by the customer
+      kubectl create configmap trino-opa-policies \
+        --namespace=$NAMESPACE \
+        --from-file=trino_policies.rego
+      kubectl label configmaps trino-opa-policies \
+        opa.stackable.tech/bundle=trino \
+        --namespace=$NAMESPACE

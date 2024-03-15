@@ -1,0 +1,29 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-test-opa
+  labels:
+    app: trino-test-opa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trino-test-opa
+  template:
+    metadata:
+      labels:
+        app: trino-test-opa
+    spec:
+      serviceAccount: integration-tests-sa
+      containers:
+        - name: trino-test-opa
+          image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
+          command: ["sleep", "infinity"]
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "64Mi"
