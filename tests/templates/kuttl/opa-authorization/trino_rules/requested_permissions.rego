@@ -7,10 +7,7 @@ action := input.action
 operation := action.operation
 
 requested_permissions := permissions if {
-	operation in {
-		"AccessCatalog",
-		"FilterCatalogs",
-	}
+	operation == "AccessCatalog"
 	permissions := {{
 		"resource": "catalog",
 		"catalogName": action.resource.catalog.name,
@@ -451,12 +448,21 @@ requested_permissions := permissions if {
 }
 
 requested_permissions := permissions if {
-	operation == "ShowSchemas"
-	permissions := {{
-		"resource": "catalog",
-		"catalogName": action.resource.catalog.name,
-		"allow": "read-only",
-	}}
+	operation in {
+		"FilterCatalogs",
+		"ShowSchemas",
+	}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.catalog.name,
+			"allow": "read-only",
+		},
+		{
+			"resource": "catalog_visibility",
+			"catalogName": action.resource.catalog.name,
+		},
+	}
 }
 
 requested_permissions := permissions if {
@@ -519,6 +525,11 @@ requested_catalog_permissions contains permission if {
 requested_catalog_session_properties_permissions contains permission if {
 	some permission in requested_permissions
 	permission.resource == "catalog_session_properties"
+}
+
+requested_catalog_visibility_permissions contains permission if {
+	some permission in requested_permissions
+	permission.resource == "catalog_visibility"
 }
 
 requested_column_permissions contains permission if {

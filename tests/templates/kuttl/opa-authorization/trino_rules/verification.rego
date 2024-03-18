@@ -35,6 +35,9 @@ allow if {
 		)
 		requested_permission.allow == access
 	}
+	every requested_permission in requested_catalog_visibility_permissions {
+		catalog_visibility(requested_permission.catalogName)
+	}
 	every requested_permission in requested_column_permissions {
 		access := column_access(
 			requested_permission.catalogName,

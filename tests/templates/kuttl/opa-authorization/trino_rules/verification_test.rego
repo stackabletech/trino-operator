@@ -69,6 +69,22 @@ test_allow_with_catalog_session_properties_request if {
 		with data.trino_policies.policies as {"catalog_session_properties": [{"allow": false}]}
 }
 
+test_allow_with_catalog_visibility_request if {
+	request := {
+		"action": {
+			"operation": "ShowSchemas",
+			"resource": {"catalog": {"name": "testcatalog"}},
+		},
+		"context": testcontext,
+	}
+
+	trino.allow with input as request
+		with data.trino_policies.policies as {"catalogs": [{"allow": "all"}]}
+
+	not trino.allow with input as request
+		with data.trino_policies.policies as {"catalogs": [{"allow": "none"}]}
+}
+
 test_allow_with_column_request if {
 	request := {
 		"action": {

@@ -147,6 +147,62 @@ default function_rules := [{
 	],
 }]
 
+default catalog_visibility(_) := false
+
+catalog_visibility(catalog_name) if {
+	"all" in catalog_access(catalog_name)
+}
+
+catalog_visibility(catalog_name) if {
+	catalog_access(catalog_name) == {"read-only"}
+
+	some rule in schema_rules
+
+	match_user_group(rule)
+
+	catalog_pattern := object.get(rule, "catalog", ".*")
+
+	util.match_entire(catalog_pattern, catalog_name)
+
+	rule.owner == true
+}
+
+catalog_visibility(catalog_name) if {
+	catalog_access(catalog_name) == {"read-only"}
+
+	rules := array.concat(
+		array.concat(
+			table_rules,
+			function_rules,
+		),
+		procedure_rules,
+	)
+
+	some rule in rules
+
+	match_user_group(rule)
+
+	catalog_pattern := object.get(rule, "catalog", ".*")
+
+	util.match_entire(catalog_pattern, catalog_name)
+
+	count(rule.privileges) != 0
+}
+
+catalog_visibility(catalog_name) if {
+	catalog_access(catalog_name) == {"read-only"}
+
+	some rule in catalog_session_properties_rules
+
+	match_user_group(rule)
+
+	catalog_pattern := object.get(rule, "catalog", ".*")
+
+	util.match_entire(catalog_pattern, catalog_name)
+
+	rule.allow == true
+}
+
 function_rules := policies.functions
 
 first_matching_function_rule(

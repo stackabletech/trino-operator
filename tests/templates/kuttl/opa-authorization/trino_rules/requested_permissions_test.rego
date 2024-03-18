@@ -62,6 +62,17 @@ permission_valid(permission) if {
 }
 
 permission_valid(permission) if {
+	permission.resource == "catalog_visibility"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+	}
+
+	is_string(permission.catalogName)
+}
+
+permission_valid(permission) if {
 	permission.resource == "column"
 
 	object.keys(permission) == {
