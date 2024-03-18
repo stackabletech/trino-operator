@@ -294,7 +294,7 @@ TEST_DATA = [
             },
             {
                 "query": "SHOW SCHEMAS IN lakehouse",
-                "expected": [["information_schema"],["sf1"],["sf100"],["sf1000"],["sf10000"],["sf100000"],["sf300"],["sf3000"],["sf30000"],["tiny"]],
+                "expected": [["information_schema"],["sf1"],["tiny"]],
             },
             {
                 "query": "SHOW SCHEMAS IN tpch",
@@ -302,7 +302,7 @@ TEST_DATA = [
             },
             {
                 "query": "SHOW TABLES IN lakehouse.sf1",
-                "expected": [["customer"],["lineitem"],["nation"],["orders"],["part"],["partsupp"],["region"],["supplier"]],
+                "expected": [["customer"]],
             },            
             {
                 "query": "SELECT name FROM lakehouse.tiny.customer ORDER BY name LIMIT 1",
