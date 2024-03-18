@@ -16,12 +16,16 @@ requested_permissions := permissions if {
 }
 
 requested_permissions := permissions if {
-	operation == "CreateSchema"
+	operation in {
+		"CreateSchema",
+		"DropSchema",
+		"ShowCreateSchema",
+	}
 	permissions := {
 		{
 			"resource": "catalog",
 			"catalogName": action.resource.schema.catalogName,
-			"allow": "read-only",
+			"allow": "all",
 		},
 		{
 			"resource": "schema",
@@ -127,14 +131,30 @@ requested_permissions := permissions if {
 
 requested_permissions := permissions if {
 	operation == "FilterColumns"
-	permissions := {{
-		"resource": "column",
-		"catalogName": action.resource.table.catalogName,
-		"schemaName": action.resource.table.schemaName,
-		"tableName": action.resource.table.tableName,
-		"columnName": action.resource.table.columnName,
-		"allow": true,
-	}}
+	permissions := {
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"anyOf": {
+				"SELECT",
+				"INSERT",
+				"DELETE",
+				"UPDATE",
+				"OWNERSHIP",
+				"GRANT_SELECT",
+			}},
+		},
+		{
+			"resource": "column",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"columnName": action.resource.table.columnName,
+			"allow": true,
+		},
+	}
 }
 
 requested_permissions := permissions if {
@@ -162,11 +182,27 @@ requested_permissions := permissions if {
 
 requested_permissions := permissions if {
 	operation == "FilterTables"
-	permissions := {{
-		"resource": "catalog",
-		"catalogName": action.resource.table.catalogName,
-		"allow": "read-only",
-	}}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.table.catalogName,
+			"allow": "read-only",
+		},
+		{
+			"resource": "table",
+			"catalogName": action.resource.table.catalogName,
+			"schemaName": action.resource.table.schemaName,
+			"tableName": action.resource.table.tableName,
+			"privileges": {"anyOf": {
+				"SELECT",
+				"INSERT",
+				"DELETE",
+				"UPDATE",
+				"OWNERSHIP",
+				"GRANT_SELECT",
+			}},
+		},
+	}
 }
 
 requested_permissions := permissions if {
@@ -195,53 +231,54 @@ requested_permissions := permissions if {
 		"ExecuteFunction",
 		"FilterFunctions",
 	}
-	permissions := {{
-		"resource": "function",
-		"catalogName": action.resource.function.catalogName,
-		"schemaName": action.resource.function.schemaName,
-		"functionName": action.resource.function.functionName,
-		"privileges": {"EXECUTE"},
-	}}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.function.catalogName,
+			"allow": "read-only",
+		},
+		{
+			"resource": "function",
+			"catalogName": action.resource.function.catalogName,
+			"schemaName": action.resource.function.schemaName,
+			"functionName": action.resource.function.functionName,
+			"privileges": {"EXECUTE"},
+		},
+	}
 }
 
 requested_permissions := permissions if {
 	operation == "ExecuteProcedure"
-	permissions := {{
-		"resource": "procedure",
-		"catalogName": action.resource.function.catalogName,
-		"schemaName": action.resource.function.schemaName,
-		"functionName": action.resource.function.functionName,
-		"privileges": {"EXECUTE"},
-	}}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.function.catalogName,
+			"allow": "read-only",
+		},
+		{
+			"resource": "procedure",
+			"catalogName": action.resource.function.catalogName,
+			"schemaName": action.resource.function.schemaName,
+			"functionName": action.resource.function.functionName,
+			"privileges": {"EXECUTE"},
+		},
+	}
 }
 
 requested_permissions := permissions if {
 	operation == "CreateViewWithExecuteFunction"
-	permissions := {{
-		"resource": "function",
-		"catalogName": action.resource.function.catalogName,
-		"schemaName": action.resource.function.schemaName,
-		"functionName": action.resource.function.functionName,
-		"privileges": {"GRANT_EXECUTE"},
-	}}
-}
-
-requested_permissions := permissions if {
-	operation in {
-		"DropSchema",
-		"ShowCreateSchema",
-	}
 	permissions := {
 		{
 			"resource": "catalog",
-			"catalogName": action.resource.schema.catalogName,
-			"allow": "all",
+			"catalogName": action.resource.function.catalogName,
+			"allow": "read-only",
 		},
 		{
-			"resource": "schema",
-			"catalogName": action.resource.schema.catalogName,
-			"schemaName": action.resource.schema.schemaName,
-			"owner": true,
+			"resource": "function",
+			"catalogName": action.resource.function.catalogName,
+			"schemaName": action.resource.function.schemaName,
+			"functionName": action.resource.function.functionName,
+			"privileges": {"GRANT_EXECUTE"},
 		},
 	}
 }
@@ -428,7 +465,7 @@ requested_permissions := permissions if {
 		{
 			"resource": "catalog",
 			"catalogName": action.resource.table.catalogName,
-			"allow": "all",
+			"allow": "read-only",
 		},
 		{
 			"resource": "table",
@@ -487,12 +524,19 @@ requested_permissions := permissions if {
 
 requested_permissions := permissions if {
 	operation == "SetCatalogSessionProperty"
-	permissions := {{
-		"resource": "catalog_session_properties",
-		"catalogName": action.resource.catalogSessionProperty.catalogName,
-		"propertyName": action.resource.catalogSessionProperty.propertyName,
-		"allow": true,
-	}}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.catalogSessionProperty.catalogName,
+			"allow": "read-only",
+		},
+		{
+			"resource": "catalog_session_properties",
+			"catalogName": action.resource.catalogSessionProperty.catalogName,
+			"propertyName": action.resource.catalogSessionProperty.propertyName,
+			"allow": true,
+		},
+	}
 }
 
 requested_permissions := permissions if {

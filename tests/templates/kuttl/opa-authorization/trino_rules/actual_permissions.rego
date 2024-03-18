@@ -509,12 +509,20 @@ default column_constraints(_, _, _, _) := {
 	"mask_environment": {"user": null},
 }
 
+column_constraints(_, "information_schema", _, _) := {
+	"allow": true,
+	"mask": null,
+	"mask_environment": {"user": null},
+}
+
 column_constraints(
 	catalog_name,
 	schema_name,
 	table_name,
 	column_name,
 ) := constraints if {
+	schema_name != "information_schema"
+
 	rule := first_matching_table_rule(
 		catalog_name,
 		schema_name,

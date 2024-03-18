@@ -1814,6 +1814,41 @@ test_column_constraints_with_matching_rule_and_required_fields if {
 	}
 }
 
+test_column_constraints_with_information_schema if {
+	policies := {"tables": [{
+		"columns": [{
+			"name": "testcolumn",
+			"allow": false,
+		}],
+		"privileges": ["DELETE", "INSERT", "SELECT"],
+	}]}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+	catalog_name := "testcatalog"
+	schema_name := "information_schema"
+	table_name := "testtable"
+	column_name := "testcolumn"
+
+	column := trino.column_constraints(
+		catalog_name,
+		schema_name,
+		table_name,
+		column_name,
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+
+	column == {
+		"allow": true,
+		"mask": null,
+		"mask_environment": {"user": null},
+	}
+}
+
 test_column_constraints_with_no_matching_column if {
 	policies := {"tables": [{
 		"columns": [{"name": "non_matching_column"}],
