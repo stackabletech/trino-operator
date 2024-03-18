@@ -1184,6 +1184,182 @@ test_schema_owner if {
 	owner == true
 }
 
+test_schema_visibility if {
+	policies := {
+		"schemas": [
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_schemas_and_ownership",
+				"owner": true,
+			},
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_schemas_and_no_ownership",
+				"owner": false,
+			},
+		],
+		"tables": [
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_tables_and_privileges",
+				"privileges": ["SELECT"],
+			},
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_tables_and_no_privileges",
+				"privileges": [],
+			},
+		],
+		"functions": [
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_functions_and_privileges",
+				"privileges": ["EXECUTE"],
+			},
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_functions_and_no_privileges",
+				"privileges": [],
+			},
+		],
+		"procedures": [
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_procedures_and_privileges",
+				"privileges": ["EXECUTE"],
+			},
+			{
+				"user": "testuser",
+				"group": "testgroup1",
+				"catalog": "testcatalog",
+				"schema": "testschema_on_procedures_and_no_privileges",
+				"privileges": [],
+			},
+		],
+	}
+	identity := {
+		"user": "testuser",
+		"groups": [
+			"testgroup1",
+			"testgroup2",
+		],
+	}
+
+	testschema_on_schemas_and_ownership_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_schemas_and_ownership",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_schemas_and_ownership_visible == true
+
+	testschema_on_schemas_and_no_ownership_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_schemas_and_no_ownership",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_schemas_and_no_ownership_visible == false
+
+	information_schema_visible := trino.schema_visibility(
+		"testcatalog",
+		"information_schema",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	information_schema_visible == true
+
+	testschema_on_tables_and_privileges_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_tables_and_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_tables_and_privileges_visible == true
+
+	testschema_on_tables_and_no_privileges_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_tables_and_no_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_tables_and_no_privileges_visible == false
+
+	testschema_on_functions_and_privileges_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_functions_and_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_functions_and_privileges_visible == true
+
+	testschema_on_functions_and_no_privileges_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_functions_and_no_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_functions_and_no_privileges_visible == false
+
+	testschema_on_procedures_and_privileges_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_procedures_and_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_procedures_and_privileges_visible == true
+
+	testschema_on_procedures_and_no_privileges_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_procedures_and_no_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	testschema_on_procedures_and_no_privileges_visible == false
+
+	non_matching_catalog_visible := trino.schema_visibility(
+		"non_matching_catalog",
+		"testschema_on_schemas_and_ownership",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	non_matching_catalog_visible == false
+
+	non_matching_schema_visible := trino.schema_visibility(
+		"testcatalog",
+		"non_matching_schema",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as identity
+	non_matching_schema_visible == false
+
+	non_matching_user_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_tables_and_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as {
+			"user": "non_matching_user",
+			"groups": [
+				"testgroup1",
+				"testgroup2",
+			],
+		}
+	non_matching_user_visible == false
+
+	non_matching_group_visible := trino.schema_visibility(
+		"testcatalog",
+		"testschema_on_tables_and_privileges",
+	) with data.trino_policies.policies as policies
+		with input.context.identity as {
+			"user": "testuser",
+			"groups": ["non_matching_group"],
+		}
+	non_matching_group_visible == false
+}
+
 test_first_matching_table_rule_with_matching_rule if {
 	policies := {"tables": [
 		{

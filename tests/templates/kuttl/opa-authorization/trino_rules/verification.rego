@@ -79,6 +79,12 @@ allow if {
 			requested_permission.schemaName,
 		) == requested_permission.owner
 	}
+	every requested_permission in requested_schema_visibility_permissions {
+		schema_visibility(
+			requested_permission.catalogName,
+			requested_permission.schemaName,
+		)
+	}
 	every requested_permission in requested_table_permissions {
 		privileges := table_privileges(
 			requested_permission.catalogName,

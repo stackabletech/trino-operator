@@ -197,6 +197,35 @@ test_allow_with_schema_request if {
 		with data.trino_policies.policies as {"schemas": [{"owner": false}]}
 }
 
+test_allow_with_schema_visibility_request if {
+	request := {
+		"action": {
+			"operation": "FilterSchemas",
+			"resource": {"schema": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+			}},
+		},
+		"context": testcontext,
+	}
+
+	trino.allow with input as request
+		with data.trino_policies.policies as {
+			"schemas": [{"owner": true}],
+			"tables": [],
+			"functions": [],
+			"procedures": [],
+		}
+
+	not trino.allow with input as request
+		with data.trino_policies.policies as {
+			"schemas": [{"owner": false}],
+			"tables": [],
+			"functions": [],
+			"procedures": [],
+		}
+}
+
 test_allow_with_table_request if {
 	request := {
 		"action": {

@@ -358,6 +358,38 @@ schema_owner(catalog_name, schema_name) := first_matching_schema_rule(
 	schema_name,
 ).owner
 
+default schema_visibility(_, _) := false
+
+schema_visibility(catalog_name, schema_name) if {
+	schema_owner(catalog_name, schema_name)
+}
+
+schema_visibility(_, "information_schema") := true
+
+schema_visibility(catalog_name, schema_name) if {
+	schema_name != "information_schema"
+
+	rules := array.concat(
+		array.concat(
+			table_rules,
+			function_rules,
+		),
+		procedure_rules,
+	)
+
+	some rule in rules
+
+	match_user_group(rule)
+
+	catalog_pattern := object.get(rule, "catalog", ".*")
+	schema_pattern := object.get(rule, "schema", ".*")
+
+	util.match_entire(catalog_pattern, catalog_name)
+	util.match_entire(schema_pattern, schema_name)
+
+	count(rule.privileges) != 0
+}
+
 default table_rules := [{
 	"privileges": [
 		"DELETE",

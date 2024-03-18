@@ -176,6 +176,19 @@ permission_valid(permission) if {
 }
 
 permission_valid(permission) if {
+	permission.resource == "schema_visibility"
+
+	object.keys(permission) == {
+		"resource",
+		"catalogName",
+		"schemaName",
+	}
+
+	is_string(permission.catalogName)
+	is_string(permission.schemaName)
+}
+
+permission_valid(permission) if {
 	permission.resource == "system_information"
 
 	object.keys(permission) == {

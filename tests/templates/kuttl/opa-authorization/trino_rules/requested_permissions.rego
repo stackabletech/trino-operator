@@ -465,11 +465,18 @@ requested_permissions := permissions if {
 		"ShowFunctions",
 		"ShowTables",
 	}
-	permissions := {{
-		"resource": "catalog",
-		"catalogName": action.resource.schema.catalogName,
-		"allow": "read-only",
-	}}
+	permissions := {
+		{
+			"resource": "catalog",
+			"catalogName": action.resource.schema.catalogName,
+			"allow": "read-only",
+		},
+		{
+			"resource": "schema_visibility",
+			"catalogName": action.resource.schema.catalogName,
+			"schemaName": action.resource.schema.schemaName,
+		},
+	}
 }
 
 requested_permissions := permissions if {
@@ -547,6 +554,11 @@ requested_query_owned_by_permissions contains permission if {
 requested_schema_permissions contains permission if {
 	some permission in requested_permissions
 	permission.resource == "schema"
+}
+
+requested_schema_visibility_permissions contains permission if {
+	some permission in requested_permissions
+	permission.resource == "schema_visibility"
 }
 
 requested_table_permissions contains permission if {
