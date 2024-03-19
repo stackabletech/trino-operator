@@ -4,11 +4,8 @@ import data.util
 import rego.v1
 
 # These rules replicate the file-based access control
-# (https://trino.io/docs/current/security/file-system-access-control.html#table-rules).
-#
-# But there are differences:
-# * Only `user` and `group` are matched but not `role`.
-# * The visibility is not checked.
+# (https://trino.io/docs/current/security/file-system-access-control.html).
+# All rules are implemented but roles are not matched.
 
 identity := input.context.identity
 
