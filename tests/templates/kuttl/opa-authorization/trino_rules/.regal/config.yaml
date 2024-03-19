@@ -7,9 +7,12 @@ rules:
           # We do not want to split this file.
           - requested_permissions.rego
     line-length:
-      # `opa fmt` puts the first `with` statement on the same line which
-      # creates long lines.
-      max-line-length: 130
+      ignore:
+        files:
+          # `opa fmt` puts the first `with` statement on the same line
+          # which creates long lines especially in the test file where
+          # long variable names are used to describe the test case.
+          - actual_permissions_test.rego
     prefer-snake-case:
       ignore:
         files:
