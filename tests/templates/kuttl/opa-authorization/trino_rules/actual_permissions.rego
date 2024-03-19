@@ -69,7 +69,6 @@ first_matching_authorization_rule(grantee_name) := rule if {
 	)
 }
 
-# Authorization permission of the first matching rule
 default authorization_permission(_) := false
 
 authorization_permission(grantee_name) := first_matching_authorization_rule(grantee_name).allow
@@ -97,7 +96,6 @@ catalog_access_map := {
 	"none": {"none"},
 }
 
-# Catalog access of the first matching rule
 default catalog_access(_) := {"none"}
 
 catalog_access(catalog_name) := catalog_access_map[first_matching_catalog_rule(catalog_name).allow]
@@ -124,7 +122,6 @@ first_matching_catalog_session_properties_rule(
 	rule := rules[0]
 }
 
-# Catalog session property access of the first matching rule
 default catalog_session_properties_access(_, _) := false
 
 catalog_session_properties_access(
@@ -223,7 +220,6 @@ first_matching_function_rule(
 	rule := rules[0]
 }
 
-# Function privileges of the first matching rule
 default function_privileges(_, _, _) := set()
 
 function_privileges(
@@ -275,7 +271,6 @@ first_matching_impersonation_rule(user) := rule if {
 	)
 }
 
-# Impersonation access of the first matching rule
 default impersonation_access(_) := false
 
 impersonation_access(user) if {
@@ -324,7 +319,6 @@ first_matching_procedure_rule(
 	rule := rules[0]
 }
 
-# Procedure privileges of the first matching rule
 default procedure_privileges(_, _, _) := set()
 
 procedure_privileges(
@@ -352,7 +346,6 @@ first_matching_query_rule := rule if {
 	rule := rules[0]
 }
 
-# Query access of the first matching rule
 default query_access := set()
 
 query_access := {access | some access in first_matching_query_rule.allow}
@@ -370,7 +363,6 @@ first_matching_query_owned_by_rule(user) := rule if {
 	rule := rules[0]
 }
 
-# Query access of the first matching rule
 default query_owned_by_access(_) := set()
 
 query_owned_by_access(user) := {"kill", "view"} if {
@@ -403,7 +395,6 @@ first_matching_schema_rule(catalog_name, schema_name) := rule if {
 	rule := rules[0]
 }
 
-# Schema ownership of the first matching rule
 default schema_owner(_, _) := false
 
 schema_owner(catalog_name, schema_name) := first_matching_schema_rule(
@@ -539,7 +530,6 @@ column_constraints(
 	)
 }
 
-# Table privileges of the first matching rule
 default table_privileges(_, _, _) := set()
 
 table_privileges(
@@ -554,7 +544,6 @@ table_privileges(
 	).privileges
 }
 
-# Column access of the first matching rule
 default column_access(_, _, _, _) := false
 
 column_access(
@@ -592,7 +581,6 @@ first_matching_system_information_rule := rule if {
 	rule := rules[0]
 }
 
-# System information access of the first matching rule
 default system_information_access := set()
 
 system_information_access := {access |
@@ -616,7 +604,6 @@ first_matching_system_session_properties_rule(property_name) := rule if {
 	rule := rules[0]
 }
 
-# System session property access of the first matching rule
 default system_session_properties_access(_) := false
 
 system_session_properties_access(property_name) := first_matching_system_session_properties_rule(property_name).allow
