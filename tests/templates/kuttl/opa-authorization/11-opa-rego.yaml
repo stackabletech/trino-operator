@@ -11,7 +11,7 @@ commands:
         --from-file=trino_rules/util.rego \
         --from-file=trino_rules/verification.rego
       kubectl label configmaps trino-opa-rules \
-        opa.stackable.tech/bundle=trino \
+        opa.stackable.tech/bundle=true \
         --namespace=$NAMESPACE
 
       # Trino policies provided by the customer
@@ -19,5 +19,5 @@ commands:
         --namespace=$NAMESPACE \
         --from-file=trino_policies.rego
       kubectl label configmaps trino-opa-policies \
-        opa.stackable.tech/bundle=trino \
+        opa.stackable.tech/bundle=true \
         --namespace=$NAMESPACE
