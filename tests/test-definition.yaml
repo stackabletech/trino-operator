@@ -33,7 +33,7 @@ dimensions:
       - 3.9.1
   - name: keycloak
     values:
-      - 23.0.1    
+      - 23.0.1
   - name: s3-use-tls
     values:
       - "true"
@@ -98,7 +98,7 @@ tests:
       - hive
       - opa
       - keycloak
-      - openshift      
+      - openshift
 suites:
   - name: nightly
     # Run with the latest product versions and tls true and false to cover different tls code paths.
