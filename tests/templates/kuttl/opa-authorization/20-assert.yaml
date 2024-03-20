@@ -24,7 +24,7 @@ metadata:
 spec:
   template:
     spec:
-      terminationGracePeriodSeconds: 75 # 5s gracefulShutdownTimeout + 2 x 30s grace period + 10s safety buffer
+      terminationGracePeriodSeconds: 80 # 10s gracefulShutdownTimeout + 2 x 30s grace period + 10s safety buffer
 status:
   readyReplicas: 1
   replicas: 1

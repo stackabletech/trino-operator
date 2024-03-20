@@ -1,4 +1,33 @@
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: keycloak
+{% if test_scenario['values']['openshift'] == 'true' %}
+rules:
+- apiGroups: ["security.openshift.io"]
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["privileged"]
+  verbs: ["use"]
+{% endif %}
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: keycloak
+subjects:
+  - kind: ServiceAccount
+    name: keycloak
+roleRef:
+  kind: Role
+  name: keycloak
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
@@ -34,6 +63,7 @@ commands:
             labels:
               app: keycloak
           spec:
+            serviceAccountName: keycloak
             containers:
               - name: keycloak
                 image: quay.io/keycloak/keycloak:{{ test_scenario['values']['keycloak'] }}

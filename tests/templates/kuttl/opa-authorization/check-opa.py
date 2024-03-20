@@ -205,7 +205,7 @@ TEST_DATA = [
             # ## MATERIALIZED VIEW ##
             # ExecuteQuery, AccessCatalog, SelectFromColumns, CreateMaterializedView
             {
-                "query": "CREATE MATERIALIZED VIEW iceberg.test.mv_customer AS SELECT name, address FROM tpch.sf1.customer",
+                "query": "CREATE MATERIALIZED VIEW IF NOT EXISTS iceberg.test.mv_customer AS SELECT name, address FROM tpch.sf1.customer",
                 "expected": [],
             },
             # ExecuteQuery, AccessCatalog, RefreshMaterializedView
