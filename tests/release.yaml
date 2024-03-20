@@ -21,4 +21,4 @@ releases:
       opa:
         operatorVersion: 0.0.0-dev
       trino:
-        operatorVersion: 0.0.0-pr559
+        operatorVersion: 0.0.0-dev
