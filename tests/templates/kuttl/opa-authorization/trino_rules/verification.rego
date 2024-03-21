@@ -126,6 +126,8 @@ batch contains index if {
 	input.action.operation != "FilterColumns"
 
 	some index, resource in input.action.filterResources
+
+	# regal ignore:with-outside-test-context
 	allow with input.action.resource as resource
 }
 
@@ -135,6 +137,7 @@ batch contains index if {
 	table := input.action.filterResources[0].table
 	some index, column_name in table.columns
 
+	# regal ignore:with-outside-test-context
 	allow with input.action.resource as {"table": {
 		"catalogName": table.catalogName,
 		"schemaName": table.schemaName,

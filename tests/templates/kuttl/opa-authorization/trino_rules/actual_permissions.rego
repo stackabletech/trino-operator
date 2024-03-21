@@ -132,15 +132,6 @@ catalog_session_properties_access(
 	property_name,
 ).allow
 
-default function_rules := [{
-	"catalog": "system",
-	"schema": "builtin",
-	"privileges": [
-		"GRANT_EXECUTE",
-		"EXECUTE",
-	],
-}]
-
 default catalog_visibility(_) := false
 
 catalog_visibility(catalog_name) if {
@@ -196,6 +187,15 @@ catalog_visibility(catalog_name) if {
 
 	rule.allow == true
 }
+
+default function_rules := [{
+	"catalog": "system",
+	"schema": "builtin",
+	"privileges": [
+		"GRANT_EXECUTE",
+		"EXECUTE",
+	],
+}]
 
 function_rules := policies.functions
 
