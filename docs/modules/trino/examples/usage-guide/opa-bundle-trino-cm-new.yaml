@@ -35,7 +35,7 @@ data:
     }
 
     # Filter rows according to an expression
-    rowFilters := row_filter if {
+    rowFilters := [row_filter] if {
       input.action.operation == "GetRowFilters"
 
       input.action.resource.table.catalogName == "default"
