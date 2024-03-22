@@ -8,7 +8,7 @@ testcontext := {
 		"groups": ["testgroup1", "testgroup2"],
 		"user": "testuser",
 	},
-	"softwareStack": {"trinoVersion": "440"},
+	"softwareStack": {"trinoVersion": "442"},
 }
 
 test_allow_with_authorization_request if {
