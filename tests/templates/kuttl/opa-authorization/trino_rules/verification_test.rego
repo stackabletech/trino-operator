@@ -3,6 +3,13 @@ package verification_test
 import data.trino
 import rego.v1
 
+# These unit tests cover all incremental definitions of the rules in
+# verification.rego. For testing the allow rule, operations were
+# selected in such a way that all variants of requested_permissions are
+# covered. For instance, the test_allow_with_authorization_request
+# checks that the requested_authorization_permissions are compared with
+# the actual permissions returned by authorization_permission(_).
+
 testcontext := {
 	"identity": {
 		"groups": ["testgroup1", "testgroup2"],
