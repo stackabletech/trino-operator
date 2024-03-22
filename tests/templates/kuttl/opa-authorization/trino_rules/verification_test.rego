@@ -451,10 +451,10 @@ test_row_filters_with_expression_and_identity if {
 	row_filters := trino.rowFilters with input as request
 		with data.trino_policies.policies as policies
 
-	row_filters == {
+	row_filters == [{
 		"expression": "testfilter",
 		"identity": "testfilterenvironmentuser",
-	}
+	}]
 }
 
 test_row_filters_with_expression_and_no_identity if {
@@ -477,7 +477,7 @@ test_row_filters_with_expression_and_no_identity if {
 	row_filters := trino.rowFilters with input as request
 		with data.trino_policies.policies as policies
 
-	row_filters == {"expression": "testfilter"}
+	row_filters == [{"expression": "testfilter"}]
 }
 
 test_row_filters_with_no_matching_rule if {

@@ -174,7 +174,21 @@ policies := {
 		{
 			"user": "iceberg",
 			"catalog": "iceberg",
+			"table": "test",
 			"privileges": ["SELECT", "INSERT", "DELETE", "OWNERSHIP"],
+			"filter": "test BETWEEN 2 AND 4",
+			"filterEnvironment": {"user": "admin"},
+		},
+		{
+			"user": "iceberg",
+			"catalog": "iceberg",
+			"table": "test_square",
+			"privileges": ["SELECT", "OWNERSHIP"],
+			"columns": [{
+				"name": "test",
+				"mask": "CAST(POWER(test, 2) AS bigint)",
+				"mask_environment": {"user": "admin"},
+			}],
 		},
 	],
 	"system_information": [

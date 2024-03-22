@@ -183,7 +183,7 @@ columnMask := column_mask if {
 # METADATA
 # description: Row filters for a given table
 # entrypoint: true
-rowFilters := row_filter if {
+rowFilters := [row_filter] if {
 	rule := first_matching_table_rule(
 		requested_row_filters.catalogName,
 		requested_row_filters.schemaName,
@@ -199,7 +199,7 @@ rowFilters := row_filter if {
 	}
 }
 
-rowFilters := row_filter if {
+rowFilters := [row_filter] if {
 	rule := first_matching_table_rule(
 		requested_row_filters.catalogName,
 		requested_row_filters.schemaName,

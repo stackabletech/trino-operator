@@ -346,6 +346,8 @@ TEST_DATA = [
         # - access iceberg catalog
         # - create, drop and access all schemas
         # - select, insert, delete in all tables in iceberg.* (not update!)
+        # - only insert the values 2, 3, and 4 into the table test due to a row filter
+        # - get the squares of the values in the test_square view due to a column mask
         "user": {
             "name": "iceberg",
             "password": "iceberg",
@@ -360,16 +362,32 @@ TEST_DATA = [
                 "expected": [],
             },
             {
-                "query": "CREATE TABLE IF NOT EXISTS iceberg.test2.test (test bigint)",
+                "query": "DROP TABLE IF EXISTS iceberg.test2.test",
                 "expected": [],
             },
             {
-                "query": "INSERT INTO iceberg.test2.test VALUES (1),(2)",
-                "expected": [[2]],
+                "query": "CREATE TABLE iceberg.test2.test (test bigint)",
+                "expected": [],
             },
             {
-                "query": "SELECT * FROM iceberg.test2.test",
-                "expected": [[1], [2]],
+                "query": "INSERT INTO iceberg.test2.test VALUES (1),(2),(3)",
+                "error": "Access Denied: Cannot insert row that does not match a row filter",
+            },
+            {
+                "query": "INSERT INTO iceberg.test2.test VALUES (2),(3),(4)",
+                "expected": [[3]],
+            },
+            {
+                "query": "CREATE OR REPLACE VIEW iceberg.test2.test_square AS SELECT * FROM iceberg.test2.test",
+                "expected": [],
+            },
+            {
+                "query": "SELECT * FROM iceberg.test2.test_square",
+                "expected": [[4], [9], [16]],
+            },
+            {
+                "query": "DROP VIEW iceberg.test2.test_square",
+                "expected": [],
             },
             {
                 "query": "UPDATE iceberg.test2.test SET test=3 WHERE test=2",
