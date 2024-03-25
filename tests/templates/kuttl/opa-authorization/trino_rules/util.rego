@@ -6,7 +6,7 @@ import rego.v1
 
 # METADATA
 # description: |
-#   Matches the entire string againts a regular expression.
+#   Matches the entire string against a regular expression.
 #
 #   pattern (string)  regular expression
 #   value (string)    value to match againts pattern
