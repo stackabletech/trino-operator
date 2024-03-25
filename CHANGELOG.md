@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support row filters and column masks in Rego rules ([#559]).
+
+[#559]: https://github.com/stackabletech/trino-operator/pull/559
+
 ## [24.3.0] - 2024-03-20
 
 ### Added
@@ -13,7 +19,6 @@ All notable changes to this project will be documented in this file.
 - Delta Lake connector ([#531]).
 - Support for version `442` ([#557]).
 - Add support for OpenID Connect ([#501]).
-- Support row filters and column masks in Rego rules ([#559]).
 
 ### Fixed
 
@@ -25,7 +30,6 @@ All notable changes to this project will be documented in this file.
 [#501]: https://github.com/stackabletech/trino-operator/pull/501
 [#531]: https://github.com/stackabletech/trino-operator/pull/531
 [#557]: https://github.com/stackabletech/trino-operator/pull/557
-[#559]: https://github.com/stackabletech/trino-operator/pull/559
 
 ## [23.11.0] - 2023-11-24
 
