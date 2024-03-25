@@ -330,7 +330,7 @@ columnMask := column_mask if {
 #   policies and returns the expression if any is set. A row filter is
 #   an SQL condition, e.g. "user = current_user".
 # entrypoint: true
-rowFilters := [row_filter] if {
+rowFilters contains row_filter if {
 	rule := first_matching_table_rule(
 		requested_row_filters.catalogName,
 		requested_row_filters.schemaName,
@@ -346,7 +346,7 @@ rowFilters := [row_filter] if {
 	}
 }
 
-rowFilters := [row_filter] if {
+rowFilters contains row_filter if {
 	rule := first_matching_table_rule(
 		requested_row_filters.catalogName,
 		requested_row_filters.schemaName,
