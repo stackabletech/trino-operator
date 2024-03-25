@@ -9,7 +9,7 @@ import rego.v1
 #   Matches the entire string against a regular expression.
 #
 #   pattern (string)  regular expression
-#   value (string)    value to match againts pattern
+#   value (string)    value to match against pattern
 #
 #   Returns:
 #     result (boolean)
