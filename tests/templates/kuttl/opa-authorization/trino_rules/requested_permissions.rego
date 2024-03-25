@@ -2,6 +2,14 @@ package trino
 
 import rego.v1
 
+# This file contains the requested_permissions rule which returns a set
+# of required permissions for the given operation including the
+# requested resource. Operations with the same set of required
+# permissions are grouped together.
+# The defined permissions should be identical to the ones implemented
+# for the file-based access control
+# (https://trino.io/docs/current/security/file-system-access-control.html).
+
 action := input.action
 
 operation := action.operation

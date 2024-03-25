@@ -3,14 +3,80 @@ package trino
 import data.util
 import rego.v1
 
-# These rules replicate the file-based access control
-# (https://trino.io/docs/current/security/file-system-access-control.html).
-# All rules are implemented but roles are not matched.
+# This file contains functions to determine the actual permissions
+# defined in the Trino policies for the given user and requested
+# resource.
+#
+# For every resource, like catalog and table, the rules and functions
+# are structured as follows:
+#   * default resource_rules := ...
+#     Default rules for the resource if not defined in the policies,
+#     e.g. []
+#   * resource_rules := policies.resource
+#     Rules for the resource in the policies if defined
+#   * first_matching_resource_rule(parameters like table name) := ...
+#     Returns the first rule from resource_rules which match the
+#     identity and the given parameters
+#   * default resource_permission(_) := ...
+#     Default permission if no matching rule was found, e.g. "none".
+#   * resource_permission(parameters like table name) := ...
+#     Permission returned by the first_matching_resource_rule function
 
 identity := input.context.identity
 
+# METADATA
+# description: |
+#   The externally provided policies, see the file-based access control
+#   (https://trino.io/docs/current/security/file-system-access-control.html)
+#   for further documentation.
+#
+#   Example:
+#     package trino_policies
+#     import rego.v1
+#     policies := {
+#         "catalogs": [
+#             {
+#                 "user": "admin",
+#                 "allow": "all",
+#             },
+#         ],
+#         "schemas": [
+#             {
+#                 "user": "admin",
+#                 "owner": true,
+#             },
+#         ],
+#         "tables": [
+#             {
+#                 "user": "admin",
+#                 "privileges": [
+#                     "OWNERSHIP",
+#                     "GRANT_SELECT",
+#                 ],
+#             },
+#         ],
+#     }
 policies := data.trino_policies.policies
 
+# METADATA
+# description: |
+#   Externally provided groups; These groups are added to the ones in
+#   input.context.identity.groups.
+#
+#   Example:
+#     package trino_policies
+#     import rego.v1
+#     extra_groups := groups if {
+#         request := {
+#             "method": "POST",
+#             "url": "http://127.0.0.1:9476/user",
+#             "headers": {"Content-Type": "application/json"},
+#             "body": {"username": input.context.identity.user},
+#         }
+#         response := http.send(request)
+#         response.status_code == 200
+#         groups := response.body.groups
+#     }
 default extra_groups := []
 
 extra_groups := data.trino_policies.extra_groups

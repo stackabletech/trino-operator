@@ -3,6 +3,26 @@ package actual_permissions_test
 import data.trino
 import rego.v1
 
+# These tests check that all rules and functions return the expected
+# result for the given test identity and action.
+#
+# In most cases, there are the following tests for each resource:
+#   * test_first_matching_resource_rule_with_matching_rule
+#     The policies usually contain three entries where only the second
+#     and third one match. It is expected that the second one is
+#     returned.
+#   * test_first_matching_resource_rule_with_no_matching_rule
+#     In every rule of the policies, there is one condition which is not
+#     met and therefore the first_matching_resource_rule function should
+#     return undefined.
+#   * test_first_matching_resource_rule_with_no_rules
+#     If no rules are defined in the policies for the given resource,
+#     then the first_matching_resource_rule function should return
+#     either the default rule or undefined.
+#   * test_resource_permission
+#     Checks that the resource_permission function returns the expected
+#     permission
+
 test_match_any_group_with_no_group_memberships_and_the_default_group_pattern if {
 	identity := {"user": "testuser", "groups": []}
 	group_pattern := ".*"

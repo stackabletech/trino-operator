@@ -4,9 +4,10 @@ import data.trino
 import rego.v1
 
 # These tests check that the returned rules are well-formed. Typos and
-# copy-and-paste errors should be detected. It is not checked if the
-# rules are sensible, e.g. that the InsertIntoTable operation requests
-# the INSERT privilege.
+# copy-and-paste errors should be detected. It is intentionally not
+# checked if the rules are sensible, e.g. that the InsertIntoTable
+# operation actually requests the INSERT privilege. So it is possible to
+# improve the rules without breaking the tests.
 
 default permissions_valid(_) := false
 
