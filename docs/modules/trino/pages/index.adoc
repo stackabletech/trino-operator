@@ -1,6 +1,6 @@
 = Stackable Operator for Trino
 :description: The Stackable Operator for Trino is a Kubernetes operator that can manage Trino clusters. Learn about its features, resources, dependencies and demos, and see the list of supported Trino versions.
-:keywords: Stackable Operator, Trino, Kubernetes, k8s, operator, data science, data exploration, SQL, engineer, big data, CRD, StatefulSet, ConfigMap, Service, Druid, Trino, S3, Superset
+:keywords: Stackable Operator, Trino, Kubernetes, k8s, operator, data science, data exploration
 
 :k8s-crs: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
 
@@ -46,8 +46,10 @@ demo, focusing just on Apache Iceberg integration.
 The xref:demos:spark-k8s-anomaly-detection-taxi-data.adoc[] also uses Trino to enable SQL access to data but also shows
 xref:opa:index.adoc[OpenPolicyAgent] integration for xref:usage-guide/security.adoc#authorization[authorization].
 
-== Supported Versions
+== Supported versions
 
-The Stackable Operator for Trino currently supports the following versions of Trino:
+The Stackable Operator for Trino currently supports the Trino versions listed below.
+To use a specific Trino version in your TrinoCluster, you have to specify an image - this is explained in the xref:concepts:product-image-selection.adoc[] documentation.
+The operator also supports running images from a custom registry or running entirely customized images; both of these cases are explained under xref:concepts:product-image-selection.adoc[] as well.
 
 include::partial$supported-versions.adoc[]
