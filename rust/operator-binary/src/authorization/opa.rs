@@ -17,8 +17,25 @@ const PRODUCT_VERSIONS_WITH_INTERMEDIATE_AUTHORIZER: [&str; 1] = ["428"];
 
 pub struct TrinoOpaConfig {
     opa_authorizer_name: String,
+    /// URI for OPA policies, e.g.
+    /// `http://localhost:8081/v1/data/trino/allow`
     non_batched_connection_string: String,
+    /// URI for Batch OPA policies, e.g.
+    /// `http://localhost:8081/v1/data/trino/batch` - if not set, a
+    /// single request will be sent for each entry on filtering methods
     batched_connection_string: Option<String>,
+    /// URI for fetching row filters, e.g.
+    /// `http://localhost:8081/v1/data/trino/rowFilters` - if not set,
+    /// no row filtering will be applied
+    row_filters_connection_string: Option<String>,
+    /// URI for fetching column masks, e.g.
+    /// `http://localhost:8081/v1/data/trino/columnMask` - if not set,
+    /// no masking will be applied
+    column_masking_connection_string: Option<String>,
+    /// Whether to allow permission management (GRANT, DENY, ...) and
+    /// role management operations - OPA will not be queried for any
+    /// such operations, they will be bulk allowed or denied depending
+    /// on this setting
     allow_permission_management_operations: bool,
 }
 
@@ -43,6 +60,8 @@ impl TrinoOpaConfig {
                 opa_authorizer_name: "tech.stackable.trino.opa.OpaAuthorizer".to_string(),
                 non_batched_connection_string,
                 batched_connection_string: None,
+                row_filters_connection_string: None,
+                column_masking_connection_string: None,
                 allow_permission_management_operations: false,
             })
         } else if PRODUCT_VERSIONS_WITH_INTERMEDIATE_AUTHORIZER
@@ -63,6 +82,8 @@ impl TrinoOpaConfig {
                 opa_authorizer_name: "opa".to_string(),
                 non_batched_connection_string,
                 batched_connection_string: Some(batched_connection_string),
+                row_filters_connection_string: None,
+                column_masking_connection_string: None,
                 allow_permission_management_operations: false,
             })
         } else {
@@ -78,10 +99,30 @@ impl TrinoOpaConfig {
                     OpaApiVersion::V1,
                 )
                 .await?;
+            let row_filters_connection_string = opa_config
+                .full_document_url_from_config_map(
+                    client,
+                    trino,
+                    // Sticking to https://github.com/trinodb/trino/blob/442/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L44
+                    Some("rowFilters"),
+                    OpaApiVersion::V1,
+                )
+                .await?;
+            let column_masking_connection_string = opa_config
+                .full_document_url_from_config_map(
+                    client,
+                    trino,
+                    // Sticking to https://github.com/trinodb/trino/blob/442/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L45
+                    Some("columnMask"),
+                    OpaApiVersion::V1,
+                )
+                .await?;
             Ok(TrinoOpaConfig {
                 opa_authorizer_name: "opa".to_string(),
                 non_batched_connection_string,
                 batched_connection_string: Some(batched_connection_string),
+                row_filters_connection_string: Some(row_filters_connection_string),
+                column_masking_connection_string: Some(column_masking_connection_string),
                 allow_permission_management_operations: true,
             })
         }
@@ -102,6 +143,18 @@ impl TrinoOpaConfig {
             config.insert(
                 "opa.policy.batched-uri".to_string(),
                 Some(batched_connection_string.clone()),
+            );
+        }
+        if let Some(row_filters_connection_string) = &self.row_filters_connection_string {
+            config.insert(
+                "opa.policy.row-filters-uri".to_string(),
+                Some(row_filters_connection_string.clone()),
+            );
+        }
+        if let Some(column_masking_connection_string) = &self.column_masking_connection_string {
+            config.insert(
+                "opa.policy.column-masking-uri".to_string(),
+                Some(column_masking_connection_string.clone()),
             );
         }
         if self.allow_permission_management_operations {

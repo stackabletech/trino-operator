@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support row filters and column masks in Rego rules ([#559]).
+
+[#559]: https://github.com/stackabletech/trino-operator/pull/559
+
 ## [24.3.0] - 2024-03-20
 
 ### Added

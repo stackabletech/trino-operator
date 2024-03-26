@@ -1,0 +1,202 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-info-fetcher-client-credentials
+stringData:
+  clientId: user-info-fetcher
+  clientSecret: user-info-fetcher-client-secret
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-my-dataspace-realm
+data:
+  realm.json: |
+    {
+      "realm" : "my-dataspace",
+      "enabled" : true,
+      "groups" : [ {
+        "name" : "banned-user",
+        "path" : "/banned-user"
+      }, {
+        "name" : "iceberg-all",
+        "path" : "/iceberg-all"
+      }, {
+        "name" : "iceberg-read",
+        "path" : "/iceberg-read"
+      }, {
+        "name" : "lakehouse",
+        "path" : "/lakehouse"
+      }, {
+        "name" : "tpch",
+        "path" : "/tpch"
+      }, {
+        "name" : "trino-admin",
+        "path" : "/trino-admin"
+      }, {
+        "name" : "group-user",
+        "path" : "/group-user"
+      } ],
+      "users" : [ {
+        "username" : "admin",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "admin",
+        "lastName" : "admin",
+        "email" : "admin@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"JxIyEshkBUrhZX1BEN9JO8EM3ue5/SnGHDfuyTqOH6A=\",\"salt\":\"f6iCn2rWqZQaRnCCsKAoQQ==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/trino-admin" ]
+      }, {
+        "username" : "banned-user",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "banned-user",
+        "lastName" : "banned-user",
+        "email" : "banned-user@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"xfA/z3WyVGdvfekYBXX5v4TXQ3WKVuv8ezcRwP9CYL0=\",\"salt\":\"eFKOaWmpSo+/qpyg9RaypQ==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/banned-user" ]
+      }, {
+        "username" : "group-user",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "group-user",
+        "lastName" : "group-user",
+        "email" : "group-user@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"bYm3wwtcIMeHud9bRZKZf2+ByzgMGB2ys4ab9udS28Q=\",\"salt\":\"9EPeVvetiYHC2jUw+0OyEQ==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/group-user" ]
+      }, {
+        "username" : "iceberg",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "iceberg",
+        "lastName" : "iceberg",
+        "email" : "iceberg@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"DVBZV6fEBbF78qL4scnp66rbG9AHoTuZ/V4ysJd2zM0=\",\"salt\":\"ADJAkG0J7Ul7r4M2DnqDeA==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/iceberg-all" ]
+      },
+      {
+        "username" : "iceberg-all",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "iceberg-all",
+        "lastName" : "iceberg-all",
+        "email" : "iceberg-all@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"LnpXTygWurXwTQCfbOBZCgQXg1LKtAcFDQE/QtzZ1fI=\",\"salt\":\"g0O5p0q5hiahZpHf8sfVXw==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/iceberg-all" ]
+      }, {
+        "username" : "iceberg-read",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "iceberg-read",
+        "lastName" : "iceberg-read",
+        "email" : "iceberg-read@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"kpdpVdQFGHyH/Y9YGLqmMk/UQivYgrUWIb6fOyYC0/k=\",\"salt\":\"ExY4u4qXj8C/diFKs7aGig==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/iceberg-read" ]
+      }, {
+        "username" : "lakehouse",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "lakehouse",
+        "lastName" : "lakehouse",
+        "email" : "lakehouse@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"fc0VhnKrlD69f5w37r+DAs3uv9+LU7a1fKPcmMhwIV0=\",\"salt\":\"jIx+IxDblshP2pB0SlhIMQ==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/lakehouse" ]
+      }, {
+        "username" : "lakehouse-tpch",
+        "enabled" : true,
+        "emailVerified" : true,
+        "firstName" : "lakehouse-tpch",
+        "lastName" : "lakehouse-tpch",
+        "email" : "lakehouse-tpch@example.com",
+        "credentials" : [ {
+          "type" : "password",
+          "userLabel" : "My password",
+          "secretData" : "{\"value\":\"bCMr0WRWg0LBF8ca+P2iVRo1eBIp7XRJXxhEWA1IrAs=\",\"salt\":\"2Dc83UdVQWgPJ9bc4Cf/rw==\",\"additionalParameters\":{}}",
+          "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+        } ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "groups" : [ "/lakehouse", "/tpch" ]
+      }, {
+        "username" : "service-account-user-info-fetcher",
+        "enabled" : true,
+        "totp" : false,
+        "emailVerified" : false,
+        "serviceAccountClientId" : "user-info-fetcher",
+        "credentials" : [ ],
+        "disableableCredentialTypes" : [ ],
+        "requiredActions" : [ ],
+        "realmRoles" : [ "default-roles-my-dataspace" ],
+        "clientRoles" : {
+          "realm-management" : [
+            "view-users"
+          ]
+        },
+        "notBefore" : 0,
+        "groups" : [ ]
+      } ],
+      "clients" : [ {
+        "clientId" : "${USER_INFO_FETCHER_CLIENT_ID}",
+        "surrogateAuthRequired" : false,
+        "enabled" : true,
+        "alwaysDisplayInConsole" : false,
+        "clientAuthenticatorType" : "client-secret",
+        "secret" : "${USER_INFO_FETCHER_CLIENT_SECRET}",
+        "redirectUris" : [ "/*" ],
+        "webOrigins" : [ "/*" ],
+        "notBefore" : 0,
+        "bearerOnly" : false,
+        "serviceAccountsEnabled" : true,
+        "publicClient" : false,
+        "frontchannelLogout" : true,
+        "protocol" : "openid-connect",
+        "attributes" : {
+          "oidc.ciba.grant.enabled" : "true",
+          "oauth2.device.authorization.grant.enabled" : "false"
+        },
+        "authenticationFlowBindingOverrides" : { },
+        "fullScopeAllowed" : true
+      } ]
+    }

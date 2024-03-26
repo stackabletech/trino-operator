@@ -31,6 +31,9 @@ dimensions:
   - name: zookeeper
     values:
       - 3.9.1
+  - name: keycloak
+    values:
+      - 23.0.1
   - name: s3-use-tls
     values:
       - "true"
@@ -89,6 +92,13 @@ tests:
   - name: cluster-operation
     dimensions:
       - trino-latest
+  - name: opa-authorization
+    dimensions:
+      - trino-latest
+      - hive
+      - opa
+      - keycloak
+      - openshift
 suites:
   - name: nightly
     # Run with the latest product versions and tls true and false to cover different tls code paths.

@@ -1,0 +1,48 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+commands:
+  - script: kubectl -n $NAMESPACE wait --for=condition=available=true trinoclusters.trino.stackable.tech/trino --timeout 301s
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-coordinator-default
+spec:
+  template:
+    spec:
+      terminationGracePeriodSeconds: 900
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-default
+spec:
+  template:
+    spec:
+      terminationGracePeriodSeconds: 80 # 10s gracefulShutdownTimeout + 2 x 30s grace period + 10s safety buffer
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trino-coordinator
+status:
+  expectedPods: 1
+  currentHealthy: 1
+  disruptionsAllowed: 1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trino-worker
+status:
+  expectedPods: 1
+  currentHealthy: 1
+  disruptionsAllowed: 1

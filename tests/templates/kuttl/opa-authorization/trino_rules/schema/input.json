@@ -1,0 +1,1113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stackable.tech/request.trino.opa.schema.json",
+  "title": "Trino OPA request",
+  "type": "object",
+  "properties": {
+    "context": {
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "string"
+            },
+            "groups": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false,
+          "required": ["user", "groups"]
+        },
+        "softwareStack": {
+          "type": "object",
+          "properties": {
+            "trinoVersion": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["trinoVersion"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["identity", "softwareStack"]
+    },
+    "action": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AccessCatalog"
+        },
+        {
+          "$ref": "#/$defs/ColumnOperationsOnTableLikeObject"
+        },
+        {
+          "$ref": "#/$defs/CreateSchema"
+        },
+        {
+          "$ref": "#/$defs/ExecuteTableProcedure"
+        },
+        {
+          "$ref": "#/$defs/FilterCatalogs"
+        },
+        {
+          "$ref": "#/$defs/FilterColumns"
+        },
+        {
+          "$ref": "#/$defs/FilterFunctions"
+        },
+        {
+          "$ref": "#/$defs/FilterTables"
+        },
+        {
+          "$ref": "#/$defs/FilterViewQueryOwnedBy"
+        },
+        {
+          "$ref": "#/$defs/FunctionResourceActions"
+        },
+        {
+          "$ref": "#/$defs/GetColumnMask"
+        },
+        {
+          "$ref": "#/$defs/GetRowFilters"
+        },
+        {
+          "$ref": "#/$defs/IdentityResourceActions"
+        },
+        {
+          "$ref": "#/$defs/ImpersonateUser"
+        },
+        {
+          "$ref": "#/$defs/NoResourceActions"
+        },
+        {
+          "$ref": "#/$defs/RenameSchema"
+        },
+        {
+          "$ref": "#/$defs/RenameTableLikeObject"
+        },
+        {
+          "$ref": "#/$defs/SchemaResourceActions"
+        },
+        {
+          "$ref": "#/$defs/SetAuthorizationOnTableLikeObject"
+        },
+        {
+          "$ref": "#/$defs/SetCatalogSessionPropertyAction"
+        },
+        {
+          "$ref": "#/$defs/SetSystemSessionPropertyAction"
+        },
+        {
+          "$ref": "#/$defs/SetSchemaAuthorization"
+        },
+        {
+          "$ref": "#/$defs/ShowSchemas"
+        },
+        {
+          "$ref": "#/$defs/TableResourceActions"
+        },
+        {
+          "$ref": "#/$defs/TableWithPropertiesActions"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["context", "action"],
+
+  "$defs": {
+    "AccessCatalog": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "AccessCatalog"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "catalog": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["name"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["catalog"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "ColumnOperationsOnTableLikeObject": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "CreateViewWithSelectFromColumns",
+            "SelectFromColumns",
+            "UpdateTableColumns"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "CreateSchema": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "CreateSchema"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "properties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "schemaName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "properties", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "ExecuteTableProcedure": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "ExecuteTableProcedure"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            },
+            "function": {
+              "type": "object",
+              "properties": {
+                "functionName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["functionName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table", "function"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "FilterCatalogs": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "FilterCatalogs"
+        },
+        "filterResources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "catalog": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["name"]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["catalog"]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["filterResources", "operation"]
+    },
+
+    "FilterColumns": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "FilterColumns"
+        },
+        "filterResources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "table": {
+                "type": "object",
+                "properties": {
+                  "catalogName": {
+                    "type": "string"
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "uniqueItems": true
+                  },
+                  "schemaName": {
+                    "type": "string"
+                  },
+                  "tableName": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "catalogName",
+                    "columns",
+                    "schemaName",
+                    "tableName"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["table"]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["filterResources", "operation"]
+    },
+
+    "FilterFunctions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "FilterFunctions"
+        },
+        "filterResources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "function": {
+                "type": "object",
+                "properties": {
+                  "catalogName": {
+                    "type": "string"
+                  },
+                  "functionName": {
+                    "type": "string"
+                  },
+                  "schemaName": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "catalogName",
+                    "functionName",
+                    "schemaName"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["function"]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["filterResources", "operation"]
+    },
+
+    "FilterTables": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "FilterTables"
+        },
+        "filterResources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "table": {
+                "type": "object",
+                "properties": {
+                  "catalogName": {
+                    "type": "string"
+                  },
+                  "schemaName": {
+                    "type": "string"
+                  },
+                  "tableName": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "catalogName",
+                    "schemaName",
+                    "tableName"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["table"]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["filterResources", "operation"]
+    },
+
+    "FilterViewQueryOwnedBy": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "FilterViewQueryOwnedBy"
+        },
+        "filterResources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "object",
+                "properties": {
+                  "groups": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "user": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "groups",
+                    "user"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["user"]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["filterResources", "operation"]
+    },
+
+    "FunctionResourceActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "CreateFunction",
+            "CreateViewWithExecuteFunction",
+            "DropFunction",
+            "ExecuteFunction",
+            "ExecuteProcedure"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "function": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "functionName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "functionName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["function"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "GetColumnMask": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "GetColumnMask"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "column": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                },
+                "columnName": {
+                  "type": "string"
+                },
+                "columnType": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "catalogName",
+                "schemaName",
+                "tableName",
+                "columnName",
+                "columnType"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["column"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "GetRowFilters": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "GetRowFilters"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "IdentityResourceActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "KillQueryOwnedBy",
+            "ViewQueryOwnedBy"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "object",
+              "properties": {
+                "groups": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "uniqueItems": true
+                },
+                "user": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "groups",
+                "user"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "ImpersonateUser": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "ImpersonateUser"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "user": {
+              "type": "object",
+              "properties": {
+                "user": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["user"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["user"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "NoResourceActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "ExecuteQuery",
+            "ReadSystemInformation",
+            "WriteSystemInformation"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation"]
+    },
+
+    "RenameSchema": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "RenameSchema"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        },
+        "targetResource": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource", "targetResource"]
+    },
+
+    "RenameTableLikeObject": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "RenameMaterializedView",
+            "RenameTable",
+            "RenameView"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        },
+        "targetResource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource", "targetResource"]
+    },
+
+    "SchemaResourceActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "DropSchema",
+            "FilterSchemas",
+            "ShowCreateSchema",
+            "ShowFunctions",
+            "ShowTables"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "SetAuthorizationOnTableLikeObject": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "SetTableAuthorization",
+            "SetViewAuthorization"
+          ]
+        },
+        "grantee": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["name", "type"]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "grantee", "resource"]
+    },
+
+    "SetCatalogSessionPropertyAction": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SetCatalogSessionProperty"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "catalogSessionProperty": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "propertyName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "propertyName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["systemSessionProperty"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "SetSystemSessionPropertyAction": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SetSystemSessionProperty"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "systemSessionProperty": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["name"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["systemSessionProperty"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "SetSchemaAuthorization": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "SetSchemaAuthorization"
+        },
+        "grantee": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["name", "type"]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["schema"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "grantee", "resource"]
+    },
+
+    "ShowSchemas": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "ShowSchemas"
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "catalog": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["name"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["catalog"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "TableResourceActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "AddColumn",
+            "AlterColumn",
+            "CreateView",
+            "DeleteFromTable",
+            "DropColumn",
+            "DropMaterializedView",
+            "DropTable",
+            "DropView",
+            "InsertIntoTable",
+            "RefreshMaterializedView",
+            "RenameColumn",
+            "SetColumnComment",
+            "SetTableComment",
+            "SetViewComment",
+            "ShowColumns",
+            "ShowCreateTable",
+            "TruncateTable"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": ["catalogName", "schemaName", "tableName"]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    },
+
+    "TableWithPropertiesActions": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "enum": [
+            "CreateMaterializedView",
+            "CreateTable",
+            "SetMaterializedViewProperties",
+            "SetTableProperties"
+          ]
+        },
+        "resource": {
+          "type": "object",
+          "properties": {
+            "table": {
+              "type": "object",
+              "properties": {
+                "catalogName": {
+                  "type": "string"
+                },
+                "properties": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "schemaName": {
+                  "type": "string"
+                },
+                "tableName": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "catalogName",
+                "properties",
+                "schemaName",
+                "tableName"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": ["table"]
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "resource"]
+    }
+  }
+}

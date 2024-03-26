@@ -17,12 +17,14 @@ data:
     allow if {
       is_admin
     }
+
     # Allow batched access
     batch contains i if {
       some i
       input.action.filterResources[i]
       is_admin
     }
+
     # Corner case: filtering columns is done with a single table item, and many columns inside
     batch contains i if {
       some i
@@ -30,6 +32,35 @@ data:
       count(input.action.filterResources) == 1
       input.action.filterResources[0].table.columns[i]
       is_admin
+    }
+
+    # Filter rows according to an expression
+    rowFilters contains row_filter if {
+      input.action.operation == "GetRowFilters"
+
+      input.action.resource.table.catalogName == "default"
+      input.action.resource.table.schemaName == "hr"
+      input.action.resource.table.tableName == "employee"
+
+      row_filter := {
+        "expression": "user = current_user",
+        "identity": "system_user",
+      }
+    }
+
+    # Mask columns according to an expression
+    columnMask := column_mask if {
+      input.action.operation == "GetColumnMask"
+
+      input.action.resource.column.catalogName == "default"
+      input.action.resource.column.schemaName == "default"
+      input.action.resource.column.tableName == "cards"
+      input.action.resource.column.columnName == "SSN"
+
+      column_mask := {
+        "expression": "'XXX-XX-' + substring(credit_card, -4)",
+        "identity": "system_user",
+      }
     }
 
     is_admin() if {
