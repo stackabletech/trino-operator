@@ -12,7 +12,7 @@
 * {feature-tracker}[Feature Tracker {external-link-icon}^]
 * {crd}[CRD documentation {external-link-icon}^]
 
-This is an operator for Kubernetes that can manage h{trino}[Trino] clusters.
+This is an operator for Kubernetes that can manage {trino}[Trino] clusters.
 Trino is an open-source distributed SQL query engine that enables high-speed analytics of large datasets from multiple data sources using SQL queries.
 This operator enables you to manage your Trino instances on Kubernetes efficiently.
 
