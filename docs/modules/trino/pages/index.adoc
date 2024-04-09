@@ -3,7 +3,9 @@
 :keywords: Stackable operator, Trino, Kubernetes, k8s, operator, data science, data exploration
 :trino: https://trino.io/
 :github: https://github.com/stackabletech/trino-operator/
-:crd: {crd-docs}/trino.stackable.tech/trinocluster/v1alpha1/
+:crd: {crd-docs-base-url}/trino-operator/{crd-docs-version}/
+:crd-trinocluster: {crd-docs}/trino.stackable.tech/trinocluster/v1alpha1/
+:crd-trinocatalog: {crd-docs}/trino.stackable.tech/trinocatalog/v1alpha1/
 :feature-tracker: https://features.stackable.tech/unified
 :k8s-crs: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
 
@@ -62,4 +64,4 @@ include::partial$supported-versions.adoc[]
 
 * The {github}[trino-operator {external-link-icon}^] GitHub repository
 * The operator feature overview in the {feature-tracker}[feature tracker {external-link-icon}^]
-* The {crd}[TrinoCluster {external-link-icon}^] CRD documentation
+* The {crd-trinocluster}[TrinoCluster {external-link-icon}^] and {crd-trinocatalog}[TrinoCatalog {external-link-icon}^] CRD documentation
