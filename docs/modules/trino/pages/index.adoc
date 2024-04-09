@@ -2,7 +2,15 @@
 :description: The Stackable operator for Trino is a Kubernetes operator that can manage Trino clusters. Learn about its features, resources, dependencies and demos, and see the list of supported Trino versions.
 :keywords: Stackable operator, Trino, Kubernetes, k8s, operator, data science, data exploration
 :trino: https://trino.io/
+:github: https://github.com/stackabletech/trino-operator/
+:crd: {crd-docs}/trino.stackable.tech/trinocluster/v1alpha1/
+:feature-tracker: https://features.stackable.tech/unified
 :k8s-crs: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/
+
+[.link-bar]
+* {github}[GitHub {external-link-icon}^]
+* {feature-tracker}[Feature Tracker {external-link-icon}^]
+* {crd}[CRD documentation {external-link-icon}^]
 
 This is an operator for Kubernetes that can manage h{trino}[Trino] clusters.
 Trino is an open-source distributed SQL query engine that enables high-speed analytics of large datasets from multiple data sources using SQL queries.
@@ -49,3 +57,9 @@ To use a specific Trino version in your TrinoCluster, you have to specify an ima
 The operator also supports running images from a custom registry or running entirely customized images; both of these cases are explained under xref:concepts:product-image-selection.adoc[] as well.
 
 include::partial$supported-versions.adoc[]
+
+== Useful links
+
+* The {github}[trino-operator {external-link-icon}^] GitHub repository
+* The operator feature overview in the {feature-tracker}[feature tracker {external-link-icon}^]
+* The {crd}[TrinoCluster {external-link-icon}^] CRD documentation
