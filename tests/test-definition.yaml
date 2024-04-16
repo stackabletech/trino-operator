@@ -77,6 +77,7 @@ tests:
   - name: resources
     dimensions:
       - trino-latest
+      - openshift
   - name: authentication
     dimensions:
       - trino-latest
@@ -85,6 +86,7 @@ tests:
   - name: orphaned-resources
     dimensions:
       - trino-latest
+      - openshift
   - name: logging
     dimensions:
       - trino
@@ -92,6 +94,7 @@ tests:
   - name: cluster-operation
     dimensions:
       - trino-latest
+      - openshift
   - name: opa-authorization
     dimensions:
       - trino-latest
