@@ -16,8 +16,6 @@ spec:
         app: test-trino
     spec:
       serviceAccount: integration-tests-sa
-      securityContext:
-        fsGroup: 1000
       containers:
         - name: test-trino
           image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
