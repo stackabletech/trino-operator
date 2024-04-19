@@ -110,13 +110,26 @@ WARNING: When you are not using OPA for authorization, the user `admin` is not a
 If you need graceful shutdown you need to use OPA or need to make sure `admin` is allowed to gracefully shut down workers (e.g. having you own authorizer or patching Trino).
 
 In case you use OPA to authorize Trino requests, you need to make sure the user `admin` is authorized to trigger a graceful shutdown of the workers.
-You can achieve this e.g. by adding the following rule, which grants `admin` the permissions to do anything - including graceful shutdown.
+You can achieve this e.g. by adding the following rule, which grants `admin` the permissions to issue a graceful shutdown.
 
 [source,rego]
 ----
 allow {
+  input.action.operation == "WriteSystemInformation"
   input.context.identity.user == "admin"
 }
+----
+
+In Trino policies the following statement is recommended:
+[source,rego]
+----
+"system_information": [
+  # This is needed for graceful shutdown
+  {
+    "user": "admin",
+    "allow": ["read", "write"]
+  },
+],
 ----
 
 In case the user `admin` does not have the permission to gracefully shut down a worker, the error message `curl: (22) The requested URL returned error: 403 Forbidden` will be shown in the worker log and the worker will shut down immediately.
