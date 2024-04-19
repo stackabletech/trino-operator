@@ -13,10 +13,6 @@ policies := {
 			"allow": "none",
 		},
 		{
-			"user": "admin",
-			"allow": "all",
-		},
-		{
 			"group": "users",
 			"catalog": "user_.*",
 			"allow": "read-only",
@@ -42,10 +38,6 @@ policies := {
 			"allow": [],
 		},
 		{
-			"user": "admin",
-			"allow": ["execute", "kill", "view"],
-		},
-		{
 			"group": "users",
 			"allow": ["execute", "view"],
 		},
@@ -66,10 +58,6 @@ policies := {
 		{
 			"group": "banned-group",
 			"owner": false,
-		},
-		{
-			"user": "admin",
-			"owner": true,
 		},
 		{
 			"group": "users",
@@ -96,17 +84,6 @@ policies := {
 		{
 			"user": "banned-group",
 			"privileges": [],
-		},
-		{
-			"user": "admin",
-			"privileges": [
-				"SELECT",
-				"INSERT",
-				"DELETE",
-				"UPDATE",
-				"OWNERSHIP",
-				"GRANT_SELECT",
-			],
 		},
 		{
 			"group": "users",
@@ -201,10 +178,6 @@ policies := {
 			"allow": [],
 		},
 		{
-			"user": "admin",
-			"allow": ["read", "write"],
-		},
-		{
 			"group": "users",
 			"allow": ["read"],
 		},
@@ -217,10 +190,6 @@ policies := {
 		{
 			"group": "banned-group",
 			"allow": false,
-		},
-		{
-			"user": "admin",
-			"allow": true,
 		},
 		{
 			"group": "users",
@@ -239,10 +208,6 @@ policies := {
 			"allow": false,
 		},
 		{
-			"user": "admin",
-			"allow": true,
-		},
-		{
 			"group": "users",
 			"property": "resource_overcommit",
 			"allow": true,
@@ -250,42 +215,11 @@ policies := {
 	],
 	"impersonation": [
 		{
-			"original_user": "admin",
-			"new_user": ".*",
-			"allow": true,
-		},
-		{
 			"original_user": "team_(.*)",
 			"new_user": "team_$1_sandbox",
 			"allow": true,
 		},
 	],
-	"authorization": [{
-		"original_user": "admin",
-		"new_user": ".*",
-		"allow": true,
-	}],
-	"functions": [{
-		"user": "admin",
-		"catalog": ".*",
-		"schema": ".*",
-		"function": ".*",
-		"privileges": [
-			"EXECUTE",
-			"GRANT_EXECUTE",
-			"OWNERSHIP",
-		],
-	}],
-	"procedures": [{
-		"user": "admin",
-		"catalog": ".*",
-		"schema": ".*",
-		"procedure": ".*",
-		"privileges": [
-			"EXECUTE",
-			"GRANT_EXECUTE",
-		],
-	}],
 }
 
 extra_groups := groups if {

@@ -7,6 +7,7 @@ commands:
       kubectl create configmap trino-opa-rules \
         --namespace=$NAMESPACE \
         --from-file=trino_rules/actual_permissions.rego \
+        --from-file=trino_rules/policies.rego \
         --from-file=trino_rules/requested_permissions.rego \
         --from-file=trino_rules/util.rego \
         --from-file=trino_rules/verification.rego

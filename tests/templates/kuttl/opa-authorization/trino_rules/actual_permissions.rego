@@ -9,13 +9,8 @@ import rego.v1
 #
 # For every resource, like catalog and table, the rules and functions
 # are structured as follows:
-#   * default resource_rules := ...
-#     Default rules for the resource if not defined in the policies,
-#     e.g. []
-#   * resource_rules := policies.resource
-#     Rules for the resource in the policies if defined
 #   * first_matching_resource_rule(parameters like table name) := ...
-#     Returns the first rule from resource_rules which match the
+#     Returns the first rule of the associated policies which match the
 #     identity and the given parameters
 #   * default resource_permission(_) := ...
 #     Default permission if no matching rule was found, e.g. "none".
@@ -56,7 +51,7 @@ identity := input.context.identity
 #             },
 #         ],
 #     }
-policies := data.trino_policies.policies
+external_policies := data.trino_policies.policies
 
 # METADATA
 # description: |
@@ -115,13 +110,9 @@ match_original_user_group(rule) if {
 	match_any_group(group_pattern)
 }
 
-default authorization_rules := []
-
-authorization_rules := policies.authorization
-
 first_matching_authorization_rule(grantee_name) := rule if {
 	rules := [rule |
-		some rule in authorization_rules
+		some rule in policies.authorization
 
 		match_original_user_group(rule)
 
@@ -139,13 +130,9 @@ default authorization_permission(_) := false
 
 authorization_permission(grantee_name) := first_matching_authorization_rule(grantee_name).allow
 
-default catalog_rules := [{"allow": "all"}]
-
-catalog_rules := policies.catalogs
-
 first_matching_catalog_rule(catalog_name) := rule if {
 	rules := [rule |
-		some rule in catalog_rules
+		some rule in policies.catalogs
 
 		match_user_group(rule)
 
@@ -166,16 +153,12 @@ default catalog_access(_) := {"none"}
 
 catalog_access(catalog_name) := catalog_access_map[first_matching_catalog_rule(catalog_name).allow]
 
-default catalog_session_properties_rules := [{"allow": true}]
-
-catalog_session_properties_rules := policies.catalog_session_properties
-
 first_matching_catalog_session_properties_rule(
 	catalog_name,
 	property_name,
 ) := rule if {
 	rules := [rule |
-		some rule in catalog_session_properties_rules
+		some rule in policies.catalog_session_properties
 
 		match_user_group(rule)
 
@@ -207,7 +190,7 @@ catalog_visibility(catalog_name) if {
 catalog_visibility(catalog_name) if {
 	catalog_access(catalog_name) == {"read-only"}
 
-	some rule in schema_rules
+	some rule in policies.schemas
 
 	match_user_group(rule)
 
@@ -223,10 +206,10 @@ catalog_visibility(catalog_name) if {
 
 	rules := array.concat(
 		array.concat(
-			table_rules,
-			function_rules,
+			policies.tables,
+			policies.functions,
 		),
-		procedure_rules,
+		policies.procedures,
 	)
 
 	some rule in rules
@@ -243,7 +226,7 @@ catalog_visibility(catalog_name) if {
 catalog_visibility(catalog_name) if {
 	catalog_access(catalog_name) == {"read-only"}
 
-	some rule in catalog_session_properties_rules
+	some rule in policies.catalog_session_properties
 
 	match_user_group(rule)
 
@@ -254,24 +237,13 @@ catalog_visibility(catalog_name) if {
 	rule.allow == true
 }
 
-default function_rules := [{
-	"catalog": "system",
-	"schema": "builtin",
-	"privileges": [
-		"GRANT_EXECUTE",
-		"EXECUTE",
-	],
-}]
-
-function_rules := policies.functions
-
 first_matching_function_rule(
 	catalog_name,
 	schema_name,
 	function_name,
 ) := rule if {
 	rules := [rule |
-		some rule in function_rules
+		some rule in policies.functions
 
 		match_user_group(rule)
 
@@ -300,13 +272,9 @@ function_privileges(
 	).privileges
 }
 
-default impersonation_rules := []
-
-impersonation_rules := policies.impersonation
-
 first_matching_impersonation_rule(user) := rule if {
 	rules := [rule |
-		some rule in impersonation_rules
+		some rule in policies.impersonation
 
 		match_original_user_group(rule)
 
@@ -348,17 +316,6 @@ impersonation_access(user) := access if {
 	access := first_matching_impersonation_rule(user).allow
 }
 
-default procedure_rules := [{
-	"catalog": "system",
-	"schema": "builtin",
-	"privileges": [
-		"GRANT_EXECUTE",
-		"EXECUTE",
-	],
-}]
-
-procedure_rules := policies.procedures
-
 # Matching the "function name" with the "procedure pattern" is intended.
 # The requested procedure name is contained in
 # `input.action.resource.function.functionName`. A rule applies if this
@@ -370,7 +327,7 @@ first_matching_procedure_rule(
 	function_name,
 ) := rule if {
 	rules := [rule |
-		some rule in procedure_rules
+		some rule in policies.procedures
 
 		match_user_group(rule)
 
@@ -399,13 +356,9 @@ procedure_privileges(
 	).privileges
 }
 
-default query_rules := [{"allow": ["execute", "kill", "view"]}]
-
-query_rules := policies.queries
-
 first_matching_query_rule := rule if {
 	rules := [rule |
-		some rule in query_rules
+		some rule in policies.queries
 
 		match_user_group(rule)
 	]
@@ -418,7 +371,7 @@ query_access := {access | some access in first_matching_query_rule.allow}
 
 first_matching_query_owned_by_rule(user) := rule if {
 	rules := [rule |
-		some rule in query_rules
+		some rule in policies.queries
 
 		match_user_group(rule)
 
@@ -442,13 +395,9 @@ query_owned_by_access(user) := access if {
 	}
 }
 
-default schema_rules := [{"owner": true}]
-
-schema_rules := policies.schemas
-
 first_matching_schema_rule(catalog_name, schema_name) := rule if {
 	rules := [rule |
-		some rule in schema_rules
+		some rule in policies.schemas
 
 		match_user_group(rule)
 
@@ -481,10 +430,10 @@ schema_visibility(catalog_name, schema_name) if {
 
 	rules := array.concat(
 		array.concat(
-			table_rules,
-			function_rules,
+			policies.tables,
+			policies.functions,
 		),
-		procedure_rules,
+		policies.procedures,
 	)
 
 	some rule in rules
@@ -499,21 +448,6 @@ schema_visibility(catalog_name, schema_name) if {
 
 	count(rule.privileges) != 0
 }
-
-default table_rules := [{
-	"privileges": [
-		"DELETE",
-		"GRANT_SELECT",
-		"INSERT",
-		"OWNERSHIP",
-		"SELECT",
-		"UPDATE",
-	],
-	"filter": null,
-	"filter_environment": {"user": null},
-}]
-
-table_rules := policies.tables
 
 first_matching_table_rule(_, "information_schema", _) := {
 	"schema": "information_schema",
@@ -536,7 +470,7 @@ first_matching_table_rule(
 ) := rule if {
 	schema_name != "information_schema"
 	rules := [rule |
-		some rule in table_rules
+		some rule in policies.tables
 
 		match_user_group(rule)
 
@@ -634,13 +568,9 @@ column_access(
 	access := column.allow
 }
 
-default system_information_rules := []
-
-system_information_rules := policies.system_information
-
 first_matching_system_information_rule := rule if {
 	rules := [rule |
-		some rule in system_information_rules
+		some rule in policies.system_information
 
 		match_user_group(rule)
 	]
@@ -653,13 +583,9 @@ system_information_access := {access |
 	some access in first_matching_system_information_rule.allow
 }
 
-default system_session_properties_rules := [{"allow": true}]
-
-system_session_properties_rules := policies.system_session_properties
-
 first_matching_system_session_properties_rule(property_name) := rule if {
 	rules := [rule |
-		some rule in system_session_properties_rules
+		some rule in policies.system_session_properties
 
 		match_user_group(rule)
 

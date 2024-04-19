@@ -16,9 +16,9 @@ import rego.v1
 #     met and therefore the first_matching_resource_rule function should
 #     return undefined.
 #   * test_first_matching_resource_rule_with_no_rules
-#     If no rules are defined in the policies for the given resource,
-#     then the first_matching_resource_rule function should return
-#     either the default rule or undefined.
+#     If no rules are defined in the external policies for the given
+#     resource, then the first_matching_resource_rule function should
+#     return either the default rule or undefined.
 #   * test_resource_permission
 #     Checks that the resource_permission function returns the expected
 #     permission
