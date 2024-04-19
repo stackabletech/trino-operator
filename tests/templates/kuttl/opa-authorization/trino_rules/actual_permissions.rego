@@ -21,40 +21,6 @@ identity := input.context.identity
 
 # METADATA
 # description: |
-#   The externally provided policies, see the file-based access control
-#   (https://trino.io/docs/current/security/file-system-access-control.html)
-#   for further documentation.
-#
-#   Example:
-#     package trino_policies
-#     import rego.v1
-#     policies := {
-#         "catalogs": [
-#             {
-#                 "user": "admin",
-#                 "allow": "all",
-#             },
-#         ],
-#         "schemas": [
-#             {
-#                 "user": "admin",
-#                 "owner": true,
-#             },
-#         ],
-#         "tables": [
-#             {
-#                 "user": "admin",
-#                 "privileges": [
-#                     "OWNERSHIP",
-#                     "GRANT_SELECT",
-#                 ],
-#             },
-#         ],
-#     }
-external_policies := data.trino_policies.policies
-
-# METADATA
-# description: |
 #   Externally provided groups; These groups are added to the ones in
 #   input.context.identity.groups.
 #

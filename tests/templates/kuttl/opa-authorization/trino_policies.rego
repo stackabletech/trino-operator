@@ -213,13 +213,11 @@ policies := {
 			"allow": true,
 		},
 	],
-	"impersonation": [
-		{
-			"original_user": "team_(.*)",
-			"new_user": "team_$1_sandbox",
-			"allow": true,
-		},
-	],
+	"impersonation": [{
+		"original_user": "team_(.*)",
+		"new_user": "team_$1_sandbox",
+		"allow": true,
+	}],
 }
 
 extra_groups := groups if {

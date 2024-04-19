@@ -10,6 +10,40 @@ import rego.v1
 # policies. The external policies then follow. For each rule list which
 # is not defined externally, default rules are appended.
 
+# METADATA
+# description: |
+#   The externally provided policies, see the file-based access control
+#   (https://trino.io/docs/current/security/file-system-access-control.html)
+#   for further documentation.
+#
+#   Example:
+#     package trino_policies
+#     import rego.v1
+#     policies := {
+#         "catalogs": [
+#             {
+#                 "user": "admin",
+#                 "allow": "all",
+#             },
+#         ],
+#         "schemas": [
+#             {
+#                 "user": "admin",
+#                 "owner": true,
+#             },
+#         ],
+#         "tables": [
+#             {
+#                 "user": "admin",
+#                 "privileges": [
+#                     "OWNERSHIP",
+#                     "GRANT_SELECT",
+#                 ],
+#             },
+#         ],
+#     }
+external_policies := data.trino_policies.policies
+
 stackable_policies := {
 	"authorization": [{"original_user": "admin"}],
 	"catalogs": [{
