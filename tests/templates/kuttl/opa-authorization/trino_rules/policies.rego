@@ -46,7 +46,7 @@ external_policies := data.trino_policies.policies
 
 stackable_policies := {"system_information": [{
 	# Allow graceful shutdowns
-	"user": "admin",
+	"user": "graceful-shutdown-user",
 	"allow": [
 		"read",
 		"write",
