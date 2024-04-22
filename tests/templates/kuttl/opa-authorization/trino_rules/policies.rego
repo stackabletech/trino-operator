@@ -44,67 +44,14 @@ import rego.v1
 #     }
 external_policies := data.trino_policies.policies
 
-stackable_policies := {
-	"authorization": [{"original_user": "admin"}],
-	"catalogs": [{
-		"user": "admin",
-		"allow": "all",
-	}],
-	"catalog_session_properties": [{
-		"user": "admin",
-		"allow": true,
-	}],
-	"functions": [{
-		"user": "admin",
-		"privileges": [
-			"EXECUTE",
-			"GRANT_EXECUTE",
-			"OWNERSHIP",
-		],
-	}],
-	"impersonation": [{"original_user": "admin"}],
-	"procedures": [{
-		"user": "admin",
-		"privileges": [
-			"EXECUTE",
-			"GRANT_EXECUTE",
-		],
-	}],
-	"queries": [{
-		"user": "admin",
-		"allow": [
-			"execute",
-			"kill",
-			"view",
-		],
-	}],
-	"schemas": [{
-		"user": "admin",
-		"owner": true,
-	}],
-	"tables": [{
-		"user": "admin",
-		"privileges": [
-			"DELETE",
-			"GRANT_SELECT",
-			"INSERT",
-			"OWNERSHIP",
-			"SELECT",
-			"UPDATE",
-		],
-	}],
-	"system_information": [{
-		"user": "admin",
-		"allow": [
-			"read",
-			"write",
-		],
-	}],
-	"system_session_properties": [{
-		"user": "admin",
-		"allow": true,
-	}],
-}
+stackable_policies := {"system_information": [{
+	# Allow graceful shutdowns
+	"user": "admin",
+	"allow": [
+		"read",
+		"write",
+	],
+}]}
 
 policies := {
 	"authorization": array.concat(
