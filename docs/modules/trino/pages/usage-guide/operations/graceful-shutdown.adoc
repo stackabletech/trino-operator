@@ -116,7 +116,7 @@ If you need graceful shutdown you need to use OPA or need to make sure `graceful
 
 In case you use OPA to authorize Trino requests, you need to make sure the user `graceful-shutdown-user` is authorized to trigger a graceful shutdown of the workers.
 
-When you are using the rego rules provided by Stackable this permission is automatically granted.
+When you are using rego rules provided by Stackable this permission is automatically granted.
 However, when you are writing your own rego rules, you can achieve this e.g. by adding the following rule, which grants `graceful-shutdown-user` the permissions to issue a graceful shutdown.
 
 [source,rego]

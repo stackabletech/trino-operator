@@ -11,9 +11,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Change the username that triggers graceful shutdown from `admin` to `graceful-shutdown-user` for more expressiveness (e.g. in the Trino policies).
-  This is breaking as users needs to make sure the user `graceful-shutdown-user` has the needed permissions to initiate a graceful shutdown ([#XXX]).
+  This is breaking as users needs to make sure the user `graceful-shutdown-user` has the needed permissions to initiate a graceful shutdown ([#573]).
 
 [#559]: https://github.com/stackabletech/trino-operator/pull/559
+[#573]: https://github.com/stackabletech/trino-operator/pull/573
 
 ## [24.3.0] - 2024-03-20
 
