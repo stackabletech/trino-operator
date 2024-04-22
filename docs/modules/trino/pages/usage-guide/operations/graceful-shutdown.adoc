@@ -127,18 +127,4 @@ allow {
 }
 ----
 
-In Trino policies the following statement is recommended:
-[source,rego]
-----
-"system_information": [
-  # This is needed for graceful shutdown
-  {
-    "user": "graceful-shutdown-user",
-    "allow": ["read", "write"]
-  },
-],
-----
-
 In case the user `graceful-shutdown-user` does not have the permission to gracefully shut down a worker, the error message `curl: (22) The requested URL returned error: 403 Forbidden` will be shown in the worker log and the worker will shut down immediately.
-
-NOTE: We plan to add CustomResources, so that you can define your Trino ACLs via Kubernetes objects. In this case the trino-operator will generate the rego-rules for you, and will add the needed rules for graceful shutdown for you. Until then, you need to grant the permission yourself.
