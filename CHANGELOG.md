@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 
 - Support row filters and column masks in Rego rules ([#559]).
 
+### Changed
+
+- BREAKING: Change the username that triggers graceful shutdown from `admin` to `graceful-shutdown-user` for more expressiveness (e.g. in the Trino policies).
+  This is breaking as users needs to make sure the user `graceful-shutdown-user` has the needed permissions to initiate a graceful shutdown ([#XXX]).
+
 [#559]: https://github.com/stackabletech/trino-operator/pull/559
 
 ## [24.3.0] - 2024-03-20

@@ -2,6 +2,11 @@
 
 You can configure the graceful shutdown as described in xref:concepts:operations/graceful_shutdown.adoc[].
 
+[WARNING]
+====
+Graceful shutdown only works if you enabled authorization using OPA. See <<Authorization requirements>> for details.
+====
+
 == Coordinators
 
 As a default, coordinators have `15 minutes` to terminate gracefully.
@@ -14,7 +19,7 @@ As of Trino version `442` this can not be prevented (e.g. by using multiple coor
 
 == Workers
 
-As a default, Coordinators have `60 minutes` to terminate gracefully.
+As a default, workers have `60 minutes` to terminate gracefully.
 
 Trino supports https://trino.io/docs/current/admin/graceful-shutdown.html[gracefully shutting down] workers.
 This operator always adds a https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[`PreStop` hook] to gracefully shut them down.
@@ -106,17 +111,19 @@ Until native support is added, you will have to use `configOverrides` to enable 
 
 == Authorization requirements
 
-WARNING: When you are not using OPA for authorization, the user `admin` is not allowed to gracefully shut down workers.
-If you need graceful shutdown you need to use OPA or need to make sure `admin` is allowed to gracefully shut down workers (e.g. having you own authorizer or patching Trino).
+WARNING: When you are not using OPA for authorization, the user `graceful-shutdown-user` is not allowed to gracefully shut down workers.
+If you need graceful shutdown you need to use OPA or need to make sure `graceful-shutdown-user` is allowed to gracefully shut down workers (e.g. having you own authorizer or patching Trino).
 
-In case you use OPA to authorize Trino requests, you need to make sure the user `admin` is authorized to trigger a graceful shutdown of the workers.
-You can achieve this e.g. by adding the following rule, which grants `admin` the permissions to issue a graceful shutdown.
+In case you use OPA to authorize Trino requests, you need to make sure the user `graceful-shutdown-user` is authorized to trigger a graceful shutdown of the workers.
+
+When you are using the rego rules provided by Stackable this permission is automatically granted.
+However, when you are writing your own rego rules, you can achieve this e.g. by adding the following rule, which grants `graceful-shutdown-user` the permissions to issue a graceful shutdown.
 
 [source,rego]
 ----
 allow {
   input.action.operation == "WriteSystemInformation"
-  input.context.identity.user == "admin"
+  input.context.identity.user == "graceful-shutdown-user"
 }
 ----
 
@@ -126,7 +133,7 @@ In Trino policies the following statement is recommended:
 "system_information": [
   # This is needed for graceful shutdown
   {
-    "user": "admin",
+    "user": "graceful-shutdown-user",
     "allow": ["read", "write"]
   },
 ],
