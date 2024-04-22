@@ -85,7 +85,7 @@ test_policies_with_external_policies if {
 		}],
 		"system_information": [
 			{
-				"user": "admin",
+				"user": "graceful-shutdown-user",
 				"allow": [
 					"read",
 					"write",
@@ -148,7 +148,7 @@ test_policies_with_no_external_policies if {
 			"filter_environment": {"user": null},
 		}],
 		"system_information": [{
-			"user": "admin",
+			"user": "graceful-shutdown-user",
 			"allow": [
 				"read",
 				"write",
