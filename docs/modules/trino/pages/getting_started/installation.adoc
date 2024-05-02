@@ -5,20 +5,18 @@ required by all Stackable Operators.
 
 == Stackable Operators
 
-There are two ways to install Stackable Operators:
+The xref:management:stackablectl:index.adoc[`stackablectl`] command line tool is the recommended way to interact with operators and dependencies.
+If you have not installed `stackablectl`, follow the xref:management:stackablectl:installation.adoc[installation steps] to install it.
+You can also use Helm instead.
 
-. Using xref:management:stackablectl:index.adoc[stackablectl]
-. Using Helm
+[tabs]
+====
+stackablectl::
++
+--
+Run the following command to install the Trino operator and its dependencies:
 
-=== stackablectl
-
-The `stackablectl` command line tool is the recommended way to interact with operators and dependencies. Follow the
-xref:management:stackablectl:installation.adoc[installation steps] for your platform if you choose to work with
-`stackablectl`.
-
-After you have installed `stackablectl`, run the following command to install all operators necessary for Trino:
-
-[source,bash]
+[source,console]
 ----
 include::example$getting_started/code/getting_started.sh[tag=stackablectl-install-operators]
 ----
@@ -31,25 +29,26 @@ include::example$getting_started/code/install-operator-output.txt[tag=stackablec
 ----
 
 TIP: Consult the xref:management:stackablectl:quickstart.adoc[] to learn more about how to use `stackablectl`.
+--
 
-=== Helm
+Helm::
++
+--
+To use Helm to install the operators, first add the Stackable Helm repository:
 
-You can also use Helm to install the operators. Add the Stackable Helm repository:
-
-[source,bash]
+[source,console]
 ----
 include::example$getting_started/code/getting_started.sh[tag=helm-add-repo]
 ----
 
-Then install the Stackable Operators:
+Then install the Stackable operators:
 
-[source,bash]
+[source,console]
 ----
 include::example$getting_started/code/getting_started.sh[tag=helm-install-operators]
 ----
-
-Helm will deploy the operators in a Kubernetes Deployment and apply the CRDs for the Trino service (as well as the CRDs
-for the required operators). You are now ready to deploy Trino in Kubernetes.
+--
+====
 
 == Optional installation steps
 

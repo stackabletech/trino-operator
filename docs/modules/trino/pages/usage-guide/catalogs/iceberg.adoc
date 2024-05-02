@@ -1,6 +1,9 @@
 = Apache Iceberg
 
-Apache Iceberg is a format for huge analytic tables designed to address some of the scaling issues with traditional Hive tables. Iceberg depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.
+Apache Iceberg is a format for huge analytic tables designed to address some of the scaling issues with traditional Hive tables.
+Iceberg depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.
+
+You can deploy a Hive Metastore Stacklet with the xref:hive:index.adoc[].
 
 == Example Iceberg catalog configuration
 
@@ -9,8 +12,7 @@ Apache Iceberg is a format for huge analytic tables designed to address some of 
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  # The name of the catalog as it will appear in Trino
-  name: iceberg
+  name: iceberg  # <1>
   labels:
     trino: simple-trino
 spec:
@@ -18,7 +20,7 @@ spec:
     # Specify iceberg here when defining a iceberg catalog
     iceberg:
       metastore:
-        configMap: simple-hive
+        configMap: simple-hive  # <2>
       s3:
         inline:
           host: test-minio
@@ -27,6 +29,8 @@ spec:
           credentials:
             secretClass: minio-credentials
 ----
+<1> The name of the catalog as it will appear in Trino
+<2> This is the name of your Hive Stacklet
 
 == Connect to S3 store or HDFS
 The Iceberg connector can connect to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.

@@ -1,7 +1,12 @@
-= Connect to Trino
+= Connecting to Trino
+:trino-jdbc: https://trino.io/docs/current/client/jdbc.html
+:starburst-odbc: https://docs.starburst.io/data-consumer/clients/odbc.html
+:trino-cli: https://trino.io/docs/current/client/cli.html
+:dbeaver: https://dbeaver.io
+:trino-python-client: https://github.com/trinodb/trino-python-client
 
 Trino offers an SQL endpoint via a HTTP API.
-An https://trino.io/docs/current/client/jdbc.html[open source JDBC driver] does exist as well as a proprietary https://docs.starburst.io/data-consumer/clients/odbc.html[ODBC driver].
+An {trino-jdbc}[open source JDBC driver] does exist as well as a proprietary {starburst-odbc}[ODBC driver].
 
 Multiple SQL clients can be used to connect to Trino as described below.
 
@@ -9,44 +14,44 @@ Multiple SQL clients can be used to connect to Trino as described below.
 The Trino server must be reachable from your local computer.
 It is typically secured via HTTPS with a certificated provided by a xref:secret-operator:secretclass.adoc[SecretClass].
 
-As most setups use a self-signed certificate, the easiest way is to disable the Trino cert validation as the following guide will do.
-A production-ready solution would be to extract the `ca.crt` from the SecretClass and provide it to the Trino client.
+As most setups use a self-signed certificate, that cannot be verified without the CA certificate, the easiest way is to disable the Trino cert validation as the following guide will do, however this is not secure!
+To use certificate validation instead, you need to extract the `ca.crt` file from the the SecretClass and provide it to the Trino client.
 
 == Connect with trino-cli
-Please have a look at the https://trino.io/docs/current/client/cli.html[official trino-cli docs].
-Please don't forget to specify the `--insecure` flag, so you command looks something like:
+Consult the  {trino-cli}[official trino-cli docs] for details on how to connect to a running Trino cluster.
+The `--insecure` flag is required in this case, so your command looks something like:
 
 [source,console]
 ----
-java -jar ~/Downloads/trino-cli-403-executable.jar --server https://85.215.195.29:8443 --user admin --password --insecure
+$ java -jar ~/Downloads/trino-cli-403-executable.jar --server https://85.215.195.29:8443 --user admin --password --insecure
 ----
 
 == Connect with DBeaver
-https://dbeaver.io[DBeaver] is a free multi-platform database tool for anyone who needs to work with databases.
+{dbeaver}[DBeaver] is a free multi-platform database tool for anyone who needs to work with databases.
 It is installed locally and can connect to Trino and offers a convenient UI to explore and work with Trino.
 
-First of you need to click on the `New Database Connection` icon, select `Other` -> `Trino`
+First of you need to click on the _New Database Connection_ icon, select _Other_ > _Trino_.
 
 image::connect-with-dbeaver-1.png[]
 
-Afterwards you need to enter the `Host` and `Port` as well as `Username` and `Password`.
+Afterwards you need to enter the _Host_ and _Port_ as well as _Username_ and _Password_.
 
 image::connect-with-dbeaver-2.png[]
 
-After entering the details you need to switch to the tab called `Driver properties`.
+After entering the details you need to switch to the tab called _Driver properties_.
 First action is to click on the `SSL` driver property and enter the value `true`.
-Additionally you need to click on the green plus icon in the bottom left corner to add a User Property called `SSLVerification`.
+Additionally you need to click on the green plus icon in the bottom left corner to add a _User Property_ called `SSLVerification`.
 Afterwards you need to set the value to `NONE`.
 
 image::connect-with-dbeaver-3.png[]
 
-As the last step you can click on `Finish` and start using the Trino connection normally.
+As the last step you can click on _Finish_ and start using the Trino connection.
 
 == Connect with Python
 
-Please have a look at the https://github.com/trinodb/trino-python-client[official trino-python-client docs].
+For more information on how to connect to Trino from Python, have a look at the official {trino-python-client}[trino-python-client].
 
-A sample code could look like follows:
+A minimal example of making a connection and running a query looks like this:
 
 [source,python]
 ----

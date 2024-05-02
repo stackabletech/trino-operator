@@ -2,6 +2,7 @@
 
 The Apache Hive connector allows Trino to connect to a Hive metastore and query data stored in Apache Hadoop or S3 compatible objects storage.
 
+Deploy a Hive Stacklet with the xref:hive:index.adoc[].
 
 == Example Hive catalog configuration
 [source,yaml]
@@ -9,17 +10,14 @@ The Apache Hive connector allows Trino to connect to a Hive metastore and query 
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  # The name of the catalog as it will appear in Trino
-  name: hive-catalog
-  # TrinoCluster can use these labels to select which catalogs to include
+  name: hive-catalog  # <1>
   labels:
-    trino: simple-trino
+    trino: simple-trino  # <2>
 spec:
   connector:
-    # Specify hive here when defining a hive catalog
     hive:
       metastore:
-        configMap: simple-hive
+        configMap: simple-hive  # <3>
       s3:
         inline:
           host: test-minio
@@ -27,13 +25,16 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
-# We can use configOverrides to add arbitrary properties to the Trino catalog configuration
-  configOverrides:
+  configOverrides: # <4>
     hive.metastore.username: trino
 ----
+<1> The name of the catalog as it will appear in Trino
+<2> TrinoCluster can use these labels to select which catalogs to include
+<3> The name of your Hive Stacklet
+<4> Use `configOverrides` to add arbitrary properties to the Trino catalog configuration
 
 == Connect to S3 store
-The hive connector can connect to an S3 store as follows:
+The Hive connector can connect to an S3 store as follows:
 
 [source,yaml]
 ----
@@ -71,7 +72,8 @@ spec:
 IMPORTANT: Please make sure that the underlying Hive metastore also has access to the HDFS, because it will e.g. check if the directory exists when creating tables.
 
 == Adding unmanaged Hive clusters
-You can add connect Trino to Hive catalogs from systems that are not managed by Stackable, including Hive running on existing Hadoop clusters. Unmanaged Hive instances can be defined by creating a configMap containing the configuration for the remote Hive Metastore and HDFS or S3 storage services.
+You can add connect Trino to Hive catalogs from systems that are not managed by Stackable, including Hive running on existing Hadoop clusters.
+Unmanaged Hive instances can be defined by creating a ConfigMap containing the configuration for the remote Hive Metastore and HDFS or S3 storage services.
 
 === Create a Hive Metastore configMap
 The Hive metastore ConfigMap contains the URL for the metastore's thrift endpoint.
@@ -86,8 +88,8 @@ data:
 ----
 
 === Create a HDFS configMap
-When the Hive data is stored on HDFS you will need to provide a configMap containing the HDFS configuration.
-To do this take the `core-site.xml` and `hdfs-site.xml` from your Hadoop cluster and create a configMap with the keys `core-site.xml` and `hdfs-site.xml`.
+When the Hive data is stored on HDFS you will need to provide a ConfigMap containing the HDFS configuration.
+To do this take the `core-site.xml` and `hdfs-site.xml` from your Hadoop cluster and create a ConfigMap with the keys `core-site.xml` and `hdfs-site.xml`.
 
 [source,yaml]
 ----
@@ -117,7 +119,7 @@ data:
 ----
 
 === Create the Trino Hive catalog
-To use the unmanaged Hive metastore we define a `TrinoCatalog` object in the same way we would for a managed cluster, referencing the custom configMap we created for Hive and HDFS.
+To use the unmanaged Hive metastore we define a TrinoCatalog object in the same way we would for a managed cluster, referencing the custom ConfigMap we created for Hive and HDFS.
 
 [source,yaml]
 ----
