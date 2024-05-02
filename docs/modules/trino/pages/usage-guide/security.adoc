@@ -1,6 +1,6 @@
 = Security
 
-This page covers <<Authentication>> and <<Authorization>>.
+This page covers <<authentication,authentication>> and <<authorization,authorization>>.
 
 == [[authentication]]Authentication
 
