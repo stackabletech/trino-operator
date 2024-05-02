@@ -1,10 +1,11 @@
-= S3 connection specification
+= Connecting Trino to S3
 
-You can specify S3 connection details directly inside the TrinoCatalog specification
-or by referring to an external S3Connection custom resource.
+You can specify S3 connection details directly inside the TrinoCatalog specification or by referring to an external S3Connection custom resource.
+This mechanism used used across the whole Stackable Data Platform, read the xref:concepts:s3.adoc[S3 concepts page] to learn more.
 
-To specify S3 connection details directly as part of the TrinoCatalog resource, you
-add an inline connection configuration as shown below:
+== Inline
+
+To specify S3 connection details directly as part of the TrinoCatalog resource, you add an inline connection configuration as shown below:
 
 [source,yaml]
 ----
@@ -56,9 +57,9 @@ data:
     tls.key: <your-base64-encoded-private-key>
 ----
 
-It is also possible to configure the bucket connection details as a separate
-Kubernetes resource and only refer to that object from the TrinoCatalog specification
-like this:
+== Reference
+
+It is also possible to configure the bucket connection details as a separate Kubernetes resource and only refer to that object from the TrinoCatalog specification like this:
 
 [source,yaml]
 ----
@@ -84,5 +85,4 @@ spec:
     secretClass: minio-credentials
 ----
 
-This has the advantage that the connection configuration can be shared across
-applications and reduces the cost of updating these details.
+This has the advantage that the connection configuration is configured in a single place and can be shared across applications, reducing the cost of updating these details.
