@@ -19,7 +19,7 @@ To use certificate validation instead, you need to extract the `ca.crt` file fro
 
 == Connect with trino-cli
 Consult the  {trino-cli}[official trino-cli docs] for details on how to connect to a running Trino cluster.
-Please don't forget to specify the `--insecure` flag, so your command looks something like:
+The `--insecure` flag is required in this case, so your command looks something like:
 
 [source,console]
 ----
