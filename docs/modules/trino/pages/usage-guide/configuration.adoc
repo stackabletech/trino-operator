@@ -6,7 +6,7 @@ IMPORTANT: Do not override port numbers. This will lead to faulty installations.
 
 == Configuration Properties
 
-For a role or role group, at the same level of `config`, you can specify: `configOverrides` for:
+For a role or role group, at the same level of `config`, you can specify `configOverrides` for:
 
 - `config.properties`
 - `node.properties`
