@@ -1,9 +1,11 @@
 = Generic
+:trino-connector: https://trino.io/docs/current/connector.html
+:trino-psql-connector: https://trino.io/docs/current/connector/postgresql.html
 
 Trino supports lots of different connectors and we cannot cover all the available connectors.
-In case the trino-operator does not support a specific connector you can use this connector to pull in https://trino.io/docs/current/connector.html[any connector Trino supports}.
+In case the Stackable operator for Trino does not support a specific connector you can use this connector to pull in {trino-connector}[any connector Trino supports].
 
-This is how you can e.g. use the https://trino.io/docs/current/connector/postgresql.html[PostgreSQL connector]:
+This is how you can e.g. use the {trino-psql-connector}[PostgreSQL connector]:
 
 == Example generic catalog properties
 [source,yaml]
@@ -53,7 +55,7 @@ An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
 
 == Add additional contents
 
-In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:nightly@home:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
+In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
 
 == Troubleshoot
 
