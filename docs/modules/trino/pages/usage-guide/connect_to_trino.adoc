@@ -18,7 +18,7 @@ As most setups use a self-signed certificate, that cannot be verified without th
 To use certificate validation instead, you need to extract the `ca.crt` file from the the SecretClass and provide it to the Trino client.
 
 == Connect with trino-cli
-Please have a look at the {trino-cli}[official trino-cli docs].
+Consult the  {trino-cli}[official trino-cli docs] for details on how to connect to a running Trino cluster.
 Please don't forget to specify the `--insecure` flag, so your command looks something like:
 
 [source,console]
