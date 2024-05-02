@@ -49,7 +49,7 @@ As the last step you can click on _Finish_ and start using the Trino connection.
 
 == Connect with Python
 
-Please have a look at the official {trino-python-client}[trino-python-client].
+For more information on how to connect to Trino from Python, have a look at the official {trino-python-client}[trino-python-client].
 
 A minimal example of making a connection and running a query looks like this:
 
