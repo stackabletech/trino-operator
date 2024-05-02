@@ -119,7 +119,7 @@ include::example$usage-guide/opa-bundle-trino-cm-414.yaml[]
 include::example$usage-guide/opa-bundle-trino-cm-428.yaml[]
 ----
 
-442+::
+442::
 +
 [source,yaml]
 ----
