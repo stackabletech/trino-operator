@@ -155,7 +155,7 @@ The operator repository contains a more production-ready set of rego-rules in ht
 The test uses the following:
 
 * a set of https://github.com/stackabletech/trino-operator/tree/main/tests/templates/kuttl/opa-authorization/trino_rules[rules] provided by the Stackable Data Platform, together with associated test files that can be used directly with Opa (i.e. outside the integration test context)
-** these files can be tested by using the https://www.openpolicyagent.org/docs/latest/policy-testing[built-in] policy test functionality and running `opa test <path-to-trino-rule-folder>`
+** these files can be tested by using the https://www.openpolicyagent.org/docs/latest/policy-testing[built-in] policy test functionality and running `opa test <path-to-trino-rule-folder> -b`
 * a sample set of https://github.com/stackabletech/trino-operator/blob/main/tests/templates/kuttl/opa-authorization/trino_policies.rego[trino policies] that represents what is to be provided by the user.
 
 The rules implement https://trino.io/docs/current/security/file-system-access-control.html#system-level-access-control-files[system-level access control] files (https://trino.io/docs/current/security/file-system-access-control.html#catalog-level-access-control-files[catalog-level access control] is currently not provided).
