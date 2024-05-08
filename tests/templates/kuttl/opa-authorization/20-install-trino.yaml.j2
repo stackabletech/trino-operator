@@ -68,7 +68,7 @@ metadata:
     trino: trino
 spec:
   connector:
-    tpch: {}  
+    tpch: {}
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
@@ -102,4 +102,4 @@ spec:
       metastore:
         configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
       s3:
-        reference: minio  
+        reference: minio

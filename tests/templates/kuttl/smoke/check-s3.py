@@ -25,11 +25,13 @@ def get_connection(username, password, namespace):
     conn._http_session.verify = False
     return conn
 
+
 def run_query(connection, query):
     print(f"[DEBUG] Executing query {query}")
     cursor = connection.cursor()
     cursor.execute(query)
     return cursor.fetchall()
+
 
 if __name__ == '__main__':
     # Construct an argument parser
