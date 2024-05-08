@@ -148,7 +148,7 @@ spec:
 <1> The name of the OpaCluster
 <2> The name of the package defined in the rego rule ConfigMap
 
-[#_fine_granular_rego_rule_]
+[#fine-granular-rego-rules]
 === Fine-granular rego rules
 
 The operator repository contains a more production-ready set of rego-rules in https://github.com/stackabletech/trino-operator/tree/main/tests/templates/kuttl/opa-authorization[this] integration test.
