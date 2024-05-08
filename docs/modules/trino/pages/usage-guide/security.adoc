@@ -103,7 +103,7 @@ The rego rules below are written using Rego V1 to be compatible with the OPA v1.
 
 NOTE: For a production setup you will use something much more granular.
 We provide a detailed set of rego rules in our integration tests.
-Details can be found below in the <<_fine_granular_rego_rule_, fine-granular rego rule>> section.
+Details can be found below in the <<fine-granular-rego-rules, fine-granular rego rule>> section.
 
 NOTE: Due to changes in the Trino OPA authorizer, rego rules differ between version 414, 428 and newer versions.
 
