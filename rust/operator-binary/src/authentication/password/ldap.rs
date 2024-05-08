@@ -185,7 +185,7 @@ mod tests {
         );
 
         let config = ldap_authenticator.config_file_data().unwrap();
-        assert!(config.get(LDAP_BIND_DN).is_some());
+        assert!(config.contains_key(LDAP_BIND_DN));
         assert_eq!(
             config.get(LDAP_USER_BASE_DN),
             Some(LDAP_SEARCH_BASE.to_string()).as_ref()

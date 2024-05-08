@@ -8,7 +8,7 @@ spec:
     productVersion: "{{ test_scenario['values']['opa'] }}"
     pullPolicy: IfNotPresent
   clusterOperation:
-    reconciliationPaused: true      
+    reconciliationPaused: true
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
   clusterConfig:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
