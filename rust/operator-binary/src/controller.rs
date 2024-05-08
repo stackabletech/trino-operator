@@ -17,9 +17,15 @@ use product_config::{
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
-        resources::ResourceRequirementsBuilder, ConfigMapBuilder, ContainerBuilder,
-        ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder, SecretFormat,
-        SecretOperatorVolumeSourceBuilder, VolumeBuilder,
+        configmap::ConfigMapBuilder,
+        meta::ObjectMetaBuilder,
+        pod::{
+            container::ContainerBuilder,
+            resources::ResourceRequirementsBuilder,
+            security::PodSecurityContextBuilder,
+            volume::{SecretFormat, SecretOperatorVolumeSourceBuilder, VolumeBuilder},
+            PodBuilder,
+        },
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
@@ -123,61 +129,61 @@ pub enum Error {
 
     #[snafu(display("failed to create cluster resources"))]
     CreateClusterResources {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
     },
 
     #[snafu(display("failed to delete orphaned resources"))]
     DeleteOrphanedResources {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
     },
 
     #[snafu(display("failed to apply global Service"))]
     ApplyRoleService {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
     },
 
     #[snafu(display("failed to apply Service for {}", rolegroup))]
     ApplyRoleGroupService {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
 
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfig {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::builder::configmap::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
 
     #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
     ApplyRoleGroupConfig {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
 
     #[snafu(display("failed to apply StatefulSet for {}", rolegroup))]
     ApplyRoleGroupStatefulSet {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
         rolegroup: RoleGroupRef<TrinoCluster>,
     },
 
     #[snafu(display("failed to apply internal secret"))]
     ApplyInternalSecret {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::client::Error,
     },
 
     #[snafu(display("invalid product config"))]
     InvalidProductConfig {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::product_config_utils::Error,
     },
 
     #[snafu(display("object is missing metadata to build owner reference"))]
     ObjectMissingMetadataForOwnerRef {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::builder::meta::Error,
     },
 
     #[snafu(display("failed to transform configs"))]
     ProductConfigTransform {
-        source: stackable_operator::product_config_utils::ConfigError,
+        source: stackable_operator::product_config_utils::Error,
     },
 
     #[snafu(display("failed to format runtime properties"))]
@@ -194,17 +200,17 @@ pub enum Error {
 
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::commons::opa::Error,
     },
 
     #[snafu(display("failed to resolve S3 connection"))]
     ResolveS3Connection {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::commons::s3::Error,
     },
 
     #[snafu(display("failed to get associated TrinoCatalogs"))]
     GetCatalogs {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::client::Error,
     },
 
     #[snafu(display("failed to parse {catalog}"))]
@@ -215,13 +221,13 @@ pub enum Error {
 
     #[snafu(display("illegal container name: [{container_name}]"))]
     IllegalContainerName {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::builder::pod::container::Error,
         container_name: String,
     },
 
     #[snafu(display("failed to retrieve secret for internal communications"))]
     FailedToRetrieveInternalSecret {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::client::Error,
     },
 
     #[snafu(display("failed to resolve and merge config for role and role group"))]
@@ -240,22 +246,22 @@ pub enum Error {
 
     #[snafu(display("failed to patch service account"))]
     ApplyServiceAccount {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
     },
 
     #[snafu(display("failed to patch role binding"))]
     ApplyRoleBinding {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::cluster_resources::Error,
     },
 
     #[snafu(display("failed to update status"))]
     ApplyStatus {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::client::Error,
     },
 
     #[snafu(display("failed to build RBAC resources"))]
     BuildRbacResources {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::commons::rbac::Error,
     },
 
     #[snafu(display("Failed to retrieve AuthenticationClass"))]
@@ -307,12 +313,12 @@ pub enum Error {
 
     #[snafu(display("failed to build Metadata"))]
     MetadataBuild {
-        source: stackable_operator::builder::ObjectMetaBuilderError,
+        source: stackable_operator::builder::meta::Error,
     },
 
     #[snafu(display("failed to build TLS certificate SecretClass Volume"))]
     TlsCertSecretClassVolumeBuild {
-        source: stackable_operator::builder::SecretOperatorVolumeSourceBuilderError,
+        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
     },
 
     #[snafu(display("failed to build JVM config"))]
@@ -335,7 +341,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     let resolved_product_image: ResolvedProductImage = trino
         .spec
         .image
-        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::CARGO_PKG_VERSION);
+        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::PKG_VERSION);
 
     let resolved_authentication_classes =
         resolve_authentication_classes(client, trino.get_authentication())

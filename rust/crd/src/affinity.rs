@@ -139,7 +139,6 @@ mod tests {
                         WeightedPodAffinityTerm {
                             pod_affinity_term: PodAffinityTerm {
                                 label_selector: Some(LabelSelector {
-                                    match_expressions: None,
                                     match_labels: Some(BTreeMap::from([
                                         ("app.kubernetes.io/name".to_string(), "trino".to_string()),
                                         (
@@ -147,10 +146,10 @@ mod tests {
                                             "simple-trino".to_string(),
                                         ),
                                     ])),
+                                    ..LabelSelector::default()
                                 }),
-                                namespace_selector: None,
-                                namespaces: None,
                                 topology_key: "kubernetes.io/hostname".to_string(),
+                                ..PodAffinityTerm::default()
                             },
                             weight: 20,
                         }
@@ -162,7 +161,6 @@ mod tests {
                         WeightedPodAffinityTerm {
                             pod_affinity_term: PodAffinityTerm {
                                 label_selector: Some(LabelSelector {
-                                    match_expressions: None,
                                     match_labels: Some(BTreeMap::from([
                                         ("app.kubernetes.io/name".to_string(), "trino".to_string(),),
                                         (
@@ -173,11 +171,11 @@ mod tests {
                                             "app.kubernetes.io/component".to_string(),
                                             role.to_string(),
                                         )
-                                    ]))
+                                    ])),
+                                    ..LabelSelector::default()
                                 }),
-                                namespace_selector: None,
-                                namespaces: None,
                                 topology_key: "kubernetes.io/hostname".to_string(),
+                                ..PodAffinityTerm::default()
                             },
                             weight: 70
                         }
@@ -281,7 +279,6 @@ mod tests {
         let mut expected_affinities = vec![WeightedPodAffinityTerm {
             pod_affinity_term: PodAffinityTerm {
                 label_selector: Some(LabelSelector {
-                    match_expressions: None,
                     match_labels: Some(BTreeMap::from([
                         ("app.kubernetes.io/name".to_string(), "trino".to_string()),
                         (
@@ -289,10 +286,10 @@ mod tests {
                             "simple-trino".to_string(),
                         ),
                     ])),
+                    ..LabelSelector::default()
                 }),
-                namespace_selector: None,
-                namespaces: None,
                 topology_key: "kubernetes.io/hostname".to_string(),
+                ..PodAffinityTerm::default()
             },
             weight: 20,
         }];
@@ -302,7 +299,6 @@ mod tests {
                 expected_affinities.push(WeightedPodAffinityTerm {
                     pod_affinity_term: PodAffinityTerm {
                         label_selector: Some(LabelSelector {
-                            match_expressions: None,
                             match_labels: Some(BTreeMap::from([
                                 ("app.kubernetes.io/name".to_string(), "hive".to_string()),
                                 (
@@ -314,17 +310,16 @@ mod tests {
                                     "metastore".to_string(),
                                 ),
                             ])),
+                            ..LabelSelector::default()
                         }),
-                        namespace_selector: None,
-                        namespaces: None,
                         topology_key: "kubernetes.io/hostname".to_string(),
+                        ..PodAffinityTerm::default()
                     },
                     weight: 50,
                 });
                 expected_affinities.push(WeightedPodAffinityTerm {
                     pod_affinity_term: PodAffinityTerm {
                         label_selector: Some(LabelSelector {
-                            match_expressions: None,
                             match_labels: Some(BTreeMap::from([
                                 ("app.kubernetes.io/name".to_string(), "hive".to_string()),
                                 (
@@ -336,10 +331,10 @@ mod tests {
                                     "metastore".to_string(),
                                 ),
                             ])),
+                            ..LabelSelector::default()
                         }),
-                        namespace_selector: None,
-                        namespaces: None,
                         topology_key: "kubernetes.io/hostname".to_string(),
+                        ..PodAffinityTerm::default()
                     },
                     weight: 50,
                 });
@@ -348,7 +343,6 @@ mod tests {
                 expected_affinities.push(WeightedPodAffinityTerm {
                     pod_affinity_term: PodAffinityTerm {
                         label_selector: Some(LabelSelector {
-                            match_expressions: None,
                             match_labels: Some(BTreeMap::from([
                                 ("app.kubernetes.io/name".to_string(), "hdfs".to_string()),
                                 (
@@ -360,10 +354,10 @@ mod tests {
                                     "datanode".to_string(),
                                 ),
                             ])),
+                            ..LabelSelector::default()
                         }),
-                        namespace_selector: None,
-                        namespaces: None,
                         topology_key: "kubernetes.io/hostname".to_string(),
+                        ..PodAffinityTerm::default()
                     },
                     weight: 50,
                 });
@@ -382,7 +376,6 @@ mod tests {
                         WeightedPodAffinityTerm {
                             pod_affinity_term: PodAffinityTerm {
                                 label_selector: Some(LabelSelector {
-                                    match_expressions: None,
                                     match_labels: Some(BTreeMap::from([
                                         ("app.kubernetes.io/name".to_string(), "trino".to_string(),),
                                         (
@@ -393,11 +386,11 @@ mod tests {
                                             "app.kubernetes.io/component".to_string(),
                                             role.to_string(),
                                         )
-                                    ]))
+                                    ])),
+                                    ..LabelSelector::default()
                                 }),
-                                namespace_selector: None,
-                                namespaces: None,
                                 topology_key: "kubernetes.io/hostname".to_string(),
+                                ..PodAffinityTerm::default()
                             },
                             weight: 70
                         }
