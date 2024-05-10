@@ -22,7 +22,7 @@ pub enum FromTrinoCatalogError {
 
     #[snafu(display("failed to resolve S3ConnectionDef"))]
     ResolveS3ConnectionDef {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::commons::s3::Error,
     },
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
@@ -33,7 +33,7 @@ pub enum FromTrinoCatalogError {
 
     #[snafu(display("failed to resolve [{catalog}] discovery config map [{cm_name}]"))]
     FailedToGetDiscoveryConfigMap {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::client::Error,
         catalog: String,
         cm_name: String,
     },
@@ -54,12 +54,12 @@ pub enum FromTrinoCatalogError {
 
     #[snafu(display("Failed to create the Secret Volume for the S3 credentials"))]
     CreateS3CredentialsSecretOperatorVolume {
-        source: stackable_operator::builder::SecretOperatorVolumeSourceBuilderError,
+        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
     },
 
     #[snafu(display("Failed to create the Secret Volume for the TLS certificate for S3"))]
     CreateS3TLSSecretOperatorVolume {
-        source: stackable_operator::builder::SecretOperatorVolumeSourceBuilderError,
+        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
     },
 }
 

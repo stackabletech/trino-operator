@@ -28,7 +28,7 @@ use stackable_operator::{
     },
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
-    product_config_utils::{ConfigError, Configuration},
+    product_config_utils::{Configuration, Error as ConfigError},
     product_logging,
     product_logging::spec::Logging,
     role_utils::{GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
@@ -554,7 +554,7 @@ impl Configuration for TrinoConfigFragment {
                 // Therefore from here on we can use resource.get_server_tls() as the only source
                 // of truth when enabling client TLS.
                 if authentication_enabled && !server_tls_enabled {
-                    return Err(ConfigError::InvalidConfiguration {
+                    return Err(ConfigError::InvalidProductSpecificConfiguration {
                         reason:
                             "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
                              Please set 'spec.clusterConfig.tls.secretClass' or use the provided default value.".to_string(),

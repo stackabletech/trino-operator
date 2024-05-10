@@ -1,6 +1,6 @@
 use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 use async_trait::async_trait;
-use stackable_operator::builder::{VolumeBuilder, VolumeMountBuilder};
+use stackable_operator::builder::pod::volume::{VolumeBuilder, VolumeMountBuilder};
 use stackable_operator::client::Client;
 use stackable_trino_crd::catalog::google_sheet::GoogleSheetConnector;
 use stackable_trino_crd::CONFIG_DIR_NAME;

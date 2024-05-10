@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use indoc::formatdoc;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    builder::{ContainerBuilder, PodBuilder},
+    builder::pod::{container::ContainerBuilder, PodBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
 };
 use stackable_trino_crd::{

@@ -20,7 +20,7 @@ pub enum Error {
 
     #[snafu(display("failed to retrieve the ConfigMap {cm_name}"))]
     ConfigMapNotFound {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::client::Error,
         cm_name: String,
     },
 

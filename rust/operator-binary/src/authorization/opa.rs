@@ -6,7 +6,6 @@ use stackable_operator::{
         opa::{OpaApiVersion, OpaConfig},
         product_image_selection::ResolvedProductImage,
     },
-    error::OperatorResult,
 };
 use stackable_trino_crd::TrinoCluster;
 
@@ -45,7 +44,7 @@ impl TrinoOpaConfig {
         trino: &TrinoCluster,
         resolved_product_image: &ResolvedProductImage,
         opa_config: &OpaConfig,
-    ) -> OperatorResult<Self> {
+    ) -> Result<Self, stackable_operator::commons::opa::Error> {
         if PRODUCT_VERSIONS_WITH_OLD_AUTHORIZER
             .contains(&resolved_product_image.product_version.as_str())
         {

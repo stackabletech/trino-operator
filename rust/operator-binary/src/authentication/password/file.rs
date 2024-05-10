@@ -2,8 +2,10 @@ use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
 use crate::controller::STACKABLE_LOG_DIR;
 
 use stackable_operator::{
-    builder::{
-        resources::ResourceRequirementsBuilder, ContainerBuilder, VolumeBuilder, VolumeMountBuilder,
+    builder::pod::{
+        container::ContainerBuilder,
+        resources::ResourceRequirementsBuilder,
+        volume::{VolumeBuilder, VolumeMountBuilder},
     },
     commons::{authentication::static_, product_image_selection::ResolvedProductImage},
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
