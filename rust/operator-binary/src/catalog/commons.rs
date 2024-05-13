@@ -3,7 +3,7 @@ use crate::command;
 use async_trait::async_trait;
 use snafu::{OptionExt, ResultExt};
 use stackable_operator::{
-    builder::{SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder},
+    builder::pod::volume::{SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder},
     client::Client,
     commons::{
         authentication::tls::{CaCert, TlsServerVerification, TlsVerification},

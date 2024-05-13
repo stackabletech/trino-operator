@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    builder::{ContainerBuilder, PodBuilder},
+    builder::pod::{container::ContainerBuilder, PodBuilder},
     commons::{
         authentication::{AuthenticationClass, AuthenticationClassProvider},
         product_image_selection::ResolvedProductImage,

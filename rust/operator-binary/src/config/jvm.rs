@@ -15,7 +15,7 @@ use stackable_trino_crd::{
 pub enum Error {
     #[snafu(display("failed to convert java heap config to unit [{unit}]"))]
     FailedToConvertMemoryResourceConfigToJavaHeap {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::memory::Error,
         unit: String,
     },
 
@@ -24,7 +24,7 @@ pub enum Error {
 
     #[snafu(display("could not convert / scale memory resource config to [{unit}]"))]
     FailedToConvertMemoryResourceConfig {
-        source: stackable_operator::error::Error,
+        source: stackable_operator::memory::Error,
         unit: String,
     },
 }
