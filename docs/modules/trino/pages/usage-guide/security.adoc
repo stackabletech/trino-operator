@@ -101,6 +101,10 @@ The following example is an all-access Rego rule for testing with the user `admi
 Do not use it in production!
 The rego rules below are written using Rego V1 to be compatible with the OPA v1.0.0 release.
 
+NOTE: For a production setup you will use something much more granular.
+We provide a detailed set of rego rules in our integration tests.
+Details can be found below in the <<fine-granular-rego-rules, fine-granular rego rule>> section.
+
 NOTE: Due to changes in the Trino OPA authorizer, rego rules differ between version 414, 428 and newer versions.
 
 [tabs]
@@ -143,6 +147,26 @@ spec:
 
 <1> The name of the OpaCluster
 <2> The name of the package defined in the rego rule ConfigMap
+
+[#fine-granular-rego-rules]
+=== Fine-granular rego rules
+
+The operator repository contains a more production-ready set of rego-rules in https://github.com/stackabletech/trino-operator/tree/main/tests/templates/kuttl/opa-authorization[this] integration test.
+The test uses the following:
+
+* a set of https://github.com/stackabletech/trino-operator/tree/main/tests/templates/kuttl/opa-authorization/trino_rules[rules] provided by the Stackable Data Platform, together with associated test files that can be used directly with OPA (i.e. outside the integration test context)
+** these files can be tested by using the https://www.openpolicyagent.org/docs/latest/policy-testing[built-in] policy test functionality and running `opa test <path-to-trino-rule-folder> -b`
+* a sample set of https://github.com/stackabletech/trino-operator/blob/main/tests/templates/kuttl/opa-authorization/trino_policies.rego[trino policies] that represents what is to be provided by the user.
+
+The rules implement https://trino.io/docs/current/security/file-system-access-control.html#system-level-access-control-files[system-level access control] files (https://trino.io/docs/current/security/file-system-access-control.html#catalog-level-access-control-files[catalog-level access control] is currently not provided).
+As illustrated by the integration test, both internal and customer-provided policies are deployed as ConfigMaps and there is thus no requirement for an extra configuration file in JSON to be created.
+
+Please note these additional points:
+
+* Roles are not checked, only users and groups.
+* Principal rules are https://trino.io/docs/current/security/file-system-access-control.html#principal-rules[deprecated] and not implemented.
+* The `allow` property of the https://trino.io/docs/current/security/file-system-access-control.html#catalog-rules[catalog rules] accepts only the new values `all`, `read-only`, and `none`, but not the legacy values `true` and `false`.
+* The Rego rules attempt to implement the Java implementation as close as possible although this is not always reflected clearly in the documentation (for instance the documentation https://trino.io/docs/current/security/file-system-access-control.html#impersonation-rules[states] that "_If neither impersonation nor principal rules are defined, impersonation is not allowed_", although in practice users are always allowed to impersonate themselves).
 
 == Define a secure cluster
 
