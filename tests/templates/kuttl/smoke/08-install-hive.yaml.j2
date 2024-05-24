@@ -10,8 +10,7 @@ spec:
   clusterConfig:
     database:
       connString: jdbc:postgresql://postgresql:5432/hive
-      user: hive
-      password: hive
+      credentialsSecret: postgres-credentials
       dbType: postgres
     hdfs:
       configMap: hdfs
@@ -27,3 +26,12 @@ spec:
     roleGroups:
       default:
         replicas: 2
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+type: Opaque
+stringData:
+  username: hive
+  password: hive
