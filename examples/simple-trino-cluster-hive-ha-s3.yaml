@@ -63,7 +63,7 @@ metadata:
 type: Opaque
 stringData:
   username: hive
-  password: hive        
+  password: hive
 ---
 apiVersion: s3.stackable.tech/v1alpha1
 kind: S3Connection
