@@ -84,13 +84,13 @@ if __name__ == '__main__':
     # We expect these to fail
     if conf["useAuthentication"]:
         conn = get_authenticated_https_connection(coordinator_host, "admin", "admin", untrusted_ca)
-        test_query_failure(conn, query, requests.exceptions.SSLError, "Could connect with wrong certificate")
+        test_query_failure(conn, query, trino.exceptions.TrinoConnectionError, "Could connect with wrong certificate")
         conn = get_authenticated_https_connection(coordinator_host, "admin", "wrong_password", trusted_ca)
         test_query_failure(conn, query, trino.exceptions.HttpError, "Could connect with wrong password")
         conn = get_authenticated_https_connection(coordinator_host, "wrong_user", "wrong_password", trusted_ca)
         test_query_failure(conn, query, trino.exceptions.HttpError, "Could connect with wrong user and password")
     elif conf["useTls"]:
         conn = get_https_connection(coordinator_host, "admin", untrusted_ca)
-        test_query_failure(conn, query, requests.exceptions.SSLError, "Could connect with wrong certificate")
+        test_query_failure(conn, query, trino.exceptions.TrinoConnectionError, "Could connect with wrong certificate")
 
     print("All TLS tests finished successfully!")
