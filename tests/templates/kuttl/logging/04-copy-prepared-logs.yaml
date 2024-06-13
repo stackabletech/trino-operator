@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: >
+      kubectl cp ./prepared-logs.airlift.json
+      $NAMESPACE/test-trino-coordinator-automatic-log-config-0:/stackable/log/trino/prepared-logs.airlift.json
+      --container vector

@@ -1,0 +1,11 @@
+{"timestamp":"2024-01-01T00:00:00.000000000Z","level":"INFO","thread":"main","logger":"TestLogger","message":"Valid log event"}
+{"timestamp":"2024-01-01T00:00:00.000000000Z","level":"INFO","thread":"main","logger":"TestLogger","message":"Valid log event with a stack trace","stacktrace":"TestException"}
+{"timestamp":"2024-01-01T00:00:00.000000000Z","level":"INFO","logger":"TestLogger","message":"Valid log event without a thread"}
+{"level":"INFO","thread":"main","logger":"TestLogger","message":"Invalid log event without a timestamp"}
+{"timestamp":"unparsable timestamp","level":"INFO","thread":"main","logger":"TestLogger","message":"Invalid log event with an unparsable timestamp"}
+{"timestamp":"2024-01-01T00:00:00.000000000Z","level":"INFO","thread":"main",,"message":"Invalid log event without a logger"}
+{"timestamp":"2024-01-01T00:00:00.000000000Z","level":"CRITICAL","thread":"main","logger":"TestLogger","message":"Invalid log event with an unknown level"}
+{"timestamp":"2024-01-01T00:00:00.000000000Z","thread":"main","logger":"TestLogger","message":"Invalid log event without a level"}
+{"timestamp":"2024-01-01T00:00:00.000000000Z","level":"INFO","thread":"main","logger":"TestLogger"}
+{"timestamp":"2024-01-01T00:00:00.000000000Z","level":"INFO","thread":"main","logger":"TestLogger","message":"Unparsable log event",...
+"true"
