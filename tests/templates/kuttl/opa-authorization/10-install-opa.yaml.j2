@@ -34,5 +34,10 @@ commands:
           config:
             logging:
               enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+              containers:
+                opa:
+                  loggers:
+                    decision:
+                      level: INFO
           roleGroups:
             default: {}
