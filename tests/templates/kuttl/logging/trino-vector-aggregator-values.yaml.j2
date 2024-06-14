@@ -20,87 +20,91 @@ customConfig:
       type: vector
       version: "2"
   transforms:
-    filteredAutomaticLogConfigCoordinatorTrino:
+    validEvents:
       type: filter
       inputs: [vector]
+      condition: is_null(.errors)
+    filteredAutomaticLogConfigCoordinatorTrino:
+      type: filter
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-automatic-log-config-0" &&
         .container == "trino"
     filteredAutomaticLogConfigCoordinatorPwFileUpdater:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-automatic-log-config-0" &&
         .container == "password-file-updater"
     filteredAutomaticLogConfigCoordinatorVector:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-automatic-log-config-0" &&
         .container == "vector"
     filteredAutomaticLogConfigCoordinatorPrepare:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-automatic-log-config-0" &&
         .container == "prepare"
     filteredAutomaticLogConfigWorkerTrino:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-worker-automatic-log-config-0" &&
         .container == "trino"
     filteredAutomaticLogConfigWorkerVector:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-worker-automatic-log-config-0" &&
         .container == "vector"
     filteredAutomaticLogConfigWorkerPrepare:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-worker-automatic-log-config-0" &&
         .container == "prepare"
     filteredCustomLogConfigCoordinatorTrino:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "trino"
     filteredCustomLogConfigCoordinatorPwFileUpdater:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "password-file-updater"
     filteredCustomLogConfigCoordinatorVector:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "vector"
     filteredCustomLogConfigCoordinatorPrepare:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-coordinator-custom-log-config-0" &&
         .container == "prepare"
     filteredCustomLogConfigWorkerTrino:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-worker-custom-log-config-0" &&
         .container == "trino"
     filteredCustomLogConfigWorkerVector:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-worker-custom-log-config-0" &&
         .container == "vector"
     filteredCustomLogConfigWorkerPrepare:
       type: filter
-      inputs: [vector]
+      inputs: [validEvents]
       condition: >-
         .pod == "test-trino-worker-custom-log-config-0" &&
         .container == "prepare"
@@ -113,15 +117,16 @@ customConfig:
         is_null(.logger) ||
         is_null(.message)
   sinks:
-    out:
+    test:
       inputs: [filtered*]
+      type: blackhole
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    aggregator:
+      inputs: [vector]
       type: vector
       address: {{ lookup('env', 'VECTOR_AGGREGATOR') }}
       buffer:
         # Avoid back pressure from VECTOR_AGGREGATOR. The test should
         # not fail if the aggregator is not available.
         when_full: drop_newest
-{% else %}
-      type: blackhole
 {% endif %}
