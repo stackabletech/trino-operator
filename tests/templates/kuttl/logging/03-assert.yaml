@@ -1,12 +1,36 @@
 ---
 apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
-timeout: 300
+timeout: 600
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: trino-test-runner
+  name: test-trino-coordinator-automatic-log-config
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-trino-worker-automatic-log-config
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-trino-coordinator-custom-log-config
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-trino-worker-custom-log-config
 status:
   readyReplicas: 1
   replicas: 1
