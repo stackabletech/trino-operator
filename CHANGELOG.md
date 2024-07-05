@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Support row filters and column masks in Rego rules ([#559]).
+- Support for version `451` ([#XXX]).
 
 ### Changed
 
@@ -17,6 +18,10 @@ All notable changes to this project will be documented in this file.
 
 - Processing of corrupted log events fixed; If errors occur, the error
   messages are added to the log event ([#598]).
+
+### Removed
+
+- Support for version `414` ([#XXX]).
 
 [#559]: https://github.com/stackabletech/trino-operator/pull/559
 [#573]: https://github.com/stackabletech/trino-operator/pull/573

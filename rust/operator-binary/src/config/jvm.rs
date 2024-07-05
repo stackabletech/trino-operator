@@ -1,4 +1,4 @@
-// As of 2024-02-07 we support multiple Trino versions. Some using Java 17 and the latest (442) uses Java 21.
+// As of 2024-07-05 we support multiple Trino versions. Some using Java 17, some Java 21 and the latest (451) uses Java 22.
 // This requires a different JVM config
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
@@ -29,7 +29,7 @@ pub enum Error {
     },
 }
 
-// Currently works for all supported versions (414, 428, 442 as of 2024-03-15) but maybe be changed
+// Currently works for all supported versions (414, 442, 451 as of 2024-07-05) but maybe be changed
 // in the future depending on the role and version.
 pub fn jvm_config(
     _resolved_product_image: &ResolvedProductImage,

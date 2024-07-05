@@ -105,7 +105,7 @@ NOTE: For a production setup you will use something much more granular.
 We provide a detailed set of rego rules in our integration tests.
 Details can be found below in the <<fine-granular-rego-rules, fine-granular rego rule>> section.
 
-NOTE: Due to changes in the Trino OPA authorizer, rego rules differ between version 414, 428 and newer versions.
+NOTE: Due to changes in the Trino OPA authorizer, rego rules differ between version 414 and newer versions.
 
 [tabs]
 ====
@@ -116,14 +116,7 @@ NOTE: Due to changes in the Trino OPA authorizer, rego rules differ between vers
 include::example$usage-guide/opa-bundle-trino-cm-414.yaml[]
 ----
 
-428::
-+
-[source,yaml]
-----
-include::example$usage-guide/opa-bundle-trino-cm-428.yaml[]
-----
-
-442::
+Newer than 414::
 +
 [source,yaml]
 ----
