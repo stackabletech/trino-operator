@@ -162,8 +162,7 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, TruncateTable
             {
                 "query": "TRUNCATE TABLE iceberg.test.test2",
-                # The requests are authorized, just the hive connector does not support this
-                "error": "This connector does not support truncating tables",
+                "expected": [],
             },
             # ExecuteQuery, AccessCatalog, DropTable
             {
