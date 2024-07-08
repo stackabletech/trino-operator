@@ -38,7 +38,7 @@ metadata:
 type: Opaque
 stringData:
   username: APP
-  password: mine        
+  password: mine
 ---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
