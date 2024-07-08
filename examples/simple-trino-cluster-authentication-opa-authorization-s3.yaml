@@ -121,6 +121,15 @@ spec:
       metastore:
         configMap: simple-hive-derby
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hive-credentials
+type: Opaque
+stringData:
+  username: APP
+  password: mine        
+---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
 metadata:
@@ -131,8 +140,7 @@ spec:
   clusterConfig:
     database:
       connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
-      user: APP
-      password: mine
+      credentialsSecret: hive-credentials
       dbType: derby
   metastore:
     roleGroups:
