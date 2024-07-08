@@ -10,9 +10,6 @@ use stackable_operator::{
 use stackable_trino_crd::TrinoCluster;
 
 const PRODUCT_VERSIONS_WITH_OLD_AUTHORIZER: [&str; 1] = ["414"];
-// The version 428 was built based on the new Trino authorizer but from an unfinished upstream PR
-// e.g. the property `opa.allow-permission-management-operations` was not included.
-const PRODUCT_VERSIONS_WITH_INTERMEDIATE_AUTHORIZER: [&str; 1] = ["428"];
 
 pub struct TrinoOpaConfig {
     opa_authorizer_name: String,
@@ -59,28 +56,6 @@ impl TrinoOpaConfig {
                 opa_authorizer_name: "tech.stackable.trino.opa.OpaAuthorizer".to_string(),
                 non_batched_connection_string,
                 batched_connection_string: None,
-                row_filters_connection_string: None,
-                column_masking_connection_string: None,
-                allow_permission_management_operations: false,
-            })
-        } else if PRODUCT_VERSIONS_WITH_INTERMEDIATE_AUTHORIZER
-            .contains(&resolved_product_image.product_version.as_str())
-        {
-            let non_batched_connection_string = opa_config
-                .full_document_url_from_config_map(client, trino, Some("allow"), OpaApiVersion::V1)
-                .await?;
-            let batched_connection_string = opa_config
-                .full_document_url_from_config_map(
-                    client,
-                    trino,
-                    Some("extended"),
-                    OpaApiVersion::V1,
-                )
-                .await?;
-            Ok(TrinoOpaConfig {
-                opa_authorizer_name: "opa".to_string(),
-                non_batched_connection_string,
-                batched_connection_string: Some(batched_connection_string),
                 row_filters_connection_string: None,
                 column_masking_connection_string: None,
                 allow_permission_management_operations: false,

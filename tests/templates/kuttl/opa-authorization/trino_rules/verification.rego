@@ -43,7 +43,7 @@ import rego.v1
 #         "groups": ["group1", ...],
 #         "user": "username",
 #       },
-#       "softwareStack": {"trinoVersion": "442"},
+#       "softwareStack": {"trinoVersion": "451"},
 #     }
 #   }
 #
@@ -193,7 +193,7 @@ allow if {
 #         "groups": ["group1", ...],
 #         "user": "username",
 #       },
-#       "softwareStack": {"trinoVersion": "442"},
+#       "softwareStack": {"trinoVersion": "451"},
 #     }
 #   }
 #
@@ -254,7 +254,7 @@ batch contains index if {
 #         "groups": ["group1", ...],
 #         "user": "username",
 #       },
-#       "softwareStack": {"trinoVersion": "442"},
+#       "softwareStack": {"trinoVersion": "451"},
 #     }
 #   }
 #
@@ -319,7 +319,7 @@ columnMask := column_mask if {
 #         "groups": ["group1", ...],
 #         "user": "username",
 #       },
-#       "softwareStack": {"trinoVersion": "442"},
+#       "softwareStack": {"trinoVersion": "451"},
 #     }
 #   }
 #

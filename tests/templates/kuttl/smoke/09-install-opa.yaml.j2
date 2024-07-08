@@ -50,41 +50,6 @@ data:
     can_be_accessed_by_bob() if {
       input.action.operation in ["ImpersonateUser", "FilterCatalogs", "AccessCatalog", "ExecuteQuery"]
     }
-{% elif test_scenario['values']['trino'] in [428] %}
-  trino.rego: |
-    package trino
-
-    import rego.v1
-
-    default allow = false
-
-    allow if {
-        is_admin
-    }
-    extended contains i if {
-        some i
-        input.action.filterResources[i]
-        is_admin
-    }
-
-    allow if {
-        input.action.operation in ["ExecuteQuery", "AccessCatalog"]
-        is_bob
-    }
-    extended contains i if {
-        input.action.operation in ["FilterCatalogs"]
-        some i
-        input.action.filterResources[i]
-        is_bob
-    }
-
-    is_admin() if {
-      input.context.identity.user == "admin"
-    }
-
-    is_bob() if {
-      input.context.identity.user == "bob"
-    }
 {% else  %}
   trino.rego: |
     package trino

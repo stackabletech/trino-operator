@@ -1,4 +1,4 @@
-// As of 2024-02-07 we support multiple Trino versions. Some using Java 17 and the latest (442) uses Java 21.
+// As of 2024-07-05 we support multiple Trino versions. Some using Java 17, some Java 21 and the latest (451) uses Java 22.
 // This requires a different JVM config
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
@@ -27,12 +27,15 @@ pub enum Error {
         source: stackable_operator::memory::Error,
         unit: String,
     },
+
+    #[snafu(display("the Trino version {version} is not supported, as we don't know the needed JVm configuration"))]
+    TrinoVersionNotSupported { version: String },
 }
 
-// Currently works for all supported versions (414, 428, 442 as of 2024-03-15) but maybe be changed
+// Currently works for all supported versions (414, 442, 451 as of 2024-07-05) but maybe be changed
 // in the future depending on the role and version.
 pub fn jvm_config(
-    _resolved_product_image: &ResolvedProductImage,
+    resolved_product_image: &ResolvedProductImage,
     _role: &TrinoRole,
     merged_config: &TrinoConfig,
 ) -> Result<String, Error> {
@@ -57,33 +60,98 @@ pub fn jvm_config(
         },
     )?;
 
-    // Basically copied from https://trino.io/docs/442/installation/deployment.html and merged
-    // with https://trino.io/docs/428/installation/deployment.html (-XX:-G1UsePreventiveGC)
-    Ok(formatdoc!(
-        "
-        -server
-        -Xms{heap}
-        -Xmx{heap}
-        -XX:InitialRAMPercentage=80
-        -XX:MaxRAMPercentage=80
-        -XX:G1HeapRegionSize=32M
-        -XX:+ExplicitGCInvokesConcurrent
-        -XX:+ExitOnOutOfMemoryError
-        -XX:+HeapDumpOnOutOfMemoryError
-        -XX:-OmitStackTraceInFastThrow
-        -XX:ReservedCodeCacheSize=512M
-        -XX:PerMethodRecompilationCutoff=10000
-        -XX:PerBytecodeRecompilationCutoff=10000
-        -Djdk.attach.allowAttachSelf=true
-        -Djdk.nio.maxCachedBufferSize=2000000
-        -Dfile.encoding=UTF-8
-        -XX:+UnlockDiagnosticVMOptions
-        -XX:-G1UsePreventiveGC
-        -XX:GCLockerRetryAllocationCount=32
-        -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
-        -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
-        -Djavax.net.ssl.trustStoreType=pkcs12
-        -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
-        ",
-    ))
+    match resolved_product_image.product_version.as_str() {
+        // Copied from https://trino.io/docs/414/installation/deployment.html
+        "414" => Ok(formatdoc!(
+            "-server
+            -Xms{heap}
+            -Xmx{heap}
+
+            -XX:InitialRAMPercentage=80
+            -XX:MaxRAMPercentage=80
+            -XX:G1HeapRegionSize=32M
+            -XX:+ExplicitGCInvokesConcurrent
+            -XX:+ExitOnOutOfMemoryError
+            -XX:+HeapDumpOnOutOfMemoryError
+            -XX:-OmitStackTraceInFastThrow
+            -XX:ReservedCodeCacheSize=512M
+            -XX:PerMethodRecompilationCutoff=10000
+            -XX:PerBytecodeRecompilationCutoff=10000
+            -Djdk.attach.allowAttachSelf=true
+            -Djdk.nio.maxCachedBufferSize=2000000
+            -XX:+UnlockDiagnosticVMOptions
+            -XX:+UseAESCTRIntrinsics
+            # Disable Preventive GC for performance reasons (JDK-8293861)
+            -XX:-G1UsePreventiveGC
+
+            -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
+            -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
+            -Djavax.net.ssl.trustStoreType=pkcs12
+            -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
+            ",
+        )),
+        // Copied from https://trino.io/docs/442/installation/deployment.html
+        "442" => Ok(formatdoc!(
+            "-server
+            -Xms{heap}
+            -Xmx{heap}
+
+            -XX:InitialRAMPercentage=80
+            -XX:MaxRAMPercentage=80
+            -XX:G1HeapRegionSize=32M
+            -XX:+ExplicitGCInvokesConcurrent
+            -XX:+ExitOnOutOfMemoryError
+            -XX:+HeapDumpOnOutOfMemoryError
+            -XX:-OmitStackTraceInFastThrow
+            -XX:ReservedCodeCacheSize=512M
+            -XX:PerMethodRecompilationCutoff=10000
+            -XX:PerBytecodeRecompilationCutoff=10000
+            -Djdk.attach.allowAttachSelf=true
+            -Djdk.nio.maxCachedBufferSize=2000000
+            -Dfile.encoding=UTF-8
+            # Reduce starvation of threads by GClocker, recommend to set about the number of cpu cores (JDK-8192647)
+            -XX:+UnlockDiagnosticVMOptions
+            -XX:GCLockerRetryAllocationCount=32
+            # Allow loading dynamic agent used by JOL
+            -XX:+EnableDynamicAgentLoading
+
+            -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
+            -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
+            -Djavax.net.ssl.trustStoreType=pkcs12
+            -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
+            ",
+        )),
+        // Copied from https://trino.io/docs/451/installation/deployment.html
+        "451" => Ok(formatdoc!(
+            "-server
+            -Xms{heap}
+            -Xmx{heap}
+
+            -XX:InitialRAMPercentage=80
+            -XX:MaxRAMPercentage=80
+            -XX:G1HeapRegionSize=32M
+            -XX:+ExplicitGCInvokesConcurrent
+            -XX:+ExitOnOutOfMemoryError
+            -XX:+HeapDumpOnOutOfMemoryError
+            -XX:-OmitStackTraceInFastThrow
+            -XX:ReservedCodeCacheSize=512M
+            -XX:PerMethodRecompilationCutoff=10000
+            -XX:PerBytecodeRecompilationCutoff=10000
+            -Djdk.attach.allowAttachSelf=true
+            -Djdk.nio.maxCachedBufferSize=2000000
+            -Dfile.encoding=UTF-8
+            # Allow loading dynamic agent used by JOL
+            -XX:+EnableDynamicAgentLoading
+            # https://bugs.openjdk.org/browse/JDK-8329528
+            -XX:+UnlockDiagnosticVMOptions
+            -XX:G1NumCollectionsKeepPinned=10000000
+
+            -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
+            -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
+            -Djavax.net.ssl.trustStoreType=pkcs12
+            -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
+            ",
+        )),
+        _ => TrinoVersionNotSupportedSnafu{ version: resolved_product_image.product_version.clone() }.fail(),
+    }
 }
