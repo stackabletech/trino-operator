@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD034 -->
 # Helm Chart for Stackable Operator for Trino
 
 This Helm Chart can be used to install Custom Resource Definitions and the Operator for Trino provided by Stackable.
@@ -24,4 +25,4 @@ The operator has example requests included in the [`/examples`](https://github.c
 
 ## Links
 
-https://github.com/stackabletech/trino-operator
+<https://github.com/stackabletech/trino-operator>
