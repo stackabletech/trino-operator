@@ -2184,7 +2184,6 @@ dependencies = [
 name = "stackable-trino-crd"
 version = "0.0.0-dev"
 dependencies = [
- "indoc",
  "rstest",
  "semver",
  "serde",

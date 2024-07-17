@@ -6803,10 +6803,6 @@ rec {
         ];
         devDependencies = [
           {
-            name = "indoc";
-            packageId = "indoc";
-          }
-          {
             name = "rstest";
             packageId = "rstest";
           }
