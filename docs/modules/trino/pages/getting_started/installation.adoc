@@ -24,9 +24,7 @@ include::example$getting_started/code/getting_started.sh[tag=stackablectl-instal
 The tool will show
 
 [source]
-----
-include::example$getting_started/code/install-operator-output.txt[tag=stackablectl-install-operators-output]
-----
+include::example$getting_started/code/install_output.txt[]
 
 TIP: Consult the xref:management:stackablectl:quickstart.adoc[] to learn more about how to use `stackablectl`.
 --
