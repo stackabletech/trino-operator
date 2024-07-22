@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# DO NOT EDIT THE SCRIPT
+# Instead, update the j2 template, and regenerate it for dev:
+# cat <<EOF | jinja2 --format yaml getting_started.sh.j2 -o getting_started.sh
+# helm:
+#   repo_name: stackable-dev
+#   repo_url: https://repo.stackable.tech/repository/helm-dev/
+# versions:
+#   commons: 0.0.0-dev
+#   listener: 0.0.0-dev
+#   secret: 0.0.0-dev
+#   trino: 0.0.0-dev
+# EOF
+
 # The getting started guide script
 # It uses tagged regions which are included in the documentation
 # https://docs.asciidoctor.org/asciidoc/latest/directives/include-tagged-regions/
@@ -68,10 +81,12 @@ kubectl rollout status --watch --timeout=5m statefulset/simple-trino-worker-defa
 sleep 5
 
 echo "Starting port-forwarding of coordinator port 8443"
+# shellcheck disable=2069 # we want all output to be blackholed
 # tag::port-forwarding[]
 kubectl port-forward svc/simple-trino-coordinator 8443 2>&1 >/dev/null &
 # end::port-forwarding[]
 PORT_FORWARD_PID=$!
+# shellcheck disable=2064 # we want the PID evaluated now, not at the time the trap is
 trap "kill $PORT_FORWARD_PID" EXIT
 
 sleep 5
