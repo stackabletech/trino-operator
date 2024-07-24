@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [24.7.0] - 2024-07-24
+
 ### Added
 
 - Support row filters and column masks in Rego rules ([#559]).
