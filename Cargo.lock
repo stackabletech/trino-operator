@@ -2182,7 +2182,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-crd"
-version = "0.0.0-dev"
+version = "24.7.0"
 dependencies = [
  "rstest",
  "semver",
@@ -2197,7 +2197,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-operator"
-version = "0.0.0-dev"
+version = "24.7.0"
 dependencies = [
  "anyhow",
  "async-trait",
