@@ -35,14 +35,14 @@ include::example$usage_guide/trino-file-auth-snippet.yaml[tag=trino]
 
 === LDAP
 
-The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well and authentication in Stackable is done using xref:home:concepts:authentication.adoc#authenticationclass[AuthenticationClasses]:
+The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well and authentication in Stackable is done using xref:concepts:authentication.adoc#authenticationclass[AuthenticationClasses]:
 
 [source,yaml]
 ----
 include::example$usage_guide/trino-ldap-auth-snippet.yaml[tag=authclass]
 ----
 
-NOTE: You can follow the xref:home:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
+NOTE: You can follow the xref:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
 
 With an AuthenticationClass ready, `PASSWORD` authentication using LDAP is done by referincing the LDAP AuthenticationClass: 
 
