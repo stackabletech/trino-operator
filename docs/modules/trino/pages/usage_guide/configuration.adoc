@@ -107,7 +107,7 @@ By default, in case nothing is configured in the custom resource for a certain r
 // The "nightly" version is needed because the "include" directive searches for
 // files in the "stable" version by default.
 // TODO: remove the "nightly" version after the next platform release (current: 22.09)
-include::home:concepts:stackable_resource_requests.adoc[]
+include::concepts:stackable_resource_requests.adoc[]
 
 If no resource requests are configured explicitly, the Trino operator uses the following defaults:
 
