@@ -53,7 +53,7 @@ An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
 
 == Add additional contents
 
-In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:home:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
+In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
 
 == Troubleshoot
 
