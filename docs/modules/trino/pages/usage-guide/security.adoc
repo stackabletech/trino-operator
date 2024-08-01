@@ -51,14 +51,14 @@ Adding or removing an `AuthenticationClass` will however result in a `Pod` resta
 
 ==== LDAP
 
-The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well and authentication in Stackable is done using xref:home:concepts:authentication.adoc#authenticationclass[AuthenticationClasses]:
+The Trino operator supports https://trino.io/docs/current/security/ldap.html[LDAP authentication] as well and authentication in Stackable is done using xref:concepts:authentication.adoc#authenticationclass[AuthenticationClasses]:
 
 [source,yaml]
 ----
 include::example$usage-guide/trino-ldap-auth-snippet.yaml[tag=authentication_class]
 ----
 
-NOTE: You can follow the xref:home:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
+NOTE: You can follow the xref:tutorials:authentication_with_openldap.adoc[] tutorial to learn how to create an AuthenticationClass for an LDAP server.
 
 With an AuthenticationClass ready, `PASSWORD` authentication using LDAP is done by referencing the LDAP AuthenticationClass:
 
