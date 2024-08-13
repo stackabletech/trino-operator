@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Reduce CRD size from `984KB` to `131KB` by accepting arbitrary YAML input instead of the underlying schema for the following fields ([#631]):
+  - `podOverrides`
+  - `affinity`
+
+[#631]: https://github.com/stackabletech/trino-operator/pull/631
+
 ## [24.7.0] - 2024-07-24
 
 ### Added
