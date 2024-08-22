@@ -10,7 +10,12 @@ All notable changes to this project will be documented in this file.
   - `podOverrides`
   - `affinity`
 
+### Fixed
+
+- Do not ignore envOverrides ([#632]):
+
 [#631]: https://github.com/stackabletech/trino-operator/pull/631
+[#632]: https://github.com/stackabletech/trino-operator/pull/632
 
 ## [24.7.0] - 2024-07-24
 

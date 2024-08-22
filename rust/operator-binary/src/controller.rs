@@ -877,6 +877,7 @@ fn build_rolegroup_statefulset(
     // additional authentication env vars
     let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
 
+    // Finally add envOverrides
     env.extend(
         config
             .get(&PropertyNameKind::Env)
@@ -914,6 +915,19 @@ fn build_rolegroup_statefulset(
             .iter()
             .flat_map(|catalog| &catalog.env_bindings)
             .cloned(),
+    );
+
+    // Finally add the user defined envOverrides properties.
+    env.extend(
+        config
+            .get(&PropertyNameKind::Env)
+            .into_iter()
+            .flatten()
+            .map(|(k, v)| EnvVar {
+                name: k.clone(),
+                value: Some(v.clone()),
+                ..EnvVar::default()
+            }),
     );
 
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
@@ -1626,5 +1640,69 @@ mod tests {
             None,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn test_env_overrides() {
+        let trino_yaml = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: trino
+        spec:
+          image:
+            productVersion: "451"
+          clusterConfig:
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
+          coordinators:
+            envOverrides:
+              COMMON_VAR: role-value # overridden by role group below
+              ROLE_VAR: role-value   # only defined here at role level
+            roleGroups:
+              default:
+                envOverrides:
+                  COMMON_VAR: group-value # overrides role value
+                  GROUP_VAR: group-value # only defined here at group level
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
+        let trino: TrinoCluster =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        let roles = HashMap::from([(
+            TrinoRole::Coordinator.to_string(),
+            (
+                vec![PropertyNameKind::Env],
+                trino.spec.coordinators.as_ref().cloned().unwrap(),
+            ),
+        )]);
+
+        let validated_config = validate_all_roles_and_groups_config(
+            "451.0.0",
+            &transform_all_roles_to_config(&trino, roles).unwrap(),
+            &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")
+                .unwrap(),
+            false,
+            false,
+        )
+        .unwrap();
+
+        let env = validated_config
+            .get(&TrinoRole::Coordinator.to_string())
+            .unwrap()
+            .get("default")
+            .unwrap()
+            .get(&PropertyNameKind::Env)
+            .unwrap();
+
+        assert_eq!(&"group-value".to_string(), env.get("COMMON_VAR").unwrap());
+        assert_eq!(&"group-value".to_string(), env.get("GROUP_VAR").unwrap());
+        assert_eq!(&"role-value".to_string(), env.get("ROLE_VAR").unwrap());
     }
 }
