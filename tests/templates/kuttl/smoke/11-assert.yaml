@@ -14,12 +14,3 @@ commands:
       kubectl -n $NAMESPACE get sts trino-worker-default -o yaml | yq -e '.spec.template.spec.containers[] | select (.name == "trino") | .env[] | select (.name == "COMMON_VAR" and .value == "group-value")'
       kubectl -n $NAMESPACE get sts trino-worker-default -o yaml | yq -e '.spec.template.spec.containers[] | select (.name == "trino") | .env[] | select (.name == "GROUP_VAR" and .value == "group-value")'
       kubectl -n $NAMESPACE get sts trino-worker-default -o yaml | yq -e '.spec.template.spec.containers[] | select (.name == "trino") | .env[] | select (.name == "ROLE_VAR" and .value == "role-value")'
-
-  #
-  # Test configOverrides
-  #
-  #- script: |
-  #    kubectl -n $NAMESPACE get cm test-kafka-broker-default -o yaml | yq -e '.data."server.properties"' | grep "compression.type=snappy"
-  #    kubectl -n $NAMESPACE get cm test-kafka-broker-default -o yaml | yq -e '.data."server.properties"' | grep "controller.quorum.election.backoff.max.ms=2000"
-  #    kubectl -n $NAMESPACE get cm test-kafka-broker-default -o yaml | yq -e '.data."server.properties"' | grep "controller.quorum.fetch.timeout.ms=3000"
-
