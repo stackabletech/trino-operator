@@ -12,10 +12,10 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Do not ignore envOverrides ([#632]):
+- Do not ignore envOverrides ([#633]):
 
 [#631]: https://github.com/stackabletech/trino-operator/pull/631
-[#632]: https://github.com/stackabletech/trino-operator/pull/632
+[#633]: https://github.com/stackabletech/trino-operator/pull/633
 
 ## [24.7.0] - 2024-07-24
 
