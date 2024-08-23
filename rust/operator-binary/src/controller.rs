@@ -1547,9 +1547,7 @@ mod tests {
         assert!(
             config.contains("http-server.https.keystore.path=/stackable/server_tls/keystore.p12")
         );
-        // FIXME: configOverrides at role level are not working correctly! The core problem is product-config machinery
-        // and adding stuff in `compute_files`, which can not be overwritten at role level!
-        assert!(!config.contains(
+        assert!(config.contains(
             "internal-communication.https.keystore.path=/my/custom/internal-truststore.p12"
         ));
         // Overwritten by configOverrides from role (does work)
