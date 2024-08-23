@@ -877,20 +877,6 @@ fn build_rolegroup_statefulset(
     // additional authentication env vars
     let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
 
-    // Finally add envOverrides
-    env.extend(
-        config
-            .get(&PropertyNameKind::Env)
-            .iter()
-            .flat_map(|env_vars| env_vars.iter())
-            .map(|(k, v)| EnvVar {
-                name: k.clone(),
-                value: Some(v.clone()),
-                ..EnvVar::default()
-            })
-            .collect::<Vec<_>>(),
-    );
-
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
@@ -1116,7 +1102,7 @@ fn build_rolegroup_statefulset(
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
@@ -1167,7 +1153,7 @@ fn build_rolegroup_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
@@ -1240,6 +1226,7 @@ fn validated_product_config(
     let mut roles = HashMap::new();
 
     let config_files = vec![
+        PropertyNameKind::Env,
         PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
@@ -1673,21 +1660,11 @@ mod tests {
         let trino: TrinoCluster =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
-        let roles = HashMap::from([(
-            TrinoRole::Coordinator.to_string(),
-            (
-                vec![PropertyNameKind::Env],
-                trino.spec.coordinators.as_ref().cloned().unwrap(),
-            ),
-        )]);
-
-        let validated_config = validate_all_roles_and_groups_config(
+        let validated_config = validated_product_config(
+            &trino,
             "451.0.0",
-            &transform_all_roles_to_config(&trino, roles).unwrap(),
             &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")
                 .unwrap(),
-            false,
-            false,
         )
         .unwrap();
 
