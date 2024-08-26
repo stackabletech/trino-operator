@@ -96,6 +96,15 @@ pub fn container_trino_args(authentication_config: &TrinoAuthenticationConfig) -
         ),
     ];
 
+    args.extend(vec![
+        "echo Templating config files".to_string(),
+        "config-utils template /stackable/rwconfig/access-control.properties".to_string(),
+        todo!("Template all catalogs files!!!"),
+        todo!("Think about trino-users-password-file-auth.properties"),
+        "config-utils template /stackable/rwconfig/config.properties".to_string(),
+        "config-utils template /stackable/rwconfig/node.properties".to_string(),
+    ]);
+
     // add required authentication commands
     args.extend(authentication_config.commands(&TrinoRole::Coordinator, &Container::Trino));
 
