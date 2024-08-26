@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 
 [#631]: https://github.com/stackabletech/trino-operator/pull/631
 
+### Fixed
+
+- Don't print credentials to STDOUT during startup, as `export SECRET=$(cat file)` used. Instead, migrate to [config-utils](https://github.com/stackabletech/config-utils) ([#XXX]).
+
 ## [24.7.0] - 2024-07-24
 
 ### Added

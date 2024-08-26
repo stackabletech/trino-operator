@@ -15,8 +15,6 @@ const LDAP_USER_BASE_DN: &str = "ldap.user-base-dn";
 const LDAP_GROUP_AUTH_PATTERN: &str = "ldap.group-auth-pattern";
 const LDAP_ALLOW_INSECURE: &str = "ldap.allow-insecure";
 const LDAP_SSL_TRUST_STORE_PATH: &str = "ldap.ssl.truststore.path";
-const LDAP_USER_ENV: &str = "LDAP_USER";
-const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -73,22 +71,14 @@ impl LdapAuthenticator {
             format!("(&({id}=${{USER}}))", id = self.ldap.ldap_field_names.uid),
         );
 
-        // If bind credentials provided we have to mount the secret volume into env variables
-        // in the container and reference the DN and password in the config
-        if self.ldap.has_bind_credentials() {
+        if let Some((user_path, password_path)) = self.ldap.bind_credentials_mount_paths() {
             config_data.insert(
                 LDAP_BIND_DN.to_string(),
-                format!(
-                    "${{ENV:{user}}}",
-                    user = self.build_bind_credentials_env_var(LDAP_USER_ENV)
-                ),
+                format!("${{file:UTF-8:{user_path}}}"),
             );
             config_data.insert(
                 LDAP_BIND_PASSWORD.to_string(),
-                format!(
-                    "${{ENV:{pw}}}",
-                    pw = self.build_bind_credentials_env_var(LDAP_PASSWORD_ENV)
-                ),
+                format!("${{file:UTF-8:{password_path}}}"),
             );
         }
 
@@ -110,38 +100,11 @@ impl LdapAuthenticator {
         Ok(config_data)
     }
 
-    /// Return additional commands for Trino
-    pub fn commands(&self) -> Vec<String> {
-        let mut commands = vec![];
-
-        if let Some((user_path, pw_path)) = self.ldap.bind_credentials_mount_paths() {
-            commands.push(format!(
-                "export {user}=$(cat {user_path})",
-                user = self.build_bind_credentials_env_var(LDAP_USER_ENV)
-            ));
-            commands.push(format!(
-                "export {pw}=$(cat {pw_path})",
-                pw = self.build_bind_credentials_env_var(LDAP_PASSWORD_ENV)
-            ));
-        }
-
-        commands
-    }
-
     /// Required LDAP authenticator volume amd volume mounts.
     pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>), Error> {
         self.ldap
             .volumes_and_mounts()
             .context(LdapVolumeAndVolumeMountsSnafu)
-    }
-
-    /// Convert the provided authentication class name into an ENV variable.
-    /// This means uppercase and replacing any '-' with '_' characters.
-    fn build_bind_credentials_env_var(&self, prefix: &str) -> String {
-        format!(
-            "{prefix}_{auth_class}",
-            auth_class = self.name.to_uppercase().replace('-', "_")
-        )
     }
 }
 

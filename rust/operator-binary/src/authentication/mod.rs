@@ -806,7 +806,7 @@ mod tests {
         let auth_config = setup_authentication_config();
         let auth_config_with_ldap_bind = setup_authentication_config_bind_credentials();
 
-        // nothing for workers
+        // We (currently!) don't expect any special commands for workers
         assert!(auth_config
             .commands(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino)
             .is_empty());
@@ -814,27 +814,21 @@ mod tests {
             .commands(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino)
             .is_empty());
 
-        // we expect 0 entries because no bind credentials env export
-        assert_eq!(
-            auth_config
-                .commands(
-                    &TrinoRole::Coordinator,
-                    &stackable_trino_crd::Container::Trino
-                )
-                .len(),
-            0
-        );
+        // We (currently!) don't expect any special commands for coordinator
+        assert!(auth_config
+            .commands(
+                &TrinoRole::Coordinator,
+                &stackable_trino_crd::Container::Trino
+            )
+            .is_empty(),);
 
-        // we expect 4 entries because of 2x user:password bind credential env export
-        assert_eq!(
-            auth_config_with_ldap_bind
-                .commands(
-                    &TrinoRole::Coordinator,
-                    &stackable_trino_crd::Container::Trino
-                )
-                .len(),
-            4
-        );
+        // We (currently!) don't expect any special commands for coordinator
+        assert!(auth_config_with_ldap_bind
+            .commands(
+                &TrinoRole::Coordinator,
+                &stackable_trino_crd::Container::Trino
+            )
+            .is_empty());
     }
 
     #[test]

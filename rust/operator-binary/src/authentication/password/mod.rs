@@ -137,13 +137,6 @@ impl TrinoPasswordAuthentication {
                         .context(FailedToWritePasswordAuthenticationFileSnafu)?,
                     );
 
-                    // extra commands
-                    password_authentication_config.add_commands(
-                        TrinoRole::Coordinator,
-                        stackable_trino_crd::Container::Trino,
-                        ldap_authenticator.commands(),
-                    );
-
                     let (volumes, volume_mounts) = ldap_authenticator
                         .volumes_and_mounts()
                         .context(LdapVolumeAndVolumeMountsSnafu)?;

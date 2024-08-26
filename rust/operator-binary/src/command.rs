@@ -81,10 +81,7 @@ pub fn container_prepare_args(
     args
 }
 
-pub fn container_trino_args(
-    authentication_config: &TrinoAuthenticationConfig,
-    catalogs: &[CatalogConfig],
-) -> Vec<String> {
+pub fn container_trino_args(authentication_config: &TrinoAuthenticationConfig) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder
         format!(
@@ -101,13 +98,6 @@ pub fn container_trino_args(
 
     // add required authentication commands
     args.extend(authentication_config.commands(&TrinoRole::Coordinator, &Container::Trino));
-
-    // Add the commands that are needed to set up the catalogs
-    catalogs.iter().for_each(|catalog| {
-        for (env_name, file) in &catalog.load_env_from_files {
-            args.push(format!("export {env_name}=$(cat {file})"));
-        }
-    });
 
     // Start command
     args.push(format!(

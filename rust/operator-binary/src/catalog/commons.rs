@@ -116,13 +116,13 @@ impl ExtendCatalogConfig for S3ConnectionDef {
                 .volume_mounts
                 .push(VolumeMountBuilder::new(&volume_name, &volume_mount_path).build());
 
-            catalog_config.add_env_property_from_file(
+            catalog_config.add_property(
                 "hive.s3.aws-access-key",
-                format!("{volume_mount_path}/accessKey"),
+                format!("${{file:UTF-8:{volume_mount_path}/accessKey}}"),
             );
-            catalog_config.add_env_property_from_file(
+            catalog_config.add_property(
                 "hive.s3.aws-secret-key",
-                format!("{volume_mount_path}/secretKey"),
+                format!("${{file:UTF-8:{volume_mount_path}/secretKey}}"),
             );
         }
 

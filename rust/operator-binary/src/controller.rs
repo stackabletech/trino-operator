@@ -981,7 +981,6 @@ fn build_rolegroup_statefulset(
         ])
         .args(vec![command::container_trino_args(
             trino_authentication_config,
-            catalogs,
         )
         .join("\n")])
         .add_env_vars(env)
@@ -1102,7 +1101,7 @@ fn build_rolegroup_statefulset(
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
@@ -1153,7 +1152,7 @@ fn build_rolegroup_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
