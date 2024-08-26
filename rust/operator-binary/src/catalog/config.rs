@@ -13,18 +13,24 @@ use super::{FromTrinoCatalogError, ToCatalogConfig};
 pub struct CatalogConfig {
     /// Name of the catalog
     pub name: String,
+
     /// Properties of the catalog
     pub properties: BTreeMap<String, String>,
+
     /// List of EnvVar that will be added to every Trino container
     pub env_bindings: Vec<EnvVar>,
+
     /// Env-Vars that should be exported.
     /// The value will be read from the file specified.
-    /// You can think of it like `export <key>=$(cat <value>)`
+    /// You can think of it like `export <key>="$(cat <value>)"`
     pub load_env_from_files: BTreeMap<String, String>,
+
     /// Additional commands that needs to be executed before starting Trino
     pub init_container_extra_start_commands: Vec<String>,
+
     /// Volumes that need to be added to the pod (e.g. for S3 credentials)
     pub volumes: Vec<Volume>,
+
     /// Volume mounts that need to be added to the Trino container (e.g. for S3 credentials)
     pub volume_mounts: Vec<VolumeMount>,
 }

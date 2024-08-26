@@ -103,11 +103,14 @@ pub fn container_trino_args(
     args.extend(authentication_config.commands(&TrinoRole::Coordinator, &Container::Trino));
 
     // Add the commands that are needed to set up the catalogs
+    // Don't print secret contents!
+    args.push("set +x".to_string());
     catalogs.iter().for_each(|catalog| {
         for (env_name, file) in &catalog.load_env_from_files {
-            args.push(format!("export {env_name}=$(cat {file})"));
+            args.push(format!("export {env_name}=\"$(cat {file})\""));
         }
     });
+    args.push("set -x".to_string());
 
     // Start command
     args.push(format!(

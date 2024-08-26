@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
   - `podOverrides`
   - `affinity`
 
+### Fixed
+
+- Don't print credentials to STDOUT during startup. Ideally we should use [config-utils](https://github.com/stackabletech/config-utils), but that's not easy (see [here](https://github.com/stackabletech/trino-operator/tree/fix/secret-printing)) ([#XXX]).
+
 [#631]: https://github.com/stackabletech/trino-operator/pull/631
 
 ## [24.7.0] - 2024-07-24
