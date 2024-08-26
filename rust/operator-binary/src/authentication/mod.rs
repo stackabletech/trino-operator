@@ -825,7 +825,7 @@ mod tests {
             0
         );
 
-        // we expect 4 entries because of 2x user:password bind credential env export
+        // We expect 8 entries because of "set +x", "set -x" and 2x user:password bind credential env export
         assert_eq!(
             auth_config_with_ldap_bind
                 .commands(
@@ -833,7 +833,7 @@ mod tests {
                     &stackable_trino_crd::Container::Trino
                 )
                 .len(),
-            4
+            8
         );
     }
 
