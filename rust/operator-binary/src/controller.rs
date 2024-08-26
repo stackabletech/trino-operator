@@ -877,19 +877,6 @@ fn build_rolegroup_statefulset(
     // additional authentication env vars
     let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
 
-    env.extend(
-        config
-            .get(&PropertyNameKind::Env)
-            .iter()
-            .flat_map(|env_vars| env_vars.iter())
-            .map(|(k, v)| EnvVar {
-                name: k.clone(),
-                value: Some(v.clone()),
-                ..EnvVar::default()
-            })
-            .collect::<Vec<_>>(),
-    );
-
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
@@ -914,6 +901,19 @@ fn build_rolegroup_statefulset(
             .iter()
             .flat_map(|catalog| &catalog.env_bindings)
             .cloned(),
+    );
+
+    // Finally add the user defined envOverrides properties.
+    env.extend(
+        config
+            .get(&PropertyNameKind::Env)
+            .into_iter()
+            .flatten()
+            .map(|(k, v)| EnvVar {
+                name: k.clone(),
+                value: Some(v.clone()),
+                ..EnvVar::default()
+            }),
     );
 
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
@@ -1102,7 +1102,7 @@ fn build_rolegroup_statefulset(
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
@@ -1153,7 +1153,7 @@ fn build_rolegroup_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
@@ -1226,6 +1226,7 @@ fn validated_product_config(
     let mut roles = HashMap::new();
 
     let config_files = vec![
+        PropertyNameKind::Env,
         PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
         PropertyNameKind::File(NODE_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_CONFIG.to_string()),
@@ -1533,9 +1534,7 @@ mod tests {
         assert!(
             config.contains("http-server.https.keystore.path=/stackable/server_tls/keystore.p12")
         );
-        // FIXME: configOverrides at role level are not working correctly! The core problem is product-config machinery
-        // and adding stuff in `compute_files`, which can not be overwritten at role level!
-        assert!(!config.contains(
+        assert!(config.contains(
             "internal-communication.https.keystore.path=/my/custom/internal-truststore.p12"
         ));
         // Overwritten by configOverrides from role (does work)
@@ -1626,5 +1625,59 @@ mod tests {
             None,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn test_env_overrides() {
+        let trino_yaml = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: trino
+        spec:
+          image:
+            productVersion: "451"
+          clusterConfig:
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
+          coordinators:
+            envOverrides:
+              COMMON_VAR: role-value # overridden by role group below
+              ROLE_VAR: role-value   # only defined here at role level
+            roleGroups:
+              default:
+                envOverrides:
+                  COMMON_VAR: group-value # overrides role value
+                  GROUP_VAR: group-value # only defined here at group level
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
+        let trino: TrinoCluster =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        let validated_config = validated_product_config(
+            &trino,
+            "451.0.0",
+            &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")
+                .unwrap(),
+        )
+        .unwrap();
+
+        let env = validated_config
+            .get(&TrinoRole::Coordinator.to_string())
+            .unwrap()
+            .get("default")
+            .unwrap()
+            .get(&PropertyNameKind::Env)
+            .unwrap();
+
+        assert_eq!(&"group-value".to_string(), env.get("COMMON_VAR").unwrap());
+        assert_eq!(&"group-value".to_string(), env.get("GROUP_VAR").unwrap());
+        assert_eq!(&"role-value".to_string(), env.get("ROLE_VAR").unwrap());
     }
 }
