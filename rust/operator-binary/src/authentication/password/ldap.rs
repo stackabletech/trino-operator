@@ -115,6 +115,8 @@ impl LdapAuthenticator {
         let mut commands = vec![];
 
         if let Some((user_path, pw_path)) = self.ldap.bind_credentials_mount_paths() {
+            // Don't print secret contents!
+            commands.push("set +x".to_string());
             commands.push(format!(
                 "export {user}=$(cat {user_path})",
                 user = self.build_bind_credentials_env_var(LDAP_USER_ENV)
@@ -123,6 +125,7 @@ impl LdapAuthenticator {
                 "export {pw}=$(cat {pw_path})",
                 pw = self.build_bind_credentials_env_var(LDAP_PASSWORD_ENV)
             ));
+            commands.push("set -x".to_string());
         }
 
         commands
