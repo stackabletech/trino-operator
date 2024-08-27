@@ -288,16 +288,4 @@ policies := {
 	}],
 }
 
-extra_groups := groups if {
-	request := {
-		"method": "POST",
-		"url": "http://127.0.0.1:9476/user",
-		"headers": {"Content-Type": "application/json"},
-		"body": {"username": input.context.identity.user},
-	}
-	response := http.send(request)
-
-	response.status_code == 200
-
-	groups := response.body.groups
-}
+extra_groups := data.stackable.opa.userinfo.v1.userInfoByUsername(input.context.identity.user).groups
