@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for Trino 455 ([#638]).
+
 ### Changed
 
 - Reduce CRD size from `984KB` to `131KB` by accepting arbitrary YAML input instead of the underlying schema for the following fields ([#631]):
@@ -15,9 +19,14 @@ All notable changes to this project will be documented in this file.
 - Don't ignore envOverrides ([#633]).
 - Don't print credentials to STDOUT during startup. Ideally we should use [config-utils](https://github.com/stackabletech/config-utils), but that's not easy (see [here](https://github.com/stackabletech/trino-operator/tree/fix/secret-printing)) ([#634]).
 
+### Removed
+
+- Removed support for Trino 414 and 442 ([#638]).
+
 [#631]: https://github.com/stackabletech/trino-operator/pull/631
 [#633]: https://github.com/stackabletech/trino-operator/pull/633
 [#634]: https://github.com/stackabletech/trino-operator/pull/634
+[#638]: https://github.com/stackabletech/trino-operator/pull/638
 
 ## [24.7.0] - 2024-07-24
 
