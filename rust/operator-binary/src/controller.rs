@@ -417,7 +417,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let trino_opa_config = match trino.get_opa_config() {
         Some(opa_config) => Some(
-            TrinoOpaConfig::from_opa_config(client, &trino, &resolved_product_image, opa_config)
+            TrinoOpaConfig::from_opa_config(client, &trino, opa_config)
                 .await
                 .context(InvalidOpaConfigSnafu)?,
         ),
@@ -1102,7 +1102,7 @@ fn build_rolegroup_statefulset(
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
@@ -1153,7 +1153,7 @@ fn build_rolegroup_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(&rolegroup_ref.object_name())
+            .name(rolegroup_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
