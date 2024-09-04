@@ -7,4 +7,4 @@ commands:
   - script: |
       POD=$(kubectl -n $NAMESPACE get pod -l app.kubernetes.io/instance=minio -o name | head -n 1 | sed -e 's#pod/##')
       kubectl cp -n $NAMESPACE yellow_tripdata_2021-07.csv $POD:/tmp
-      kubectl -n $NAMESPACE exec $POD -- mc cp /tmp/yellow_tripdata_2021-07.csv local/trino/taxi-data
+      kubectl -n $NAMESPACE exec $POD -- mc cp /tmp/yellow_tripdata_2021-07.csv local/trino/taxi-data/
