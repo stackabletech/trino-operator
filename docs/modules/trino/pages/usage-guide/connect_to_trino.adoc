@@ -1,4 +1,5 @@
 = Connecting to Trino
+
 :trino-jdbc: https://trino.io/docs/current/client/jdbc.html
 :starburst-odbc: https://docs.starburst.io/data-consumer/clients/odbc.html
 :trino-cli: https://trino.io/docs/current/client/cli.html
@@ -11,6 +12,7 @@ An {trino-jdbc}[open source JDBC driver] does exist as well as a proprietary {st
 Multiple SQL clients can be used to connect to Trino as described below.
 
 == Prerequisites
+
 The Trino server must be reachable from your local computer.
 It is typically secured via HTTPS with a certificated provided by a xref:secret-operator:secretclass.adoc[SecretClass].
 
@@ -18,15 +20,19 @@ As most setups use a self-signed certificate, that cannot be verified without th
 To use certificate validation instead, you need to extract the `ca.crt` file from the the SecretClass and provide it to the Trino client.
 
 == Connect with trino-cli
+
 Consult the  {trino-cli}[official trino-cli docs] for details on how to connect to a running Trino cluster.
-The `--insecure` flag is required in this case, so your command looks something like:
+The `--insecure` flag ignores the server TLS certificate and is required in this case, so your command looks something like:
 
 [source,console]
 ----
 $ java -jar ~/Downloads/trino-cli-403-executable.jar --server https://85.215.195.29:8443 --user admin --password --insecure
 ----
 
+TIP: In case you are using OpenID connect, use `--external-authentication` instead of `--user admin --password`. A browser window will be opened, which might require you to log in.
+
 == Connect with DBeaver
+
 {dbeaver}[DBeaver] is a free multi-platform database tool for anyone who needs to work with databases.
 It is installed locally and can connect to Trino and offers a convenient UI to explore and work with Trino.
 
@@ -47,6 +53,8 @@ image::connect-with-dbeaver-3.png[]
 
 As the last step you can click on _Finish_ and start using the Trino connection.
 
+TIP: In case you are using OpenID connect, set the `externalAuthentication` property to `true` and don't provide and username or password. A browser window will be opened, which might require you to log in.
+
 == Connect with Python
 
 For more information on how to connect to Trino from Python, have a look at the official {trino-python-client}[trino-python-client].
@@ -55,6 +63,8 @@ A minimal example of making a connection and running a query looks like this:
 
 [source,python]
 ----
+import trino
+
 def get_connection():
     connection = trino.dbapi.connect(
         host="trino-coordinator-default.default.svc.cluster.local",
@@ -78,3 +88,28 @@ connection = get_connection()
 
 run_query(connection, "show catalogs")
 ----
+
+In case you are using OpenID connect use the following connection definition:
+
+[source,python]
+----
+    connection = trino.dbapi.connect(
+        host="87.106.119.4", # You need to use an an externally reachable address, so that your browser can access it!
+        port=8443,
+        http_scheme="https",
+        verify=False, # For best security you can also provide a path to the trino root ca: "/stackable/secrets/trino-ca-cert/ca.crt",
+        auth=trino.auth.OAuth2Authentication(),
+        catalog="hive",
+        schema="staging",
+    )
+----
+
+This snippet prints the following statement
+
+[source]
+----
+Open the following URL in browser for the external authentication:
+https://87.106.119.4:8443/oauth2/token/initiate/52787f3f7e18791121e3123eedcd797a06c0870548c007cd96e6e82899fbf830
+----
+
+Click on the link, potentially log in and you should be authenticated.
