@@ -113,9 +113,6 @@ pub fn jvm_config(
             -Dfile.encoding=UTF-8
             # Allow loading dynamic agent used by JOL
             -XX:+EnableDynamicAgentLoading
-            # https://bugs.openjdk.org/browse/JDK-8329528
-            -XX:+UnlockDiagnosticVMOptions
-            -XX:G1NumCollectionsKeepPinned=10000000
 
             -Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12
             -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
