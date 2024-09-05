@@ -51,7 +51,7 @@ impl TrinoOpaConfig {
             .full_document_url_from_config_map(
                 client,
                 trino,
-                // Sticking to https://github.com/trinodb/trino/blob/442/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L44
+                // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L46
                 Some("rowFilters"),
                 OpaApiVersion::V1,
             )
@@ -60,7 +60,7 @@ impl TrinoOpaConfig {
             .full_document_url_from_config_map(
                 client,
                 trino,
-                // Sticking to https://github.com/trinodb/trino/blob/442/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L45
+                // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L47
                 Some("columnMask"),
                 OpaApiVersion::V1,
             )

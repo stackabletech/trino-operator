@@ -285,7 +285,7 @@ testcontext := {
 		"groups": ["testgroup1", "testgroup2"],
 		"user": "testuser",
 	},
-	"softwareStack": {"trinoVersion": "451"},
+	"softwareStack": {"trinoVersion": "455"},
 }
 
 test_access_filter_catalog if {

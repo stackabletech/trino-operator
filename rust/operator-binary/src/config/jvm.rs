@@ -1,4 +1,4 @@
-// As of 2024-07-05 we support multiple Trino versions. Some using Java 17, some Java 21 and the latest (451) uses Java 22.
+// As of 2024-07-05 we support multiple Trino versions. Some using Java 17, some Java 21 and the latest (455) uses Java 22.
 // This requires a different JVM config
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};

@@ -1636,7 +1636,7 @@ mod tests {
           name: trino
         spec:
           image:
-            productVersion: "451"
+            productVersion: "455"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
@@ -1662,7 +1662,7 @@ mod tests {
 
         let validated_config = validated_product_config(
             &trino,
-            "451.0.0",
+            "455.0.0",
             &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")
                 .unwrap(),
         )
