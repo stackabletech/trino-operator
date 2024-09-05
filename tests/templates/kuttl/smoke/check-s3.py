@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS hive.minio.taxi_data (
     trip_distance VARCHAR,
     ratecode_id VARCHAR
 ) WITH (
-    external_location = 's3a://trino/',
+    external_location = 's3a://trino/taxi-data/',
     format = 'csv',
     skip_header_line_count = 1
 )
