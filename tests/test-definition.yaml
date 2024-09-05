@@ -13,12 +13,11 @@
 dimensions:
   - name: trino
     values:
-      - "414"
-      - "442"
       - "451"
+      - "455"
   - name: trino-latest
     values:
-      - "451"
+      - "455"
   - name: hive
     values:
       - 3.1.3
