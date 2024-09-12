@@ -46,8 +46,7 @@ use stackable_operator::{
         runtime::{controller::Action, reflector::ObjectRef},
         Resource, ResourceExt,
     },
-    kvp::ObjectLabels,
-    kvp::{Annotation, Label, Labels},
+    kvp::{Annotation, Label, Labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{
@@ -201,11 +200,6 @@ pub enum Error {
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {
         source: stackable_operator::commons::opa::Error,
-    },
-
-    #[snafu(display("failed to resolve S3 connection"))]
-    ResolveS3Connection {
-        source: stackable_operator::commons::s3::Error,
     },
 
     #[snafu(display("failed to get associated TrinoCatalogs"))]
