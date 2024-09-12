@@ -17,10 +17,9 @@ use stackable_trino_crd::{CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR};
 use super::{
     config::CatalogConfig,
     from_trino_catalog_error::{
-        ConfigureS3Snafu, ConfigureS3TlsClientDetailsSnafu,
-        FailedToGetDiscoveryConfigMapDataKeySnafu, FailedToGetDiscoveryConfigMapDataSnafu,
-        FailedToGetDiscoveryConfigMapSnafu, ObjectHasNoNamespaceSnafu,
-        S3TlsNoVerificationNotSupportedSnafu,
+        ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
+        FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
+        ObjectHasNoNamespaceSnafu, S3TlsNoVerificationNotSupportedSnafu,
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
@@ -92,28 +91,23 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             .context(ConfigureS3Snafu)?;
 
         catalog_config.add_property("hive.s3.endpoint", s3.endpoint().context(ConfigureS3Snafu)?);
-        catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.uses_tls().to_string());
         catalog_config.add_property(
             "hive.s3.path-style-access",
             (s3.access_style == S3AccessStyle::Path).to_string(),
         );
 
-        let (volumes, mounts) = s3.volumes_and_mounts().context(ConfigureS3Snafu)?;
+        let (volumes, mounts) = s3
+            .volumes_and_mounts(catalog_name)
+            .context(ConfigureS3Snafu)?;
         catalog_config.volumes.extend(volumes);
         catalog_config.volume_mounts.extend(mounts);
 
-        if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
+        if let Some((access_key, secret_key)) = s3.credentials_mount_paths(catalog_name) {
             catalog_config.add_env_property_from_file("hive.s3.aws-access-key", access_key);
             catalog_config.add_env_property_from_file("hive.s3.aws-secret-key", secret_key);
         }
 
-        let (volumes, mounts) = s3
-            .tls
-            .volumes_and_mounts()
-            .context(ConfigureS3TlsClientDetailsSnafu)?;
-        catalog_config.volumes.extend(volumes);
-        catalog_config.volume_mounts.extend(mounts);
-
+        catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.uses_tls().to_string());
         if let Some(tls) = s3.tls.tls.as_ref() {
             match &tls.verification {
                 TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
