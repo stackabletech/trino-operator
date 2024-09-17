@@ -1,4 +1,5 @@
 = Connecting Trino to S3
+:description: Configure S3 connections in Trino either inline within the TrinoCatalog or via an external S3Connection resource for centralized management.
 
 You can specify S3 connection details directly inside the TrinoCatalog specification or by referring to an external S3Connection custom resource.
 This mechanism used used across the whole Stackable Data Platform, read the xref:concepts:s3.adoc[S3 concepts page] to learn more.

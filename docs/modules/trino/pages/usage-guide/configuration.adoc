@@ -1,4 +1,5 @@
 = Configuration
+:description: Configure Trino clusters with properties, environment variables, and resource requests. Customize settings for performance and storage efficiently.
 
 The cluster definition also supports overriding configuration properties and environment variables, either per role or per role group, where the more specific override (role group) has precedence over the less specific one (role).
 
@@ -8,11 +9,11 @@ IMPORTANT: Do not override port numbers. This will lead to faulty installations.
 
 For a role or role group, at the same level of `config`, you can specify `configOverrides` for:
 
-- `config.properties`
-- `node.properties`
-- `log.properties`
-- `password-authenticator.properties`
-- `security.properties`
+* `config.properties`
+* `node.properties`
+* `log.properties`
+* `password-authenticator.properties`
+* `security.properties`
 
 For a list of possible configuration properties consult the https://trino.io/docs/current/admin/properties.html[Trino Properties Reference].
 
@@ -46,9 +47,13 @@ All override property values must be strings. The properties will be passed on w
 
 === The security.properties file
 
-The `security.properties` file is used to configure JVM security properties. It is very seldom that users need to tweak any of these, but there is one use-case that stands out, and that users need to be aware of: the JVM DNS cache.
+The `security.properties` file is used to configure JVM security properties.
+It is very seldom that users need to tweak any of these, but there is one use-case that stands out, and that users need to be aware of: the JVM DNS cache.
 
-The JVM manages it's own cache of successfully resolved host names as well as a cache of host names that cannot be resolved. Some products of the Stackable platform are very sensible to the contents of these caches and their performance is heavily affected by them. As of version 414, Trino performs poorly if the positive cache is disabled. To cache resolved host names, and thus speeding up queries you can configure the TTL of entries in the positive cache like this:
+The JVM manages it's own cache of successfully resolved host names as well as a cache of host names that cannot be resolved.
+Some products of the Stackable platform are very sensible to the contents of these caches and their performance is heavily affected by them.
+As of version 414, Trino performs poorly if the positive cache is disabled.
+To cache resolved host names, and thus speeding up queries you can configure the TTL of entries in the positive cache like this:
 
 [source,yaml]
 ----
@@ -124,7 +129,9 @@ workers:
               capacity: 3Gi
 ----
 
-In the above example, all Trino workers in the default group will store data (the location of the property `--data-dir`) on a `3Gi` volume. Additional role groups not specifying any resources will inherit the config provided on the role level (`2Gi` volume). This works the same for memory or CPU requests.
+In the above example, all Trino workers in the default group will store data (the location of the property `--data-dir`) on a `3Gi` volume.
+Additional role groups not specifying any resources will inherit the config provided on the role level (`2Gi` volume).
+This works the same for memory or CPU requests.
 
 By default, in case nothing is configured in the custom resource for a certain role group, each Pod will have a `2Gi` large local volume mount for the data location containing mainly logs.
 
@@ -168,4 +175,5 @@ spec:
             capacity: '1Gi'
 ----
 
-WARNING: The default values are _most likely_ not sufficient to run a proper cluster in production. Please adapt according to your requirements.
+WARNING: The default values are _most likely_ not sufficient to run a proper cluster in production.
+Please adapt according to your requirements.

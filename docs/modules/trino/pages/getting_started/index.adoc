@@ -1,6 +1,8 @@
 = Getting started
+:description: Get started with Trino on Kubernetes using the Stackable Operator. Follow steps for installation, setup, and resource recommendations.
 
-This guide will get you started with Trino using the Stackable Operator. It will guide you through the installation of the operator and its dependencies and setting up your first Trino cluster.
+This guide will get you started with Trino using the Stackable Operator.
+It will guide you through the installation of the operator and its dependencies and setting up your first Trino cluster.
 
 == Prerequisites
 
