@@ -1,4 +1,5 @@
 = Installation
+:description: Install the Stackable Operator for Trino using stackablectl or Helm. Includes optional setup for Hive, S3, and OPA integration.
 
 On this page you will install the Stackable Operator for Trino as well as the commons, secret and listener operator which are
 required by all Stackable Operators.
@@ -50,8 +51,8 @@ include::example$getting_started/code/getting_started.sh[tag=helm-install-operat
 
 == Optional installation steps
 
-Some Trino connectors like `hive` or `iceberg` work together with the Apache Hive metastore and S3 buckets. For these
-components extra steps are required.
+Some Trino connectors like `hive` or `iceberg` work together with the Apache Hive metastore and S3 buckets.
+For these components extra steps are required.
 
 * a Stackable Hive metastore
 * an accessible S3 bucket
@@ -70,7 +71,8 @@ Please refer to the S3 provider.
 
 === Hive operator
 
-Please refer to the xref:hive:index.adoc[Hive Operator] docs. Both Hive and Trino need the same S3 authentication.
+Please refer to the xref:hive:index.adoc[Hive Operator] docs.
+Both Hive and Trino need the same S3 authentication.
 
 === OPA operator
 

@@ -1,5 +1,5 @@
 = Stackable Operator for Trino
-:description: The Stackable operator for Trino is a Kubernetes operator that can manage Trino clusters. Learn about its features, resources, dependencies and demos, and see the list of supported Trino versions.
+:description: Manage Trino clusters on Kubernetes with the Stackable operator, featuring resource management, demos, and support for custom Trino versions.
 :keywords: Stackable operator, Trino, Kubernetes, k8s, operator, data science, data exploration
 :trino: https://trino.io/
 :github: https://github.com/stackabletech/trino-operator/
