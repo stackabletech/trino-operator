@@ -1006,7 +1006,7 @@ fn build_rolegroup_statefulset(
         pod_builder.add_volume(Volume {
             name: "log-config".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: Some(config_map.into()),
+                name: config_map.into(),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -1015,7 +1015,7 @@ fn build_rolegroup_statefulset(
         pod_builder.add_volume(Volume {
             name: "log-config".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: Some(rolegroup_ref.object_name()),
+                name: rolegroup_ref.object_name(),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -1060,7 +1060,7 @@ fn build_rolegroup_statefulset(
         .add_volume(Volume {
             name: "config".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: Some(rolegroup_ref.object_name()),
+                name: rolegroup_ref.object_name(),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -1069,7 +1069,7 @@ fn build_rolegroup_statefulset(
         .add_volume(Volume {
             name: "catalog".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: Some(format!("{}-catalog", rolegroup_ref.object_name())),
+                name: format!("{}-catalog", rolegroup_ref.object_name()),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -1194,7 +1194,7 @@ fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &st
         value_from: Some(EnvVarSource {
             secret_key_ref: Some(SecretKeySelector {
                 optional: Some(false),
-                name: Some(secret_name.to_string()),
+                name: secret_name.to_string(),
                 key: secret_key.unwrap_or(env_var).to_string(),
             }),
             ..EnvVarSource::default()
