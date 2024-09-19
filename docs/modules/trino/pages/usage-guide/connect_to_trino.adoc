@@ -1,4 +1,5 @@
 = Connecting to Trino
+:description: Learn how to connect to Trino using trino-cli, DBeaver, or Python. Includes setup for SSL/TLS, OpenID Connect, and basic authentication.
 
 :trino-jdbc: https://trino.io/docs/current/client/jdbc.html
 :starburst-odbc: https://docs.starburst.io/data-consumer/clients/odbc.html
@@ -29,7 +30,9 @@ The `--insecure` flag ignores the server TLS certificate and is required in this
 $ java -jar ~/Downloads/trino-cli-403-executable.jar --server https://85.215.195.29:8443 --user admin --password --insecure
 ----
 
-TIP: In case you are using OpenID connect, use `--external-authentication` instead of `--password`. A browser window will be opened, which might require you to log in. Please note that you still need to pass the `--user` argument because of https://github.com/trinodb/trino/issues/11547[this Trino issue].
+TIP: In case you are using OpenID connect, use `--external-authentication` instead of `--password`.
+A browser window will be opened, which might require you to log in.
+Please note that you still need to pass the `--user` argument because of https://github.com/trinodb/trino/issues/11547[this Trino issue].
 
 == Connect with DBeaver
 
@@ -53,7 +56,8 @@ image::connect-with-dbeaver-3.png[]
 
 As the last step you can click on _Finish_ and start using the Trino connection.
 
-TIP: In case you are using OpenID connect, set the `externalAuthentication` property to `true` and don't provide and username or password. A browser window will be opened, which might require you to log in.
+TIP: In case you are using OpenID connect, set the `externalAuthentication` property to `true` and don't provide and username or password.
+A browser window will be opened, which might require you to log in.
 
 == Connect with Python
 

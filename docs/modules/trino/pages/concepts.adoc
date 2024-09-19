@@ -1,11 +1,18 @@
 = Concepts
+:description: Trino connects to diverse data sources via connectors and catalogs, enabling efficient distributed queries across multiple data stores.
+:what-trino-is: https://trino.io/docs/current/overview/use-cases.html#what-trino-is
+:trino-connector: https://trino.io/docs/current/connector.html
 
 == [[connectors]]Connectors
 
-https://trino.io/docs/current/overview/use-cases.html#what-trino-is[Trino] is a tool designed to efficiently query vast amounts of data using distributed queries. It is not a database with its own storage but rather interacts with many different data stores. Trino connects to these data stores - or data sources - via https://trino.io/docs/current/connector.html[connectors].
+{what-trino-is}[Trino] is a tool designed to efficiently query vast amounts of data using distributed queries.
+It is not a database with its own storage but rather interacts with many different data stores.
+Trino connects to these data stores - or data sources - via {trino-connector}[connectors].
 Each connector enables access to a specific underlying data source such as a Hive warehouse, a PostgreSQL database or a Druid instance.
 
-A Trino cluster comprises two roles: the Coordinator, responsible for managing and monitoring work loads, and the Worker, which is responsible for executing specific tasks that together make up a work load. The workers fetch data from the connectors, execute tasks and share intermediate results. The coordinator collects and consolidates these results for the end-user.
+A Trino cluster comprises two roles: the Coordinator, responsible for managing and monitoring work loads, and the Worker, which is responsible for executing specific tasks that together make up a work load.
+The workers fetch data from the connectors, execute tasks and share intermediate results.
+The coordinator collects and consolidates these results for the end-user.
 
 == [[catalogs]]Catalogs
 
@@ -24,9 +31,12 @@ Currently, the following connectors are supported:
 
 == Catalog references
 
-Within Stackable a `TrinoCatalog` consists of one or more (mandatory or optional) components which are specific to that catalog. A catalog should be re-usable within multiple Trino clusters. Catalogs are referenced by Trino clusters with labels and label selectors: this is consistent with the Kubernetes paradigm and keeps the definitions simple and flexible.
+Within Stackable a `TrinoCatalog` consists of one or more (mandatory or optional) components which are specific to that catalog.
+A catalog should be re-usable within multiple Trino clusters.
+Catalogs are referenced by Trino clusters with labels and label selectors: this is consistent with the Kubernetes paradigm and keeps the definitions simple and flexible.
 
-The following diagram illustrates this. Two Trino catalogs - each an instance of a particular connector - are declared with labels that used to match them to a Trino cluster:
+The following diagram illustrates this.
+Two Trino catalogs - each an instance of a particular connector - are declared with labels that used to match them to a Trino cluster:
 
 image::catalogs.drawio.svg[A TrinoCluster referencing two catalogs by label matching]
 

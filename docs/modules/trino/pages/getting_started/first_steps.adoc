@@ -1,10 +1,13 @@
 = First steps
+:description: Deploy and verify a Trino cluster with Stackable Operator. Access via CLI or web interface, and clean up after testing.
 
-After going through the xref:getting_started/installation.adoc[] section and having installed all the operators, you will now deploy a Trino cluster and the required dependencies. Afterwards you can <<_verify_that_it_works, verify that it works>> by running some queries against Trino or visit the Trino web interface.
+After going through the xref:getting_started/installation.adoc[] section and having installed all the operators, you will now deploy a Trino cluster and the required dependencies.
+Afterwards you can <<_verify_that_it_works, verify that it works>> by running some queries against Trino or visit the Trino web interface.
 
 == Setup Trino
 
-A working Trino cluster and its web interface require only the commons, secret and listener operators to work. Simple tests are possible without an external data source (e.g. PostgreSQL, Hive or S3), as internal data can be used.
+A working Trino cluster and its web interface require only the commons, secret and listener operators to work.
+Simple tests are possible without an external data source (e.g. PostgreSQL, Hive or S3), as internal data can be used.
 
 Create a file named `trino.yaml` with the following content:
 
@@ -54,7 +57,9 @@ include::example$getting_started/code/getting_started.sh[tag=port-forwarding]
 
 === Access the Trino cluster via CLI tool
 
-We use the https://trino.io/download.html[Trino CLI tool] to access the Trino cluster. This link points to the latest Trino version. In this guide we keep Trino cluster and client versions in sync and download the CLI tool from the https://repo.stackable.tech/[Stackable repository]:
+We use the https://trino.io/download.html[Trino CLI tool] to access the Trino cluster.
+This link points to the latest Trino version.
+In this guide we keep Trino cluster and client versions in sync and download the CLI tool from the https://repo.stackable.tech/[Stackable repository]:
 
 [source,bash]
 ----
@@ -100,9 +105,12 @@ Congratulations, you set up your first Stackable Trino cluster successfully.
 
 === Access the Trino web interface
 
-With the port-forward still active, you can connect to the Trino web interface. Enter `https://localhost:8443/ui` in your browser and login with the username `admin`. Since no authentication is enabled you do not need to enter a password.
+With the port-forward still active, you can connect to the Trino web interface.
+Enter `https://localhost:8443/ui` in your browser and login with the username `admin`.
+Since no authentication is enabled you do not need to enter a password.
 
-WARNING: Your browser will probably show a security risk warning because it does not trust the self generated TLS certificates. Just ignore that and continue.
+WARNING: Your browser will probably show a security risk warning because it does not trust the self generated TLS certificates.
+Just ignore that and continue.
 
 After logging in you should see the Trino web interface:
 

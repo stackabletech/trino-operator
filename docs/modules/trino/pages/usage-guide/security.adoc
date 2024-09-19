@@ -1,4 +1,5 @@
 = Security
+:description: The Trino operator supports secure authentication (Password, LDAP, OAuth2), authorization via OPA, and TLS encryption for secure cluster communications.
 
 This page covers <<authentication,authentication>> and <<authorization,authorization>>.
 
@@ -14,23 +15,25 @@ The Trino operator currently supports the following `PASSWORD` authenticators.
 
 ==== File
 
-The https://trino.io/docs/current/security/password-file.html[file based authentication] can be defined as follows. First create a secret with your users:
+The https://trino.io/docs/current/security/password-file.html[file based authentication] can be defined as follows.
+First create a secret with your users:
 
 [source,yaml]
 ----
 include::example$usage-guide/trino-file-auth-snippet.yaml[tag=secret]
 ----
 
-This contains username and password pairs as shown in the previous snippet. The username and password combinations are provided in the `stringData` field.
+This contains username and password pairs as shown in the previous snippet.
+The username and password combinations are provided in the `stringData` field.
 
-The Secret is referenced in an `AuthenticationClass`.
+The Secret is referenced in an AuthenticationClass.
 
 [source,yaml]
 ----
 include::example$usage-guide/trino-file-auth-snippet.yaml[tag=authentication_class]
 ----
 
-Then reference the `AuthenticationClass` in your TrinoCluster definition:
+Then reference the AuthenticationClass in your TrinoCluster definition:
 
 [source,yaml]
 ----
@@ -39,15 +42,18 @@ include::example$usage-guide/trino-file-auth-snippet.yaml[tag=trino]
 
 Multiple authentication classes with different user secrets can be provided.
 
-The operator never reads secrets directly, but mounts them directly into the `Pod`. Volume mount names can not exceed *63* characters due to Kubernetes restrictions.
+The operator never reads secrets directly, but mounts them directly into the Pod.
+Volume mount names can not exceed *63* characters due to Kubernetes restrictions.
 
-For uniqueness, the volume mount name is internally build up of the name of the `AuthenticationClass`. This means the `AuthenticationClass` name must not exceed *63* characters.
+For uniqueness, the volume mount name is internally build up of the name of the AuthenticationClass.
+This means the AuthenticationClass name must not exceed *63* characters.
 
 IMPORTANT: Due to Kubernetes restrictions, the name of the AuthenticationClass must not exceed *63* characters.
 
-Changes to the referenced user `Secret` (e.g. adding or removing a user) are updated in Trino without restarts but after a small delay. This heavily depends on Kubernetes and may take a couple of minutes.
+Changes to the referenced user Secret (e.g. adding or removing a user) are updated in Trino without restarts but after a small delay.
+This heavily depends on Kubernetes and may take a couple of minutes.
 
-Adding or removing an `AuthenticationClass` will however result in a `Pod` restart.
+Adding or removing an AuthenticationClass will however result in a Pod restart.
 
 ==== LDAP
 
@@ -159,7 +165,8 @@ For secure connections the following steps must be taken:
 
 If authentication is enabled, https://trino.io/docs/current/security/tls.html[TLS] for the coordinator as well as a shared secret for https://trino.io/docs/current/security/internal-communication.html[internal communications] (this is base64 and not encrypted) must be configured.
 
-Securing the Trino cluster will disable all HTTP ports and disable the web interface on the HTTP port as well. In the definition below the authentication is directed to use the `trino-users` secret and TLS communication will use a certificate signed by the Secret Operator (indicated by `autoTls`).
+Securing the Trino cluster will disable all HTTP ports and disable the web interface on the HTTP port as well.
+In the definition below the authentication is directed to use the `trino-users` secret and TLS communication will use a certificate signed by the Secret Operator (indicated by `autoTls`).
 
 [source,yaml]
 ----
@@ -203,7 +210,8 @@ CLI callout:
 
 === Via internal TLS
 
-Internal TLS is for encrypted and authenticated communications between coordinators and workers. Since this applies to all the data send and processed between the processes, this may reduce the performance significantly.
+Internal TLS is for encrypted and authenticated communications between coordinators and workers.
+Since this applies to all the data send and processed between the processes, this may reduce the performance significantly.
 
 [source,yaml]
 ----
@@ -216,7 +224,8 @@ include::example$usage-guide/trino-secure-internal-tls.yaml[]
 <4> The `Secret` containing user and password combinations in plaintext
 <5> TLS mechanism
 
-Since Trino has internal and external communications running over a single port, this will enable the HTTPS port but not expose it. Cluster access is only possible via HTTP.
+Since Trino has internal and external communications running over a single port, this will enable the HTTPS port but not expose it.
+Cluster access is only possible via HTTP.
 
 [source]
 ----
