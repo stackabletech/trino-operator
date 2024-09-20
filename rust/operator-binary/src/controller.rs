@@ -17,6 +17,7 @@ use product_config::{
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
+        self,
         configmap::ConfigMapBuilder,
         meta::ObjectMetaBuilder,
         pod::{
@@ -55,6 +56,7 @@ use stackable_operator::{
     },
     product_logging::{
         self,
+        framework::LoggingError,
         spec::{
             ConfigMapLogConfig, ContainerLogConfig, ContainerLogConfigChoice,
             CustomContainerLogConfig,
@@ -232,6 +234,9 @@ pub enum Error {
         source: crate::product_logging::Error,
     },
 
+    #[snafu(display("failed to build vector container"))]
+    BuildVectorContainer { source: LoggingError },
+
     #[snafu(display("failed to add the logging configuration to the ConfigMap [{cm_name}]"))]
     InvalidLoggingConfig {
         source: crate::product_logging::Error,
@@ -317,6 +322,14 @@ pub enum Error {
 
     #[snafu(display("failed to build JVM config"))]
     FailedToCreateJvmConfig { source: crate::config::jvm::Error },
+
+    #[snafu(display("failed to add needed volume"))]
+    AddVolume { source: builder::pod::Error },
+
+    #[snafu(display("failed to add needed volumeMount"))]
+    AddVolumeMount {
+        source: builder::pod::container::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -874,12 +887,14 @@ fn build_rolegroup_statefulset(
     let secret_name = build_shared_internal_secret_name(trino);
     env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
 
-    trino_authentication_config.add_authentication_pod_and_volume_config(
-        trino_role,
-        &mut pod_builder,
-        &mut cb_prepare,
-        &mut cb_trino,
-    );
+    trino_authentication_config
+        .add_authentication_pod_and_volume_config(
+            trino_role,
+            &mut pod_builder,
+            &mut cb_prepare,
+            &mut cb_trino,
+        )
+        .context(InvalidAuthenticationConfigSnafu)?;
     add_graceful_shutdown_config(
         trino,
         trino_role,
@@ -951,9 +966,13 @@ fn build_rolegroup_statefulset(
         ])
         .args(vec![prepare_args.join("\n")])
         .add_volume_mount("data", DATA_DIR_NAME)
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .context(AddVolumeMountSnafu)?
         .resources(
             ResourceRequirementsBuilder::new()
                 .with_cpu_request("500m")
@@ -980,10 +999,15 @@ fn build_rolegroup_statefulset(
         .join("\n")])
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount("config", CONFIG_DIR_NAME)
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .context(AddVolumeMountSnafu)?
         .add_container_ports(container_ports(trino))
         .resources(merged_config.resources.clone().into())
         .readiness_probe(readiness_probe(trino))
@@ -1003,38 +1027,45 @@ fn build_rolegroup_statefulset(
             })),
     }) = merged_config.logging.containers.get(&Container::Trino)
     {
-        pod_builder.add_volume(Volume {
-            name: "log-config".to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: config_map.into(),
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        });
+        pod_builder
+            .add_volume(Volume {
+                name: "log-config".to_string(),
+                config_map: Some(ConfigMapVolumeSource {
+                    name: config_map.into(),
+                    ..ConfigMapVolumeSource::default()
+                }),
+                ..Volume::default()
+            })
+            .context(AddVolumeSnafu)?;
     } else {
-        pod_builder.add_volume(Volume {
-            name: "log-config".to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: rolegroup_ref.object_name(),
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        });
+        pod_builder
+            .add_volume(Volume {
+                name: "log-config".to_string(),
+                config_map: Some(ConfigMapVolumeSource {
+                    name: rolegroup_ref.object_name(),
+                    ..ConfigMapVolumeSource::default()
+                }),
+                ..Volume::default()
+            })
+            .context(AddVolumeSnafu)?;
     }
 
     if merged_config.logging.enable_vector_agent {
-        pod_builder.add_container(product_logging::framework::vector_container(
-            resolved_product_image,
-            "config",
-            "log",
-            merged_config.logging.containers.get(&Container::Vector),
-            ResourceRequirementsBuilder::new()
-                .with_cpu_request("250m")
-                .with_cpu_limit("500m")
-                .with_memory_request("128Mi")
-                .with_memory_limit("128Mi")
-                .build(),
-        ));
+        pod_builder.add_container(
+            product_logging::framework::vector_container(
+                resolved_product_image,
+                "config",
+                "log",
+                merged_config.logging.containers.get(&Container::Vector),
+                ResourceRequirementsBuilder::new()
+                    .with_cpu_request("250m")
+                    .with_cpu_limit("500m")
+                    .with_memory_request("128Mi")
+                    .with_memory_limit("128Mi")
+                    .build(),
+            )
+            .context(BuildVectorContainerSnafu)?,
+        );
     }
 
     let metadata = ObjectMetaBuilder::new()
@@ -1065,7 +1096,9 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
+        .context(AddVolumeSnafu)?
         .add_empty_dir_volume("rwconfig", None)
+        .context(AddVolumeSnafu)?
         .add_volume(Volume {
             name: "catalog".to_string(),
             config_map: Some(ConfigMapVolumeSource {
@@ -1074,12 +1107,14 @@ fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
+        .context(AddVolumeSnafu)?
         .add_empty_dir_volume(
             "log",
             Some(product_logging::framework::calculate_log_volume_size_limit(
                 &[MAX_TRINO_LOG_FILES_SIZE, MAX_PREPARE_LOG_FILE_SIZE],
             )),
         )
+        .context(AddVolumeSnafu)?
         .service_account_name(sa_name)
         .security_context(
             PodSecurityContextBuilder::new()
@@ -1446,34 +1481,70 @@ fn tls_volume_mounts(
     catalogs: &[CatalogConfig],
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
-        cb_prepare.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
-        cb_trino.add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume("server-tls-mount", server_tls)?);
+        cb_prepare
+            .add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR)
+            .context(AddVolumeMountSnafu)?;
+        cb_trino
+            .add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR)
+            .context(AddVolumeMountSnafu)?;
+        pod_builder
+            .add_volume(create_tls_volume("server-tls-mount", server_tls)?)
+            .context(AddVolumeSnafu)?;
     }
 
-    cb_prepare.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
-    cb_trino.add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR);
-    pod_builder.add_empty_dir_volume("server-tls", None);
+    cb_prepare
+        .add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR)
+        .context(AddVolumeMountSnafu)?;
+    cb_trino
+        .add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR)
+        .context(AddVolumeMountSnafu)?;
+    pod_builder
+        .add_empty_dir_volume("server-tls", None)
+        .context(AddVolumeSnafu)?;
 
-    cb_prepare.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    cb_trino.add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR);
-    pod_builder.add_empty_dir_volume("client-tls", None);
+    cb_prepare
+        .add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR)
+        .context(AddVolumeMountSnafu)?;
+    cb_trino
+        .add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR)
+        .context(AddVolumeMountSnafu)?;
+    pod_builder
+        .add_empty_dir_volume("client-tls", None)
+        .context(AddVolumeSnafu)?;
 
     if let Some(internal_tls) = trino.get_internal_tls() {
-        cb_prepare.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
-        cb_trino.add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR);
-        pod_builder.add_volume(create_tls_volume("internal-tls-mount", internal_tls)?);
+        cb_prepare
+            .add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR)
+            .context(AddVolumeMountSnafu)?;
+        cb_trino
+            .add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR)
+            .context(AddVolumeMountSnafu)?;
+        pod_builder
+            .add_volume(create_tls_volume("internal-tls-mount", internal_tls)?)
+            .context(AddVolumeSnafu)?;
 
-        cb_prepare.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
-        cb_trino.add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR);
-        pod_builder.add_empty_dir_volume("internal-tls", None);
+        cb_prepare
+            .add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR)
+            .context(AddVolumeMountSnafu)?;
+        cb_trino
+            .add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR)
+            .context(AddVolumeMountSnafu)?;
+        pod_builder
+            .add_empty_dir_volume("internal-tls", None)
+            .context(AddVolumeSnafu)?;
     }
 
     // catalogs
     for catalog in catalogs {
-        cb_prepare.add_volume_mounts(catalog.volume_mounts.clone());
-        cb_trino.add_volume_mounts(catalog.volume_mounts.clone());
-        pod_builder.add_volumes(catalog.volumes.clone());
+        cb_prepare
+            .add_volume_mounts(catalog.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        cb_trino
+            .add_volume_mounts(catalog.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        pod_builder
+            .add_volumes(catalog.volumes.clone())
+            .context(AddVolumeSnafu)?;
     }
 
     Ok(())

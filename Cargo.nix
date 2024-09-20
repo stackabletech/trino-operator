@@ -4843,9 +4843,9 @@ rec {
       };
       "pest" = rec {
         crateName = "pest";
-        version = "2.7.12";
+        version = "2.7.13";
         edition = "2021";
-        sha256 = "1sjw32mdy2nywl45jalas7cgzv6nr43wj4x6rrb7kj5q05nc4www";
+        sha256 = "1nf2vwl5xhiqn1kl6skgwajp7naaxcjys86jmfasi1vhsk8zkgpx";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -4869,6 +4869,7 @@ rec {
         features = {
           "default" = [ "std" "memchr" ];
           "memchr" = [ "dep:memchr" ];
+          "miette-error" = [ "std" "pretty-print" "dep:miette" "dep:thiserror" ];
           "pretty-print" = [ "dep:serde" "dep:serde_json" ];
           "std" = [ "ucd-trie/std" "dep:thiserror" ];
         };
@@ -4876,9 +4877,9 @@ rec {
       };
       "pest_derive" = rec {
         crateName = "pest_derive";
-        version = "2.7.12";
+        version = "2.7.13";
         edition = "2021";
-        sha256 = "13bdgricj6l8k4m6pqww54jxc6sv8n5mhb6xvcx7h598isbj4kb6";
+        sha256 = "182sp7b10216mwdccr8296462k3mf5ap4g1rnsrzx07cjhrnwfjd";
         procMacro = true;
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
@@ -4905,9 +4906,9 @@ rec {
       };
       "pest_generator" = rec {
         crateName = "pest_generator";
-        version = "2.7.12";
+        version = "2.7.13";
         edition = "2021";
-        sha256 = "1gmddfmlwkcpmp50izl79rj2mkj0lapj476r6163zlym49q4imd2";
+        sha256 = "03lk1v5ih4lkjpm5j6jp4r3snwj17z3n46b0np8nkjp1pl39ahll";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -4944,9 +4945,9 @@ rec {
       };
       "pest_meta" = rec {
         crateName = "pest_meta";
-        version = "2.7.12";
+        version = "2.7.13";
         edition = "2021";
-        sha256 = "0x41ip6frhpwap02pa4afcxpbc6biv7258dkvv29598fpm5pb480";
+        sha256 = "0gx30r4jq8ijfar4a0mcfd277wrzwfw5z6jfwfv90dp9c8c0g2mc";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -8551,9 +8552,9 @@ rec {
       };
       "unicode-xid" = rec {
         crateName = "unicode-xid";
-        version = "0.2.5";
+        version = "0.2.6";
         edition = "2015";
-        sha256 = "02n96yhcjwx7vphbwf9p7xfqbwvqgzdw2qz4h0x3wd5wgxj315r2";
+        sha256 = "0lzqaky89fq0bcrh6jj6bhlz37scfd8c7dsj5dq7y32if56c1hgb";
         libName = "unicode_xid";
         authors = [
           "erick.tryzelaar <erick.tryzelaar@gmail.com>"

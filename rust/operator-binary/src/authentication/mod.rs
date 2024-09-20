@@ -11,7 +11,10 @@ use std::collections::{BTreeMap, HashMap};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    builder::pod::{container::ContainerBuilder, PodBuilder},
+    builder::{
+        self,
+        pod::{container::ContainerBuilder, PodBuilder},
+    },
     commons::{
         authentication::{AuthenticationClass, AuthenticationClassProvider},
         product_image_selection::ResolvedProductImage,
@@ -58,6 +61,14 @@ pub enum Error {
 
     #[snafu(display("OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"))]
     OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
+
+    #[snafu(display("failed to add needed volume"))]
+    AddVolume { source: builder::pod::Error },
+
+    #[snafu(display("failed to add needed volumeMount"))]
+    AddVolumeMount {
+        source: builder::pod::container::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -140,9 +151,11 @@ impl TrinoAuthenticationConfig {
         pod_builder: &mut PodBuilder,
         prepare_builder: &mut ContainerBuilder,
         trino_builder: &mut ContainerBuilder,
-    ) {
+    ) -> Result<()> {
         // volumes
-        pod_builder.add_volumes(self.volumes());
+        pod_builder
+            .add_volumes(self.volumes())
+            .context(AddVolumeSnafu)?;
 
         let affected_containers = vec![
             stackable_trino_crd::Container::Prepare,
@@ -154,10 +167,14 @@ impl TrinoAuthenticationConfig {
 
             match container {
                 stackable_trino_crd::Container::Prepare => {
-                    prepare_builder.add_volume_mounts(volume_mounts);
+                    prepare_builder
+                        .add_volume_mounts(volume_mounts)
+                        .context(AddVolumeMountSnafu)?;
                 }
                 stackable_trino_crd::Container::Trino => {
-                    trino_builder.add_volume_mounts(volume_mounts);
+                    trino_builder
+                        .add_volume_mounts(volume_mounts)
+                        .context(AddVolumeMountSnafu)?;
                 }
                 // handled internally
                 stackable_trino_crd::Container::PasswordFileUpdater => {}
@@ -165,6 +182,8 @@ impl TrinoAuthenticationConfig {
                 stackable_trino_crd::Container::Vector => {}
             }
         }
+
+        Ok(())
     }
 
     /// Add required init / side car containers
