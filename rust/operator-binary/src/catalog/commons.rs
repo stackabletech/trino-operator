@@ -96,13 +96,11 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             (s3.access_style == S3AccessStyle::Path).to_string(),
         );
 
-        let (volumes, mounts) = s3
-            .volumes_and_mounts(catalog_name)
-            .context(ConfigureS3Snafu)?;
+        let (volumes, mounts) = s3.volumes_and_mounts().context(ConfigureS3Snafu)?;
         catalog_config.volumes.extend(volumes);
         catalog_config.volume_mounts.extend(mounts);
 
-        if let Some((access_key, secret_key)) = s3.credentials_mount_paths(catalog_name) {
+        if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
             catalog_config.add_env_property_from_file("hive.s3.aws-access-key", access_key);
             catalog_config.add_env_property_from_file("hive.s3.aws-secret-key", secret_key);
         }
