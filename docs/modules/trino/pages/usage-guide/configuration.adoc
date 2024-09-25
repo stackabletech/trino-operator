@@ -3,7 +3,8 @@
 
 The cluster definition also supports overriding configuration properties and environment variables, either per role or per role group, where the more specific override (role group) has precedence over the less specific one (role).
 
-IMPORTANT: Do not override port numbers. This will lead to faulty installations.
+IMPORTANT: Do not override port numbers.
+This will lead to faulty installations.
 
 == Configuration Properties
 
@@ -43,7 +44,8 @@ workers:
       replicas: 1
 ----
 
-All override property values must be strings. The properties will be passed on without any escaping or formatting.
+All override property values must be strings.
+The properties are passed on without any escaping or formatting.
 
 === The security.properties file
 
@@ -129,11 +131,11 @@ workers:
               capacity: 3Gi
 ----
 
-In the above example, all Trino workers in the default group will store data (the location of the property `--data-dir`) on a `3Gi` volume.
-Additional role groups not specifying any resources will inherit the config provided on the role level (`2Gi` volume).
+In the above example, all Trino workers in the default group store data (the location of the property `--data-dir`) on a `3Gi` volume.
+Additional role groups not specifying any resources inherit the config provided on the role level (`2Gi` volume).
 This works the same for memory or CPU requests.
 
-By default, in case nothing is configured in the custom resource for a certain role group, each Pod will have a `2Gi` large local volume mount for the data location containing mainly logs.
+By default, in case nothing is configured in the custom resource for a certain role group, each Pod has a `2Gi` large local volume mount for the data location containing mainly logs.
 
 === Resource Requests
 
@@ -176,4 +178,4 @@ spec:
 ----
 
 WARNING: The default values are _most likely_ not sufficient to run a proper cluster in production.
-Please adapt according to your requirements.
+Adapt according to your requirements.

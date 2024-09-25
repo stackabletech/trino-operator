@@ -21,7 +21,7 @@ This operator enables you to manage your Trino instances on Kubernetes efficient
 == Getting started
 
 Follow the xref:getting_started/index.adoc[Getting started guide] to start using the Stackable operator for Trino on your Kubernetes cluster.
-It will guide you through the installation process and help you run your first Trino queries on Kubernetes.
+It guides you through the installation process and help you run your first Trino queries on Kubernetes.
 
 == Operator model
 

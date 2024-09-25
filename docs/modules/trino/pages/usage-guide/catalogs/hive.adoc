@@ -55,7 +55,7 @@ spec:
 
 See xref:concepts:s3.adoc[] for details about S3 connections.
 
-IMPORTANT: Please make sure that the underlying Hive metastore also has access to the S3 store, because it will e.g. check if the directory exists when creating tables.
+IMPORTANT: Make sure that the underlying Hive metastore also has access to the S3 store, because it will e.g. check if the directory exists when creating tables.
 
 == Connect to HDFS cluster
 The hive connector can connect to an HDFS operated by Stackable as follows:
@@ -69,7 +69,7 @@ spec:
         configMap: simple-hdfs
 ----
 
-IMPORTANT: Please make sure that the underlying Hive metastore also has access to the HDFS, because it will e.g. check if the directory exists when creating tables.
+IMPORTANT: Make sure that the underlying Hive metastore also has access to the HDFS, because it will e.g. check if the directory exists when creating tables.
 
 == Adding unmanaged Hive clusters
 You can add connect Trino to Hive catalogs from systems that are not managed by Stackable, including Hive running on existing Hadoop clusters.

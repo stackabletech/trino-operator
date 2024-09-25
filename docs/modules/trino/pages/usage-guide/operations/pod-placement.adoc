@@ -7,7 +7,7 @@ The default affinities created by the operator are:
 1. Co-locate all the Trino Pods (weight 20)
 2. Distribute all Pods within the same role (coordinators, workers) (weight 70)
 
-Additionally the operator will look through every `TrinoCatalog` you configure and will set up the following affinities:
+Additionally the operator looks through every `TrinoCatalog` you configure and sets up the following affinities:
 
 1. Hive + Iceberg connector: Co-locate the coordinators with the hive metastores (weight 50)
 2. Hive + Iceberg connector: Co-locate the workers with the hdfs datanodes (if hdfs is used) (weight 50)

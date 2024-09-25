@@ -30,5 +30,5 @@ spec:
 ----
 
 == Connect to S3 store or HDFS
-The Delta Lake connector can connect to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.
-Please check that documentation on how to configure the access.
+The Delta Lake connector connects to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.
+Refer to that documentation for access configuration.

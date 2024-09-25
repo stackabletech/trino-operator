@@ -11,10 +11,10 @@ Graceful shutdown only works if you enabled authorization using OPA. See <<Autho
 
 As a default, coordinators have `15 minutes` to terminate gracefully.
 
-The coordinator process will receive a `SIGTERM` signal when Kubernetes wants to terminate the Pod.
-After the graceful shutdown timeout runs out, and the process still didn't exit, Kubernetes will issue a `SIGKILL` signal.
+The coordinator process receives a `SIGTERM` signal when Kubernetes wants to terminate the Pod.
+After the graceful shutdown timeout runs out, and the process still didn't exit, Kubernetes issues a `SIGKILL` signal.
 
-When a coordinator gets restarted, all currently running queries will fail and cannot be recovered after the restart process is finished.
+When a coordinator gets restarted, all currently running queries fail and cannot be recovered after the restart process is finished.
 As of Trino version `451` this can not be prevented (e.g. by using multiple coordinators).
 
 == Workers
@@ -49,7 +49,8 @@ Once a worker Pod is asked to terminate, the `PreStop` hook is executed and the 
 
 1. The worker goes into `SHUTTING_DOWN` state.
 2. The worker sleeps for `30` seconds to ensure that the coordinator has noticed the shutdown and stops scheduling new tasks on the worker.
-3. The worker now waits till all tasks running on it complete. This will take as long as the longest running query takes.
+3. The worker now waits till all tasks running on it complete.
+   This takes as long as the longest running query takes.
 4. The worker sleeps for `30` seconds to ensure that the coordinator has
 noticed that all tasks are complete
 5. The `PreStop` hook will never return, but the JVM will be shut down by the graceful shutdown mechanism.
@@ -105,7 +106,7 @@ spec:
         query.max-execution-time: 24h
 ----
 
-Please keep in mind, that queries taking longer than the graceful shutdown period are now subject to failure when a Trino worker gets shut down.
+Keep in mind, that queries taking longer than the graceful shutdown period are now subject to failure when a Trino worker gets shut down.
 Running into this issue can be circumvented by using https://trino.io/docs/current/admin/fault-tolerant-execution.html[Fault-tolerant execution], which is not supported natively yet.
 Until native support is added, you will have to use `configOverrides` to enable it.
 
