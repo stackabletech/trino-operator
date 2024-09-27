@@ -4,7 +4,7 @@
 use crate::authentication::TrinoAuthenticationConfig;
 use crate::command;
 use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::authentication::oidc;
+use stackable_operator::commons::{authentication::oidc, tls_verification::TlsClientDetailsError};
 use stackable_trino_crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR};
 
 // Trino properties
@@ -45,9 +45,7 @@ pub enum Error {
     UnverifiedOidcTlsConnectionNotSupported,
 
     #[snafu(display("Failed to create OIDC Volumes and VolumeMounts"))]
-    FailedToCreateOidcVolumeAndVolumeMounts {
-        source: stackable_operator::commons::authentication::tls::TlsClientDetailsError,
-    },
+    FailedToCreateOidcVolumeAndVolumeMounts { source: TlsClientDetailsError },
 }
 
 #[derive(Clone, Debug, Default)]

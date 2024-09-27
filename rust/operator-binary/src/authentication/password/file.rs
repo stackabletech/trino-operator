@@ -1,11 +1,15 @@
 use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
 use crate::controller::STACKABLE_LOG_DIR;
 
+use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    builder::pod::{
-        container::ContainerBuilder,
-        resources::ResourceRequirementsBuilder,
-        volume::{VolumeBuilder, VolumeMountBuilder},
+    builder::{
+        self,
+        pod::{
+            container::ContainerBuilder,
+            resources::ResourceRequirementsBuilder,
+            volume::{VolumeBuilder, VolumeMountBuilder},
+        },
     },
     commons::{authentication::static_, product_image_selection::ResolvedProductImage},
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
@@ -21,6 +25,14 @@ pub const PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH: &str = "/stackable/auth-secr
 // trino properties
 const PASSWORD_AUTHENTICATOR_NAME_FILE: &str = "file";
 const FILE_PASSWORD_FILE: &str = "file.password-file";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("failed to add needed volumeMounts"))]
+    AddVolumeMounts {
+        source: builder::pod::container::Error,
+    },
+}
 
 #[derive(Clone, Debug)]
 pub struct FileAuthenticator {
@@ -103,7 +115,7 @@ impl FileAuthenticator {
 pub fn build_password_file_update_container(
     resolved_product_image: &ResolvedProductImage,
     volume_mounts: Vec<VolumeMount>,
-) -> Container {
+) -> Result<Container, Error> {
     let mut cb_pw_file_updater =
         ContainerBuilder::new(&stackable_trino_crd::Container::PasswordFileUpdater.to_string())
             .expect(
@@ -164,12 +176,14 @@ wait_for_termination $!
         stackable_auth_secret_dir = PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH,
     ));
 
-    cb_pw_file_updater
+    Ok(cb_pw_file_updater
         .image_from_product_image(resolved_product_image)
         // calculated mounts
         .add_volume_mounts(volume_mounts)
+        .context(AddVolumeMountsSnafu)?
         // fixed
         .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .context(AddVolumeMountsSnafu)?
         .resources(
             ResourceRequirementsBuilder::new()
                 .with_cpu_request("100m")
@@ -186,7 +200,7 @@ wait_for_termination $!
             "-c".to_string(),
         ])
         .args(vec![commands.join("\n")])
-        .build()
+        .build())
 }
 
 #[cfg(test)]

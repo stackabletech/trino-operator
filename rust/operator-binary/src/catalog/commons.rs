@@ -3,26 +3,23 @@ use crate::command;
 use async_trait::async_trait;
 use snafu::{OptionExt, ResultExt};
 use stackable_operator::{
-    builder::pod::volume::{SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder},
+    builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
     commons::{
-        authentication::tls::{CaCert, TlsServerVerification, TlsVerification},
-        s3::{S3AccessStyle, S3ConnectionDef},
+        s3::{S3AccessStyle, S3ConnectionInlineOrReference},
+        tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     },
     k8s_openapi::api::core::v1::ConfigMap,
 };
 use stackable_trino_crd::catalog::commons::{HdfsConnection, MetastoreConnection};
-use stackable_trino_crd::{
-    CONFIG_DIR_NAME, S3_SECRET_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_MOUNT_CLIENT_TLS_DIR,
-};
+use stackable_trino_crd::{CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR};
 
 use super::{
     config::CatalogConfig,
     from_trino_catalog_error::{
-        CreateS3CredentialsSecretOperatorVolumeSnafu, CreateS3TLSSecretOperatorVolumeSnafu,
-        FailedToGetDiscoveryConfigMapDataKeySnafu, FailedToGetDiscoveryConfigMapDataSnafu,
-        FailedToGetDiscoveryConfigMapSnafu, ObjectHasNoNamespaceSnafu, ResolveS3ConnectionDefSnafu,
-        S3TlsNoVerificationNotSupportedSnafu,
+        ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
+        FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
+        ObjectHasNoNamespaceSnafu, S3TlsNoVerificationNotSupportedSnafu,
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
@@ -74,7 +71,7 @@ impl ExtendCatalogConfig for MetastoreConnection {
 }
 
 #[async_trait]
-impl ExtendCatalogConfig for S3ConnectionDef {
+impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
@@ -83,6 +80,7 @@ impl ExtendCatalogConfig for S3ConnectionDef {
         client: &Client,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
+            .clone()
             .resolve(
                 client,
                 catalog_namespace
@@ -90,77 +88,42 @@ impl ExtendCatalogConfig for S3ConnectionDef {
                     .context(ObjectHasNoNamespaceSnafu)?,
             )
             .await
-            .context(ResolveS3ConnectionDefSnafu)?;
+            .context(ConfigureS3Snafu)?;
 
-        if let Some(endpoint) = s3.endpoint() {
-            catalog_config.add_property("hive.s3.endpoint", endpoint)
-        }
-        if let Some(S3AccessStyle::Path) = s3.access_style {
-            catalog_config.add_property("hive.s3.path-style-access", true.to_string())
-        }
+        catalog_config.add_property("hive.s3.endpoint", s3.endpoint().context(ConfigureS3Snafu)?);
+        catalog_config.add_property(
+            "hive.s3.path-style-access",
+            (s3.access_style == S3AccessStyle::Path).to_string(),
+        );
 
-        if let Some(credentials) = s3.credentials {
-            let secret_class = credentials.secret_class;
-            let volume_name = format!("{catalog_name}-{secret_class}");
-            let volume_mount_path = format!("{S3_SECRET_DIR_NAME}/{catalog_name}/{secret_class}");
-            catalog_config.volumes.push(
-                VolumeBuilder::new(&volume_name)
-                    .ephemeral(
-                        SecretOperatorVolumeSourceBuilder::new(&secret_class)
-                            .build()
-                            .context(CreateS3CredentialsSecretOperatorVolumeSnafu)?,
-                    )
-                    .build(),
-            );
-            catalog_config
-                .volume_mounts
-                .push(VolumeMountBuilder::new(&volume_name, &volume_mount_path).build());
+        let (volumes, mounts) = s3.volumes_and_mounts().context(ConfigureS3Snafu)?;
+        catalog_config.volumes.extend(volumes);
+        catalog_config.volume_mounts.extend(mounts);
 
-            catalog_config.add_env_property_from_file(
-                "hive.s3.aws-access-key",
-                format!("{volume_mount_path}/accessKey"),
-            );
-            catalog_config.add_env_property_from_file(
-                "hive.s3.aws-secret-key",
-                format!("{volume_mount_path}/secretKey"),
-            );
+        if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
+            catalog_config.add_env_property_from_file("hive.s3.aws-access-key", access_key);
+            catalog_config.add_env_property_from_file("hive.s3.aws-secret-key", secret_key);
         }
 
-        catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.is_some().to_string());
-        if let Some(tls) = s3.tls {
+        catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.uses_tls().to_string());
+        if let Some(tls) = s3.tls.tls.as_ref() {
             match &tls.verification {
                 TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
                 TlsVerification::Server(TlsServerVerification {
                     ca_cert: CaCert::WebPki {},
                 }) => {}
                 TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(secret_class),
+                    ca_cert: CaCert::SecretClass(_),
                 }) => {
-                    // Add needed ca-cert secretclass mount
-                    let volume_name = format!("{catalog_name}-{secret_class}-ca-cert");
-                    let volume_mount_path =
-                        format!("{STACKABLE_MOUNT_CLIENT_TLS_DIR}/{catalog_name}/{secret_class}");
-                    catalog_config.volumes.push(
-                        VolumeBuilder::new(&volume_name)
-                            .ephemeral(
-                                SecretOperatorVolumeSourceBuilder::new(secret_class)
-                                    .build()
-                                    .context(CreateS3TLSSecretOperatorVolumeSnafu)?,
-                            )
-                            .build(),
-                    );
-                    catalog_config
-                        .volume_mounts
-                        .push(VolumeMountBuilder::new(&volume_name, &volume_mount_path).build());
-
-                    // Copy the ca.crt from the ca-cert secretclass into truststore for external services
-                    catalog_config.init_container_extra_start_commands.extend(
-                        command::add_cert_to_truststore(
-                            format!("{volume_mount_path}/ca.crt").as_str(),
-                            STACKABLE_CLIENT_TLS_DIR,
-                            &volume_name,
-                        ),
-                    );
+                    if let Some(ca_cert) = s3.tls.tls_ca_cert_mount_path() {
+                        catalog_config.init_container_extra_start_commands.extend(
+                            command::add_cert_to_truststore(
+                                &ca_cert,
+                                STACKABLE_CLIENT_TLS_DIR,
+                                &format!("{catalog_name}-ca-cert"),
+                            ),
+                        );
+                    }
                 }
             }
         }

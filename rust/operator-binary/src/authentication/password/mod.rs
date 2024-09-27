@@ -29,16 +29,19 @@ const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to configure LDAP password authentication"))]
+    #[snafu(display("failed to configure LDAP password authentication"))]
     InvalidLdapAuthenticationConfiguration { source: ldap::Error },
 
-    #[snafu(display("Failed to write password authentication config file"))]
-    FailedToWritePasswordAuthenticationFile {
+    #[snafu(display("failed to write password authentication config file"))]
+    WritePasswordAuthenticationFile {
         source: product_config::writer::PropertiesWriterError,
     },
 
-    #[snafu(display("Failed to create LDAP Volumes and VolumeMounts"))]
+    #[snafu(display("failed to create LDAP Volumes and VolumeMounts"))]
     LdapVolumeAndVolumeMounts { source: ldap::Error },
+
+    #[snafu(display("failed to create LDAP Volumes and VolumeMounts"))]
+    BuildPasswordFileUpdateContainer { source: file::Error },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -96,7 +99,7 @@ impl TrinoPasswordAuthentication {
                                 .collect::<BTreeMap<String, Option<String>>>()
                                 .iter(),
                         )
-                        .context(FailedToWritePasswordAuthenticationFileSnafu)?,
+                        .context(WritePasswordAuthenticationFileSnafu)?,
                     );
                     // required volumes
                     password_authentication_config.add_volume(file_authenticator.secret_volume());
@@ -134,7 +137,7 @@ impl TrinoPasswordAuthentication {
                                 .collect::<BTreeMap<String, Option<String>>>()
                                 .iter(),
                         )
-                        .context(FailedToWritePasswordAuthenticationFileSnafu)?,
+                        .context(WritePasswordAuthenticationFileSnafu)?,
                     );
 
                     // extra commands
@@ -176,7 +179,8 @@ impl TrinoPasswordAuthentication {
                 file::build_password_file_update_container(
                     resolved_product_image,
                     pw_file_update_container_volume_mounts,
-                ),
+                )
+                .context(BuildPasswordFileUpdateContainerSnafu)?,
             );
         }
 

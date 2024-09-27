@@ -12,7 +12,10 @@ pub mod tpch;
 use self::config::CatalogConfig;
 use async_trait::async_trait;
 use snafu::Snafu;
-use stackable_operator::client::Client;
+use stackable_operator::{
+    client::Client,
+    commons::{s3::S3Error, tls_verification::TlsClientDetailsError},
+};
 
 #[derive(Debug, Snafu)]
 #[snafu(module)]
@@ -20,10 +23,11 @@ pub enum FromTrinoCatalogError {
     #[snafu(display("object has no namespace"))]
     ObjectHasNoNamespace,
 
-    #[snafu(display("failed to resolve S3ConnectionDef"))]
-    ResolveS3ConnectionDef {
-        source: stackable_operator::commons::s3::Error,
-    },
+    #[snafu(display("failed to configure S3 connection"))]
+    ConfigureS3 { source: S3Error },
+
+    #[snafu(display("failed to configure S3 TLS client details"))]
+    ConfigureS3TlsClientDetails { source: TlsClientDetailsError },
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
@@ -54,11 +58,6 @@ pub enum FromTrinoCatalogError {
 
     #[snafu(display("Failed to create the Secret Volume for the S3 credentials"))]
     CreateS3CredentialsSecretOperatorVolume {
-        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
-    },
-
-    #[snafu(display("Failed to create the Secret Volume for the TLS certificate for S3"))]
-    CreateS3TLSSecretOperatorVolume {
         source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
     },
 }

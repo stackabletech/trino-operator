@@ -92,12 +92,10 @@ pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const DATA_DIR_NAME: &str = "/stackable/data";
-pub const S3_SECRET_DIR_NAME: &str = "/stackable/secrets";
 pub const STACKABLE_SERVER_TLS_DIR: &str = "/stackable/server_tls";
 pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
 pub const STACKABLE_INTERNAL_TLS_DIR: &str = "/stackable/internal_tls";
 pub const STACKABLE_MOUNT_SERVER_TLS_DIR: &str = "/stackable/mount_server_tls";
-pub const STACKABLE_MOUNT_CLIENT_TLS_DIR: &str = "/stackable/mount_client_tls";
 pub const STACKABLE_MOUNT_INTERNAL_TLS_DIR: &str = "/stackable/mount_internal_tls";
 pub const SYSTEM_TRUST_STORE: &str = "/etc/pki/java/cacerts";
 // store pws
