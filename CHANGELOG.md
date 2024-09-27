@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- BREAKING: The fields `connection` and `host` on `S3Connection` as well as `bucketName` on `S3Bucket`are now mandatory ([#646]).
 - Don't ignore envOverrides ([#633]).
 - Don't print credentials to STDOUT during startup. Ideally we should use [config-utils](https://github.com/stackabletech/config-utils), but that's not easy (see [here](https://github.com/stackabletech/trino-operator/tree/fix/secret-printing)) ([#634]).
 
@@ -27,6 +28,7 @@ All notable changes to this project will be documented in this file.
 [#633]: https://github.com/stackabletech/trino-operator/pull/633
 [#634]: https://github.com/stackabletech/trino-operator/pull/634
 [#638]: https://github.com/stackabletech/trino-operator/pull/638
+[#646]: https://github.com/stackabletech/trino-operator/pull/646
 
 ## [24.7.0] - 2024-07-24
 
