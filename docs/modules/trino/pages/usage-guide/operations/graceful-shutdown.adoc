@@ -12,7 +12,7 @@ Graceful shutdown only works if you enabled authorization using OPA. See <<Autho
 As a default, coordinators have `15 minutes` to terminate gracefully.
 
 The coordinator process receives a `SIGTERM` signal when Kubernetes wants to terminate the Pod.
-After the graceful shutdown timeout runs out, and the process still didn't exit, Kubernetes issues a `SIGKILL` signal.
+After the graceful shutdown timeout runs out, and the process still did not exit, Kubernetes issues a `SIGKILL` signal.
 
 When a coordinator gets restarted, all currently running queries fail and cannot be recovered after the restart process is finished.
 As of Trino version `451` this can not be prevented (e.g. by using multiple coordinators).
