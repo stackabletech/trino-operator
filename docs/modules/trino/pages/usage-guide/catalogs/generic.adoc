@@ -13,7 +13,7 @@ This is how you can e.g. use the {trino-psql-connector}[PostgreSQL connector]:
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  # The name of the catalog as it will appear in Trino
+  # The name of the catalog as it appears in Trino
   name: postgres
   # TrinoCluster can use these labels to select which catalogs to include
   labels:
@@ -55,7 +55,7 @@ An entry must be an valid `SecretKeySelector` or `ConfigMapKeySelector`.
 
 == Add additional contents
 
-In case you need more contents, such as the need to mount Secrets - containing e.g. certificates or keytabs - please consult the xref:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
+In case you need more contents, such as the need to mount Secrets -- containing e.g. certificates or keytabs -- refer to the xref:concepts:overrides.adoc#_pod_overrides[documentation on podOverrides].
 
 == Troubleshoot
 

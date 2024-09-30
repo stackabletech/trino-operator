@@ -146,7 +146,7 @@ The test uses the following:
 The rules implement https://trino.io/docs/current/security/file-system-access-control.html#system-level-access-control-files[system-level access control] files (https://trino.io/docs/current/security/file-system-access-control.html#catalog-level-access-control-files[catalog-level access control] is currently not provided).
 As illustrated by the integration test, both internal and customer-provided policies are deployed as ConfigMaps and there is thus no requirement for an extra configuration file in JSON to be created.
 
-Please note these additional points:
+Note these additional points:
 
 * Roles are not checked, only users and groups.
 * Principal rules are https://trino.io/docs/current/security/file-system-access-control.html#principal-rules[deprecated] and not implemented.
@@ -173,11 +173,11 @@ In the definition below the authentication is directed to use the `trino-users` 
 include::example$usage-guide/trino-secure-tls.yaml[]
 ----
 
-<1> The name of (and reference to) the `SecretClass`
-<2> The name of (and reference to) the `Secret`
-<3> The `AuthenticationClass` for file based user control
-<4> The `Secret` containing user and password combinations in plaintext
-<5> `TrinoCatalog` reference
+<1> The name of (and reference to) the SecretClass
+<2> The name of (and reference to) the Secret
+<3> The AuthenticationClass for file based user control
+<4> The Secret containing user and password combinations in plaintext
+<5> TrinoCatalog reference
 <6> TLS mechanism
 
 The CLI now requires that a path to the keystore and a password be provided:
@@ -190,15 +190,15 @@ The CLI now requires that a path to the keystore and a password be provided:
 
 === Via TLS only
 
-This will disable the HTTP port and UI access and encrypt client-server communications.
+This disables the HTTP port and UI access and encrypt client-server communications.
 
 [source,yaml]
 ----
 include::example$usage-guide/trino-secure-tls-only.yaml[]
 ----
 
-<1> The name of (and reference to) the `SecretClass`
-<2> `TrinoCatalog` reference
+<1> The name of (and reference to) the SecretClass
+<2> TrinoCatalog reference
 <3> TLS mechanism
 
 CLI callout:
@@ -224,7 +224,7 @@ include::example$usage-guide/trino-secure-internal-tls.yaml[]
 <4> The `Secret` containing user and password combinations in plaintext
 <5> TLS mechanism
 
-Since Trino has internal and external communications running over a single port, this will enable the HTTPS port but not expose it.
+Since Trino has internal and external communications running over a single port, this enables the HTTPS port but not expose it.
 Cluster access is only possible via HTTP.
 
 [source]

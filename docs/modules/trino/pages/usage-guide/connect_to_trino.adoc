@@ -17,7 +17,7 @@ Multiple SQL clients can be used to connect to Trino as described below.
 The Trino server must be reachable from your local computer.
 It is typically secured via HTTPS with a certificated provided by a xref:secret-operator:secretclass.adoc[SecretClass].
 
-As most setups use a self-signed certificate, that cannot be verified without the CA certificate, the easiest way is to disable the Trino cert validation as the following guide will do, however this is not secure!
+As most setups use a self-signed certificate, that cannot be verified without the CA certificate, the easiest way is to disable the Trino cert validation as the following guide does, however this is not secure!
 To use certificate validation instead, you need to extract the `ca.crt` file from the the SecretClass and provide it to the Trino client.
 
 == Connect with trino-cli
@@ -32,7 +32,7 @@ $ java -jar ~/Downloads/trino-cli-403-executable.jar --server https://85.215.195
 
 TIP: In case you are using OpenID connect, use `--external-authentication` instead of `--password`.
 A browser window will be opened, which might require you to log in.
-Please note that you still need to pass the `--user` argument because of https://github.com/trinodb/trino/issues/11547[this Trino issue].
+You still need to pass the `--user` argument because of https://github.com/trinodb/trino/issues/11547[this Trino issue].
 
 == Connect with DBeaver
 

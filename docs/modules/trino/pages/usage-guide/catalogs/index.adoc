@@ -55,14 +55,15 @@ spec:
             secretClass: minio-credentials
 ----
 
-The `metadata.name` will be the name of the catalog that shows up in your Trino instance.
-The `metadata.labels` will be used by `TrinoCluster` to determine the link between Trino clusters and `TrinoCatalogs`.
+The `metadata.name` is the name of the catalog that shows up in your Trino instance.
+The `metadata.labels` are used by TrinoCluster to determine the link between Trino clusters and `TrinoCatalogs`.
 The `spec.connector.<connector>` determines which connector is used.
 Each connector supports a different set of attributes.
 
 === Add a catalog to a Trino cluster
 
-It is necessary to specify within the `TrinoCluster` which catalogs it should use. Here is an example of this:
+It is necessary to specify within the TrinoCluster which catalogs it should use.
+Here is an example of this:
 
 [source,yaml]
 ----

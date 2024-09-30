@@ -23,7 +23,7 @@ cargo run -- run --product-config /foo/bar/properties.yaml
 
 *Multiple values:* false
 
-The operator will **only** watch for resources in the provided namespace `test`:
+The operator **only** watches for resources in the provided namespace `test`:
 
 [source]
 ----

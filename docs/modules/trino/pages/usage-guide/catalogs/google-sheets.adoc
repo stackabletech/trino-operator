@@ -1,8 +1,9 @@
 = Google sheets
+:trino-google-sheets-connector: https://trino.io/docs/current/connector/googlesheets.html
 
 With this connector Trino can connect to Google Sheets.
 It needs a service-user to access the Google APIs.
-Please consult the https://trino.io/docs/current/connector/googlesheets.html[official documentation] on how to use the Google Sheets connector.
+Consult the {trino-google-sheets-connector}[official documentation] on how to use the Google Sheets connector.
 
 == Example Google sheets catalog configuration
 [source,yaml]
@@ -32,7 +33,7 @@ stringData:
       "type": "service_account",
       "project_id": "neat-bricolage-231015",
       "private_key_id": "XXX",
-      "private_key": "-----BEGIN PRIVATE KEY-----\nXXX=\n-----END PRIVATE KEY-----\n",
+      "private_key": "Private key contents including BEGIN/END PRIVATE KEY lines, and \n for newlines",
       "client_email": "trino-550@neat-bricolage-231015.iam.gserviceaccount.com",
       "client_id": "XXX",
       "auth_uri": "https://accounts.google.com/o/oauth2/auth",

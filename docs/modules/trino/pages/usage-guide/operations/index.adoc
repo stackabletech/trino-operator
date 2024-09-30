@@ -2,4 +2,4 @@
 
 This section of the documentation is intended for the operations teams that maintain a Stackable Data Platform installation.
 
-Please read on the xref:concepts:operations/index.adoc[Concepts page on Operations] with the necessary details to operate the platform in a production environment.
+Read on the xref:concepts:operations/index.adoc[concepts page on operations] with the necessary details to operate the platform in a production environment.

@@ -1,14 +1,14 @@
 = Installation
 :description: Install the Stackable Operator for Trino using stackablectl or Helm. Includes optional setup for Hive, S3, and OPA integration.
 
-On this page you will install the Stackable Operator for Trino as well as the commons, secret and listener operator which are
-required by all Stackable Operators.
+On this page you install the Stackable operator for Trino as well as the commons, secret and listener operator which are required by all Stackable operators.
 
-== Stackable Operators
+== Stackable operators
 
 The xref:management:stackablectl:index.adoc[`stackablectl`] command line tool is the recommended way to interact with operators and dependencies.
 If you have not installed `stackablectl`, follow the xref:management:stackablectl:installation.adoc[installation steps] to install it.
 You can also use Helm instead.
+OpenShift users may prefer installing the operator from the RedHat Certified Operator catalog using the OpenShift web console.
 
 [tabs]
 ====
@@ -22,7 +22,7 @@ Run the following command to install the Trino operator and its dependencies:
 include::example$getting_started/code/getting_started.sh[tag=stackablectl-install-operators]
 ----
 
-The tool will show
+The tool prints
 
 [source]
 include::example$getting_started/code/install_output.txt[]
@@ -61,22 +61,22 @@ For these components extra steps are required.
 * the following are optional
 ** a Stackable xref:secret-operator:index.adoc[Secret Operator] for certificates when deploying for TLS
 ** a Stackable xref:commons-operator:index.adoc[Commons Operator] for certificates when deploying for TLS authentication
-** (for authorization): a Stackable xref:opa:index.adoc[OPA Operator][OPA-Operator]
+** (for authorization): a Stackable xref:opa:index.adoc[OPA Operator]
 ** the https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-363-executable.jar[Trino CLI] to test
    SQL queries
 
 === S3 bucket
 
-Please refer to the S3 provider.
+Refer to the S3 provider.
 
 === Hive operator
 
-Please refer to the xref:hive:index.adoc[Hive Operator] docs.
+Refer to the xref:hive:index.adoc[Hive operator] docs.
 Both Hive and Trino need the same S3 authentication.
 
 === OPA operator
 
-Please refer to the xref:opa:index.adoc[OPA Operator] docs.
+Refer to the xref:opa:index.adoc[OPA operator] docs.
 
 == What's next
 
