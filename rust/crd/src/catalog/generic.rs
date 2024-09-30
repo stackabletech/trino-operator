@@ -84,7 +84,7 @@ mod tests {
                         Property::ValueFromSecret {
                             secret_key_selector: SecretKeySelector {
                                 key: "user".to_string(),
-                                name: Some("my-postgresql-credentials-secret".to_string()),
+                                name: "my-postgresql-credentials-secret".to_string(),
                                 optional: None,
                             }
                         }
@@ -94,7 +94,7 @@ mod tests {
                         Property::ValueFromSecret {
                             secret_key_selector: SecretKeySelector {
                                 key: "password".to_string(),
-                                name: Some("my-postgresql-credentials-secret".to_string()),
+                                name: "my-postgresql-credentials-secret".to_string(),
                                 optional: None,
                             }
                         }
