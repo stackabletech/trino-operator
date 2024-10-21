@@ -653,10 +653,14 @@ impl TrinoCluster {
     }
 
     pub fn role_service_fqdn(&self, role: &TrinoRole) -> Result<String, Error> {
+        let cluster_domain = KUBERNETES_CLUSTER_DOMAIN
+            .get()
+            .expect("KUBERNETES_CLUSTER_DOMAIN must first be set by calling initialize_operator");
         Ok(format!(
-            "{}.{}.svc.cluster.local",
+            "{}.{}.svc.{}",
             self.role_service_name(role)?,
-            self.namespace_r()?
+            self.namespace_r()?,
+            cluster_domain
         ))
     }
 

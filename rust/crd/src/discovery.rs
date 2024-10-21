@@ -1,3 +1,5 @@
+use stackable_operator::utils::cluster_domain::KUBERNETES_CLUSTER_DOMAIN;
+
 use crate::{HTTPS_PORT, HTTP_PORT};
 
 /// Reference to a single `Pod` that is a component of a [`crate::TrinoCluster`]
@@ -10,9 +12,12 @@ pub struct TrinoPodRef {
 
 impl TrinoPodRef {
     pub fn fqdn(&self) -> String {
+        let cluster_domain = KUBERNETES_CLUSTER_DOMAIN
+            .get()
+            .expect("KUBERNETES_CLUSTER_DOMAIN must first be set by calling initialize_operator");
         format!(
-            "{}.{}.{}.svc.cluster.local",
-            self.pod_name, self.role_group_service_name, self.namespace
+            "{}.{}.{}.svc.{}",
+            self.pod_name, self.role_group_service_name, self.namespace, cluster_domain
         )
     }
 }
