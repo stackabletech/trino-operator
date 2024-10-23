@@ -68,6 +68,7 @@ use stackable_operator::{
         statefulset::StatefulSetConditionBuilder,
     },
     time::Duration,
+    utils::cluster_info::KubernetesClusterInfo,
 };
 use stackable_trino_crd::{
     authentication::resolve_authentication_classes,
@@ -466,6 +467,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &trino_authentication_config,
                 &trino_opa_config,
                 vector_aggregator_address.as_deref(),
+                &client.kubernetes_cluster_info,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 &trino,
@@ -600,6 +602,7 @@ fn build_rolegroup_config_map(
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
     vector_aggregator_address: Option<&str>,
+    cluster_info: &KubernetesClusterInfo,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -646,8 +649,10 @@ fn build_rolegroup_config_map(
                 };
 
                 let discovery = TrinoDiscovery::new(&coordinator_ref, protocol);
-                dynamic_resolved_config
-                    .insert(DISCOVERY_URI.to_string(), Some(discovery.discovery_uri()));
+                dynamic_resolved_config.insert(
+                    DISCOVERY_URI.to_string(),
+                    Some(discovery.discovery_uri(cluster_info)),
+                );
 
                 dynamic_resolved_config.extend(graceful_shutdown_config_properties(trino, role));
 
@@ -1552,6 +1557,8 @@ fn tls_volume_mounts(
 
 #[cfg(test)]
 mod tests {
+    use stackable_operator::commons::networking::DomainName;
+
     use super::*;
 
     #[test]
@@ -1615,7 +1622,9 @@ mod tests {
         let mut trino: TrinoCluster = serde_yaml::from_str(trino_yaml).expect("illegal test input");
         trino.metadata.namespace = Some("default".to_owned());
         trino.metadata.uid = Some("42".to_owned());
-
+        let cluster_info = KubernetesClusterInfo {
+            cluster_domain: DomainName::try_from("cluster.local").unwrap(),
+        };
         let resolved_product_image = trino
             .spec
             .image
@@ -1688,6 +1697,7 @@ mod tests {
             &trino_authentication_config,
             &None,
             None,
+            &cluster_info,
         )
         .unwrap()
     }
