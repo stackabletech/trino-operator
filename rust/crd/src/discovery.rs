@@ -1,3 +1,5 @@
+use stackable_operator::utils::cluster_info::KubernetesClusterInfo;
+
 use crate::{HTTPS_PORT, HTTP_PORT};
 
 /// Reference to a single `Pod` that is a component of a [`crate::TrinoCluster`]
@@ -9,10 +11,13 @@ pub struct TrinoPodRef {
 }
 
 impl TrinoPodRef {
-    pub fn fqdn(&self) -> String {
+    pub fn fqdn(&self, cluster_info: &KubernetesClusterInfo) -> String {
         format!(
-            "{}.{}.{}.svc.cluster.local",
-            self.pod_name, self.role_group_service_name, self.namespace
+            "{pod_name}.{service_name}.{namespace}.svc.{cluster_domain}",
+            pod_name = self.pod_name,
+            service_name = self.role_group_service_name,
+            namespace = self.namespace,
+            cluster_domain = cluster_info.cluster_domain
         )
     }
 }
@@ -31,11 +36,11 @@ impl TrinoDiscovery {
         }
     }
 
-    pub fn discovery_uri(&self) -> String {
+    pub fn discovery_uri(&self, cluster_info: &KubernetesClusterInfo) -> String {
         format!(
             "{}://{}:{}",
             self.protocol,
-            self.pod_ref.fqdn(),
+            self.pod_ref.fqdn(cluster_info),
             self.protocol.port()
         )
     }

@@ -22,19 +22,18 @@ use stackable_operator::{
         },
     },
     config::{
-        fragment::Fragment,
-        fragment::{self, ValidationError},
+        fragment::{self, Fragment, ValidationError},
         merge::Merge,
     },
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{Configuration, Error as ConfigError},
-    product_logging,
-    product_logging::spec::Logging,
+    product_logging::{self, spec::Logging},
     role_utils::{GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
     time::Duration,
+    utils::cluster_info::KubernetesClusterInfo,
 };
 use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -652,11 +651,16 @@ impl TrinoCluster {
         Ok(format!("{}-{}", self.name_r()?, role))
     }
 
-    pub fn role_service_fqdn(&self, role: &TrinoRole) -> Result<String, Error> {
+    pub fn role_service_fqdn(
+        &self,
+        role: &TrinoRole,
+        cluster_info: &KubernetesClusterInfo,
+    ) -> Result<String, Error> {
         Ok(format!(
-            "{}.{}.svc.cluster.local",
-            self.role_service_name(role)?,
-            self.namespace_r()?
+            "{role_service_name}.{namespace}.svc.{cluster_domain}",
+            role_service_name = self.role_service_name(role)?,
+            namespace = self.namespace_r()?,
+            cluster_domain = cluster_info.cluster_domain
         ))
     }
 

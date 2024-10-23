@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added support for Trino 455 ([#638]).
+- The operator can now run on Kubernetes clusters using a non-default cluster domain.
+  Use the env var `KUBERNETES_CLUSTER_DOMAIN` or the operator Helm chart property `kubernetesClusterDomain` to set a non-default cluster domain ([#655]).
 
 ### Changed
 
@@ -29,6 +31,7 @@ All notable changes to this project will be documented in this file.
 [#634]: https://github.com/stackabletech/trino-operator/pull/634
 [#638]: https://github.com/stackabletech/trino-operator/pull/638
 [#646]: https://github.com/stackabletech/trino-operator/pull/646
+[#655]: https://github.com/stackabletech/trino-operator/pull/655
 
 ## [24.7.0] - 2024-07-24
 
