@@ -44,6 +44,7 @@ use stackable_operator::{
         DeepMerge,
     },
     kube::{
+        core::{error_boundary, DeserializeGuard},
         runtime::{controller::Action, reflector::ObjectRef},
         Resource, ResourceExt,
     },
@@ -331,6 +332,11 @@ pub enum Error {
     AddVolumeMount {
         source: builder::pod::container::Error,
     },
+
+    #[snafu(display("invalid TrinoCluster object"))]
+    InvalidTrinoCluster {
+        source: error_boundary::InvalidObject,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -341,9 +347,17 @@ impl ReconcilerError for Error {
     }
 }
 
-pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<Action> {
+pub async fn reconcile_trino(
+    trino: Arc<DeserializeGuard<TrinoCluster>>,
+    ctx: Arc<Ctx>,
+) -> Result<Action> {
     tracing::info!("Starting reconcile");
 
+    let trino = trino
+        .0
+        .as_ref()
+        .map_err(error_boundary::InvalidObject::clone)
+        .context(InvalidTrinoClusterSnafu)?;
     let client = &ctx.client;
 
     let resolved_product_image: ResolvedProductImage = trino
@@ -387,7 +401,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     }
 
     let validated_config = validated_product_config(
-        &trino,
+        trino,
         // The Trino version is a single number like 396.
         // The product config expects semver formatted version strings.
         // That is why we just add minor and patch version 0 here.
@@ -405,7 +419,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     .context(CreateClusterResourcesSnafu)?;
 
     let (rbac_sa, rbac_rolebinding) = build_rbac_resources(
-        trino.as_ref(),
+        trino,
         APP_NAME,
         cluster_resources
             .get_required_labels()
@@ -425,23 +439,23 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let trino_opa_config = match trino.get_opa_config() {
         Some(opa_config) => Some(
-            TrinoOpaConfig::from_opa_config(client, &trino, opa_config)
+            TrinoOpaConfig::from_opa_config(client, trino, opa_config)
                 .await
                 .context(InvalidOpaConfigSnafu)?,
         ),
         None => None,
     };
 
-    let coordinator_role_service = build_coordinator_role_service(&trino, &resolved_product_image)?;
+    let coordinator_role_service = build_coordinator_role_service(trino, &resolved_product_image)?;
 
     cluster_resources
         .add(client, coordinator_role_service)
         .await
         .context(ApplyRoleServiceSnafu)?;
 
-    create_shared_internal_secret(&trino, client).await?;
+    create_shared_internal_secret(trino, client).await?;
 
-    let vector_aggregator_address = resolve_vector_aggregator_address(&trino, client)
+    let vector_aggregator_address = resolve_vector_aggregator_address(trino, client)
         .await
         .context(ResolveVectorAggregatorAddressSnafu)?;
 
@@ -450,15 +464,15 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
     for (role, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&role).context(FailedToParseRoleSnafu)?;
         for (role_group, config) in role_config {
-            let rolegroup = trino_role.rolegroup_ref(&trino, role_group);
+            let rolegroup = trino_role.rolegroup_ref(trino, role_group);
 
             let merged_config = trino
                 .merged_config(&trino_role, &rolegroup, &catalog_definitions)
                 .context(FailedToResolveConfigSnafu)?;
 
-            let rg_service = build_rolegroup_service(&trino, &resolved_product_image, &rolegroup)?;
+            let rg_service = build_rolegroup_service(trino, &resolved_product_image, &rolegroup)?;
             let rg_configmap = build_rolegroup_config_map(
-                &trino,
+                trino,
                 &resolved_product_image,
                 &trino_role,
                 &rolegroup,
@@ -470,13 +484,13 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
                 &client.kubernetes_cluster_info,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
-                &trino,
+                trino,
                 &resolved_product_image,
                 &rolegroup,
                 &catalogs,
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
-                &trino,
+                trino,
                 &trino_role,
                 &resolved_product_image,
                 &rolegroup,
@@ -523,7 +537,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
             pod_disruption_budget: pdb,
         }) = role_config
         {
-            add_pdbs(pdb, &trino, &trino_role, client, &mut cluster_resources)
+            add_pdbs(pdb, trino, &trino_role, client, &mut cluster_resources)
                 .await
                 .context(FailedToCreatePdbSnafu)?;
         }
@@ -534,7 +548,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
 
     let status = TrinoClusterStatus {
         conditions: compute_conditions(
-            trino.as_ref(),
+            trino,
             &[&sts_cond_builder, &cluster_operation_cond_builder],
         ),
     };
@@ -544,7 +558,7 @@ pub async fn reconcile_trino(trino: Arc<TrinoCluster>, ctx: Arc<Ctx>) -> Result<
         .await
         .context(DeleteOrphanedResourcesSnafu)?;
     client
-        .apply_patch_status(OPERATOR_NAME, &*trino, &status)
+        .apply_patch_status(OPERATOR_NAME, trino, &status)
         .await
         .context(ApplyStatusSnafu)?;
 
@@ -1221,8 +1235,15 @@ fn build_rolegroup_service(
     })
 }
 
-pub fn error_policy(_obj: Arc<TrinoCluster>, _error: &Error, _ctx: Arc<Ctx>) -> Action {
-    Action::requeue(*Duration::from_secs(5))
+pub fn error_policy(
+    _obj: Arc<DeserializeGuard<TrinoCluster>>,
+    error: &Error,
+    _ctx: Arc<Ctx>,
+) -> Action {
+    match error {
+        Error::InvalidTrinoCluster { .. } => Action::await_change(),
+        _ => Action::requeue(*Duration::from_secs(5)),
+    }
 }
 
 /// Give a secret name and an optional key in the secret to use.

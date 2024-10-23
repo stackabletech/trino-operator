@@ -19,6 +19,7 @@ use stackable_operator::{
         core::v1::{ConfigMap, Service},
     },
     kube::{
+        core::DeserializeGuard,
         runtime::{reflector::ObjectRef, watcher, Controller},
         ResourceExt,
     },
@@ -78,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
             .await?;
 
             let cluster_controller = Controller::new(
-                watch_namespace.get_api::<TrinoCluster>(&client),
+                watch_namespace.get_api::<DeserializeGuard<TrinoCluster>>(&client),
                 watcher::Config::default(),
             );
             let catalog_cluster_store = Arc::new(cluster_controller.store());
@@ -86,20 +87,20 @@ async fn main() -> anyhow::Result<()> {
 
             cluster_controller
                 .owns(
-                    watch_namespace.get_api::<Service>(&client),
+                    watch_namespace.get_api::<DeserializeGuard<Service>>(&client),
                     watcher::Config::default(),
                 )
                 .owns(
-                    watch_namespace.get_api::<StatefulSet>(&client),
+                    watch_namespace.get_api::<DeserializeGuard<StatefulSet>>(&client),
                     watcher::Config::default(),
                 )
                 .owns(
-                    watch_namespace.get_api::<ConfigMap>(&client),
+                    watch_namespace.get_api::<DeserializeGuard<ConfigMap>>(&client),
                     watcher::Config::default(),
                 )
                 .shutdown_on_signal()
                 .watches(
-                    watch_namespace.get_api::<TrinoCatalog>(&client),
+                    watch_namespace.get_api::<DeserializeGuard<TrinoCatalog>>(&client),
                     watcher::Config::default(),
                     move |catalog| {
                         // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles
@@ -107,18 +108,18 @@ async fn main() -> anyhow::Result<()> {
                             .state()
                             .into_iter()
                             // Catalogs can only be referenced within namespaces
-                            .filter(move |cluster| cluster.namespace() == catalog.namespace())
+                            .filter(move |cluster| valid_catalog_namespace(cluster, &catalog))
                             .map(|cluster| ObjectRef::from_obj(&*cluster))
                     },
                 )
                 .watches(
-                    client.get_api::<AuthenticationClass>(&()),
+                    client.get_api::<DeserializeGuard<AuthenticationClass>>(&()),
                     watcher::Config::default(),
                     move |authentication_class| {
                         authentication_class_cluster_store
                             .state()
                             .into_iter()
-                            .filter(move |trino: &Arc<TrinoCluster>| {
+                            .filter(move |trino| {
                                 references_authentication_class(trino, &authentication_class)
                             })
                             .map(|trino| ObjectRef::from_obj(&*trino))
@@ -148,9 +149,16 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn references_authentication_class(
-    trino: &TrinoCluster,
-    authentication_class: &AuthenticationClass,
+    trino: &DeserializeGuard<TrinoCluster>,
+    authentication_class: &DeserializeGuard<AuthenticationClass>,
 ) -> bool {
+    let Ok(trino) = &trino.0 else {
+        return false;
+    };
+    let Ok(authentication_class) = &authentication_class.0 else {
+        return false;
+    };
+
     let authentication_class_name = authentication_class.name_any();
     trino
         .spec
@@ -158,4 +166,17 @@ fn references_authentication_class(
         .authentication
         .iter()
         .any(|c| c.authentication_class_name() == &authentication_class_name)
+}
+
+fn valid_catalog_namespace(
+    trino: &DeserializeGuard<TrinoCluster>,
+    catalog: &DeserializeGuard<TrinoCatalog>,
+) -> bool {
+    let Ok(trino) = &trino.0 else {
+        return false;
+    };
+    let Ok(catalog) = &catalog.0 else {
+        return false;
+    };
+    trino.namespace() == catalog.namespace()
 }
