@@ -108,7 +108,7 @@ async fn main() -> anyhow::Result<()> {
                             .state()
                             .into_iter()
                             // Catalogs can only be referenced within namespaces
-                            .filter(move |cluster| valid_catalog_namespace(cluster, &catalog))
+                            .filter(move |cluster| cluster.namespace() == catalog.namespace())
                             .map(|cluster| ObjectRef::from_obj(&*cluster))
                     },
                 )
@@ -155,9 +155,6 @@ fn references_authentication_class(
     let Ok(trino) = &trino.0 else {
         return false;
     };
-    let Ok(authentication_class) = &authentication_class.0 else {
-        return false;
-    };
 
     let authentication_class_name = authentication_class.name_any();
     trino
@@ -166,17 +163,4 @@ fn references_authentication_class(
         .authentication
         .iter()
         .any(|c| c.authentication_class_name() == &authentication_class_name)
-}
-
-fn valid_catalog_namespace(
-    trino: &DeserializeGuard<TrinoCluster>,
-    catalog: &DeserializeGuard<TrinoCatalog>,
-) -> bool {
-    let Ok(trino) = &trino.0 else {
-        return false;
-    };
-    let Ok(catalog) = &catalog.0 else {
-        return false;
-    };
-    trino.namespace() == catalog.namespace()
 }
