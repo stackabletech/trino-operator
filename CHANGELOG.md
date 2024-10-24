@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: The fields `connection` and `host` on `S3Connection` as well as `bucketName` on `S3Bucket`are now mandatory ([#646]).
 - Don't ignore envOverrides ([#633]).
 - Don't print credentials to STDOUT during startup. Ideally we should use [config-utils](https://github.com/stackabletech/config-utils), but that's not easy (see [here](https://github.com/stackabletech/trino-operator/tree/fix/secret-printing)) ([#634]).
+- Invalid `TrinoCluster`, `TrinoCatalog` or `AuthenticationClass` objects don't stop the operator from reconciliation ([#657])
 
 ### Removed
 
@@ -32,6 +33,7 @@ All notable changes to this project will be documented in this file.
 [#638]: https://github.com/stackabletech/trino-operator/pull/638
 [#646]: https://github.com/stackabletech/trino-operator/pull/646
 [#655]: https://github.com/stackabletech/trino-operator/pull/655
+[#657]: https://github.com/stackabletech/trino-operator/pull/657
 
 ## [24.7.0] - 2024-07-24
 
