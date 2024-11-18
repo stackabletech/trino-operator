@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [24.11.0] - 2024-11-18
+
 ### Added
 
 - Added support for Trino 455 ([#638]).
