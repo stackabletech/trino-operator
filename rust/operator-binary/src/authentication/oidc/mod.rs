@@ -210,10 +210,10 @@ mod tests {
     use std::mem;
 
     use super::*;
+    use rstest::rstest;
     use stackable_trino_crd::Container;
 
     const IDP_PORT: u16 = 8080;
-    const IDP_ROOT_PATH: &str = "/realms/master";
     const IDP_SCOPE_1: &str = "openid";
     const IDP_SCOPE_2: &str = "test";
     const AUTH_CLASS_NAME_1: &str = "trino-oidc-auth-1";
@@ -223,12 +223,13 @@ mod tests {
     fn setup_test_authenticator(
         auth_class_name: &str,
         credential_secret: String,
+        root_path: &str,
     ) -> OidcAuthenticator {
         let input = format!(
             r#"
             hostname: keycloak
             port: {IDP_PORT}
-            rootPath: {IDP_ROOT_PATH}
+            rootPath: {root_path}
             scopes:
               - {IDP_SCOPE_1}
             principalClaim: preferred_username
@@ -249,8 +250,16 @@ mod tests {
     #[test]
     fn test_oidc_authentication_limit_one_error() {
         let oidc_authentication = TrinoOidcAuthentication::new(vec![
-            setup_test_authenticator(AUTH_CLASS_NAME_1, AUTH_CLASS_CREDENTIAL_SECRET.to_string()),
-            setup_test_authenticator(AUTH_CLASS_NAME_2, AUTH_CLASS_CREDENTIAL_SECRET.to_string()),
+            setup_test_authenticator(
+                AUTH_CLASS_NAME_1,
+                AUTH_CLASS_CREDENTIAL_SECRET.to_string(),
+                "/",
+            ),
+            setup_test_authenticator(
+                AUTH_CLASS_NAME_2,
+                AUTH_CLASS_CREDENTIAL_SECRET.to_string(),
+                "/",
+            ),
         ]);
 
         let error = oidc_authentication
@@ -264,17 +273,21 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_oidc_authentication_settings() {
+    #[rstest]
+    #[case("/realms/sdp")]
+    #[case("/realms/sdp/")]
+    #[case("/realms/sdp/////")]
+    fn test_oidc_authentication_settings(#[case] root_path: &str) {
         let oidc_authentication = TrinoOidcAuthentication::new(vec![setup_test_authenticator(
             AUTH_CLASS_NAME_1,
             AUTH_CLASS_CREDENTIAL_SECRET.to_string(),
+            root_path,
         )]);
 
         let trino_oidc_auth = oidc_authentication.oauth2_authentication_config().unwrap();
 
         assert_eq!(
-            Some(&format!("http://keycloak:{IDP_PORT}{IDP_ROOT_PATH}")),
+            Some(&format!("http://keycloak:{IDP_PORT}/realms/sdp")),
             trino_oidc_auth
                 .config_properties
                 .get(&TrinoRole::Coordinator)
