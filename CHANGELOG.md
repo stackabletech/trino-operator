@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Don't ignore envOverrides ([#633]).
 - Don't print credentials to STDOUT during startup. Ideally we should use [config-utils](https://github.com/stackabletech/config-utils), but that's not easy (see [here](https://github.com/stackabletech/trino-operator/tree/fix/secret-printing)) ([#634]).
 - Invalid `TrinoCluster`, `TrinoCatalog` or `AuthenticationClass` objects don't stop the operator from reconciliation ([#657])
+- Fix OIDC endpoint calculation in case the `rootPath` does have a trailing slash ([#XXX]).
 
 ### Removed
 
