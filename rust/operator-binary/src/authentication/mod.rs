@@ -651,7 +651,7 @@ mod tests {
               provider:
                 oidc:
                   hostname: {HOST_NAME}
-                  rootPath: /realms/master
+                  rootPath: /realms/master/
                   scopes: ["openid"]
                   principalClaim: preferred_username
             "#,
