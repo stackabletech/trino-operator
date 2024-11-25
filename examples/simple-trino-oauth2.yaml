@@ -53,7 +53,7 @@ spec:
     oidc:
       hostname: keycloak
       port: 8080
-      rootPath: /realms/stackable
+      rootPath: /realms/stackable/
       scopes: ["openid"]
       principalClaim: preferred_username
 ---
