@@ -21,7 +21,7 @@ spec:
     oidc:
       hostname: keycloak.default.svc.cluster.local
       port: 8080
-      rootPath: /realms/stackable
+      rootPath: /realms/stackable/
       scopes:
       - openid
       principalClaim: preferred_username
