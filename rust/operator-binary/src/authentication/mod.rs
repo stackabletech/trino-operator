@@ -508,7 +508,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                     );
                 }
                 AuthenticationClassProvider::Oidc(provider) => {
-                    let oidc = resolved_auth_class.oidc.context(
+                    let oidc = resolved_auth_class.client_auth_options.context(
                         OidcAuthenticationDetailsNotSpecifiedSnafu {
                             auth_class_name: auth_class_name.clone(),
                         },
@@ -591,7 +591,7 @@ mod tests {
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
-            oidc: None,
+            client_auth_options: None,
         }
     }
 
@@ -610,7 +610,7 @@ mod tests {
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
-            oidc: None,
+            client_auth_options: None,
         }
     }
 
@@ -636,7 +636,7 @@ mod tests {
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
-            oidc: None,
+            client_auth_options: None,
         }
     }
 
@@ -663,7 +663,7 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            oidc: Some(ClientAuthenticationOptions {
+            client_auth_options: Some(ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
                 product_specific_fields: (),
