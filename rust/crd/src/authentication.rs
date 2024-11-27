@@ -25,7 +25,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub struct ResolvedAuthenticationClassRef {
     /// An [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) to use.
     pub authentication_class: AuthenticationClass,
-    pub oidc: Option<oidc::ClientAuthenticationOptions>,
+    pub client_auth_options: Option<oidc::ClientAuthenticationOptions>,
 }
 
 /// Retrieve all provided AuthenticationClass references.
@@ -43,7 +43,7 @@ pub async fn resolve_authentication_classes(
         let auth_class_name = resolved_auth_class.name_any();
 
         resolved_auth_classes.push(ResolvedAuthenticationClassRef {
-            oidc: match &resolved_auth_class.spec.provider {
+            client_auth_options: match &resolved_auth_class.spec.provider {
                 AuthenticationClassProvider::Oidc(_) => Some(
                     client_authentication_detail
                         .oidc_or_error(&auth_class_name)
