@@ -2,7 +2,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
-    fmt::Write,
     ops::Div,
     str::FromStr,
     sync::Arc,
@@ -620,9 +619,10 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
-    // retrieve JVM config - TODO: currently not overridable
-    let mut jvm_config = config::jvm::jvm_config(resolved_product_image, role, merged_config)
-        .context(FailedToCreateJvmConfigSnafu)?;
+    // retrieve JVM config
+    let jvm_config =
+        config::jvm::jvm_config(&resolved_product_image.product_version, role, merged_config)
+            .context(FailedToCreateJvmConfigSnafu)?;
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -751,9 +751,7 @@ fn build_rolegroup_config_map(
                     );
                 }
             }
-            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
-                let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
-            }
+            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
             _ => {}
         }
     }
