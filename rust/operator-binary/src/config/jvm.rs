@@ -4,7 +4,7 @@ use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::memory::{BinaryMultiple, MemoryQuantity};
 use stackable_trino_crd::{
-    JvmArgument, TrinoConfig, TrinoRole, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES,
+    JvmArgument, TrinoConfig, TrinoRole, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT,
     RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
 
@@ -115,6 +115,8 @@ pub fn jvm_config(
             -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
             -Djavax.net.ssl.trustStoreType=pkcs12
             -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
+
+            -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={METRICS_PORT}:/stackable/jmx/config.yaml
             ",
         )),
         _ => TrinoVersionNotSupportedSnafu {
@@ -210,6 +212,8 @@ mod tests {
                 -Djavax.net.ssl.trustStorePassword=changeit
                 -Djavax.net.ssl.trustStoreType=pkcs12
                 -Djava.security.properties=/stackable/rwconfig/security.properties
+
+                -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar=8081:/stackable/jmx/config.yaml
 
                 # Additional JVM arguments specified on Custom Resource
                 -Dhttp.nonProxyHosts=localhost

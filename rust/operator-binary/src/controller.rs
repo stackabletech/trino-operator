@@ -2,7 +2,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
-    fmt::Write,
     ops::Div,
     str::FromStr,
     sync::Arc,
@@ -620,8 +619,8 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
-    // retrieve JVM config - TODO: currently not overridable
-    let mut jvm_config =
+    // retrieve JVM config
+    let jvm_config =
         config::jvm::jvm_config(&resolved_product_image.product_version, role, merged_config)
             .context(FailedToCreateJvmConfigSnafu)?;
 
@@ -752,9 +751,7 @@ fn build_rolegroup_config_map(
                     );
                 }
             }
-            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
-                let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
-            }
+            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
             _ => {}
         }
     }
