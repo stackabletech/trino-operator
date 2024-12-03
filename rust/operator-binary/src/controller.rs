@@ -621,8 +621,9 @@ fn build_rolegroup_config_map(
     let mut cm_conf_data = BTreeMap::new();
 
     // retrieve JVM config - TODO: currently not overridable
-    let mut jvm_config = config::jvm::jvm_config(resolved_product_image, role, merged_config)
-        .context(FailedToCreateJvmConfigSnafu)?;
+    let mut jvm_config =
+        config::jvm::jvm_config(&resolved_product_image.product_version, role, merged_config)
+            .context(FailedToCreateJvmConfigSnafu)?;
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino

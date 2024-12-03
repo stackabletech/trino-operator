@@ -2,13 +2,10 @@
 // This requires a different JVM config
 use indoc::formatdoc;
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{
-    commons::product_image_selection::ResolvedProductImage,
-    memory::{BinaryMultiple, MemoryQuantity},
-};
+use stackable_operator::memory::{BinaryMultiple, MemoryQuantity};
 use stackable_trino_crd::{
-    TrinoConfig, TrinoRole, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, RW_CONFIG_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    JvmArgument, TrinoConfig, TrinoRole, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
 
 #[derive(Snafu, Debug)]
@@ -35,7 +32,7 @@ pub enum Error {
 // Currently works for all supported versions (451 and 455 as of 2024-09-04) but maybe be changed
 // in the future depending on the role and version.
 pub fn jvm_config(
-    resolved_product_image: &ResolvedProductImage,
+    product_version: &str,
     _role: &TrinoRole,
     merged_config: &TrinoConfig,
 ) -> Result<String, Error> {
@@ -60,7 +57,7 @@ pub fn jvm_config(
         },
     )?;
 
-    match resolved_product_image.product_version.as_str() {
+    let mut operator_generated = match product_version {
         // Copied from https://trino.io/docs/451/installation/deployment.html
         "451" => Ok(formatdoc!(
             "-server
@@ -121,8 +118,106 @@ pub fn jvm_config(
             ",
         )),
         _ => TrinoVersionNotSupportedSnafu {
-            version: resolved_product_image.product_version.clone(),
+            version: product_version.to_owned(),
         }
         .fail(),
+    }?;
+
+    let additional_jvm_arguments = &merged_config.experimental_additional_jvm_arguments;
+    if !additional_jvm_arguments.is_empty() {
+        operator_generated.push_str("\n# Additional JVM arguments specified on Custom Resource");
+        for (key, JvmArgument(value)) in additional_jvm_arguments {
+            match value {
+                Some(value) => {
+                    operator_generated.push_str(&format!("\n{key}={value}"));
+                }
+                None => {
+                    operator_generated.push_str(&format!("\n{key}"));
+                }
+            }
+        }
+        operator_generated.push('\n');
+    }
+
+    Ok(operator_generated)
+}
+
+#[cfg(test)]
+mod tests {
+    use indoc::indoc;
+    use stackable_trino_crd::TrinoCluster;
+
+    use super::*;
+
+    #[test]
+    fn test_jvm_config() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "455"
+          clusterConfig:
+            catalogLabelSelector: {}
+          coordinators:
+            config:
+              resources:
+                memory:
+                  limit: 42Gi
+              experimentalAdditionalJvmArguments:
+                -Dhttps.proxyHost: proxy.my.corp
+                -Dhttps.proxyPort: "1234"
+                -Dhttp.nonProxyHosts: localhost
+                -Djava.net.preferIPv4Stack: "true"
+                -XX:+ExitOnOutOfMemoryError: null
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
+
+        let role = TrinoRole::Coordinator;
+        let rolegroup_ref = role.rolegroup_ref(&trino, "default");
+        let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
+        let jvm_config = jvm_config("455", &role, &merged_config).unwrap();
+
+        assert_eq!(
+            jvm_config,
+            indoc! {"
+                -server
+                -Xms34406m
+                -Xmx34406m
+
+                -XX:InitialRAMPercentage=80
+                -XX:MaxRAMPercentage=80
+                -XX:G1HeapRegionSize=32M
+                -XX:+ExplicitGCInvokesConcurrent
+                -XX:+ExitOnOutOfMemoryError
+                -XX:+HeapDumpOnOutOfMemoryError
+                -XX:-OmitStackTraceInFastThrow
+                -XX:ReservedCodeCacheSize=512M
+                -XX:PerMethodRecompilationCutoff=10000
+                -XX:PerBytecodeRecompilationCutoff=10000
+                -Djdk.attach.allowAttachSelf=true
+                -Djdk.nio.maxCachedBufferSize=2000000
+                -Dfile.encoding=UTF-8
+                # Allow loading dynamic agent used by JOL
+                -XX:+EnableDynamicAgentLoading
+
+                -Djavax.net.ssl.trustStore=/stackable/client_tls/truststore.p12
+                -Djavax.net.ssl.trustStorePassword=changeit
+                -Djavax.net.ssl.trustStoreType=pkcs12
+                -Djava.security.properties=/stackable/rwconfig/security.properties
+
+                # Additional JVM arguments specified on Custom Resource
+                -Dhttp.nonProxyHosts=localhost
+                -Dhttps.proxyHost=proxy.my.corp
+                -Dhttps.proxyPort=1234
+                -Djava.net.preferIPv4Stack=true
+                -XX:+ExitOnOutOfMemoryError
+            "}
+        );
     }
 }
