@@ -115,8 +115,6 @@ pub fn jvm_config(
             -Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}
             -Djavax.net.ssl.trustStoreType=pkcs12
             -Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}
-
-            -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={METRICS_PORT}:/stackable/jmx/config.yaml
             ",
         )),
         _ => TrinoVersionNotSupportedSnafu {
@@ -124,6 +122,13 @@ pub fn jvm_config(
         }
         .fail(),
     }?;
+
+    operator_generated.push_str(&formatdoc!("
+
+        # Enable the export of Prometheus metrics on port {METRICS_PORT}
+        -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={METRICS_PORT}:/stackable/jmx/config.yaml
+        "
+    ));
 
     let additional_jvm_arguments = &merged_config.experimental_additional_jvm_arguments;
     if !additional_jvm_arguments.is_empty() {
@@ -213,6 +218,7 @@ mod tests {
                 -Djavax.net.ssl.trustStoreType=pkcs12
                 -Djava.security.properties=/stackable/rwconfig/security.properties
 
+                # Enable the export of Prometheus metrics on port 8081
                 -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar=8081:/stackable/jmx/config.yaml
 
                 # Additional JVM arguments specified on Custom Resource
