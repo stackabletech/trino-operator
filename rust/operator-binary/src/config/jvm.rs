@@ -57,7 +57,7 @@ pub fn jvm_config(
         },
     )?;
 
-    let mut operator_generated = match product_version {
+    let mut jvm_config = match product_version {
         // Copied from https://trino.io/docs/451/installation/deployment.html
         "451" => Ok(formatdoc!(
             "-server
@@ -123,7 +123,7 @@ pub fn jvm_config(
         .fail(),
     }?;
 
-    operator_generated.push_str(&formatdoc!("
+    jvm_config.push_str(&formatdoc!("
 
         # Enable the export of Prometheus metrics on port {METRICS_PORT}
         -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={METRICS_PORT}:/stackable/jmx/config.yaml
@@ -132,21 +132,21 @@ pub fn jvm_config(
 
     let additional_jvm_arguments = &merged_config.experimental_additional_jvm_arguments;
     if !additional_jvm_arguments.is_empty() {
-        operator_generated.push_str("\n# Additional JVM arguments specified on Custom Resource");
+        jvm_config.push_str("\n# Additional JVM arguments specified on Custom Resource");
         for (key, JvmArgument(value)) in additional_jvm_arguments {
             match value {
                 Some(value) => {
-                    operator_generated.push_str(&format!("\n{key}={value}"));
+                    jvm_config.push_str(&format!("\n{key}={value}"));
                 }
                 None => {
-                    operator_generated.push_str(&format!("\n{key}"));
+                    jvm_config.push_str(&format!("\n{key}"));
                 }
             }
         }
-        operator_generated.push('\n');
+        jvm_config.push('\n');
     }
 
-    Ok(operator_generated)
+    Ok(jvm_config)
 }
 
 #[cfg(test)]
