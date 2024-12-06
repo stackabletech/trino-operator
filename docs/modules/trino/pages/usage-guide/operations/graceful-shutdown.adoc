@@ -56,36 +56,24 @@ noticed that all tasks are complete
 5. The `PreStop` hook will never return, but the JVM will be shut down by the graceful shutdown mechanism.
 6. If the graceful shutdown doesn't complete quick enough (e.g. a query runs longer than the graceful shutdown period), after `<graceful shutdown period> + 30s of step 2 + 30s of step 4 + 10s safety overhead` the Pod gets killed, regardless if it has shut down gracefully or not. This is achieved by setting `terminationGracePeriodSeconds` on the worker Pods. Currently running queries on the worker will fail and cannot be recovered.
 
-[WARNING]
-====
-As of SDP version `23.7`, the secret-operator issues TLS certificates with a lifetime of 24h.
-It also adds an annotation to the Pod, indicating it requires a restart 30 minutes before the certificate expires (23.5h hours in this case).
-Currently, this results in all Pod using HTTPS (both coordinator and workers in a typical setup) to be restarted every 23.5 hours.
+== Shutdown triggers
 
-The TLS certificate lifetime can be configured using `podOverrides` by setting `secrets.stackable.tech/backend.autotls.cert.lifetime` on every secret-operator volume.
-One sample configuration could look like:
+A shutdown operation can be triggered by multiple factors but a particularly important one is the renewal of the TLS certificates.
+This is important because it's a recurring event at regular intervals in the lifecycle of a Trino cluster.
+It is also an automatic process initiated by the commons operator when the TLS certificates issued by the secret operator are about to expire.
+Historically the lifetimes of these certificates have changed but they are always kept short (around one day) by default.
+
+NOTE: It is recommended to set an explicit lifetime that is appropriate for your situation as described in xref:concepts:operations/temporary_credentials_lifetime.adoc[].
+
+To set the certificate lifetime to a fortnight, thus having the Trino pods restarted every two weeks, use the example below:
 
 [source,yaml]
 ----
 spec:
   workers:
-    podOverrides:
-      spec:
-        volumes:
-          - name: server-tls-mount
-            ephemeral:
-              volumeClaimTemplate:
-                metadata:
-                  annotations:
-                    secrets.stackable.tech/backend.autotls.cert.lifetime: 14d
-          - name: internal-tls-mount
-            ephemeral:
-              volumeClaimTemplate:
-                metadata:
-                  annotations:
-                    secrets.stackable.tech/backend.autotls.cert.lifetime: 14d
+    config:
+      requestedSecretLifetime: 14d
 ----
-====
 
 == Implications
 
