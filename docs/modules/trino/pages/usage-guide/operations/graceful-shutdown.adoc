@@ -61,7 +61,7 @@ noticed that all tasks are complete
 A shutdown operation can be triggered by multiple factors but a particularly important one is the renewal of the TLS certificates.
 This is important because it's a recurring event at regular intervals in the lifecycle of a Trino cluster.
 It is also an automatic process initiated by the commons operator when the TLS certificates issued by the secret operator are about to expire.
-Historically the lifetimes of these certificates have changed but they are always kept short (between one and seven days) by default.
+Historically the lifetimes of these certificates have changed but they are always kept short (around one day) by default.
 
 NOTE: It is recommended to set an explicit lifetime that is appropriate for your situation as described in xref:concepts:operations/temporary_credentials_lifetime.adoc[].
 
