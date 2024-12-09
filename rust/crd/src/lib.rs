@@ -440,7 +440,7 @@ pub struct TrinoConfig {
 }
 
 impl TrinoConfig {
-    const DEFAULT_SECRET_LIFETIME: Duration = Duration::from_days_unchecked(7);
+    const DEFAULT_SECRET_LIFETIME: Duration = Duration::from_days_unchecked(1);
     fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
