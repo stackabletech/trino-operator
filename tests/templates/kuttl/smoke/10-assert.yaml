@@ -46,3 +46,11 @@ status:
   expectedPods: 1
   currentHealthy: 1
   disruptionsAllowed: 1
+---
+# This test checks if the containerdebug-state.json file is present and valid
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 120
+commands:
+  - script: kubectl exec -n $NAMESPACE --container trino trino-coordinator-default-0 -- cat /stackable/log/containerdebug-state.json | jq --exit-status
+  - script: kubectl exec -n $NAMESPACE --container airflow trino-worker-default-0 -- cat /stackable/log/containerdebug-state.json | jq --exit-status
