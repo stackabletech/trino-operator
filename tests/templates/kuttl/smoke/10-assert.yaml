@@ -53,4 +53,4 @@ kind: TestAssert
 timeout: 120
 commands:
   - script: kubectl exec -n $NAMESPACE --container trino trino-coordinator-default-0 -- cat /stackable/log/containerdebug-state.json | jq --exit-status
-  - script: kubectl exec -n $NAMESPACE --container airflow trino-worker-default-0 -- cat /stackable/log/containerdebug-state.json | jq --exit-status
+  - script: kubectl exec -n $NAMESPACE --container trino trino-worker-default-0 -- cat /stackable/log/containerdebug-state.json | jq --exit-status
