@@ -2,7 +2,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
-    fmt::Write,
     ops::Div,
     str::FromStr,
     sync::Arc,
@@ -63,7 +62,7 @@ use stackable_operator::{
             CustomContainerLogConfig,
         },
     },
-    role_utils::{GenericRoleConfig, RoleGroupRef},
+    role_utils::{GenericRoleConfig, JavaCommonConfig, RoleGroupRef},
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
@@ -130,7 +129,7 @@ pub enum Error {
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
 
-    #[snafu(display("object defines no {} role", role))]
+    #[snafu(display("object defines no {role:?} role"))]
     MissingTrinoRole { role: String },
 
     #[snafu(display("failed to create cluster resources"))]
@@ -340,6 +339,14 @@ pub enum Error {
     InvalidTrinoCluster {
         source: error_boundary::InvalidObject,
     },
+
+    #[snafu(display("failed to read role config"))]
+    ReadRoleConfig { source: stackable_trino_crd::Error },
+
+    #[snafu(display("failed to get merged jvmArgumentOverrides"))]
+    GetMergedJvmArgumentOverrides {
+        source: stackable_operator::role_utils::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -464,11 +471,15 @@ pub async fn reconcile_trino(
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
-    for (role, role_config) in validated_config {
-        let trino_role = TrinoRole::from_str(&role).context(FailedToParseRoleSnafu)?;
+    for (trino_role_str, role_config) in validated_config {
+        let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
+        let role = trino.role(&trino_role).context(ReadRoleConfigSnafu)?;
         for (role_group, config) in role_config {
-            let rolegroup = trino_role.rolegroup_ref(trino, role_group);
+            let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
 
+            let java_common_config = role
+                .merged_product_specific_common_config(&role_group)
+                .context(GetMergedJvmArgumentOverridesSnafu)?;
             let merged_config = trino
                 .merged_config(&trino_role, &rolegroup, &catalog_definitions)
                 .context(FailedToResolveConfigSnafu)?;
@@ -481,6 +492,7 @@ pub async fn reconcile_trino(
                 &rolegroup,
                 &config,
                 &merged_config,
+                &java_common_config,
                 &trino_authentication_config,
                 &trino_opa_config,
                 vector_aggregator_address.as_deref(),
@@ -616,6 +628,7 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
+    java_common_config: &JavaCommonConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
     vector_aggregator_address: Option<&str>,
@@ -623,9 +636,12 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
-    // retrieve JVM config - TODO: currently not overridable
-    let mut jvm_config = config::jvm::jvm_config(resolved_product_image, role, merged_config)
-        .context(FailedToCreateJvmConfigSnafu)?;
+    let jvm_config = config::jvm::jvm_config(
+        &resolved_product_image.product_version,
+        merged_config,
+        java_common_config,
+    )
+    .context(FailedToCreateJvmConfigSnafu)?;
 
     // TODO: we support only one coordinator for now
     let coordinator_ref: TrinoPodRef = trino
@@ -754,9 +770,7 @@ fn build_rolegroup_config_map(
                     );
                 }
             }
-            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {
-                let _ = writeln!(jvm_config, "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={}:/stackable/jmx/config.yaml", METRICS_PORT);
-            }
+            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
             _ => {}
         }
     }
@@ -1736,6 +1750,7 @@ mod tests {
                 .get("default")
                 .unwrap(),
             &merged_config,
+            &Default::default(),
             &trino_authentication_config,
             &None,
             None,
