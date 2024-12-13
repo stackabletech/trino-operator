@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- The lifetime of auto generated TLS certificates is now configurable with the role and roleGroup
+  config property `requestedSecretLifetime`. This helps reduce frequent Pod restarts ([#676]).
+
+### Fixed
+
+- Fix OIDC endpoint construction in case the `rootPath` does have a trailing slash ([#673]).
+- BREAKING: Use distinct ServiceAccounts for the Stacklets, so that multiple Stacklets can be
+  deployed in one namespace. Existing Stacklets will use the newly created ServiceAccounts after
+  restart ([#672]).
+
+[#672]: https://github.com/stackabletech/trino-operator/pull/672
+[#673]: https://github.com/stackabletech/trino-operator/pull/673
+[#676]: https://github.com/stackabletech/trino-operator/pull/676
+
+## [24.11.0] - 2024-11-18
+
+### Added
+
 - Added support for Trino 455 ([#638]).
 - The operator can now run on Kubernetes clusters using a non-default cluster domain.
   Use the env var `KUBERNETES_CLUSTER_DOMAIN` or the operator Helm chart property `kubernetesClusterDomain` to set a non-default cluster domain ([#655]).

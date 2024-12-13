@@ -2,17 +2,7 @@
 set -euo pipefail
 
 # DO NOT EDIT THE SCRIPT
-# Instead, update the j2 template, and regenerate it for dev:
-# cat <<EOF | jinja2 --format yaml getting_started.sh.j2 -o getting_started.sh
-# helm:
-#   repo_name: stackable-dev
-#   repo_url: https://repo.stackable.tech/repository/helm-dev/
-# versions:
-#   commons: 0.0.0-dev
-#   listener: 0.0.0-dev
-#   secret: 0.0.0-dev
-#   trino: 0.0.0-dev
-# EOF
+# Instead, update the j2 template, and regenerate it for dev with `make render-docs`.
 
 # The getting started guide script
 # It uses tagged regions which are included in the documentation

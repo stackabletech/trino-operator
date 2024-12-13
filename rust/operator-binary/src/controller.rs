@@ -124,6 +124,9 @@ const DOCKER_IMAGE_BASE_NAME: &str = "trino";
 #[strum_discriminants(derive(IntoStaticStr))]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
+    #[snafu(display("missing secret lifetime"))]
+    MissingSecretLifetime,
+
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
 
@@ -944,6 +947,9 @@ fn build_rolegroup_statefulset(
             }),
     );
 
+    let requested_secret_lifetime = merged_config
+        .requested_secret_lifetime
+        .context(MissingSecretLifetimeSnafu)?;
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
     tls_volume_mounts(
         trino,
@@ -951,6 +957,7 @@ fn build_rolegroup_statefulset(
         &mut cb_prepare,
         &mut cb_trino,
         catalogs,
+        &requested_secret_lifetime,
     )?;
 
     let mut prepare_args = vec![];
@@ -1486,13 +1493,18 @@ fn liveness_probe(trino: &TrinoCluster) -> Probe {
     }
 }
 
-fn create_tls_volume(volume_name: &str, tls_secret_class: &str) -> Result<Volume> {
+fn create_tls_volume(
+    volume_name: &str,
+    tls_secret_class: &str,
+    requested_secret_lifetime: &Duration,
+) -> Result<Volume> {
     Ok(VolumeBuilder::new(volume_name)
         .ephemeral(
             SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
                 .with_pod_scope()
                 .with_node_scope()
                 .with_format(SecretFormat::TlsPkcs12)
+                .with_auto_tls_cert_lifetime(*requested_secret_lifetime)
                 .build()
                 .context(TlsCertSecretClassVolumeBuildSnafu)?,
         )
@@ -1505,6 +1517,7 @@ fn tls_volume_mounts(
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
     catalogs: &[CatalogConfig],
+    requested_secret_lifetime: &Duration,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare
@@ -1514,7 +1527,11 @@ fn tls_volume_mounts(
             .add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR)
             .context(AddVolumeMountSnafu)?;
         pod_builder
-            .add_volume(create_tls_volume("server-tls-mount", server_tls)?)
+            .add_volume(create_tls_volume(
+                "server-tls-mount",
+                server_tls,
+                requested_secret_lifetime,
+            )?)
             .context(AddVolumeSnafu)?;
     }
 
@@ -1546,7 +1563,11 @@ fn tls_volume_mounts(
             .add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR)
             .context(AddVolumeMountSnafu)?;
         pod_builder
-            .add_volume(create_tls_volume("internal-tls-mount", internal_tls)?)
+            .add_volume(create_tls_volume(
+                "internal-tls-mount",
+                internal_tls,
+                requested_secret_lifetime,
+            )?)
             .context(AddVolumeSnafu)?;
 
         cb_prepare
