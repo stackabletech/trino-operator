@@ -934,6 +934,15 @@ fn build_rolegroup_statefulset(
             .cloned(),
     );
 
+    // Needed by the `containerdebug` process to log it's tracing information to.
+    // This process runs in the background of the `trino` container.
+    // See command::container_trino_args() for how it's called.
+    env.push(EnvVar {
+        name: "CONTAINERDEBUG_LOG_DIRECTORY".into(),
+        value: Some(format!("{STACKABLE_LOG_DIR}/containerdebug")),
+        ..EnvVar::default()
+    });
+
     // Finally add the user defined envOverrides properties.
     env.extend(
         config
