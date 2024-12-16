@@ -270,7 +270,7 @@ mod tests {
               default:
                 replicas: 1
         "#;
-        let jvm_config = construct_jvm_config(&input);
+        let jvm_config = construct_jvm_config(input);
 
         assert_eq!(
             jvm_config,
@@ -338,7 +338,7 @@ mod tests {
                   -Dhttps.proxyPort:
                     argument: "1234"
         "#;
-        let jvm_config = construct_jvm_config(&input);
+        let jvm_config = construct_jvm_config(input);
 
         assert_eq!(
             jvm_config,
