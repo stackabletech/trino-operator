@@ -266,33 +266,11 @@ mod tests {
               resources:
                 memory:
                   limit: 42Gi
-              experimentalAdditionalJvmArguments:
-                -Dhttps.proxyHost: proxy.my.corp
-                -Dhttps.proxyPort: "1234"
-                -Dhttp.nonProxyHosts: localhost
-                -Djava.net.preferIPv4Stack: "true"
-                -XX:+ExitOnOutOfMemoryError: null
             roleGroups:
               default:
                 replicas: 1
         "#;
-        let trino: TrinoCluster = serde_yaml::from_str(input).expect("illegal test input");
-
-        let role = TrinoRole::Coordinator;
-        let rolegroup_ref = role.rolegroup_ref(&trino, "default");
-        let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
-        let java_common_config = trino
-            .spec
-            .coordinators
-            .unwrap()
-            .merged_product_specific_common_config("default")
-            .unwrap();
-        let jvm_config = jvm_config(
-            trino.spec.image.product_version(),
-            &merged_config,
-            &java_common_config,
-        )
-        .unwrap();
+        let jvm_config = construct_jvm_config(&input);
 
         assert_eq!(
             jvm_config,
@@ -324,6 +302,93 @@ mod tests {
 
     #[test]
     fn test_jvm_config_jvm_argument_overrides() {
-        todo!("It's Friday...")
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "455"
+          clusterConfig:
+            catalogLabelSelector: {}
+          coordinators:
+            config:
+              resources:
+                memory:
+                  limit: 42Gi
+            jvmArgumentOverrides:
+              -XX:+UseG1GC:
+                remove: {}
+              -Dhttps.proxyHost:
+                argument: proxy.my.corp
+              -Dhttps.proxyPort:
+                argument: "8080"
+              -Djava.net.preferIPv4Stack:
+                argument: "true"
+            roleGroups:
+              default:
+                replicas: 1
+                jvmArgumentOverrides:
+                  # We need more memory!
+                  -Xmx34406m:
+                    remove: {}
+                  -Xmx40000m:
+                    flag: {}
+                  -Dhttps.proxyPort:
+                    argument: "1234"
+        "#;
+        let jvm_config = construct_jvm_config(&input);
+
+        assert_eq!(
+            jvm_config,
+            indoc! {"
+                -Dfile.encoding=UTF-8
+                -Dhttps.proxyHost=proxy.my.corp
+                -Dhttps.proxyPort=1234
+                -Djava.net.preferIPv4Stack=true
+                -Djava.security.properties=/stackable/rwconfig/security.properties
+                -Djavax.net.ssl.trustStore=/stackable/client_tls/truststore.p12
+                -Djavax.net.ssl.trustStorePassword=changeit
+                -Djavax.net.ssl.trustStoreType=pkcs12
+                -Djdk.attach.allowAttachSelf=true
+                -Djdk.nio.maxCachedBufferSize=2000000
+                -XX:+EnableDynamicAgentLoading
+                -XX:+ExitOnOutOfMemoryError
+                -XX:+ExplicitGCInvokesConcurrent
+                -XX:+HeapDumpOnOutOfMemoryError
+                -XX:-OmitStackTraceInFastThrow
+                -XX:G1HeapRegionSize=32M
+                -XX:InitialRAMPercentage=80
+                -XX:MaxRAMPercentage=80
+                -XX:PerBytecodeRecompilationCutoff=10000
+                -XX:PerMethodRecompilationCutoff=10000
+                -XX:ReservedCodeCacheSize=512M
+                -Xms34406m
+                -Xmx40000m
+                -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar=8081:/stackable/jmx/config.yaml
+                -server"}
+        );
+    }
+
+    fn construct_jvm_config(trino_cluster: &str) -> String {
+        let trino: TrinoCluster = serde_yaml::from_str(trino_cluster).expect("illegal test input");
+
+        let role = TrinoRole::Coordinator;
+        let rolegroup_ref = role.rolegroup_ref(&trino, "default");
+        let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
+        let java_common_config = trino
+            .spec
+            .coordinators
+            .unwrap()
+            .merged_product_specific_common_config("default")
+            .unwrap();
+
+        jvm_config(
+            trino.spec.image.product_version(),
+            &merged_config,
+            &java_common_config,
+        )
+        .unwrap()
     }
 }
