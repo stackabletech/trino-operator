@@ -91,6 +91,8 @@ commands:
                       secretKeyRef:
                         name: user-info-fetcher-client-credentials
                         key: clientSecret
+                  - name: JAVA_OPTS_KC_HEAP
+                    value: -Xmx500M
                 ports:
                   - name: https
                     containerPort: 8443
