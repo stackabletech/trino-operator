@@ -118,6 +118,7 @@ pub fn container_trino_args(
 {COMMON_BASH_TRAP_FUNCTIONS}
 {remove_vector_shutdown_file_command}
 prepare_signal_handlers
+containerdebug --output={STACKABLE_LOG_DIR}/containerdebug-state.json --loop &
 bin/launcher run --etc-dir={RW_CONFIG_DIR_NAME} --data-dir={DATA_DIR_NAME} &
 wait_for_termination $!
 {create_vector_shutdown_file_command}
