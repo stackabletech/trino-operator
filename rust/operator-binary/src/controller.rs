@@ -477,8 +477,8 @@ pub async fn reconcile_trino(
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
 
-            let java_common_config = role
-                .merged_product_specific_common_config(&role_group)
+            let (role_java_common_config, role_group_java_common_config) = role
+                .merged_product_specific_common_configs(&role_group)
                 .context(GetMergedJvmArgumentOverridesSnafu)?;
             let merged_config = trino
                 .merged_config(&trino_role, &rolegroup, &catalog_definitions)
@@ -492,7 +492,8 @@ pub async fn reconcile_trino(
                 &rolegroup,
                 &config,
                 &merged_config,
-                &java_common_config,
+                role_java_common_config,
+                role_group_java_common_config,
                 &trino_authentication_config,
                 &trino_opa_config,
                 vector_aggregator_address.as_deref(),
@@ -628,7 +629,8 @@ fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    java_common_config: &JavaCommonConfig,
+    role_java_common_config: &JavaCommonConfig,
+    role_group_java_common_config: &JavaCommonConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
     vector_aggregator_address: Option<&str>,
@@ -639,7 +641,8 @@ fn build_rolegroup_config_map(
     let jvm_config = config::jvm::jvm_config(
         &resolved_product_image.product_version,
         merged_config,
-        java_common_config,
+        role_java_common_config,
+        role_group_java_common_config,
     )
     .context(FailedToCreateJvmConfigSnafu)?;
 
@@ -1750,6 +1753,7 @@ mod tests {
                 .get("default")
                 .unwrap(),
             &merged_config,
+            &Default::default(),
             &Default::default(),
             &trino_authentication_config,
             &None,

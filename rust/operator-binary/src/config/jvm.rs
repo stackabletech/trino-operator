@@ -1,12 +1,10 @@
-use std::collections::BTreeMap;
-
 // As of 2024-07-05 we support multiple Trino versions. Some using Java 17, some Java 21 and the latest (455) uses Java 22.
 // This requires a different JVM config
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     config::merge::Merge,
     memory::{BinaryMultiple, MemoryQuantity},
-    role_utils::{JavaCommonConfig, JvmArgument},
+    role_utils::{JavaCommonConfig, JvmArgumentOverrides},
 };
 use stackable_trino_crd::{
     TrinoConfig, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT, RW_CONFIG_DIR_NAME,
@@ -39,7 +37,8 @@ pub enum Error {
 pub fn jvm_config(
     product_version: &str,
     merged_config: &TrinoConfig,
-    java_common_config: &JavaCommonConfig,
+    role_java_common_config: &JavaCommonConfig,
+    role_group_java_common_config: &JavaCommonConfig,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;
     let heap_size = MemoryQuantity::try_from(
@@ -62,179 +61,80 @@ pub fn jvm_config(
         },
     )?;
 
-    let mut jvm_args = BTreeMap::from([
-        ("-server".to_owned(), JvmArgument::Flag {}),
-        // Heap settings
-        (format!("-Xms{heap}"), JvmArgument::Flag {}),
-        (format!("-Xmx{heap}"), JvmArgument::Flag {}),
-        // Truststore settings
-        (
-            "-Djavax.net.ssl.trustStore".to_owned(),
-            JvmArgument::Argument(format!("{STACKABLE_CLIENT_TLS_DIR}/truststore.p12")),
-        ),
-        (
-            "-Djavax.net.ssl.trustStorePassword".to_owned(),
-            JvmArgument::Argument(STACKABLE_TLS_STORE_PASSWORD.to_owned()),
-        ),
-        (
-            "-Djavax.net.ssl.trustStoreType".to_owned(),
-            JvmArgument::Argument("pkcs12".to_owned()),
-        ),
-        // security.properties
-        (
-            "-Djava.security.properties".to_owned(),
-            JvmArgument::Argument(format!("{RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}")),
-        ),
-        // Prometheus metrics exporter
-        (
-            "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar".to_owned(),
-            JvmArgument::Argument(format!("{METRICS_PORT}:/stackable/jmx/config.yaml")),
-        ),
-    ]);
+    let mut jvm_args = vec![
+        "-server".to_owned(),
+        "# Heap settings".to_owned(),
+        format!("-Xms{heap}"),
+        format!("-Xmx{heap}"),
+        "# Specify security.properties".to_owned(),
+        format!("-Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}"),
+        "# Prometheus metrics exporter".to_owned(),
+        format!("-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={METRICS_PORT}:/stackable/jmx/config.yaml"),
+        "# Truststore settings".to_owned(),
+        format!("-Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12"),
+        "-Djavax.net.ssl.trustStoreType=pkcs12".to_owned(),
+        format!("-Djavax.net.ssl.trustStorePassword={STACKABLE_TLS_STORE_PASSWORD}"),
+    ];
+
+    jvm_args.push("# Recommended JVM arguments from Trino".to_owned());
     jvm_args.extend(recommended_trino_jvm_args(product_version)?);
 
-    let mut merged_java_config = java_common_config.clone();
-    merged_java_config.merge(&JavaCommonConfig::new(jvm_args));
+    jvm_args.push("# Arguments from jvmArgumentOverrides".to_owned());
 
-    Ok(merged_java_config
-        .effective_jvm_config()
-        .into_iter()
-        .map(|(key, value)| match value {
-            Some(argument) => {
-                format!("{key}={argument}")
-            }
-            None => key,
-        })
-        .collect::<Vec<String>>()
+    let operator_generated = JavaCommonConfig {
+        jvm_argument_overrides: JvmArgumentOverrides::new_with_only_additions(jvm_args),
+    };
+
+    // Please note that the merge order is different than we normally do!
+    // This is not trivial, as the merge operation is not purely additive (as it is with e.g. `PodTemplateSpec).
+    let mut role = role_java_common_config.clone();
+    role.merge(&operator_generated);
+    let mut role_group = role_group_java_common_config.clone();
+    role_group.merge(&role);
+
+    Ok(role_group
+        .jvm_argument_overrides
+        .effective_jvm_config_after_merging()
         .join("\n"))
 }
 
-fn recommended_trino_jvm_args(
-    product_version: &str,
-) -> Result<BTreeMap<String, JvmArgument>, Error> {
+fn recommended_trino_jvm_args(product_version: &str) -> Result<Vec<String>, Error> {
     match product_version {
         // Copied from https://trino.io/docs/451/installation/deployment.html
-        "451" => Ok(BTreeMap::from([
-            (
-                "-XX:InitialRAMPercentage".to_owned(),
-                JvmArgument::Argument("80".to_owned()),
-            ),
-            (
-                "-XX:MaxRAMPercentage".to_owned(),
-                JvmArgument::Argument("80".to_owned()),
-            ),
-            (
-                "-XX:G1HeapRegionSize".to_owned(),
-                JvmArgument::Argument("32M".to_owned()),
-            ),
-            (
-                "-XX:+ExitOnOutOfMemoryError".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:+HeapDumpOnOutOfMemoryError".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:-OmitStackTraceInFastThrow".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:ReservedCodeCacheSize".to_owned(),
-                JvmArgument::Argument("512M".to_owned()),
-            ),
-            (
-                "-XX:PerMethodRecompilationCutoff".to_owned(),
-                JvmArgument::Argument("10000".to_owned()),
-            ),
-            (
-                "-XX:PerBytecodeRecompilationCutoff".to_owned(),
-                JvmArgument::Argument("10000".to_owned()),
-            ),
-            (
-                "-Djdk.attach.allowAttachSelf".to_owned(),
-                JvmArgument::Argument("true".to_owned()),
-            ),
-            (
-                "-Djdk.nio.maxCachedBufferSize".to_owned(),
-                JvmArgument::Argument("2000000".to_owned()),
-            ),
-            (
-                "-Dfile.encoding".to_owned(),
-                JvmArgument::Argument("UTF-8".to_owned()),
-            ),
-            (
-                "-XX:+EnableDynamicAgentLoading".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:+UnlockDiagnosticVMOptions".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:G1NumCollectionsKeepPinned".to_owned(),
-                JvmArgument::Argument("10000000".to_owned()),
-            ),
-        ])),
+        "451" => Ok(vec![
+            "-XX:InitialRAMPercentage=80".to_owned(),
+            "-XX:MaxRAMPercentage=80".to_owned(),
+            "-XX:G1HeapRegionSize=32M".to_owned(),
+            "-XX:+ExitOnOutOfMemoryError".to_owned(),
+            "-XX:+HeapDumpOnOutOfMemoryError".to_owned(),
+            "-XX:-OmitStackTraceInFastThrow".to_owned(),
+            "-XX:ReservedCodeCacheSize=512M".to_owned(),
+            "-XX:PerMethodRecompilationCutoff=10000".to_owned(),
+            "-XX:PerBytecodeRecompilationCutoff=10000".to_owned(),
+            "-Djdk.attach.allowAttachSelf=true".to_owned(),
+            "-Djdk.nio.maxCachedBufferSize=2000000".to_owned(),
+            "-Dfile.encoding=UTF-8".to_owned(),
+            "-XX:+EnableDynamicAgentLoading".to_owned(),
+            "-XX:+UnlockDiagnosticVMOptions".to_owned(),
+            "-XX:G1NumCollectionsKeepPinned=10000000".to_owned(),
+        ]),
         // Copied from https://trino.io/docs/455/installation/deployment.html#jvm-config
-        "455" => Ok(BTreeMap::from([
-            (
-                "-XX:InitialRAMPercentage".to_owned(),
-                JvmArgument::Argument("80".to_owned()),
-            ),
-            (
-                "-XX:MaxRAMPercentage".to_owned(),
-                JvmArgument::Argument("80".to_owned()),
-            ),
-            (
-                "-XX:G1HeapRegionSize".to_owned(),
-                JvmArgument::Argument("32M".to_owned()),
-            ),
-            (
-                "-XX:+ExplicitGCInvokesConcurrent".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:+ExitOnOutOfMemoryError".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:+HeapDumpOnOutOfMemoryError".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:-OmitStackTraceInFastThrow".to_owned(),
-                JvmArgument::Flag {},
-            ),
-            (
-                "-XX:ReservedCodeCacheSize".to_owned(),
-                JvmArgument::Argument("512M".to_owned()),
-            ),
-            (
-                "-XX:PerMethodRecompilationCutoff".to_owned(),
-                JvmArgument::Argument("10000".to_owned()),
-            ),
-            (
-                "-XX:PerBytecodeRecompilationCutoff".to_owned(),
-                JvmArgument::Argument("10000".to_owned()),
-            ),
-            (
-                "-Djdk.attach.allowAttachSelf".to_owned(),
-                JvmArgument::Argument("true".to_owned()),
-            ),
-            (
-                "-Djdk.nio.maxCachedBufferSize".to_owned(),
-                JvmArgument::Argument("2000000".to_owned()),
-            ),
-            (
-                "-Dfile.encoding".to_owned(),
-                JvmArgument::Argument("UTF-8".to_owned()),
-            ),
-            (
-                "-XX:+EnableDynamicAgentLoading".to_owned(),
-                JvmArgument::Flag {},
-            ),
-        ])),
+        "455" => Ok(vec![
+            "-XX:InitialRAMPercentage=80".to_owned(),
+            "-XX:MaxRAMPercentage=80".to_owned(),
+            "-XX:G1HeapRegionSize=32M".to_owned(),
+            "-XX:+ExplicitGCInvokesConcurrent".to_owned(),
+            "-XX:+ExitOnOutOfMemoryError".to_owned(),
+            "-XX:+HeapDumpOnOutOfMemoryError".to_owned(),
+            "-XX:-OmitStackTraceInFastThrow".to_owned(),
+            "-XX:ReservedCodeCacheSize=512M".to_owned(),
+            "-XX:PerMethodRecompilationCutoff=10000".to_owned(),
+            "-XX:PerBytecodeRecompilationCutoff=10000".to_owned(),
+            "-Djdk.attach.allowAttachSelf=true".to_owned(),
+            "-Djdk.nio.maxCachedBufferSize=2000000".to_owned(),
+            "-Dfile.encoding=UTF-8".to_owned(),
+            "-XX:+EnableDynamicAgentLoading".to_owned(),
+        ]),
         _ => TrinoVersionNotSupportedSnafu {
             version: product_version,
         }
@@ -275,28 +175,34 @@ mod tests {
         assert_eq!(
             jvm_config,
             indoc! {"
-                -Dfile.encoding=UTF-8
-                -Djava.security.properties=/stackable/rwconfig/security.properties
-                -Djavax.net.ssl.trustStore=/stackable/client_tls/truststore.p12
-                -Djavax.net.ssl.trustStorePassword=changeit
-                -Djavax.net.ssl.trustStoreType=pkcs12
-                -Djdk.attach.allowAttachSelf=true
-                -Djdk.nio.maxCachedBufferSize=2000000
-                -XX:+EnableDynamicAgentLoading
-                -XX:+ExitOnOutOfMemoryError
-                -XX:+ExplicitGCInvokesConcurrent
-                -XX:+HeapDumpOnOutOfMemoryError
-                -XX:-OmitStackTraceInFastThrow
-                -XX:G1HeapRegionSize=32M
-                -XX:InitialRAMPercentage=80
-                -XX:MaxRAMPercentage=80
-                -XX:PerBytecodeRecompilationCutoff=10000
-                -XX:PerMethodRecompilationCutoff=10000
-                -XX:ReservedCodeCacheSize=512M
-                -Xms34406m
-                -Xmx34406m
-                -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar=8081:/stackable/jmx/config.yaml
-                -server"}
+              -server
+              # Heap settings
+              -Xms34406m
+              -Xmx34406m
+              # Specify security.properties
+              -Djava.security.properties=/stackable/rwconfig/security.properties
+              # Prometheus metrics exporter
+              -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar=8081:/stackable/jmx/config.yaml
+              # Truststore settings
+              -Djavax.net.ssl.trustStore=/stackable/client_tls/truststore.p12
+              -Djavax.net.ssl.trustStoreType=pkcs12
+              -Djavax.net.ssl.trustStorePassword=changeit
+              # Recommended JVM arguments from Trino
+              -XX:InitialRAMPercentage=80
+              -XX:MaxRAMPercentage=80
+              -XX:G1HeapRegionSize=32M
+              -XX:+ExplicitGCInvokesConcurrent
+              -XX:+ExitOnOutOfMemoryError
+              -XX:+HeapDumpOnOutOfMemoryError
+              -XX:-OmitStackTraceInFastThrow
+              -XX:ReservedCodeCacheSize=512M
+              -XX:PerMethodRecompilationCutoff=10000
+              -XX:PerBytecodeRecompilationCutoff=10000
+              -Djdk.attach.allowAttachSelf=true
+              -Djdk.nio.maxCachedBufferSize=2000000
+              -Dfile.encoding=UTF-8
+              -XX:+EnableDynamicAgentLoading
+              # Arguments from jvmArgumentOverrides"}
         );
     }
 
@@ -318,56 +224,59 @@ mod tests {
                 memory:
                   limit: 42Gi
             jvmArgumentOverrides:
-              -XX:+UseG1GC:
-                remove: {}
-              -Dhttps.proxyHost:
-                argument: proxy.my.corp
-              -Dhttps.proxyPort:
-                argument: "8080"
-              -Djava.net.preferIPv4Stack:
-                argument: "true"
+              remove:
+                - -XX:+HeapDumpOnOutOfMemoryError
+              add:
+                - -Dhttps.proxyHost=proxy.my.corp
+                - -Dhttps.proxyPort=8080
+                - -Djava.net.preferIPv4Stack=true
             roleGroups:
               default:
                 replicas: 1
                 jvmArgumentOverrides:
                   # We need more memory!
-                  -Xmx34406m:
-                    remove: {}
-                  -Xmx40000m:
-                    flag: {}
-                  -Dhttps.proxyPort:
-                    argument: "1234"
+                  removeRegex:
+                    - -Xmx.*
+                    - -Dhttps.proxyPort=.*
+                  add:
+                    - -Xmx40000m
+                    - -Dhttps.proxyPort=1234
         "#;
         let jvm_config = construct_jvm_config(input);
 
         assert_eq!(
             jvm_config,
             indoc! {"
-                -Dfile.encoding=UTF-8
-                -Dhttps.proxyHost=proxy.my.corp
-                -Dhttps.proxyPort=1234
-                -Djava.net.preferIPv4Stack=true
-                -Djava.security.properties=/stackable/rwconfig/security.properties
-                -Djavax.net.ssl.trustStore=/stackable/client_tls/truststore.p12
-                -Djavax.net.ssl.trustStorePassword=changeit
-                -Djavax.net.ssl.trustStoreType=pkcs12
-                -Djdk.attach.allowAttachSelf=true
-                -Djdk.nio.maxCachedBufferSize=2000000
-                -XX:+EnableDynamicAgentLoading
-                -XX:+ExitOnOutOfMemoryError
-                -XX:+ExplicitGCInvokesConcurrent
-                -XX:+HeapDumpOnOutOfMemoryError
-                -XX:-OmitStackTraceInFastThrow
-                -XX:G1HeapRegionSize=32M
-                -XX:InitialRAMPercentage=80
-                -XX:MaxRAMPercentage=80
-                -XX:PerBytecodeRecompilationCutoff=10000
-                -XX:PerMethodRecompilationCutoff=10000
-                -XX:ReservedCodeCacheSize=512M
-                -Xms34406m
-                -Xmx40000m
-                -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar=8081:/stackable/jmx/config.yaml
-                -server"}
+              -server
+              # Heap settings
+              -Xms34406m
+              # Specify security.properties
+              -Djava.security.properties=/stackable/rwconfig/security.properties
+              # Prometheus metrics exporter
+              -javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar=8081:/stackable/jmx/config.yaml
+              # Truststore settings
+              -Djavax.net.ssl.trustStore=/stackable/client_tls/truststore.p12
+              -Djavax.net.ssl.trustStoreType=pkcs12
+              -Djavax.net.ssl.trustStorePassword=changeit
+              # Recommended JVM arguments from Trino
+              -XX:InitialRAMPercentage=80
+              -XX:MaxRAMPercentage=80
+              -XX:G1HeapRegionSize=32M
+              -XX:+ExplicitGCInvokesConcurrent
+              -XX:+ExitOnOutOfMemoryError
+              -XX:-OmitStackTraceInFastThrow
+              -XX:ReservedCodeCacheSize=512M
+              -XX:PerMethodRecompilationCutoff=10000
+              -XX:PerBytecodeRecompilationCutoff=10000
+              -Djdk.attach.allowAttachSelf=true
+              -Djdk.nio.maxCachedBufferSize=2000000
+              -Dfile.encoding=UTF-8
+              -XX:+EnableDynamicAgentLoading
+              # Arguments from jvmArgumentOverrides
+              -Dhttps.proxyHost=proxy.my.corp
+              -Djava.net.preferIPv4Stack=true
+              -Xmx40000m
+              -Dhttps.proxyPort=1234"}
         );
     }
 
@@ -377,17 +286,16 @@ mod tests {
         let role = TrinoRole::Coordinator;
         let rolegroup_ref = role.rolegroup_ref(&trino, "default");
         let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
-        let java_common_config = trino
-            .spec
-            .coordinators
-            .unwrap()
-            .merged_product_specific_common_config("default")
+        let coordinators = trino.spec.coordinators.unwrap();
+        let (role_java_common_config, role_group_java_common_config) = coordinators
+            .merged_product_specific_common_configs("default")
             .unwrap();
 
         jvm_config(
             trino.spec.image.product_version(),
             &merged_config,
-            &java_common_config,
+            role_java_common_config,
+            role_group_java_common_config,
         )
         .unwrap()
     }
