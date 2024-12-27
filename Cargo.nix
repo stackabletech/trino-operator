@@ -775,9 +775,9 @@ rec {
       };
       "cc" = rec {
         crateName = "cc";
-        version = "1.2.2";
+        version = "1.2.3";
         edition = "2018";
-        sha256 = "1p7b7sxdr2hh8l9ha4cjyf1cmkigdjy4qcycriqgbjh35gk96kgk";
+        sha256 = "0bcga5xf5fgvddfamsjhg89hlydzbdk1fwvcym5kkxfggdj5gxi7";
         authors = [
           "Alex Crichton <alex@alexcrichton.com>"
         ];
@@ -822,9 +822,9 @@ rec {
       };
       "chrono" = rec {
         crateName = "chrono";
-        version = "0.4.38";
+        version = "0.4.39";
         edition = "2021";
-        sha256 = "009l8vc5p8750vn02z30mblg4pv2qhkbfizhfwmzc6vpy5nr67x2";
+        sha256 = "09g8nf409lb184kl9j4s85k0kn8wzgjkp5ls9zid50b886fwqdky";
         dependencies = [
           {
             name = "android-tzdata";
@@ -1033,9 +1033,9 @@ rec {
       };
       "const_format" = rec {
         crateName = "const_format";
-        version = "0.2.33";
+        version = "0.2.34";
         edition = "2021";
-        sha256 = "0jx6ffj65prbx1w9664ddwm73k7hm5g25afyvjq4y4gi3zc5bijh";
+        sha256 = "1pb3vx4k0bl3cy45fmba36hzds1jhkr8y9k3j5nnvm4abjb9fvqj";
         authors = [
           "rodrimati1992 <rodrimatt1985@gmail.com>"
         ];
@@ -1047,6 +1047,7 @@ rec {
         ];
         features = {
           "__debug" = [ "const_format_proc_macros/debug" ];
+          "__inline_const_pat_tests" = [ "__test" "fmt" ];
           "__only_new_tests" = [ "__test" ];
           "all" = [ "fmt" "derive" "rust_1_64" "assert" ];
           "assert" = [ "assertc" ];
@@ -1055,19 +1056,20 @@ rec {
           "const_generics" = [ "rust_1_51" ];
           "constant_time_as_str" = [ "fmt" ];
           "derive" = [ "fmt" "const_format_proc_macros/derive" ];
-          "fmt" = [ "rust_1_64" ];
+          "fmt" = [ "rust_1_83" ];
           "konst" = [ "dep:konst" ];
           "more_str_macros" = [ "rust_1_64" ];
           "nightly_const_generics" = [ "const_generics" ];
           "rust_1_64" = [ "rust_1_51" "konst" "konst/rust_1_64" ];
+          "rust_1_83" = [ "rust_1_64" ];
         };
         resolvedDefaultFeatures = [ "default" ];
       };
       "const_format_proc_macros" = rec {
         crateName = "const_format_proc_macros";
-        version = "0.2.33";
+        version = "0.2.34";
         edition = "2021";
-        sha256 = "1c8f7xh2b2kca9hlzvjplcdkvr4iqpsk4yd236n1nyzljd5s9wgg";
+        sha256 = "0i3pxxcl4xvwq4mlfg3csb4j0n6v0mhj07p6yk0vlvdirznc4mqx";
         procMacro = true;
         authors = [
           "rodrimati1992 <rodrimatt1985@gmail.com>"
@@ -1616,7 +1618,7 @@ rec {
         dependencies = [
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
           }
         ];
 
@@ -3687,9 +3689,9 @@ rec {
       };
       "js-sys" = rec {
         crateName = "js-sys";
-        version = "0.3.74";
+        version = "0.3.76";
         edition = "2021";
-        sha256 = "01g78cvwc5fgsk2p4hnpgd6ggzs1qmh7s3cgg1prbvgnywwf0rd8";
+        sha256 = "1dz7v777h2j38wkf8k5iwkfxskn6nff2cdv2jsslyxkpn2svc5v7";
         libName = "js_sys";
         authors = [
           "The wasm-bindgen Developers"
@@ -3737,7 +3739,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
           }
         ];
         devDependencies = [
@@ -3789,7 +3791,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
           }
         ];
 
@@ -4095,7 +4097,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
           }
           {
             name = "tokio";
@@ -4254,7 +4256,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
           }
         ];
         devDependencies = [
@@ -4397,7 +4399,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
           }
           {
             name = "tokio";
@@ -4450,9 +4452,9 @@ rec {
       };
       "libc" = rec {
         crateName = "libc";
-        version = "0.2.167";
+        version = "0.2.168";
         edition = "2021";
-        sha256 = "1z06pa4y2x2arwm7si12xsaf1cj46l9pazzrvwbsh5a320p5imh9";
+        sha256 = "0vab4inpw0dz78nii02hsxp1skqn06xzh64psw8wl1h63scb5bjs";
         authors = [
           "The Rust Project Developers"
         ];
@@ -5023,7 +5025,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
             usesDefaultFeatures = false;
           }
         ];
@@ -5197,7 +5199,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
             usesDefaultFeatures = false;
           }
           {
@@ -5444,9 +5446,9 @@ rec {
       };
       "pest" = rec {
         crateName = "pest";
-        version = "2.7.14";
+        version = "2.7.15";
         edition = "2021";
-        sha256 = "0hplghvnz8yhs4mgpy7854gkpp6ysr96fy7ircs0k4w33al556c7";
+        sha256 = "1p4rq45xprw9cx0pb8mmbfa0ih49l0baablv3cpfdy3c1pkayz4b";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -5458,7 +5460,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 2.0.6";
             optional = true;
           }
           {
@@ -5478,9 +5480,9 @@ rec {
       };
       "pest_derive" = rec {
         crateName = "pest_derive";
-        version = "2.7.14";
+        version = "2.7.15";
         edition = "2021";
-        sha256 = "1p82kbjm5dvflxgj9vl3q78n2v4l9khh2cwizm3kl4ibcdgkc56j";
+        sha256 = "0zpmcd1jv1c53agad5b3jb66ylxlzyv43x1bssh8fs7w3i11hrc1";
         procMacro = true;
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
@@ -5507,9 +5509,9 @@ rec {
       };
       "pest_generator" = rec {
         crateName = "pest_generator";
-        version = "2.7.14";
+        version = "2.7.15";
         edition = "2021";
-        sha256 = "0khcyqjyd8pg1qcivh1xzk9613zbn983ycdclap1f5rh6ikmhmgb";
+        sha256 = "0yrpk5ymc56pffv7gqr5rkv92p3dc6s73lb8hy1wf3w77byrc4vx";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -5546,9 +5548,9 @@ rec {
       };
       "pest_meta" = rec {
         crateName = "pest_meta";
-        version = "2.7.14";
+        version = "2.7.15";
         edition = "2021";
-        sha256 = "0gfhci2whiz3kiw2k2asj2lcj8rrrp4hm69whdvcpngl1jks4pdp";
+        sha256 = "1skx7gm932bp77if63f7d72jrk5gygj39d8zsfzigmr5xa4q1rg1";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -6807,9 +6809,9 @@ rec {
       };
       "serde" = rec {
         crateName = "serde";
-        version = "1.0.215";
+        version = "1.0.216";
         edition = "2018";
-        sha256 = "13xqkw93cw9rnbkm0zy1apnilzq7l2xf1qw8m1nkga8i1fnw24v5";
+        sha256 = "13ikqs0cvd220530x4rj1m9ab5wcflrwkw7cpvl9fnlkdq0q35qb";
         authors = [
           "Erick Tryzelaar <erick.tryzelaar@gmail.com>"
           "David Tolnay <dtolnay@gmail.com>"
@@ -6862,9 +6864,9 @@ rec {
       };
       "serde_derive" = rec {
         crateName = "serde_derive";
-        version = "1.0.215";
+        version = "1.0.216";
         edition = "2015";
-        sha256 = "1h2nswy0rmzblil38h12wxsgni1ik63rk22wy19g48v9hrpqc7md";
+        sha256 = "0pm5bm4354n40ir12bbs829arlqwjrw0wmzd4xk5r1kkpzdmky26";
         procMacro = true;
         authors = [
           "Erick Tryzelaar <erick.tryzelaar@gmail.com>"
@@ -7949,7 +7951,7 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "proc-macro" ];
       };
-      "thiserror" = rec {
+      "thiserror 1.0.69" = rec {
         crateName = "thiserror";
         version = "1.0.69";
         edition = "2021";
@@ -7960,16 +7962,61 @@ rec {
         dependencies = [
           {
             name = "thiserror-impl";
-            packageId = "thiserror-impl";
+            packageId = "thiserror-impl 1.0.69";
           }
         ];
 
       };
-      "thiserror-impl" = rec {
+      "thiserror 2.0.6" = rec {
+        crateName = "thiserror";
+        version = "2.0.6";
+        edition = "2021";
+        sha256 = "0izahgy0lzcmcg2i72h9jk9lqd5zpq3z0k8cp7i7gl7b40c2mv4g";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "thiserror-impl";
+            packageId = "thiserror-impl 2.0.6";
+          }
+        ];
+        features = {
+          "default" = [ "std" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
+      };
+      "thiserror-impl 1.0.69" = rec {
         crateName = "thiserror-impl";
         version = "1.0.69";
         edition = "2021";
         sha256 = "1h84fmn2nai41cxbhk6pqf46bxqq1b344v8yz089w1chzi76rvjg";
+        procMacro = true;
+        libName = "thiserror_impl";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "syn";
+            packageId = "syn 2.0.90";
+          }
+        ];
+
+      };
+      "thiserror-impl 2.0.6" = rec {
+        crateName = "thiserror-impl";
+        version = "2.0.6";
+        edition = "2021";
+        sha256 = "04k3dz901mymm06j3x6f65hpbsqlk6g51fmiky9g2kqgnk550myn";
         procMacro = true;
         libName = "thiserror_impl";
         authors = [
@@ -8385,9 +8432,9 @@ rec {
       };
       "tokio-stream" = rec {
         crateName = "tokio-stream";
-        version = "0.1.16";
+        version = "0.1.17";
         edition = "2021";
-        sha256 = "1wc65gprcsyzqlr0k091glswy96kph90i32gffi4ksyh03hnqkjg";
+        sha256 = "0ix0770hfp4x5rh5bl7vsnr3d4iz4ms43i522xw70xaap9xqv9gc";
         libName = "tokio_stream";
         authors = [
           "Tokio Contributors <team@tokio.rs>"
@@ -8834,7 +8881,7 @@ rec {
           }
           {
             name = "thiserror";
-            packageId = "thiserror";
+            packageId = "thiserror 1.0.69";
           }
           {
             name = "time";
@@ -9436,9 +9483,9 @@ rec {
       };
       "wasm-bindgen" = rec {
         crateName = "wasm-bindgen";
-        version = "0.2.97";
+        version = "0.2.99";
         edition = "2021";
-        sha256 = "0p1dxkfcx2avdjkh3cj9lipfnr73q438fyqasw4w2qr892s66pni";
+        sha256 = "15k3rzb3kjrxyqnh0916gq99mrpwhwy62smawxxc2w0x3llgcx54";
         libName = "wasm_bindgen";
         authors = [
           "The wasm-bindgen Developers"
@@ -9458,20 +9505,6 @@ rec {
             packageId = "wasm-bindgen-macro";
             usesDefaultFeatures = false;
           }
-          {
-            name = "wasm-bindgen-macro";
-            packageId = "wasm-bindgen-macro";
-            usesDefaultFeatures = false;
-            target = { target, features }: (("wasm32" == target."arch" or null) && (("unknown" == target."os" or null) || ("none" == target."os" or null)) && (builtins.elem "atomics" targetFeatures));
-            features = [ "atomics" ];
-          }
-          {
-            name = "wasm-bindgen-macro";
-            packageId = "wasm-bindgen-macro";
-            usesDefaultFeatures = false;
-            target = { target, features }: (("wasm32" == target."arch" or null) && (("unknown" == target."os" or null) || ("none" == target."os" or null)) && (target."wasm_bindgen_unstable_test_coverage" or false));
-            features = [ "coverage" ];
-          }
         ];
         features = {
           "default" = [ "spans" "std" ];
@@ -9488,9 +9521,9 @@ rec {
       };
       "wasm-bindgen-backend" = rec {
         crateName = "wasm-bindgen-backend";
-        version = "0.2.97";
+        version = "0.2.99";
         edition = "2021";
-        sha256 = "1kcqk7ph20fc7k9hprkd28zrb3p4cfy24ygnsgfidjmawc9fydld";
+        sha256 = "0ycwa4c68j34687k513djgyy2asn3fw3yp4g9rkq2kvbchwbp2az";
         libName = "wasm_bindgen_backend";
         authors = [
           "The wasm-bindgen Developers"
@@ -9503,10 +9536,6 @@ rec {
           {
             name = "log";
             packageId = "log";
-          }
-          {
-            name = "once_cell";
-            packageId = "once_cell";
           }
           {
             name = "proc-macro2";
@@ -9530,13 +9559,13 @@ rec {
           "default" = [ "std" ];
           "extra-traits" = [ "syn/extra-traits" ];
         };
-        resolvedDefaultFeatures = [ "atomics" "coverage" "spans" "std" ];
+        resolvedDefaultFeatures = [ "spans" "std" ];
       };
       "wasm-bindgen-macro" = rec {
         crateName = "wasm-bindgen-macro";
-        version = "0.2.97";
+        version = "0.2.99";
         edition = "2021";
-        sha256 = "0l804si7h527lfzr103bg5wxaa769fa6rmp7dnry9ls2igh40m3h";
+        sha256 = "1znlcrk5bvisr3vscwlqkdby959n3sb367zgdzpjwjd7v4giiiic";
         procMacro = true;
         libName = "wasm_bindgen_macro";
         authors = [
@@ -9554,20 +9583,18 @@ rec {
           }
         ];
         features = {
-          "atomics" = [ "wasm-bindgen-macro-support/atomics" ];
-          "coverage" = [ "wasm-bindgen-macro-support/coverage" ];
           "default" = [ "std" ];
           "spans" = [ "wasm-bindgen-macro-support/spans" ];
           "std" = [ "wasm-bindgen-macro-support/std" ];
           "strict-macro" = [ "wasm-bindgen-macro-support/strict-macro" ];
         };
-        resolvedDefaultFeatures = [ "atomics" "coverage" "spans" "std" ];
+        resolvedDefaultFeatures = [ "spans" "std" ];
       };
       "wasm-bindgen-macro-support" = rec {
         crateName = "wasm-bindgen-macro-support";
-        version = "0.2.97";
+        version = "0.2.99";
         edition = "2021";
-        sha256 = "079z3gv3cyqcmaw164i6kgf1iyiw4b65a0hgrpp4svz4frdaxjcq";
+        sha256 = "1hihsgyg0kf46kjhgfv8x5g9x0q1d0aizj6n7s84ag1xfrdskmrh";
         libName = "wasm_bindgen_macro_support";
         authors = [
           "The wasm-bindgen Developers"
@@ -9597,21 +9624,19 @@ rec {
           }
         ];
         features = {
-          "atomics" = [ "wasm-bindgen-backend/atomics" ];
-          "coverage" = [ "wasm-bindgen-backend/coverage" ];
           "default" = [ "std" ];
           "extra-traits" = [ "syn/extra-traits" ];
           "spans" = [ "wasm-bindgen-backend/spans" ];
           "std" = [ "wasm-bindgen-backend/std" ];
         };
-        resolvedDefaultFeatures = [ "atomics" "coverage" "spans" "std" ];
+        resolvedDefaultFeatures = [ "spans" "std" ];
       };
       "wasm-bindgen-shared" = rec {
         crateName = "wasm-bindgen-shared";
-        version = "0.2.97";
+        version = "0.2.99";
         edition = "2021";
         links = "wasm_bindgen";
-        sha256 = "0jbddll4qzf7wnvfj19kp1v6naajzbv8wcr1arkvs4dsqnlrvsbf";
+        sha256 = "19h61snrhh1qhb5gz6zyb89l7fbj1fhmxcvi09p9l0mav8zsnfll";
         libName = "wasm_bindgen_shared";
         authors = [
           "The wasm-bindgen Developers"
