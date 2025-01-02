@@ -478,7 +478,7 @@ pub async fn reconcile_trino(
             let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
 
             let (role_java_common_config, role_group_java_common_config) = role
-                .merged_product_specific_common_configs(&role_group)
+                .get_product_specific_common_configs(&role_group)
                 .context(GetMergedJvmArgumentOverridesSnafu)?;
             let merged_config = trino
                 .merged_config(&trino_role, &rolegroup, &catalog_definitions)

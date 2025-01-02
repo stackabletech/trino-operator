@@ -288,7 +288,7 @@ mod tests {
         let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
         let coordinators = trino.spec.coordinators.unwrap();
         let (role_java_common_config, role_group_java_common_config) = coordinators
-            .merged_product_specific_common_configs("default")
+            .get_product_specific_common_configs("default")
             .unwrap();
 
         jvm_config(
