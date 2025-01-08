@@ -7,7 +7,7 @@ mod controller;
 mod operations;
 mod product_logging;
 
-use crate::controller::{CONTROLLER_NAME, OPERATOR_NAME};
+use std::sync::Arc;
 
 use clap::{crate_description, crate_version, Parser};
 use futures::stream::StreamExt;
@@ -20,14 +20,19 @@ use stackable_operator::{
     },
     kube::{
         core::DeserializeGuard,
-        runtime::{reflector::ObjectRef, watcher, Controller},
+        runtime::{
+            events::{Recorder, Reporter},
+            reflector::ObjectRef,
+            watcher, Controller,
+        },
         ResourceExt,
     },
     logging::controller::report_controller_reconciled,
     CustomResourceExt,
 };
 use stackable_trino_crd::{catalog::TrinoCatalog, TrinoCluster, APP_NAME};
-use std::sync::Arc;
+
+use crate::controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME};
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -77,6 +82,13 @@ async fn main() -> anyhow::Result<()> {
                 &cluster_info_opts,
             )
             .await?;
+            let event_recorder = Arc::new(Recorder::new(
+                client.as_kube_client(),
+                Reporter {
+                    controller: FULL_CONTROLLER_NAME.to_string(),
+                    instance: None,
+                },
+            ));
 
             let cluster_controller = Controller::new(
                 watch_namespace.get_api::<DeserializeGuard<TrinoCluster>>(&client),
@@ -133,15 +145,18 @@ async fn main() -> anyhow::Result<()> {
                         product_config,
                     }),
                 )
-                .map(|res| {
-                    report_controller_reconciled(
-                        &client,
-                        &format!("{CONTROLLER_NAME}.{OPERATOR_NAME}"),
-                        &res,
-                    )
+                .for_each(|result| {
+                    let event_recorder = event_recorder.clone();
+                    async move {
+                        report_controller_reconciled(
+                            &event_recorder,
+                            FULL_CONTROLLER_NAME,
+                            &result,
+                        )
+                        .await;
+                    }
                 })
-                .collect::<()>()
-                .await;
+                .await; // controller does nothing unless polled
         }
     }
 

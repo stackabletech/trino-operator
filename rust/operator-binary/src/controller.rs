@@ -103,6 +103,7 @@ pub struct Ctx {
 
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
+pub const FULL_CONTROLLER_NAME: &str = "trinocluster.trino.stackable.tech";
 pub const TRINO_UID: i64 = 1000;
 
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
