@@ -145,17 +145,21 @@ async fn main() -> anyhow::Result<()> {
                         product_config,
                     }),
                 )
-                .for_each(|result| {
-                    let event_recorder = event_recorder.clone();
-                    async move {
-                        report_controller_reconciled(
-                            &event_recorder,
-                            FULL_CONTROLLER_NAME,
-                            &result,
-                        )
-                        .await;
-                    }
-                })
+                // We can let the reporting happen in the background
+                .for_each_concurrent(
+                    16, // concurrency limit
+                    |result| {
+                        let event_recorder = event_recorder.clone();
+                        async move {
+                            report_controller_reconciled(
+                                &event_recorder,
+                                FULL_CONTROLLER_NAME,
+                                &result,
+                            )
+                            .await;
+                        }
+                    },
+                )
                 .await; // controller does nothing unless polled
         }
     }
