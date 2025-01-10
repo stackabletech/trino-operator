@@ -149,6 +149,8 @@ async fn main() -> anyhow::Result<()> {
                 .for_each_concurrent(
                     16, // concurrency limit
                     |result| {
+                        // The event_recorder needs to be shared across all invocations, so that
+                        // events are correctly aggregated
                         let event_recorder = event_recorder.clone();
                         async move {
                             report_controller_reconciled(
@@ -160,7 +162,7 @@ async fn main() -> anyhow::Result<()> {
                         }
                     },
                 )
-                .await; // controller does nothing unless polled
+                .await;
         }
     }
 
