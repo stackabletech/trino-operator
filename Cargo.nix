@@ -7050,7 +7050,7 @@ rec {
       };
       "stackable-trino-crd" = rec {
         crateName = "stackable-trino-crd";
-        version = "24.11.1-rc2";
+        version = "24.11.1";
         edition = "2021";
         src = lib.cleanSourceWith { filter = sourceFilter;  src = ./rust/crd; };
         libName = "stackable_trino_crd";
@@ -7103,7 +7103,7 @@ rec {
       };
       "stackable-trino-operator" = rec {
         crateName = "stackable-trino-operator";
-        version = "24.11.1-rc2";
+        version = "24.11.1";
         edition = "2021";
         crateBin = [
           {
