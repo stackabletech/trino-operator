@@ -409,16 +409,19 @@ spec:
                       properties:
                         add:
                           default: []
+                          description: JVM arguments to be added
                           items:
                             type: string
                           type: array
                         remove:
                           default: []
+                          description: JVM arguments to be removed by exact match
                           items:
                             type: string
                           type: array
                         removeRegex:
                           default: []
+                          description: JVM arguments matching any of this regexes will be removed
                           items:
                             type: string
                           type: array
@@ -705,16 +708,19 @@ spec:
                             properties:
                               add:
                                 default: []
+                                description: JVM arguments to be added
                                 items:
                                   type: string
                                 type: array
                               remove:
                                 default: []
+                                description: JVM arguments to be removed by exact match
                                 items:
                                   type: string
                                 type: array
                               removeRegex:
                                 default: []
+                                description: JVM arguments matching any of this regexes will be removed
                                 items:
                                   type: string
                                 type: array
@@ -1030,16 +1036,19 @@ spec:
                       properties:
                         add:
                           default: []
+                          description: JVM arguments to be added
                           items:
                             type: string
                           type: array
                         remove:
                           default: []
+                          description: JVM arguments to be removed by exact match
                           items:
                             type: string
                           type: array
                         removeRegex:
                           default: []
+                          description: JVM arguments matching any of this regexes will be removed
                           items:
                             type: string
                           type: array
@@ -1326,16 +1335,19 @@ spec:
                             properties:
                               add:
                                 default: []
+                                description: JVM arguments to be added
                                 items:
                                   type: string
                                 type: array
                               remove:
                                 default: []
+                                description: JVM arguments to be removed by exact match
                                 items:
                                   type: string
                                 type: array
                               removeRegex:
                                 default: []
+                                description: JVM arguments matching any of this regexes will be removed
                                 items:
                                   type: string
                                 type: array

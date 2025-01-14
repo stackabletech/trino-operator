@@ -342,8 +342,8 @@ pub enum Error {
         source: error_boundary::InvalidObject,
     },
 
-    #[snafu(display("failed to read role config"))]
-    ReadRoleConfig { source: stackable_trino_crd::Error },
+    #[snafu(display("failed to read role"))]
+    ReadRole { source: stackable_trino_crd::Error },
 
     #[snafu(display("failed to get merged jvmArgumentOverrides"))]
     GetMergedJvmArgumentOverrides {
@@ -475,11 +475,8 @@ pub async fn reconcile_trino(
 
     for (trino_role_str, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
-        let role: &stackable_operator::role_utils::Role<
-            stackable_trino_crd::TrinoConfigFragment,
-            GenericRoleConfig,
-            JavaCommonConfig,
-        > = trino.role(&trino_role).context(ReadRoleConfigSnafu)?;
+        let role: &Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> =
+            trino.role(&trino_role).context(ReadRoleSnafu)?;
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
 
