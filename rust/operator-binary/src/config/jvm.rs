@@ -2,13 +2,12 @@
 // This requires a different JVM config
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    config::merge::Merge,
     memory::{BinaryMultiple, MemoryQuantity},
-    role_utils::{JavaCommonConfig, JvmArgumentOverrides},
+    role_utils::{self, GenericRoleConfig, JavaCommonConfig, JvmArgumentOverrides, Role},
 };
 use stackable_trino_crd::{
-    TrinoConfig, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT, RW_CONFIG_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    TrinoConfig, TrinoConfigFragment, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
 
 #[derive(Snafu, Debug)]
@@ -30,6 +29,9 @@ pub enum Error {
 
     #[snafu(display("the Trino version {version} is not supported, as we don't know the needed JVm configuration"))]
     TrinoVersionNotSupported { version: String },
+
+    #[snafu(display("failed to merge jvm argument overrides"))]
+    MergeJvmArgumentOverrides { source: role_utils::Error },
 }
 
 // Currently works for all supported versions (451 and 455 as of 2024-09-04) but maybe be changed
@@ -37,8 +39,8 @@ pub enum Error {
 pub fn jvm_config(
     product_version: &str,
     merged_config: &TrinoConfig,
-    role_java_common_config: &JavaCommonConfig,
-    role_group_java_common_config: &JavaCommonConfig,
+    role: &Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
+    role_group: &str,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;
     let heap_size = MemoryQuantity::try_from(
@@ -81,19 +83,12 @@ pub fn jvm_config(
 
     jvm_args.push("# Arguments from jvmArgumentOverrides".to_owned());
 
-    let operator_generated = JavaCommonConfig {
-        jvm_argument_overrides: JvmArgumentOverrides::new_with_only_additions(jvm_args),
-    };
+    let operator_generated = JvmArgumentOverrides::new_with_only_additions(jvm_args);
+    let merged_jvm_argument_overrides = role
+        .get_merged_jvm_argument_overrides(role_group, &operator_generated)
+        .context(MergeJvmArgumentOverridesSnafu)?;
 
-    // Please note that the merge order is different than we normally do!
-    // This is not trivial, as the merge operation is not purely additive (as it is with e.g. `PodTemplateSpec).
-    let mut role = role_java_common_config.clone();
-    role.merge(&operator_generated);
-    let mut role_group = role_group_java_common_config.clone();
-    role_group.merge(&role);
-
-    Ok(role_group
-        .jvm_argument_overrides
+    Ok(merged_jvm_argument_overrides
         .effective_jvm_config_after_merging()
         .join("\n"))
 }
@@ -287,15 +282,12 @@ mod tests {
         let rolegroup_ref = role.rolegroup_ref(&trino, "default");
         let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
         let coordinators = trino.spec.coordinators.unwrap();
-        let (role_java_common_config, role_group_java_common_config) = coordinators
-            .get_product_specific_common_configs("default")
-            .unwrap();
 
         jvm_config(
             trino.spec.image.product_version(),
             &merged_config,
-            role_java_common_config,
-            role_group_java_common_config,
+            &coordinators,
+            "default",
         )
         .unwrap()
     }

@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
 };
 
+use const_format::concatcp;
 use product_config::{
     self,
     types::PropertyNameKind,
@@ -62,7 +63,7 @@ use stackable_operator::{
             CustomContainerLogConfig,
         },
     },
-    role_utils::{GenericRoleConfig, JavaCommonConfig, RoleGroupRef},
+    role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroupRef},
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
@@ -74,13 +75,13 @@ use stackable_trino_crd::{
     authentication::resolve_authentication_classes,
     catalog::TrinoCatalog,
     discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoRole, ACCESS_CONTROL_PROPERTIES,
-    APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI,
-    ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG,
-    JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE,
-    LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+    Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoConfigFragment, TrinoRole,
+    ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME,
+    DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
+    JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
+    LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -102,6 +103,7 @@ pub struct Ctx {
 
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
+pub const FULL_CONTROLLER_NAME: &str = concatcp!(CONTROLLER_NAME, '.', OPERATOR_NAME);
 pub const TRINO_UID: i64 = 1000;
 
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
@@ -473,13 +475,14 @@ pub async fn reconcile_trino(
 
     for (trino_role_str, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
-        let role = trino.role(&trino_role).context(ReadRoleConfigSnafu)?;
+        let role: &stackable_operator::role_utils::Role<
+            stackable_trino_crd::TrinoConfigFragment,
+            GenericRoleConfig,
+            JavaCommonConfig,
+        > = trino.role(&trino_role).context(ReadRoleConfigSnafu)?;
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
 
-            let (role_java_common_config, role_group_java_common_config) = role
-                .get_product_specific_common_configs(&role_group)
-                .context(GetMergedJvmArgumentOverridesSnafu)?;
             let merged_config = trino
                 .merged_config(&trino_role, &rolegroup, &catalog_definitions)
                 .context(FailedToResolveConfigSnafu)?;
@@ -488,12 +491,11 @@ pub async fn reconcile_trino(
             let rg_configmap = build_rolegroup_config_map(
                 trino,
                 &resolved_product_image,
+                &role,
                 &trino_role,
                 &rolegroup,
                 &config,
                 &merged_config,
-                role_java_common_config,
-                role_group_java_common_config,
                 &trino_authentication_config,
                 &trino_opa_config,
                 vector_aggregator_address.as_deref(),
@@ -625,12 +627,11 @@ pub fn build_coordinator_role_service(
 fn build_rolegroup_config_map(
     trino: &TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    role: &TrinoRole,
+    role: &Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
+    trino_role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &TrinoConfig,
-    role_java_common_config: &JavaCommonConfig,
-    role_group_java_common_config: &JavaCommonConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
     vector_aggregator_address: Option<&str>,
@@ -641,8 +642,8 @@ fn build_rolegroup_config_map(
     let jvm_config = config::jvm::jvm_config(
         &resolved_product_image.product_version,
         merged_config,
-        role_java_common_config,
-        role_group_java_common_config,
+        role,
+        &rolegroup_ref.role_group,
     )
     .context(FailedToCreateJvmConfigSnafu)?;
 
@@ -654,7 +655,7 @@ fn build_rolegroup_config_map(
         .context(MissingCoordinatorPodsSnafu)?;
 
     // Add additional config files fore authentication
-    cm_conf_data.extend(trino_authentication_config.config_files(role));
+    cm_conf_data.extend(trino_authentication_config.config_files(trino_role));
 
     for (property_name_kind, config) in config {
         // We used this temporary map to add all dynamically resolved (e.g. discovery config maps)
@@ -672,7 +673,7 @@ fn build_rolegroup_config_map(
                 // Add authentication properties (only required for the Coordinator)
                 dynamic_resolved_config.extend(
                     trino_authentication_config
-                        .config_properties(role)
+                        .config_properties(trino_role)
                         .into_iter()
                         .map(|(k, v)| (k, Some(v)))
                         .collect::<BTreeMap<String, Option<String>>>(),
@@ -690,7 +691,8 @@ fn build_rolegroup_config_map(
                     Some(discovery.discovery_uri(cluster_info)),
                 );
 
-                dynamic_resolved_config.extend(graceful_shutdown_config_properties(trino, role));
+                dynamic_resolved_config
+                    .extend(graceful_shutdown_config_properties(trino, trino_role));
 
                 // The log format used by Trino
                 dynamic_resolved_config.insert(LOG_FORMAT.to_string(), Some("json".to_string()));
@@ -1738,10 +1740,11 @@ mod tests {
         )
         .unwrap();
 
-        let role = TrinoRole::Coordinator;
+        let trino_role = TrinoRole::Coordinator;
+        let role = trino.role(&trino_role).unwrap();
         let rolegroup_ref = RoleGroupRef {
             cluster: ObjectRef::from_obj(&trino),
-            role: role.to_string(),
+            role: trino_role.to_string(),
             role_group: "default".to_string(),
         };
         let trino_authentication_config = TrinoAuthenticationConfig::new(
@@ -1749,12 +1752,15 @@ mod tests {
             TrinoAuthenticationTypes::try_from(Vec::new()).unwrap(),
         )
         .unwrap();
-        let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
+        let merged_config = trino
+            .merged_config(&trino_role, &rolegroup_ref, &[])
+            .unwrap();
 
         build_rolegroup_config_map(
             &trino,
             &resolved_product_image,
             &role,
+            &trino_role,
             &rolegroup_ref,
             validated_config
                 .get("coordinator")
@@ -1762,8 +1768,6 @@ mod tests {
                 .get("default")
                 .unwrap(),
             &merged_config,
-            &Default::default(),
-            &Default::default(),
             &trino_authentication_config,
             &None,
             None,

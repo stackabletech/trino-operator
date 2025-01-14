@@ -14,6 +14,7 @@ anyhow = "1.0"
 async-trait = "0.1"
 built = { version = "0.7", features = ["chrono", "git2"] }
 clap = "4.5"
+const_format = "0.2"
 futures = { version = "0.3", features = ["compat"] }
 indoc = "2.0"
 openssl = "0.10"
