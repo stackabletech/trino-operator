@@ -488,7 +488,7 @@ pub async fn reconcile_trino(
             let rg_configmap = build_rolegroup_config_map(
                 trino,
                 &resolved_product_image,
-                &role,
+                role,
                 &trino_role,
                 &rolegroup,
                 &config,
@@ -1756,7 +1756,7 @@ mod tests {
         build_rolegroup_config_map(
             &trino,
             &resolved_product_image,
-            &role,
+            role,
             &trino_role,
             &rolegroup_ref,
             validated_config
