@@ -7,18 +7,18 @@ releases:
     description: Integration test
     products:
       commons:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
       secret:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
       listener:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
       zookeeper:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
       hdfs:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
       hive:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
       opa:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
       trino:
-        operatorVersion: 24.11.1-rc2
+        operatorVersion: 24.11.1
