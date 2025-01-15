@@ -10,6 +10,11 @@ All notable changes to this project will be documented in this file.
   config property `requestedSecretLifetime`. This helps reduce frequent Pod restarts ([#676]).
 - Run a `containerdebug` process in the background of each Trino container to collect debugging information ([#687]).
 
+## Changed
+
+- Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
+  This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
+
 ### Fixed
 
 - Fix OIDC endpoint construction in case the `rootPath` does have a trailing slash ([#673]).
@@ -21,6 +26,7 @@ All notable changes to this project will be documented in this file.
 [#673]: https://github.com/stackabletech/trino-operator/pull/673
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#687]: https://github.com/stackabletech/trino-operator/pull/687
+[#694]: https://github.com/stackabletech/trino-operator/pull/694
 
 ## [24.11.0] - 2024-11-18
 
