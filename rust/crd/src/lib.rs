@@ -440,7 +440,6 @@ pub struct TrinoConfig {
 }
 
 impl TrinoConfig {
-    const DEFAULT_SECRET_LIFETIME: Duration = Duration::from_days_unchecked(1);
     fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
@@ -453,6 +452,13 @@ impl TrinoConfig {
         let graceful_shutdown_timeout = match role {
             TrinoRole::Coordinator => DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT,
             TrinoRole::Worker => DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT,
+        };
+        let requested_secret_lifetime = match role {
+            // TODO: Once Trino supports a HA setup for coordinators we should decrease this!
+            // See https://github.com/stackabletech/trino-operator/issues/693
+            // and https://github.com/stackabletech/decisions/issues/38 for details
+            TrinoRole::Coordinator => Duration::from_days_unchecked(15),
+            TrinoRole::Worker => Duration::from_days_unchecked(1),
         };
 
         TrinoConfigFragment {
@@ -478,7 +484,7 @@ impl TrinoConfig {
             query_max_memory: None,
             query_max_memory_per_node: None,
             graceful_shutdown_timeout: Some(graceful_shutdown_timeout),
-            requested_secret_lifetime: Some(Self::DEFAULT_SECRET_LIFETIME),
+            requested_secret_lifetime: Some(requested_secret_lifetime),
         }
     }
 }
