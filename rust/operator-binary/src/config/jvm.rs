@@ -93,6 +93,16 @@ pub fn jvm_config(
         .join("\n"))
 }
 
+/// For tests we don't actually look at the Trino version, and return a single "representative"
+/// JVM argument instead.
+/// This enables us to write version-independent tests, which don't need updating for every new
+/// Trino version.
+#[cfg(test)]
+fn recommended_trino_jvm_args(_product_version: &str) -> Result<Vec<String>, Error> {
+    Ok(vec!["-RecommendedTrinoFlag".to_owned()])
+}
+
+#[cfg(not(test))]
 fn recommended_trino_jvm_args(product_version: &str) -> Result<Vec<String>, Error> {
     match product_version {
         // Copied from https://trino.io/docs/451/installation/deployment.html
@@ -183,20 +193,7 @@ mod tests {
               -Djavax.net.ssl.trustStoreType=pkcs12
               -Djavax.net.ssl.trustStorePassword=changeit
               # Recommended JVM arguments from Trino
-              -XX:InitialRAMPercentage=80
-              -XX:MaxRAMPercentage=80
-              -XX:G1HeapRegionSize=32M
-              -XX:+ExplicitGCInvokesConcurrent
-              -XX:+ExitOnOutOfMemoryError
-              -XX:+HeapDumpOnOutOfMemoryError
-              -XX:-OmitStackTraceInFastThrow
-              -XX:ReservedCodeCacheSize=512M
-              -XX:PerMethodRecompilationCutoff=10000
-              -XX:PerBytecodeRecompilationCutoff=10000
-              -Djdk.attach.allowAttachSelf=true
-              -Djdk.nio.maxCachedBufferSize=2000000
-              -Dfile.encoding=UTF-8
-              -XX:+EnableDynamicAgentLoading
+              -RecommendedTrinoFlag
               # Arguments from jvmArgumentOverrides"}
         );
     }
@@ -254,19 +251,7 @@ mod tests {
               -Djavax.net.ssl.trustStoreType=pkcs12
               -Djavax.net.ssl.trustStorePassword=changeit
               # Recommended JVM arguments from Trino
-              -XX:InitialRAMPercentage=80
-              -XX:MaxRAMPercentage=80
-              -XX:G1HeapRegionSize=32M
-              -XX:+ExplicitGCInvokesConcurrent
-              -XX:+ExitOnOutOfMemoryError
-              -XX:-OmitStackTraceInFastThrow
-              -XX:ReservedCodeCacheSize=512M
-              -XX:PerMethodRecompilationCutoff=10000
-              -XX:PerBytecodeRecompilationCutoff=10000
-              -Djdk.attach.allowAttachSelf=true
-              -Djdk.nio.maxCachedBufferSize=2000000
-              -Dfile.encoding=UTF-8
-              -XX:+EnableDynamicAgentLoading
+              -RecommendedTrinoFlag
               # Arguments from jvmArgumentOverrides
               -Dhttps.proxyHost=proxy.my.corp
               -Djava.net.preferIPv4Stack=true
