@@ -30,7 +30,7 @@ docker run \
 --env KUBECONFIG=/home/stackable/.kube/config \
 --env KUBERNETES_CLUSTER_DOMAIN=mycluster.local \
 --mount type=bind,source="$HOME/.kube/config",target="/home/stackable/.kube/config" \
-docker.stackable.tech/stackable/trino-operator:latest
+oci.stackable.tech/sdp/trino-operator:0.0.0-dev
 ----
 
 == PRODUCT_CONFIG
@@ -56,7 +56,7 @@ docker run \
     --env KUBECONFIG=/home/stackable/.kube/config \
     --env PRODUCT_CONFIG=/my/product/config.yaml \
     --mount type=bind,source="$HOME/.kube/config",target="/home/stackable/.kube/config" \
-    docker.stackable.tech/stackable/trino-operator:latest
+    oci.stackable.tech/sdp/trino-operator:0.0.0-dev
 ----
 
 == WATCH_NAMESPACE
@@ -85,5 +85,5 @@ docker run \
 --env KUBECONFIG=/home/stackable/.kube/config \
 --env WATCH_NAMESPACE=test \
 --mount type=bind,source="$HOME/.kube/config",target="/home/stackable/.kube/config" \
-docker.stackable.tech/stackable/trino-operator:latest
+oci.stackable.tech/sdp/trino-operator:0.0.0-dev
 ----

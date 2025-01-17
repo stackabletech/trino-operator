@@ -22,7 +22,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: trino-test-helper
-          image: docker.stackable.tech/stackable/testing-tools:0.2.0-stackable0.0.0-dev
+          image: oci.stackable.tech/sdp/testing-tools:0.2.0-stackable0.0.0-dev
           command: ["sleep", "infinity"]
 {% if test_scenario['values']['use-tls'] == 'true' %}
           volumeMounts:
