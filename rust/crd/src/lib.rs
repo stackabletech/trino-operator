@@ -435,6 +435,9 @@ pub struct TrinoConfig {
 
     /// Request secret (currently only autoTls certificates) lifetime from the secret operator, e.g. `7d`, or `30d`.
     /// This can be shortened by the `maxCertificateLifetime` setting on the SecretClass issuing the TLS certificate.
+    ///
+    /// Defaults to `15d` for coordinators (as currently a restart kills all running queries)
+    /// and `1d` for workers.
     #[fragment_attrs(serde(default))]
     pub requested_secret_lifetime: Option<Duration>,
 }
