@@ -4,18 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
+## [24.11.1] - 2025-01-10
 
-- The lifetime of auto generated TLS certificates is now configurable with the role and roleGroup
-  config property `requestedSecretLifetime`. This helps reduce frequent Pod restarts ([#676]).
-- Run a `containerdebug` process in the background of each Trino container to collect debugging information ([#687]).
-- Support configuring JVM arguments ([#677]).
-- Aggregate emitted Kubernetes events on the CustomResources ([#677]).
+## [24.11.1-rc2] - 2024-12-12
 
-## Changed
-
-- Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
-  This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
+## [24.11.1-rc1] - 2024-12-06
 
 ### Fixed
 
@@ -26,10 +19,6 @@ All notable changes to this project will be documented in this file.
 
 [#672]: https://github.com/stackabletech/trino-operator/pull/672
 [#673]: https://github.com/stackabletech/trino-operator/pull/673
-[#676]: https://github.com/stackabletech/trino-operator/pull/676
-[#677]: https://github.com/stackabletech/trino-operator/pull/677
-[#687]: https://github.com/stackabletech/trino-operator/pull/687
-[#694]: https://github.com/stackabletech/trino-operator/pull/694
 
 ## [24.11.0] - 2024-11-18
 
