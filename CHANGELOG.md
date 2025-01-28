@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 - The lifetime of auto generated TLS certificates is now configurable with the role and roleGroup
   config property `requestedSecretLifetime`. This helps reduce frequent Pod restarts ([#676]).
 - Run a `containerdebug` process in the background of each Trino container to collect debugging information ([#687]).
+- Support configuring JVM arguments ([#677]).
+- Aggregate emitted Kubernetes events on the CustomResources ([#677]).
 
 ## Changed
 
@@ -25,6 +27,7 @@ All notable changes to this project will be documented in this file.
 [#672]: https://github.com/stackabletech/trino-operator/pull/672
 [#673]: https://github.com/stackabletech/trino-operator/pull/673
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
+[#677]: https://github.com/stackabletech/trino-operator/pull/677
 [#687]: https://github.com/stackabletech/trino-operator/pull/687
 [#694]: https://github.com/stackabletech/trino-operator/pull/694
 

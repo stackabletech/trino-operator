@@ -29,7 +29,7 @@ use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{Configuration, Error as ConfigError},
     product_logging::{self, spec::Logging},
-    role_utils::{GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
+    role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
     time::Duration,
@@ -189,11 +189,11 @@ pub struct TrinoClusterSpec {
 
     // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub coordinators: Option<Role<TrinoConfigFragment>>,
+    pub coordinators: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
 
     // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workers: Option<Role<TrinoConfigFragment>>,
+    pub workers: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -681,7 +681,10 @@ impl TrinoCluster {
     }
 
     /// Returns a reference to the role. Raises an error if the role is not defined.
-    pub fn role(&self, role_variant: &TrinoRole) -> Result<&Role<TrinoConfigFragment>, Error> {
+    pub fn role(
+        &self,
+        role_variant: &TrinoRole,
+    ) -> Result<&Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>, Error> {
         match role_variant {
             TrinoRole::Coordinator => self.spec.coordinators.as_ref(),
             TrinoRole::Worker => self.spec.workers.as_ref(),
@@ -695,7 +698,7 @@ impl TrinoCluster {
     pub fn rolegroup(
         &self,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    ) -> Result<&RoleGroup<TrinoConfigFragment>, Error> {
+    ) -> Result<&RoleGroup<TrinoConfigFragment, JavaCommonConfig>, Error> {
         let role_variant =
             TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
                 role: rolegroup_ref.role.to_owned(),

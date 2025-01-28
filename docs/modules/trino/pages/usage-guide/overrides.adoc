@@ -61,3 +61,8 @@ Environment variables can be (over)written by adding the `envOverrides` property
 
 Pod overrides allow you to specify a PodTemplateSpec.
 Consult the xref:concepts:overrides.adoc#pod-overrides[Pod overrides concept documentation] for more information.
+
+== JVM argument overrides
+
+Stackable operators automatically determine the set of needed JVM arguments, such as memory settings or trust- and keystores.
+Using JVM argument overrides you can configure the JVM arguments xref:concepts:overrides.adoc#jvm-argument-overrides[according to the concepts page].
