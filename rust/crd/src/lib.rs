@@ -29,7 +29,7 @@ use stackable_operator::{
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
     product_config_utils::{Configuration, Error as ConfigError},
     product_logging::{self, spec::Logging},
-    role_utils::{GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
+    role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
     time::Duration,
@@ -189,11 +189,11 @@ pub struct TrinoClusterSpec {
 
     // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub coordinators: Option<Role<TrinoConfigFragment>>,
+    pub coordinators: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
 
     // no doc - it's in the struct.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub workers: Option<Role<TrinoConfigFragment>>,
+    pub workers: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -435,12 +435,14 @@ pub struct TrinoConfig {
 
     /// Request secret (currently only autoTls certificates) lifetime from the secret operator, e.g. `7d`, or `30d`.
     /// This can be shortened by the `maxCertificateLifetime` setting on the SecretClass issuing the TLS certificate.
+    ///
+    /// Defaults to `15d` for coordinators (as currently a restart kills all running queries)
+    /// and `1d` for workers.
     #[fragment_attrs(serde(default))]
     pub requested_secret_lifetime: Option<Duration>,
 }
 
 impl TrinoConfig {
-    const DEFAULT_SECRET_LIFETIME: Duration = Duration::from_days_unchecked(1);
     fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
@@ -453,6 +455,13 @@ impl TrinoConfig {
         let graceful_shutdown_timeout = match role {
             TrinoRole::Coordinator => DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT,
             TrinoRole::Worker => DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT,
+        };
+        let requested_secret_lifetime = match role {
+            // TODO: Once Trino supports a HA setup for coordinators we should decrease this!
+            // See https://github.com/stackabletech/trino-operator/issues/693
+            // and https://github.com/stackabletech/decisions/issues/38 for details
+            TrinoRole::Coordinator => Duration::from_days_unchecked(15),
+            TrinoRole::Worker => Duration::from_days_unchecked(1),
         };
 
         TrinoConfigFragment {
@@ -478,7 +487,7 @@ impl TrinoConfig {
             query_max_memory: None,
             query_max_memory_per_node: None,
             graceful_shutdown_timeout: Some(graceful_shutdown_timeout),
-            requested_secret_lifetime: Some(Self::DEFAULT_SECRET_LIFETIME),
+            requested_secret_lifetime: Some(requested_secret_lifetime),
         }
     }
 }
@@ -672,7 +681,10 @@ impl TrinoCluster {
     }
 
     /// Returns a reference to the role. Raises an error if the role is not defined.
-    pub fn role(&self, role_variant: &TrinoRole) -> Result<&Role<TrinoConfigFragment>, Error> {
+    pub fn role(
+        &self,
+        role_variant: &TrinoRole,
+    ) -> Result<&Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>, Error> {
         match role_variant {
             TrinoRole::Coordinator => self.spec.coordinators.as_ref(),
             TrinoRole::Worker => self.spec.workers.as_ref(),
@@ -686,7 +698,7 @@ impl TrinoCluster {
     pub fn rolegroup(
         &self,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-    ) -> Result<&RoleGroup<TrinoConfigFragment>, Error> {
+    ) -> Result<&RoleGroup<TrinoConfigFragment, JavaCommonConfig>, Error> {
         let role_variant =
             TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
                 role: rolegroup_ref.role.to_owned(),
