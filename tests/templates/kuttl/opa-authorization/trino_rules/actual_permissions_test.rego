@@ -1,7 +1,6 @@
 package actual_permissions_test
 
 import data.trino
-import rego.v1
 
 # These tests check that all rules and functions return the expected
 # result for the given test identity and action.

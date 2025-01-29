@@ -22,8 +22,6 @@
 #   - data.trino_policies.policies: schema.policies
 package trino
 
-import rego.v1
-
 # METADATA
 # description: |
 #   Entry point for OPA policies, configured in the Trino property

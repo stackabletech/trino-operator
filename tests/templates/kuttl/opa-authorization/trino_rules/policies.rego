@@ -1,7 +1,6 @@
 package trino
 
 import data.util
-import rego.v1
 
 # The final policies are a combination of policies offered by Stackable,
 # policies provided externally, and default policies.
@@ -18,7 +17,6 @@ import rego.v1
 #
 #   Example:
 #     package trino_policies
-#     import rego.v1
 #     policies := {
 #         "catalogs": [
 #             {
