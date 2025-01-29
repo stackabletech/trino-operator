@@ -17,6 +17,13 @@ All notable changes to this project will be documented in this file.
 - Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
 
+[#676]: https://github.com/stackabletech/trino-operator/pull/676
+[#677]: https://github.com/stackabletech/trino-operator/pull/677
+[#687]: https://github.com/stackabletech/trino-operator/pull/687
+[#694]: https://github.com/stackabletech/trino-operator/pull/694
+
+## [24.11.1] - 2025-01-10
+
 ### Fixed
 
 - Fix OIDC endpoint construction in case the `rootPath` does have a trailing slash ([#673]).
@@ -26,10 +33,6 @@ All notable changes to this project will be documented in this file.
 
 [#672]: https://github.com/stackabletech/trino-operator/pull/672
 [#673]: https://github.com/stackabletech/trino-operator/pull/673
-[#676]: https://github.com/stackabletech/trino-operator/pull/676
-[#677]: https://github.com/stackabletech/trino-operator/pull/677
-[#687]: https://github.com/stackabletech/trino-operator/pull/687
-[#694]: https://github.com/stackabletech/trino-operator/pull/694
 
 ## [24.11.0] - 2024-11-18
 

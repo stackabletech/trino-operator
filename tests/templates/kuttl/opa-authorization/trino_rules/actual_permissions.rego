@@ -1,7 +1,6 @@
 package trino
 
 import data.util
-import rego.v1
 
 # This file contains functions to determine the actual permissions
 # defined in the Trino policies for the given user and requested
@@ -26,7 +25,6 @@ identity := input.context.identity
 #
 #   Example:
 #     package trino_policies
-#     import rego.v1
 #     extra_groups := data.stackable.opa.userinfo.v1.userInfoByUsername(input.context.identity.user).groups
 default extra_groups := []
 

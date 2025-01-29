@@ -1,7 +1,6 @@
 package requested_permissions_test
 
 import data.trino
-import rego.v1
 
 # These tests check that the returned rules are well-formed. Typos and
 # copy-and-paste errors should be detected. It is intentionally not

@@ -1,7 +1,5 @@
 package trino_policies
 
-import rego.v1
-
 policies := {
 	"catalogs": [
 		{

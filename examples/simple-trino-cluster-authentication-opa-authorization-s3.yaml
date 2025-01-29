@@ -51,7 +51,7 @@ metadata:
   name: simple-opa
 spec:
   image:
-    productVersion: 0.66.0
+    productVersion: 1.0.0
   servers:
     roleGroups:
       default: {}
@@ -65,8 +65,6 @@ metadata:
 data:
   trino.rego: |
     package trino
-
-    import rego.v1
 
     default allow = false
 

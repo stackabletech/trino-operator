@@ -2,8 +2,6 @@
 # description: Utility package which extends the built-in functions
 package util
 
-import rego.v1
-
 # METADATA
 # description: |
 #   Matches the entire string against a regular expression.
