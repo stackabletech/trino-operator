@@ -16,11 +16,13 @@ All notable changes to this project will be documented in this file.
 
 - Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
+- Default to OCI for image metadata and product image selection ([#695]).
 
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
 [#687]: https://github.com/stackabletech/trino-operator/pull/687
 [#694]: https://github.com/stackabletech/trino-operator/pull/694
+[#695]: https://github.com/stackabletech/trino-operator/pull/695
 
 ## [24.11.1] - 2025-01-10
 
