@@ -1,7 +1,6 @@
 package policies_test
 
 import data.trino
-import rego.v1
 
 # These tests check that all rule lists are concatenated as expected and
 # that defaults are applied if necessary.

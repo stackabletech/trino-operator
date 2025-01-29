@@ -1,7 +1,6 @@
 package util_test
 
 import data.util
-import rego.v1
 
 test_match_entire if {
 	util.match_entire(`a`, "a")

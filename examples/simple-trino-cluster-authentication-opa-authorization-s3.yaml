@@ -66,8 +66,6 @@ data:
   trino.rego: |
     package trino
 
-    import rego.v1
-
     default allow = false
 
     # Allow non-batched access

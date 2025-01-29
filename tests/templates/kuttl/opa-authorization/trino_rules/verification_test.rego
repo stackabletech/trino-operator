@@ -1,7 +1,6 @@
 package verification_test
 
 import data.trino
-import rego.v1
 
 # These unit tests cover all incremental definitions of the rules in
 # verification.rego. For testing the allow rule, operations were

@@ -1,7 +1,5 @@
 package trino
 
-import rego.v1
-
 # This file contains the requested_permissions rule which returns a set
 # of required permissions for the given operation including the
 # requested resource. Operations with the same set of required
