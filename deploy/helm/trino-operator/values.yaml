@@ -1,7 +1,7 @@
 # Default values for trino-operator.
 ---
 image:
-  repository: docker.stackable.tech/stackable/trino-operator
+  repository: oci.stackable.tech/sdp/trino-operator
   pullPolicy: IfNotPresent
   pullSecrets: []
 

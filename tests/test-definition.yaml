@@ -16,12 +16,12 @@ dimensions:
       - "451"
       - "455"
       # To use a custom image, add a comma and the full name after the product version
-      # - 455,docker.stackable.tech/stackable/trino:455-stackable0.0.0-dev
+      # - 455,oci.stackable.tech/sdp/trino:455-stackable0.0.0-dev
   - name: trino-latest
     values:
       - "455"
       # To use a custom image, add a comma and the full name after the product version
-      # - 455,docker.stackable.tech/stackable/trino:455-stackable0.0.0-dev
+      # - 455,oci.stackable.tech/sdp/trino:455-stackable0.0.0-dev
   - name: hive
     values:
       - 3.1.3
