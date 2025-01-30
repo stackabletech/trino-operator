@@ -30,7 +30,8 @@ use stackable_operator::{
     logging::controller::report_controller_reconciled,
     CustomResourceExt,
 };
-use stackable_trino_crd::{catalog::TrinoCatalog, TrinoCluster, APP_NAME};
+use stackable_telemetry::Tracing;
+use stackable_trino_crd::{catalog::TrinoCatalog, TrinoCluster};
 
 use crate::controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME};
 
@@ -56,14 +57,27 @@ async fn main() -> anyhow::Result<()> {
         Command::Run(ProductOperatorRun {
             product_config,
             watch_namespace,
-            tracing_target,
+            telemetry_opts,
             cluster_info_opts,
         }) => {
-            stackable_operator::logging::initialize_logging(
-                "TRINO_OPERATOR_LOG",
-                APP_NAME,
-                tracing_target,
-            );
+            let _tracing_guard = Tracing::builder()
+                .service_name(built_info::PKG_NAME)
+                .with_console_output((
+                    "CONSOLE_LOG_LEVEL",
+                    tracing::Level::INFO.into(),
+                    !telemetry_opts.no_console_log,
+                ))
+                .with_otlp_log_exporter((
+                    "OTLP_LOG_LEVEL",
+                    tracing::Level::INFO.into(),
+                    telemetry_opts.otlp_logs,
+                ))
+                .with_otlp_trace_exporter((
+                    "OTLP_TRACE_LEVEL",
+                    tracing::Level::INFO.into(),
+                    telemetry_opts.otlp_traces,
+                ));
+
             stackable_operator::utils::print_startup_string(
                 crate_description!(),
                 crate_version!(),
