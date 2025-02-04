@@ -3,7 +3,7 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use crate::discovery::TrinoPodRef;
+use std::{collections::BTreeMap, str::FromStr};
 
 use affinity::get_affinity;
 use catalog::TrinoCatalog;
@@ -35,8 +35,9 @@ use stackable_operator::{
     time::Duration,
     utils::cluster_info::KubernetesClusterInfo,
 };
-use std::{collections::BTreeMap, str::FromStr};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+
+use crate::discovery::TrinoPodRef;
 
 pub const APP_NAME: &str = "trino";
 // ports

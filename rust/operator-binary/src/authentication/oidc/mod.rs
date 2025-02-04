@@ -1,11 +1,11 @@
 //! This module computes all resources required for Trino OAUTH2 authentication.
 //!
 
-use crate::authentication::TrinoAuthenticationConfig;
-use crate::command;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::{authentication::oidc, tls_verification::TlsClientDetailsError};
 use stackable_trino_crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR};
+
+use crate::{authentication::TrinoAuthenticationConfig, command};
 
 // Trino properties
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID: &str =
@@ -209,9 +209,10 @@ impl TrinoOidcAuthentication {
 mod tests {
     use std::mem;
 
-    use super::*;
     use rstest::rstest;
     use stackable_trino_crd::Container;
+
+    use super::*;
 
     const IDP_PORT: u16 = 8080;
     const IDP_SCOPE_1: &str = "openid";

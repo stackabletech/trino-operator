@@ -1,9 +1,10 @@
-use super::commons::{HdfsConnection, MetastoreConnection};
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::s3::S3ConnectionInlineOrReference,
     schemars::{self, JsonSchema},
 };
+
+use super::commons::{HdfsConnection, MetastoreConnection};
 
 // This struct is similar to [`super::hive::HiveConnector`], but we do not `#[serde(flatten)]` it here, to avoid changing
 // stuff there and missing that these settings don't apply to other connectors (such as Iceberg or Delta Lake).

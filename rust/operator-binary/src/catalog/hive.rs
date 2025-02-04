@@ -1,7 +1,8 @@
-use super::{config::CatalogConfig, ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 use async_trait::async_trait;
 use stackable_operator::client::Client;
 use stackable_trino_crd::catalog::hive::HiveConnector;
+
+use super::{config::CatalogConfig, ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 
 pub const CONNECTOR_NAME: &str = "hive";
 

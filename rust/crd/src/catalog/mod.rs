@@ -8,11 +8,6 @@ pub mod iceberg;
 pub mod tpcds;
 pub mod tpch;
 
-use serde::{Deserialize, Serialize};
-use stackable_operator::{
-    kube::CustomResource,
-    schemars::{self, JsonSchema},
-};
 use std::collections::HashMap;
 
 use black_hole::BlackHoleConnector;
@@ -20,6 +15,11 @@ use generic::GenericConnector;
 use google_sheet::GoogleSheetConnector;
 use hive::HiveConnector;
 use iceberg::IcebergConnector;
+use serde::{Deserialize, Serialize};
+use stackable_operator::{
+    kube::CustomResource,
+    schemars::{self, JsonSchema},
+};
 use tpcds::TpcdsConnector;
 use tpch::TpchConnector;
 

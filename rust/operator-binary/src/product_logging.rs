@@ -1,12 +1,14 @@
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::product_logging::framework::create_vector_config;
 use stackable_operator::{
     client::Client,
     k8s_openapi::api::core::v1::ConfigMap,
     kube::ResourceExt,
-    product_logging::spec::{
-        AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
-        Logging,
+    product_logging::{
+        framework::create_vector_config,
+        spec::{
+            AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
+            Logging,
+        },
     },
     role_utils::RoleGroupRef,
 };

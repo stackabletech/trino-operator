@@ -201,10 +201,11 @@ impl TrinoPasswordAuthentication {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use stackable_operator::commons::authentication::{
         ldap, static_, static_::UserCredentialsSecretRef,
     };
+
+    use super::*;
 
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
     const FILE_AUTH_CLASS_2: &str = "file-auth-2";

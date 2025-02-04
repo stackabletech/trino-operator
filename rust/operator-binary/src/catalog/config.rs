@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use stackable_operator::{
     client::Client,
     k8s_openapi::api::core::v1::{
@@ -6,7 +8,6 @@ use stackable_operator::{
     kube::{Resource, ResourceExt},
 };
 use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
-use std::collections::BTreeMap;
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
 

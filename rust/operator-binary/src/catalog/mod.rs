@@ -9,13 +9,14 @@ pub mod iceberg;
 pub mod tpcds;
 pub mod tpch;
 
-use self::config::CatalogConfig;
 use async_trait::async_trait;
 use snafu::Snafu;
 use stackable_operator::{
     client::Client,
     commons::{s3::S3Error, tls_verification::TlsClientDetailsError},
 };
+
+use self::config::CatalogConfig;
 
 #[derive(Debug, Snafu)]
 #[snafu(module)]

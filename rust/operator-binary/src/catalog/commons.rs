@@ -1,5 +1,3 @@
-use crate::command;
-
 use async_trait::async_trait;
 use snafu::{OptionExt, ResultExt};
 use stackable_operator::{
@@ -11,8 +9,10 @@ use stackable_operator::{
     },
     k8s_openapi::api::core::v1::ConfigMap,
 };
-use stackable_trino_crd::catalog::commons::{HdfsConnection, MetastoreConnection};
-use stackable_trino_crd::{CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR};
+use stackable_trino_crd::{
+    catalog::commons::{HdfsConnection, MetastoreConnection},
+    CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+};
 
 use super::{
     config::CatalogConfig,
@@ -23,6 +23,7 @@ use super::{
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
+use crate::command;
 
 #[async_trait]
 impl ExtendCatalogConfig for MetastoreConnection {

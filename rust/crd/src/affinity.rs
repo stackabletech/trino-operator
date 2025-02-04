@@ -85,12 +85,9 @@ pub fn get_affinity(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use rstest::rstest;
     use std::collections::BTreeMap;
 
-    use crate::TrinoCluster;
+    use rstest::rstest;
     use stackable_operator::{
         commons::affinity::StackableAffinity,
         k8s_openapi::{
@@ -100,6 +97,9 @@ mod tests {
             apimachinery::pkg::apis::meta::v1::LabelSelector,
         },
     };
+
+    use super::*;
+    use crate::TrinoCluster;
 
     #[rstest]
     #[case(TrinoRole::Coordinator)]
