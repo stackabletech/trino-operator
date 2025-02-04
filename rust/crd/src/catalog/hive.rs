@@ -1,9 +1,10 @@
-use super::commons::{HdfsConnection, MetastoreConnection};
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
     commons::s3::S3ConnectionInlineOrReference,
     schemars::{self, JsonSchema},
 };
+
+use super::commons::{HdfsConnection, MetastoreConnection};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

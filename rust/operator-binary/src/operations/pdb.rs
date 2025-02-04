@@ -73,8 +73,9 @@ fn max_unavailable_workers(num_workers: u16) -> u16 {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case(0, 1)]

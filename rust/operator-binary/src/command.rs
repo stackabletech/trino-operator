@@ -1,9 +1,3 @@
-use crate::{
-    authentication::TrinoAuthenticationConfig,
-    catalog::config::CatalogConfig,
-    controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
-};
-
 use stackable_operator::{
     product_logging::{
         framework::{create_vector_shutdown_file_command, remove_vector_shutdown_file_command},
@@ -16,6 +10,12 @@ use stackable_trino_crd::{
     LOG_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
     STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
     STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
+};
+
+use crate::{
+    authentication::TrinoAuthenticationConfig,
+    catalog::config::CatalogConfig,
+    controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
 };
 
 pub fn container_prepare_args(

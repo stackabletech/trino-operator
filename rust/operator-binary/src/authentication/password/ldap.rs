@@ -1,10 +1,12 @@
-use crate::authentication::password;
+use std::collections::BTreeMap;
+
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     commons::authentication::ldap,
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
-use std::collections::BTreeMap;
+
+use crate::authentication::password;
 
 // ldap
 const PASSWORD_AUTHENTICATOR_NAME_LDAP: &str = "ldap";

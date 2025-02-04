@@ -1,5 +1,4 @@
-use crate::authentication::password::PASSWORD_AUTHENTICATOR_NAME;
-use crate::controller::STACKABLE_LOG_DIR;
+use std::collections::BTreeMap;
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
@@ -16,7 +15,8 @@ use stackable_operator::{
     product_logging::{self, spec::AutomaticContainerLogConfig},
     utils::COMMON_BASH_TRAP_FUNCTIONS,
 };
-use std::collections::BTreeMap;
+
+use crate::{authentication::password::PASSWORD_AUTHENTICATOR_NAME, controller::STACKABLE_LOG_DIR};
 
 // mounts
 const PASSWORD_DB_VOLUME_NAME: &str = "users";
@@ -205,8 +205,9 @@ wait_for_termination $!
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use stackable_operator::commons::authentication::static_::UserCredentialsSecretRef;
+
+    use super::*;
 
     const AUTH_CLASS_NAME: &str = "test-auth";
 

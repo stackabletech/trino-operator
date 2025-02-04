@@ -564,9 +564,10 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use stackable_operator::commons::authentication::oidc::ClientAuthenticationOptions;
     use stackable_trino_crd::RW_CONFIG_DIR_NAME;
+
+    use super::*;
 
     const OIDC_AUTH_CLASS_1: &str = "oidc-auth-1";
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
