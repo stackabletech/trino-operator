@@ -91,7 +91,7 @@ metadata:
   name: simple-trino
 spec:
   image:
-    productVersion: "455"
+    productVersion: "469"
   clusterConfig:
     authentication:
       - authenticationClass: simple-trino-oidc
