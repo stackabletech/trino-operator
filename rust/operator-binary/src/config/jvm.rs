@@ -27,7 +27,7 @@ pub enum Error {
         unit: String,
     },
 
-    #[snafu(display("the Trino version {version} is not supported, as we don't know the needed JVm configuration"))]
+    #[snafu(display("Trino version {version} is not yet supported, as the correct JVM configuration is not yet known"))]
     TrinoVersionNotSupported { version: String },
 
     #[snafu(display("failed to merge jvm argument overrides"))]
@@ -123,8 +123,10 @@ fn recommended_trino_jvm_args(product_version: &str) -> Result<Vec<String>, Erro
             "-XX:+UnlockDiagnosticVMOptions".to_owned(),
             "-XX:G1NumCollectionsKeepPinned=10000000".to_owned(),
         ]),
-        // Copied from https://trino.io/docs/455/installation/deployment.html#jvm-config
-        "455" => Ok(vec![
+        // Copied from:
+        // - https://trino.io/docs/455/installation/deployment.html#jvm-config
+        // - https://trino.io/docs/469/installation/deployment.html#jvm-config
+        "455" | "469" => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),

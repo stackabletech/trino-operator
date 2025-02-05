@@ -65,6 +65,18 @@ impl ExtendCatalogConfig for MetastoreConnection {
         // This is tightly coupled with the hive discovery config map data layout now
         let transformed_hive_connection = hive_connection.replace('\n', ",");
 
+        // NOTE (@NickLarsenNZ): This enables Legacy S3 support via the
+        // `hive.s3.*` properties.
+        // This will be removed in a future version of Trino.
+        // See: https://trino.io/docs/469/object-storage/legacy-s3.html
+        catalog_config.add_property("fs.hadoop.enabled", "true");
+
+        // NOTE (@NickLarsenNZ): To migrate a catalog from Legacy S3 to Native
+        // S3, `fs.native-s3.enabled=true` needs to be set, and the `hive.s3.*`
+        // properties need to become `s3.*`.
+        // Presumably, `fs.hadoop.enabled` can be removed afterwards.
+        // See: https://trino.io/docs/469/object-storage/legacy-s3.html#migration-to-s3-file-system
+
         catalog_config.add_property("hive.metastore.uri", transformed_hive_connection);
 
         Ok(())
