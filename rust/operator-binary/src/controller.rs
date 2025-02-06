@@ -2,6 +2,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
+    num::ParseIntError,
     ops::Div,
     str::FromStr,
     sync::Arc,
@@ -349,6 +350,12 @@ pub enum Error {
     GetMergedJvmArgumentOverrides {
         source: stackable_operator::role_utils::Error,
     },
+
+    #[snafu(display("unable to parse Trino version: {trino_version:?}"))]
+    ParseTrinoVersion {
+        source: ParseIntError,
+        trino_version: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -400,14 +407,18 @@ pub async fn reconcile_trino(
         .await
         .context(GetCatalogsSnafu)?;
     let mut catalogs = vec![];
+    let trino_version = trino.spec.image.product_version();
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config =
-            CatalogConfig::from_catalog(catalog, client)
-                .await
-                .context(ParseCatalogSnafu {
-                    catalog: catalog_ref,
-                })?;
+        let catalog_config = CatalogConfig::from_catalog(
+            catalog,
+            client,
+            u16::from_str(trino_version).context(ParseTrinoVersionSnafu { trino_version })?,
+        )
+        .await
+        .context(ParseCatalogSnafu {
+            catalog: catalog_ref,
+        })?;
 
         catalogs.push(catalog_config);
     }
@@ -1637,7 +1648,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
@@ -1782,7 +1793,7 @@ mod tests {
           name: trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:

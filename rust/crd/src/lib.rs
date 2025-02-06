@@ -897,7 +897,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -912,7 +912,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -929,7 +929,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -947,7 +947,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -967,7 +967,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -982,7 +982,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -999,7 +999,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -1020,7 +1020,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -1040,7 +1040,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
           workers:
@@ -1066,7 +1066,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "469"
           clusterConfig:
             catalogLabelSelector: {}
           workers:
