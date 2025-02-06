@@ -2,6 +2,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
+    num::ParseIntError,
     ops::Div,
     str::FromStr,
     sync::Arc,
@@ -94,7 +95,6 @@ use crate::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
     },
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
-    trino_version::{self, TrinoVersion},
 };
 
 pub struct Ctx {
@@ -351,8 +351,11 @@ pub enum Error {
         source: stackable_operator::role_utils::Error,
     },
 
-    #[snafu(display("unable to parse Trino version"))]
-    ParseTrinoVersion { source: trino_version::Error },
+    #[snafu(display("unable to parse Trino version: {trino_version:?}"))]
+    ParseTrinoVersion {
+        source: ParseIntError,
+        trino_version: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -404,13 +407,14 @@ pub async fn reconcile_trino(
         .await
         .context(GetCatalogsSnafu)?;
     let mut catalogs = vec![];
+    let trino_version = trino.spec.image.product_version();
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
         let catalog_config = CatalogConfig::from_catalog(
             catalog,
             client,
-            &TrinoVersion::from_str(trino.spec.image.product_version())
-                .context(ParseTrinoVersionSnafu)?,
+            u16::from_str(trino_version) // TODO (@NickLarsenNZ): Note
+                .context(ParseTrinoVersionSnafu { trino_version })?,
         )
         .await
         .context(ParseCatalogSnafu {

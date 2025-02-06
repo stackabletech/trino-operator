@@ -23,7 +23,7 @@ use super::{
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
-use crate::{command, trino_version::TrinoVersion};
+use crate::command;
 
 #[async_trait]
 impl ExtendCatalogConfig for MetastoreConnection {
@@ -33,7 +33,7 @@ impl ExtendCatalogConfig for MetastoreConnection {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
-        _trino_version: &TrinoVersion,
+        _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let hive_cm: ConfigMap = client
             .get(
@@ -80,7 +80,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
-        trino_version: &TrinoVersion,
+        trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
             .clone()
@@ -97,13 +97,13 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         catalog_config.volumes.extend(volumes);
         catalog_config.volume_mounts.extend(mounts);
 
-        if trino_version.as_ref() >= &469 {
+        if trino_version >= 469 {
             // Trino 469 deprecates the Legacy S3 (via the Hadoop FS interface) implementation.
             // Trino 470 completely removes Legacy S3 support.
             catalog_config.add_property("fs.native-s3.enabled", "true");
         }
 
-        let (endpoint_prop, path_style_prop) = match trino_version.as_ref() {
+        let (endpoint_prop, path_style_prop) = match trino_version {
             ..=468 => ("hive.s3.endpoint", "hive.s3.path-style-access"),
             469.. => ("s3.endpoint", "s3.path-style-access"),
         };
@@ -114,7 +114,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         );
 
         if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
-            let (access_key_prop, secret_key_prop) = match trino_version.as_ref() {
+            let (access_key_prop, secret_key_prop) = match trino_version {
                 ..=468 => ("hive.s3.aws-access-key", "hive.s3.aws-secret-key"),
                 469.. => ("s3.aws-access-key", "s3.aws-secret-key"),
             };
@@ -122,7 +122,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             catalog_config.add_env_property_from_file(secret_key_prop, secret_key);
         }
 
-        match trino_version.as_ref() {
+        match trino_version {
             // Older trino versions allowed TLS to be optional
             ..=468 => {
                 // TODO (@NickLarsenNZ): Should we warn that TLS verification is required in future versions of Trino?
@@ -171,7 +171,7 @@ impl ExtendCatalogConfig for HdfsConnection {
         catalog_name: &str,
         _catalog_namespace: Option<String>,
         _client: &Client,
-        _trino_version: &TrinoVersion,
+        _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
         catalog_config.add_property(

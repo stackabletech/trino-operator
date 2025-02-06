@@ -2,8 +2,6 @@ use async_trait::async_trait;
 use stackable_operator::client::Client;
 use stackable_trino_crd::catalog::generic::{GenericConnector, Property};
 
-use crate::trino_version::TrinoVersion;
-
 use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 
 #[async_trait]
@@ -13,7 +11,7 @@ impl ToCatalogConfig for GenericConnector {
         catalog_name: &str,
         _catalog_namespace: Option<String>,
         _client: &Client,
-        _trino_version: &TrinoVersion,
+        _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let connector_name = &self.connector_name;
         let mut config = CatalogConfig::new(catalog_name.to_string(), connector_name);

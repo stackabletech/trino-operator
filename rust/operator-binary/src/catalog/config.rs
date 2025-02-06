@@ -9,8 +9,6 @@ use stackable_operator::{
 };
 use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
 
-use crate::trino_version::TrinoVersion;
-
 use super::{FromTrinoCatalogError, ToCatalogConfig};
 
 pub struct CatalogConfig {
@@ -107,7 +105,7 @@ impl CatalogConfig {
     pub async fn from_catalog(
         catalog: &TrinoCatalog,
         client: &Client,
-        trino_version: &TrinoVersion,
+        trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let catalog_name = catalog
             .meta()

@@ -16,8 +16,6 @@ use stackable_operator::{
     commons::{s3::S3Error, tls_verification::TlsClientDetailsError},
 };
 
-use crate::trino_version::TrinoVersion;
-
 use self::config::CatalogConfig;
 
 #[derive(Debug, Snafu)]
@@ -75,7 +73,7 @@ pub trait ToCatalogConfig {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
-        trino_version: &TrinoVersion,
+        trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError>;
 }
 
@@ -87,6 +85,6 @@ pub trait ExtendCatalogConfig {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
-        trino_version: &TrinoVersion,
+        trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError>;
 }

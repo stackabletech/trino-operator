@@ -2,8 +2,6 @@ use async_trait::async_trait;
 use stackable_operator::client::Client;
 use stackable_trino_crd::catalog::iceberg::IcebergConnector;
 
-use crate::trino_version::TrinoVersion;
-
 use super::{config::CatalogConfig, ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 
 pub const CONNECTOR_NAME: &str = "iceberg";
@@ -15,7 +13,7 @@ impl ToCatalogConfig for IcebergConnector {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
-        trino_version: &TrinoVersion,
+        trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
 
