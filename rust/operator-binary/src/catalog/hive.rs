@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use stackable_operator::client::Client;
 use stackable_trino_crd::catalog::hive::HiveConnector;
 
+use crate::trino_version::TrinoVersion;
+
 use super::{config::CatalogConfig, ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 
 pub const CONNECTOR_NAME: &str = "hive";
@@ -13,6 +15,7 @@ impl ToCatalogConfig for HiveConnector {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
+        trino_version: &TrinoVersion,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
 
@@ -24,12 +27,24 @@ impl ToCatalogConfig for HiveConnector {
         config.add_property("hive.security", "allow-all");
 
         self.metastore
-            .extend_catalog_config(&mut config, catalog_name, catalog_namespace.clone(), client)
+            .extend_catalog_config(
+                &mut config,
+                catalog_name,
+                catalog_namespace.clone(),
+                client,
+                &trino_version,
+            )
             .await?;
 
         if let Some(ref s3) = self.s3 {
-            s3.extend_catalog_config(&mut config, catalog_name, catalog_namespace.clone(), client)
-                .await?;
+            s3.extend_catalog_config(
+                &mut config,
+                catalog_name,
+                catalog_namespace.clone(),
+                client,
+                &trino_version,
+            )
+            .await?;
         }
 
         if let Some(ref hdfs) = self.hdfs {
@@ -38,6 +53,7 @@ impl ToCatalogConfig for HiveConnector {
                 catalog_name,
                 catalog_namespace.clone(),
                 client,
+                &trino_version,
             )
             .await?;
         }

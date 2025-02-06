@@ -94,6 +94,7 @@ use crate::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
     },
     product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
+    trino_version::{self, TrinoVersion},
 };
 
 pub struct Ctx {
@@ -349,6 +350,9 @@ pub enum Error {
     GetMergedJvmArgumentOverrides {
         source: stackable_operator::role_utils::Error,
     },
+
+    #[snafu(display("unable to parse Trino version"))]
+    ParseTrinoVersion { source: trino_version::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -402,12 +406,16 @@ pub async fn reconcile_trino(
     let mut catalogs = vec![];
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config =
-            CatalogConfig::from_catalog(catalog, client)
-                .await
-                .context(ParseCatalogSnafu {
-                    catalog: catalog_ref,
-                })?;
+        let catalog_config = CatalogConfig::from_catalog(
+            catalog,
+            client,
+            &TrinoVersion::from_str(trino.spec.image.product_version())
+                .context(ParseTrinoVersionSnafu)?,
+        )
+        .await
+        .context(ParseCatalogSnafu {
+            catalog: catalog_ref,
+        })?;
 
         catalogs.push(catalog_config);
     }

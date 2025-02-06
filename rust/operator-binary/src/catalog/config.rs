@@ -9,6 +9,8 @@ use stackable_operator::{
 };
 use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
 
+use crate::trino_version::TrinoVersion;
+
 use super::{FromTrinoCatalogError, ToCatalogConfig};
 
 pub struct CatalogConfig {
@@ -105,6 +107,7 @@ impl CatalogConfig {
     pub async fn from_catalog(
         catalog: &TrinoCatalog,
         client: &Client,
+        trino_version: &TrinoVersion,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let catalog_name = catalog
             .meta()
@@ -116,42 +119,42 @@ impl CatalogConfig {
         let mut catalog_config = match &catalog.spec.connector {
             TrinoCatalogConnector::BlackHole(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
             TrinoCatalogConnector::DeltaLake(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
             TrinoCatalogConnector::GoogleSheet(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
             TrinoCatalogConnector::Generic(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
             TrinoCatalogConnector::Hive(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
             TrinoCatalogConnector::Iceberg(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
             TrinoCatalogConnector::Tpcds(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
             TrinoCatalogConnector::Tpch(connector) => {
                 connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client)
+                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
                     .await
             }
         }?;

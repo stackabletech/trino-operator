@@ -6,6 +6,7 @@ mod config;
 mod controller;
 mod operations;
 mod product_logging;
+mod trino_version;
 
 use std::sync::Arc;
 

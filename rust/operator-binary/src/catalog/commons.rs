@@ -23,7 +23,7 @@ use super::{
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
-use crate::command;
+use crate::{command, trino_version::TrinoVersion};
 
 #[async_trait]
 impl ExtendCatalogConfig for MetastoreConnection {
@@ -33,6 +33,7 @@ impl ExtendCatalogConfig for MetastoreConnection {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
+        _trino_version: &TrinoVersion,
     ) -> Result<(), FromTrinoCatalogError> {
         let hive_cm: ConfigMap = client
             .get(
@@ -65,18 +66,6 @@ impl ExtendCatalogConfig for MetastoreConnection {
         // This is tightly coupled with the hive discovery config map data layout now
         let transformed_hive_connection = hive_connection.replace('\n', ",");
 
-        // NOTE (@NickLarsenNZ): This enables Legacy S3 support via the
-        // `hive.s3.*` properties.
-        // This will be removed in a future version of Trino.
-        // See: https://trino.io/docs/469/object-storage/legacy-s3.html
-        catalog_config.add_property("fs.hadoop.enabled", "true");
-
-        // NOTE (@NickLarsenNZ): To migrate a catalog from Legacy S3 to Native
-        // S3, `fs.native-s3.enabled=true` needs to be set, and the `hive.s3.*`
-        // properties need to become `s3.*`.
-        // Presumably, `fs.hadoop.enabled` can be removed afterwards.
-        // See: https://trino.io/docs/469/object-storage/legacy-s3.html#migration-to-s3-file-system
-
         catalog_config.add_property("hive.metastore.uri", transformed_hive_connection);
 
         Ok(())
@@ -91,6 +80,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
+        trino_version: &TrinoVersion,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
             .clone()
@@ -103,9 +93,35 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             .await
             .context(ConfigureS3Snafu)?;
 
-        catalog_config.add_property("hive.s3.endpoint", s3.endpoint().context(ConfigureS3Snafu)?);
+        // NOTE (@NickLarsenNZ): This enables Legacy S3 support via the
+        // `hive.s3.*` properties.
+        // This will be removed in a future version of Trino.
+        // See: https://trino.io/docs/469/object-storage/legacy-s3.html
+        // catalog_config.add_property("fs.hadoop.enabled", "true");
+
+        // NOTE (@NickLarsenNZ): To migrate a catalog from Legacy S3 to Native
+        // S3, `fs.native-s3.enabled=true` needs to be set, and the `hive.s3.*`
+        // properties need to become `s3.*`.
+        // Presumably, `fs.hadoop.enabled` can be removed afterwards.
+        // See: https://trino.io/docs/469/object-storage/legacy-s3.html#migration-to-s3-file-syste
+
+        let prefix = match trino_version.as_ref() {
+            // Prior to Trino 469, an S3 implementation via the Hadoop FS
+            // interface was default. Trino 469 deprecates this in favour or a
+            // native S3 implementation.
+            // We have opted to move to the native S3 support in 469.
+            // Note, Legacy S3 support (via the Hadoop FS interface) appears to
+            // have been removed in 470.
+            ..469 => "hive.",
+            _ => "",
+        };
+
         catalog_config.add_property(
-            "hive.s3.path-style-access",
+            format!("{prefix}s3.endpoint"),
+            s3.endpoint().context(ConfigureS3Snafu)?,
+        );
+        catalog_config.add_property(
+            format!("{prefix}s3.path-style-access"),
             (s3.access_style == S3AccessStyle::Path).to_string(),
         );
 
@@ -114,11 +130,16 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         catalog_config.volume_mounts.extend(mounts);
 
         if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
-            catalog_config.add_env_property_from_file("hive.s3.aws-access-key", access_key);
-            catalog_config.add_env_property_from_file("hive.s3.aws-secret-key", secret_key);
+            catalog_config
+                .add_env_property_from_file(format!("{prefix}s3.aws-access-key"), access_key);
+            catalog_config
+                .add_env_property_from_file(format!("{prefix}s3.aws-secret-key"), secret_key);
         }
 
-        catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.uses_tls().to_string());
+        catalog_config.add_property(
+            format!("{prefix}s3.ssl.enabled"),
+            s3.tls.uses_tls().to_string(),
+        );
         if let Some(tls) = s3.tls.tls.as_ref() {
             match &tls.verification {
                 TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
@@ -153,6 +174,7 @@ impl ExtendCatalogConfig for HdfsConnection {
         catalog_name: &str,
         _catalog_namespace: Option<String>,
         _client: &Client,
+        _trino_version: &TrinoVersion,
     ) -> Result<(), FromTrinoCatalogError> {
         let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
         catalog_config.add_property(

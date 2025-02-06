@@ -5,6 +5,8 @@ use stackable_operator::{
 };
 use stackable_trino_crd::{catalog::google_sheet::GoogleSheetConnector, CONFIG_DIR_NAME};
 
+use crate::trino_version::TrinoVersion;
+
 use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
 
 pub const CONNECTOR_NAME: &str = "gsheets";
@@ -16,6 +18,7 @@ impl ToCatalogConfig for GoogleSheetConnector {
         catalog_name: &str,
         _catalog_namespace: Option<String>,
         _client: &Client,
+        _trino_version: &TrinoVersion,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
 
