@@ -413,8 +413,7 @@ pub async fn reconcile_trino(
         let catalog_config = CatalogConfig::from_catalog(
             catalog,
             client,
-            u16::from_str(trino_version) // TODO (@NickLarsenNZ): Note
-                .context(ParseTrinoVersionSnafu { trino_version })?,
+            u16::from_str(trino_version).context(ParseTrinoVersionSnafu { trino_version })?,
         )
         .await
         .context(ParseCatalogSnafu {

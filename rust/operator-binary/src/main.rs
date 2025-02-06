@@ -76,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
                 "deploy/config-spec/properties.yaml",
                 "/etc/stackable/trino-operator/config-spec/properties.yaml",
             ])?;
+
             let client = stackable_operator::client::initialize_operator(
                 Some(OPERATOR_NAME.to_string()),
                 &cluster_info_opts,
