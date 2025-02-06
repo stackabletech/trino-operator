@@ -19,7 +19,7 @@ use super::{
     from_trino_catalog_error::{
         ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
         FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
-        ObjectHasNoNamespaceSnafu, S3TlsNoVerificationNotSupportedSnafu,
+        ObjectHasNoNamespaceSnafu, S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
@@ -93,53 +93,50 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             .await
             .context(ConfigureS3Snafu)?;
 
-        // NOTE (@NickLarsenNZ): This enables Legacy S3 support via the
-        // `hive.s3.*` properties.
-        // This will be removed in a future version of Trino.
-        // See: https://trino.io/docs/469/object-storage/legacy-s3.html
-        // catalog_config.add_property("fs.hadoop.enabled", "true");
-
-        // NOTE (@NickLarsenNZ): To migrate a catalog from Legacy S3 to Native
-        // S3, `fs.native-s3.enabled=true` needs to be set, and the `hive.s3.*`
-        // properties need to become `s3.*`.
-        // Presumably, `fs.hadoop.enabled` can be removed afterwards.
-        // See: https://trino.io/docs/469/object-storage/legacy-s3.html#migration-to-s3-file-syste
-
-        let prefix = match trino_version.as_ref() {
-            // Prior to Trino 469, an S3 implementation via the Hadoop FS
-            // interface was default. Trino 469 deprecates this in favour or a
-            // native S3 implementation.
-            // We have opted to move to the native S3 support in 469.
-            // Note, Legacy S3 support (via the Hadoop FS interface) appears to
-            // have been removed in 470.
-            ..469 => "hive.",
-            _ => "",
-        };
-
-        catalog_config.add_property(
-            format!("{prefix}s3.endpoint"),
-            s3.endpoint().context(ConfigureS3Snafu)?,
-        );
-        catalog_config.add_property(
-            format!("{prefix}s3.path-style-access"),
-            (s3.access_style == S3AccessStyle::Path).to_string(),
-        );
-
         let (volumes, mounts) = s3.volumes_and_mounts().context(ConfigureS3Snafu)?;
         catalog_config.volumes.extend(volumes);
         catalog_config.volume_mounts.extend(mounts);
 
-        if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
-            catalog_config
-                .add_env_property_from_file(format!("{prefix}s3.aws-access-key"), access_key);
-            catalog_config
-                .add_env_property_from_file(format!("{prefix}s3.aws-secret-key"), secret_key);
+        if trino_version.as_ref() >= &469 {
+            // Trino 469 deprecates the Legacy S3 (via the Hadoop FS interface) implementation.
+            // Trino 470 completely removes Legacy S3 support.
+            catalog_config.add_property("fs.native-s3.enabled", "true");
         }
 
+        let (endpoint_prop, path_style_prop) = match trino_version.as_ref() {
+            ..=468 => ("hive.s3.endpoint", "hive.s3.path-style-access"),
+            469.. => ("s3.endpoint", "s3.path-style-access"),
+        };
+        catalog_config.add_property(endpoint_prop, s3.endpoint().context(ConfigureS3Snafu)?);
         catalog_config.add_property(
-            format!("{prefix}s3.ssl.enabled"),
-            s3.tls.uses_tls().to_string(),
+            path_style_prop,
+            (s3.access_style == S3AccessStyle::Path).to_string(),
         );
+
+        if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
+            let (access_key_prop, secret_key_prop) = match trino_version.as_ref() {
+                ..=468 => ("hive.s3.aws-access-key", "hive.s3.aws-secret-key"),
+                469.. => ("s3.aws-access-key", "s3.aws-secret-key"),
+            };
+            catalog_config.add_env_property_from_file(access_key_prop, access_key);
+            catalog_config.add_env_property_from_file(secret_key_prop, secret_key);
+        }
+
+        match trino_version.as_ref() {
+            // Older trino versions allowed TLS to be optional
+            ..=468 => {
+                // TODO (@NickLarsenNZ): Should we warn that TLS verification is required in future versions of Trino?
+                catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.uses_tls().to_string());
+            }
+            // TLS is required when using native S3 implementation.
+            // https://trino.io/docs/469/object-storage/legacy-s3.html#migration-to-s3-file-system
+            469.. => {
+                if !s3.tls.uses_tls() {
+                    return S3TlsRequiredSnafu.fail();
+                }
+            }
+        };
+
         if let Some(tls) = s3.tls.tls.as_ref() {
             match &tls.verification {
                 TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),

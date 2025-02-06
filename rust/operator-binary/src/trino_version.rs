@@ -14,17 +14,17 @@ use snafu::{ResultExt as _, Snafu};
 #[derive(PartialOrd, PartialEq)]
 pub struct TrinoVersion(semver::Version);
 
-impl Deref for TrinoVersion {
-    type Target = semver::Version;
+// impl Deref for TrinoVersion {
+//     type Target = semver::Version;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
 
 impl AsRef<u64> for TrinoVersion {
     fn as_ref(&self) -> &u64 {
-        &self.major
+        &self.0.major
     }
 }
 
