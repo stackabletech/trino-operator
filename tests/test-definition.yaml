@@ -1,7 +1,7 @@
 # These tests can run against an OpenShift cluster, provided you note the following:
 #
 # 1. Set the "openshift" dimension below to "true" (with quotes)
-# 2. Comment out the "true" option in the "s3-use-tls" dimension
+# 2. Comment out the "true" option in the "s3-use-tls" dimension TODO: Trino requires S3 to use TLS.
 #
 # Regarding point 2.: the bitnami chart is used for S3 on OpenShift as it correctly installs
 # a minio instance (the chart from minio does not correctly apply the service account to
@@ -42,10 +42,6 @@ dimensions:
   - name: keycloak
     values:
       - 25.0.0
-  - name: s3-use-tls
-    values:
-      - "true"
-      - "false"
   - name: use-authentication
     values:
       - "true"
@@ -73,7 +69,6 @@ tests:
       - opa
       - hdfs
       - zookeeper
-      - s3-use-tls
       - openshift
   - name: tls
     dimensions:
@@ -123,8 +118,6 @@ suites:
             expr: last
           - name: zookeeper
             expr: last
-          - name: s3-use-tls
-            expr: "true"
   - name: smoke-latest
     # Useful during development
     select:
@@ -139,8 +132,6 @@ suites:
           - expr: last
       - dimensions:
           - name: openshift
-            expr: "true"
-          - name: s3-use-tls
             expr: "true"
           - name: use-tls
             expr: "true"
