@@ -173,6 +173,9 @@ impl ExtendCatalogConfig for HdfsConnection {
         _client: &Client,
         _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
+        // Since Trino 458, fs.hadoop.enabled defaults to false.
+        catalog_config.add_property("fs.hadoop.enabled", "true");
+
         let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
         catalog_config.add_property(
             "hive.config.resources",

@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 - Run a `containerdebug` process in the background of each Trino container to collect debugging information ([#687]).
 - Support configuring JVM arguments ([#677]).
 - Aggregate emitted Kubernetes events on the CustomResources ([#677]).
-- Support for Trino 469 ([#705]).
+- Support for Trino 470 ([#705]).
 
 ## Changed
 
