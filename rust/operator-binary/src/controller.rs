@@ -351,10 +351,10 @@ pub enum Error {
         source: stackable_operator::role_utils::Error,
     },
 
-    #[snafu(display("unable to parse Trino version: {trino_version:?}"))]
+    #[snafu(display("unable to parse Trino version: {product_version:?}"))]
     ParseTrinoVersion {
         source: ParseIntError,
-        trino_version: String,
+        product_version: String,
     },
 }
 
@@ -407,18 +407,16 @@ pub async fn reconcile_trino(
         .await
         .context(GetCatalogsSnafu)?;
     let mut catalogs = vec![];
-    let trino_version = trino.spec.image.product_version();
+    let product_version = trino.spec.image.product_version();
+    let product_version =
+        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config = CatalogConfig::from_catalog(
-            catalog,
-            client,
-            u16::from_str(trino_version).context(ParseTrinoVersionSnafu { trino_version })?,
-        )
-        .await
-        .context(ParseCatalogSnafu {
-            catalog: catalog_ref,
-        })?;
+        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
+            .await
+            .context(ParseCatalogSnafu {
+                catalog: catalog_ref,
+            })?;
 
         catalogs.push(catalog_config);
     }
