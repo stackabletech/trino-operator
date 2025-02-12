@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use snafu::{OptionExt, ResultExt};
+use snafu::{ensure, OptionExt, ResultExt};
 use stackable_operator::{
     builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
@@ -130,11 +130,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             }
             // TLS is required when using native S3 implementation.
             // https://trino.io/docs/469/object-storage/legacy-s3.html#migration-to-s3-file-system
-            469.. => {
-                if !s3.tls.uses_tls() {
-                    return S3TlsRequiredSnafu.fail();
-                }
-            }
+            469.. => ensure!(s3.tls.uses_tls(), S3TlsRequiredSnafu),
         };
 
         if let Some(tls) = s3.tls.tls.as_ref() {
