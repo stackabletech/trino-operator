@@ -125,7 +125,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         match trino_version {
             // Older trino versions allowed TLS to be optional
             ..=468 => {
-                // TODO (@NickLarsenNZ): Should we warn that TLS verification is required in future versions of Trino?
+                tracing::warn!("from Trino 460, TLS will be required for S3 connections");
                 catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.uses_tls().to_string());
             }
             // TLS is required when using native S3 implementation.
