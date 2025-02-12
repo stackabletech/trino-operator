@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
 - Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
 - Default to OCI for image metadata and product image selection ([#695]).
-- Set `fs.hadoop.enabled=true` catalog config property to enable Legacy S3 support ([#705]).
+- Explicitly set `fs.native-s3.enabled=true` and `fs.hadoop.enabled=true` in applicable catalog config properties ([#705]).
 
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
