@@ -98,8 +98,8 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         catalog_config.volume_mounts.extend(mounts);
 
         if trino_version >= 469 {
-            // Trino 469 deprecates the Legacy S3 (via the Hadoop FS interface) implementation.
-            // Trino 470 completely removes Legacy S3 support.
+            // Since Trino 469, S3 native support has to be explicitly enabled
+            // uness using Legacy S3 support (which has been removed in 470).
             catalog_config.add_property("fs.native-s3.enabled", "true");
         }
 
