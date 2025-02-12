@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
 - Default to OCI for image metadata and product image selection ([#695]).
 - Explicitly set `fs.native-s3.enabled=true` and `fs.hadoop.enabled=true` in applicable catalog config properties ([#705]).
+  - Trino 470 requires the native S3 implementation to be used.
 
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
