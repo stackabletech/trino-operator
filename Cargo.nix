@@ -4875,9 +4875,9 @@ rec {
       };
       "openssl" = rec {
         crateName = "openssl";
-        version = "0.10.68";
+        version = "0.10.70";
         edition = "2021";
-        sha256 = "1xbiz2bmba2fibg70s462yk2fndp3f9vz11c7iw0ilh2y54bqx31";
+        sha256 = "1ij21wa5hzip17v91gl9x3n4h0am10ivq065andqrfx8cvhv9kv1";
         authors = [
           "Steven Fackler <sfackler@gmail.com>"
         ];
@@ -4956,10 +4956,10 @@ rec {
       };
       "openssl-sys" = rec {
         crateName = "openssl-sys";
-        version = "0.9.104";
+        version = "0.9.105";
         edition = "2021";
         links = "openssl";
-        sha256 = "0hf712xcxmycnlc09r8d446b3mwqchsbfrjv374fp7grrc3g7as5";
+        sha256 = "1p59q259h73w58fgajyd588hzaj9r3vp3jy78xlqsnp09fwda8lb";
         build = "build/main.rs";
         libName = "openssl_sys";
         authors = [
