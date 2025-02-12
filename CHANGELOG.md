@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ## Changed
 
+- BREAKING: Hard-code `s3.region=us-east-1` until it can be configured by the end user ([#705]).
 - Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
 - Default to OCI for image metadata and product image selection ([#695]).

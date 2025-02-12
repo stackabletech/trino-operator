@@ -101,6 +101,13 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             // Since Trino 469, S3 native support has to be explicitly enabled
             // uness using Legacy S3 support (which has been removed in 470).
             catalog_config.add_property("fs.native-s3.enabled", "true");
+
+            // Trino silently fails to load if `s3.region` is not set.
+            // We will hard-code it for now so that Trino can work with IONOS
+            // and Minio, but this will eventually come in via `S3Connection`
+            // once the CRD has the field.
+            tracing::warn!("s3.region is currently hard-coded to us-east-1");
+            catalog_config.add_property("s3.region", "us-east-1");
         }
 
         let (endpoint_prop, path_style_prop) = match trino_version {
