@@ -28,7 +28,7 @@ pub enum Error {
     },
 
     #[snafu(display("Trino version {version} is not yet supported, as the correct JVM configuration is not yet known"))]
-    TrinoVersionNotSupported { version: String },
+    TrinoVersionNotSupported { version: u16 },
 
     #[snafu(display("failed to merge jvm argument overrides"))]
     MergeJvmArgumentOverrides { source: role_utils::Error },
@@ -37,7 +37,7 @@ pub enum Error {
 // Currently works for all supported versions (451 and 455 as of 2024-09-04) but maybe be changed
 // in the future depending on the role and version.
 pub fn jvm_config(
-    product_version: &str,
+    product_version: u16,
     merged_config: &TrinoConfig,
     role: &Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
     role_group: &str,
@@ -98,15 +98,15 @@ pub fn jvm_config(
 /// This enables us to write version-independent tests, which don't need updating for every new
 /// Trino version.
 #[cfg(test)]
-fn recommended_trino_jvm_args(_product_version: &str) -> Result<Vec<String>, Error> {
+fn recommended_trino_jvm_args(_product_version: u16) -> Result<Vec<String>, Error> {
     Ok(vec!["-RecommendedTrinoFlag".to_owned()])
 }
 
 #[cfg(not(test))]
-fn recommended_trino_jvm_args(product_version: &str) -> Result<Vec<String>, Error> {
+fn recommended_trino_jvm_args(product_version: u16) -> Result<Vec<String>, Error> {
     match product_version {
         // Copied from https://trino.io/docs/451/installation/deployment.html
-        "451" => Ok(vec![
+        451..455 => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),
@@ -126,7 +126,7 @@ fn recommended_trino_jvm_args(product_version: &str) -> Result<Vec<String>, Erro
         // Copied from:
         // - https://trino.io/docs/455/installation/deployment.html#jvm-config
         // - https://trino.io/docs/470/installation/deployment.html#jvm-config
-        "455" | "470" => Ok(vec![
+        455.. => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),
@@ -151,6 +151,8 @@ fn recommended_trino_jvm_args(product_version: &str) -> Result<Vec<String>, Erro
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use indoc::indoc;
     use stackable_trino_crd::{TrinoCluster, TrinoRole};
 
@@ -270,8 +272,10 @@ mod tests {
         let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
         let coordinators = trino.spec.coordinators.unwrap();
 
+        let product_version = trino.spec.image.product_version();
+
         jvm_config(
-            trino.spec.image.product_version(),
+            u16::from_str(product_version).expect("trino version as u16"),
             &merged_config,
             &coordinators,
             "default",

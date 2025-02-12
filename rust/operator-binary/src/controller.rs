@@ -645,8 +645,11 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
+    let product_version = &resolved_product_image.product_version;
+    let product_version =
+        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
     let jvm_config = config::jvm::jvm_config(
-        &resolved_product_image.product_version,
+        product_version,
         merged_config,
         role,
         &rolegroup_ref.role_group,
