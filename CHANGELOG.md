@@ -11,18 +11,23 @@ All notable changes to this project will be documented in this file.
 - Run a `containerdebug` process in the background of each Trino container to collect debugging information ([#687]).
 - Support configuring JVM arguments ([#677]).
 - Aggregate emitted Kubernetes events on the CustomResources ([#677]).
+- Support for Trino 470 ([#705]).
 
 ## Changed
 
+- BREAKING: Hard-code `s3.region=us-east-1` until it can be configured by the end user ([#705]).
 - Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
 - Default to OCI for image metadata and product image selection ([#695]).
+- Explicitly set `fs.native-s3.enabled=true` and `fs.hadoop.enabled=true` in applicable catalog config properties ([#705]).
+  - Trino 470 requires the native S3 implementation to be used.
 
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
 [#687]: https://github.com/stackabletech/trino-operator/pull/687
 [#694]: https://github.com/stackabletech/trino-operator/pull/694
 [#695]: https://github.com/stackabletech/trino-operator/pull/695
+[#705]: https://github.com/stackabletech/trino-operator/pull/705
 
 ## [24.11.1] - 2025-01-10
 
