@@ -99,15 +99,24 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
 
         if trino_version >= 469 {
             // Since Trino 469, S3 native support has to be explicitly enabled
-            // uness using Legacy S3 support (which has been removed in 470).
+            // unless using Legacy S3 support (which has been removed in 470).
             catalog_config.add_property("fs.native-s3.enabled", "true");
         }
 
-        let (endpoint_prop, path_style_prop) = match trino_version {
-            ..=468 => ("hive.s3.endpoint", "hive.s3.path-style-access"),
-            469.. => ("s3.endpoint", "s3.path-style-access"),
+        let (endpoint_prop, region_prop, path_style_prop) = match trino_version {
+            ..=468 => (
+                "hive.s3.endpoint",
+                "hive.s3.region",
+                "hive.s3.path-style-access",
+            ),
+            469.. => ("s3.endpoint", "s3.region", "s3.path-style-access"),
         };
         catalog_config.add_property(endpoint_prop, s3.endpoint().context(ConfigureS3Snafu)?);
+
+        if let Some(region_name) = s3.region.name() {
+            catalog_config.add_property(region_prop, region_name);
+        }
+
         catalog_config.add_property(
             path_style_prop,
             (s3.access_style == S3AccessStyle::Path).to_string(),
