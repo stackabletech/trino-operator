@@ -16,7 +16,7 @@ metadata:
     trino: simple-trino
 spec:
   connector:
-    blackhole: {} # No options needed
+    blackHole: {} # No options needed
 ----
 
 [NOTE]
