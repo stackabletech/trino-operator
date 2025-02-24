@@ -2,7 +2,7 @@ use stackable_operator::utils::cluster_info::KubernetesClusterInfo;
 
 use crate::crd::{HTTPS_PORT, HTTP_PORT};
 
-/// Reference to a single `Pod` that is a component of a [`crate::TrinoCluster`]
+/// Reference to a single `Pod` that is a component of a [`crate::crd::v1alpha1::TrinoCluster`]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TrinoPodRef {
     pub namespace: String,

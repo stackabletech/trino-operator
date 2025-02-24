@@ -1,4 +1,4 @@
-//! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
+//! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`]
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
