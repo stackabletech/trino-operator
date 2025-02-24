@@ -12,12 +12,14 @@ use std::collections::BTreeMap;
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::product_image_selection::ResolvedProductImage;
-use stackable_trino_crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME};
 use tracing::trace;
 
-use crate::authentication::{
-    password::{file::FileAuthenticator, ldap::LdapAuthenticator},
-    TrinoAuthenticationConfig,
+use crate::{
+    authentication::{
+        password::{file::FileAuthenticator, ldap::LdapAuthenticator},
+        TrinoAuthenticationConfig,
+    },
+    crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME},
 };
 
 pub mod file;
@@ -143,7 +145,7 @@ impl TrinoPasswordAuthentication {
                     // extra commands
                     password_authentication_config.add_commands(
                         TrinoRole::Coordinator,
-                        stackable_trino_crd::Container::Trino,
+                        crate::crd::Container::Trino,
                         ldap_authenticator.commands(),
                     );
 
@@ -159,12 +161,12 @@ impl TrinoPasswordAuthentication {
                     for volume_mount in volume_mounts {
                         password_authentication_config.add_volume_mount(
                             TrinoRole::Coordinator,
-                            stackable_trino_crd::Container::Trino,
+                            crate::crd::Container::Trino,
                             volume_mount.clone(),
                         );
                         password_authentication_config.add_volume_mount(
                             TrinoRole::Coordinator,
-                            stackable_trino_crd::Container::Prepare,
+                            crate::crd::Container::Prepare,
                             volume_mount.clone(),
                         );
                     }

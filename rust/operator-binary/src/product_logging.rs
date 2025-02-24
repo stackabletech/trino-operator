@@ -12,8 +12,9 @@ use stackable_operator::{
     },
     role_utils::RoleGroupRef,
 };
-use stackable_trino_crd::{Container, TrinoCluster};
 use strum::Display;
+
+use crate::crd::{Container, TrinoCluster};
 
 #[derive(Snafu, Debug)]
 pub enum Error {

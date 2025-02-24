@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use stackable_operator::client::Client;
-use stackable_trino_crd::catalog::delta_lake::DeltaLakeConnector;
 
 use super::{config::CatalogConfig, ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
+use crate::crd::catalog::delta_lake::DeltaLakeConnector;
 
 pub const CONNECTOR_NAME: &str = "delta_lake";
 

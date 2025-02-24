@@ -2444,21 +2444,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stackable-trino-crd"
-version = "0.0.0-dev"
-dependencies = [
- "rstest",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "snafu 0.8.5",
- "stackable-operator",
- "strum",
- "tracing",
-]
-
-[[package]]
 name = "stackable-trino-operator"
 version = "0.0.0-dev"
 dependencies = [
@@ -2474,10 +2459,11 @@ dependencies = [
  "product-config",
  "rstest",
  "semver",
+ "serde",
+ "serde_json",
  "serde_yaml",
  "snafu 0.8.5",
  "stackable-operator",
- "stackable-trino-crd",
  "strum",
  "tokio",
  "tracing",

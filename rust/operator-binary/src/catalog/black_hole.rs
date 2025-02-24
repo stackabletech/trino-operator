@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use stackable_operator::client::Client;
-use stackable_trino_crd::catalog::black_hole::BlackHoleConnector;
 
 use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
+use crate::crd::catalog::black_hole::BlackHoleConnector;
 
 pub const CONNECTOR_NAME: &str = "blackhole";
 

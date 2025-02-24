@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use stackable_operator::client::Client;
-use stackable_trino_crd::catalog::iceberg::IcebergConnector;
 
 use super::{config::CatalogConfig, ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
+use crate::crd::catalog::iceberg::IcebergConnector;
 
 pub const CONNECTOR_NAME: &str = "iceberg";
 

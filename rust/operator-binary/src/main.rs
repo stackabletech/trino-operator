@@ -4,6 +4,7 @@ mod catalog;
 mod command;
 mod config;
 mod controller;
+mod crd;
 mod operations;
 mod product_logging;
 
@@ -30,9 +31,11 @@ use stackable_operator::{
     logging::controller::report_controller_reconciled,
     CustomResourceExt,
 };
-use stackable_trino_crd::{catalog::TrinoCatalog, TrinoCluster, APP_NAME};
 
-use crate::controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME};
+use crate::{
+    controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
+    crd::{catalog::TrinoCatalog, TrinoCluster, APP_NAME},
+};
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));

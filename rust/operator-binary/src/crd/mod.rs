@@ -37,7 +37,7 @@ use stackable_operator::{
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
-use crate::discovery::TrinoPodRef;
+use crate::crd::discovery::TrinoPodRef;
 
 pub const APP_NAME: &str = "trino";
 // ports
@@ -84,10 +84,6 @@ pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY: &str =
     "internal-communication.https.truststore.key";
 pub const NODE_INTERNAL_ADDRESS_SOURCE: &str = "node.internal-address-source";
 pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
-// log.properties
-pub const IO_TRINO: &str = "io.trino";
-// jvm.config
-pub const METRICS_PORT_PROPERTY: &str = "metricsPort";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
@@ -103,11 +99,6 @@ pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
 pub const SYSTEM_TRUST_STORE_PASSWORD: &str = "changeit";
 // secret vars
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
-// S3 secrets
-pub const ENV_S3_ACCESS_KEY: &str = "S3_ACCESS_KEY";
-pub const ENV_S3_SECRET_KEY: &str = "S3_SECRET_KEY";
-pub const SECRET_KEY_S3_ACCESS_KEY: &str = "accessKey";
-pub const SECRET_KEY_S3_SECRET_KEY: &str = "secretKey";
 // TLS
 pub const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
 // Logging
