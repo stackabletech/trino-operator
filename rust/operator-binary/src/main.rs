@@ -34,7 +34,7 @@ use stackable_operator::{
 
 use crate::{
     controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
-    crd::{catalog::v1alpha1, TrinoCluster, APP_NAME},
+    crd::{v1alpha1, APP_NAME},
 };
 
 mod built_info {
@@ -53,8 +53,8 @@ async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => {
-            TrinoCluster::print_yaml_schema(built_info::PKG_VERSION)?;
-            v1alpha1::TrinoCatalog::print_yaml_schema(built_info::PKG_VERSION)?;
+            v1alpha1::TrinoCluster::print_yaml_schema(built_info::PKG_VERSION)?;
+            crd::catalog::v1alpha1::TrinoCatalog::print_yaml_schema(built_info::PKG_VERSION)?;
         }
         Command::Run(ProductOperatorRun {
             product_config,
@@ -94,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
             ));
 
             let cluster_controller = Controller::new(
-                watch_namespace.get_api::<DeserializeGuard<TrinoCluster>>(&client),
+                watch_namespace.get_api::<DeserializeGuard<v1alpha1::TrinoCluster>>(&client),
                 watcher::Config::default(),
             );
             let catalog_cluster_store = Arc::new(cluster_controller.store());
@@ -115,7 +115,8 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .shutdown_on_signal()
                 .watches(
-                    watch_namespace.get_api::<DeserializeGuard<v1alpha1::TrinoCatalog>>(&client),
+                    watch_namespace
+                        .get_api::<DeserializeGuard<crd::catalog::v1alpha1::TrinoCatalog>>(&client),
                     watcher::Config::default(),
                     move |catalog| {
                         // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles
@@ -173,7 +174,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn references_authentication_class(
-    trino: &DeserializeGuard<TrinoCluster>,
+    trino: &DeserializeGuard<v1alpha1::TrinoCluster>,
     authentication_class: &DeserializeGuard<AuthenticationClass>,
 ) -> bool {
     let Ok(trino) = &trino.0 else {

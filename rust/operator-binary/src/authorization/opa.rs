@@ -5,7 +5,7 @@ use stackable_operator::{
     commons::opa::{OpaApiVersion, OpaConfig},
 };
 
-use crate::crd::TrinoCluster;
+use crate::crd::v1alpha1::TrinoCluster;
 
 pub struct TrinoOpaConfig {
     /// URI for OPA policies, e.g.

@@ -14,7 +14,7 @@ use stackable_operator::{
 };
 use strum::Display;
 
-use crate::crd::{Container, TrinoCluster};
+use crate::crd::{v1alpha1, Container};
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -66,7 +66,7 @@ impl From<LogLevel> for TrinoLogLevel {
 /// Return the address of the Vector aggregator if the corresponding ConfigMap name is given in the
 /// cluster spec
 pub async fn resolve_vector_aggregator_address(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     client: &Client,
 ) -> Result<Option<String>> {
     let vector_aggregator_address = if let Some(vector_aggregator_config_map_name) = &trino
@@ -115,7 +115,7 @@ pub fn get_log_properties(logging: &Logging<Container>) -> Option<String> {
 
 /// Return the vector toml configuration
 pub fn get_vector_toml(
-    rolegroup: &RoleGroupRef<TrinoCluster>,
+    rolegroup: &RoleGroupRef<v1alpha1::TrinoCluster>,
     vector_aggregator_address: Option<&str>,
     logging: &Logging<Container>,
 ) -> Result<Option<String>> {
