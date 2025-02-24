@@ -32,7 +32,7 @@ dimensions:
       - 4.0.0
   - name: opa
     values:
-      - 1.0.0
+      - 1.0.1
   - name: hdfs
     values:
       - 3.4.0
