@@ -6,14 +6,14 @@ use stackable_operator::{
 };
 
 use crate::crd::{
-    catalog::{TrinoCatalog, TrinoCatalogConnector},
+    catalog::{v1alpha1, TrinoCatalogConnector},
     TrinoRole, APP_NAME,
 };
 
 pub fn get_affinity(
     cluster_name: &str,
     role: &TrinoRole,
-    trino_catalogs: &[TrinoCatalog],
+    trino_catalogs: &[v1alpha1::TrinoCatalog],
 ) -> StackableAffinityFragment {
     let affinity_between_cluster_pods = affinity_between_cluster_pods(APP_NAME, cluster_name, 20);
     let mut affinities = vec![affinity_between_cluster_pods];
@@ -234,7 +234,7 @@ mod tests {
                 configMap: simple-hdfs
         "#;
         let deserializer = serde_yaml::Deserializer::from_str(input);
-        let hive_catalog_1: TrinoCatalog =
+        let hive_catalog_1: v1alpha1::TrinoCatalog =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         let input = r#"
@@ -249,7 +249,7 @@ mod tests {
             tpch: {}
         "#;
         let deserializer = serde_yaml::Deserializer::from_str(input);
-        let tpch_catalog: TrinoCatalog =
+        let tpch_catalog: v1alpha1::TrinoCatalog =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         let input = r#"
@@ -268,7 +268,7 @@ mod tests {
                     reference: minio
             "#;
         let deserializer = serde_yaml::Deserializer::from_str(input);
-        let hive_catalog_2: TrinoCatalog =
+        let hive_catalog_2: v1alpha1::TrinoCatalog =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         let merged_config = trino

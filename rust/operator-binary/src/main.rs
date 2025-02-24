@@ -34,7 +34,7 @@ use stackable_operator::{
 
 use crate::{
     controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
-    crd::{catalog::TrinoCatalog, TrinoCluster, APP_NAME},
+    crd::{catalog::v1alpha1, TrinoCluster, APP_NAME},
 };
 
 mod built_info {
@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
     match opts.cmd {
         Command::Crd => {
             TrinoCluster::print_yaml_schema(built_info::PKG_VERSION)?;
-            TrinoCatalog::print_yaml_schema(built_info::PKG_VERSION)?;
+            v1alpha1::TrinoCatalog::print_yaml_schema(built_info::PKG_VERSION)?;
         }
         Command::Run(ProductOperatorRun {
             product_config,
@@ -115,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .shutdown_on_signal()
                 .watches(
-                    watch_namespace.get_api::<DeserializeGuard<TrinoCatalog>>(&client),
+                    watch_namespace.get_api::<DeserializeGuard<v1alpha1::TrinoCatalog>>(&client),
                     watcher::Config::default(),
                     move |catalog| {
                         // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles

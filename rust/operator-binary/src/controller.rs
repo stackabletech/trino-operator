@@ -80,7 +80,7 @@ use crate::{
     command, config,
     crd::{
         authentication::resolve_authentication_classes,
-        catalog::TrinoCatalog,
+        catalog::v1alpha1,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
         Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoConfigFragment, TrinoRole,
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME,
@@ -218,7 +218,7 @@ pub enum Error {
     #[snafu(display("failed to parse {catalog}"))]
     ParseCatalog {
         source: FromTrinoCatalogError,
-        catalog: ObjectRef<TrinoCatalog>,
+        catalog: ObjectRef<v1alpha1::TrinoCatalog>,
     },
 
     #[snafu(display("illegal container name: [{container_name}]"))]
@@ -389,7 +389,7 @@ pub async fn reconcile_trino(
     .context(InvalidAuthenticationConfigSnafu)?;
 
     let catalog_definitions = client
-        .list_with_label_selector::<TrinoCatalog>(
+        .list_with_label_selector::<v1alpha1::TrinoCatalog>(
             trino
                 .metadata
                 .namespace

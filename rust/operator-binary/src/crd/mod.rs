@@ -6,7 +6,7 @@ pub mod discovery;
 use std::{collections::BTreeMap, str::FromStr};
 
 use affinity::get_affinity;
-use catalog::TrinoCatalog;
+use catalog::v1alpha1;
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -445,7 +445,7 @@ impl TrinoConfig {
     fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
-        trino_catalogs: &[TrinoCatalog],
+        trino_catalogs: &[v1alpha1::TrinoCatalog],
     ) -> TrinoConfigFragment {
         let (cpu_min, cpu_max, memory) = match role {
             TrinoRole::Coordinator => ("500m", "2", "4Gi"),
@@ -840,7 +840,7 @@ impl TrinoCluster {
         &self,
         role: &TrinoRole,
         rolegroup_ref: &RoleGroupRef<TrinoCluster>,
-        trino_catalogs: &[TrinoCatalog],
+        trino_catalogs: &[v1alpha1::TrinoCatalog],
     ) -> Result<TrinoConfig, Error> {
         // Initialize the result with all default values as baseline
         let conf_defaults = TrinoConfig::default_config(&self.name_any(), role, trino_catalogs);

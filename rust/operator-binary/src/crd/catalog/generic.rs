@@ -38,7 +38,7 @@ pub enum Property {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
+    use crate::crd::catalog::{v1alpha1, TrinoCatalogConnector};
 
     #[test]
     fn test_cr_parsing() {
@@ -66,7 +66,7 @@ mod tests {
                     key: password
         "#;
         let deserializer = serde_yaml::Deserializer::from_str(input);
-        let catalog: TrinoCatalog =
+        let catalog: v1alpha1::TrinoCatalog =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         assert_eq!(
