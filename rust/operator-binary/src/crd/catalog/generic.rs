@@ -38,7 +38,7 @@ pub enum Property {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::{TrinoCatalog, TrinoCatalogConnector};
+    use crate::crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
 
     #[test]
     fn test_cr_parsing() {

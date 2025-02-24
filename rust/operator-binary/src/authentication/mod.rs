@@ -22,16 +22,18 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{Container, EnvVar, Volume, VolumeMount},
     kube::{runtime::reflector::ObjectRef, ResourceExt},
 };
-use stackable_trino_crd::{authentication::ResolvedAuthenticationClassRef, TrinoRole};
 use strum::EnumDiscriminants;
 use tracing::trace;
 
-use crate::authentication::{
-    oidc::{OidcAuthenticator, TrinoOidcAuthentication},
-    password::{
-        file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
-        TrinoPasswordAuthenticator,
+use crate::{
+    authentication::{
+        oidc::{OidcAuthenticator, TrinoOidcAuthentication},
+        password::{
+            file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
+            TrinoPasswordAuthenticator,
+        },
     },
+    crd::{authentication::ResolvedAuthenticationClassRef, TrinoRole},
 };
 
 pub(crate) mod oidc;
@@ -85,14 +87,14 @@ pub struct TrinoAuthenticationConfig {
     /// All extra config files required for authentication for each role.
     config_files: HashMap<TrinoRole, BTreeMap<String, String>>,
     /// Additional env variables for a certain role and container
-    env_vars: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<EnvVar>>>,
+    env_vars: HashMap<TrinoRole, BTreeMap<crate::crd::Container, Vec<EnvVar>>>,
     /// All extra container commands for a certain role and container
-    commands: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<String>>>,
+    commands: HashMap<TrinoRole, BTreeMap<crate::crd::Container, Vec<String>>>,
     /// Additional volumes like secret mounts, user file database etc.
     volumes: Vec<Volume>,
     /// Additional volume mounts for each role and container. Shared volumes have to be added
     /// manually in each container.
-    volume_mounts: HashMap<TrinoRole, BTreeMap<stackable_trino_crd::Container, Vec<VolumeMount>>>,
+    volume_mounts: HashMap<TrinoRole, BTreeMap<crate::crd::Container, Vec<VolumeMount>>>,
     /// Additional side car container for the provided role
     sidecar_containers: HashMap<TrinoRole, Vec<Container>>,
 }
@@ -157,29 +159,27 @@ impl TrinoAuthenticationConfig {
             .add_volumes(self.volumes())
             .context(AddVolumeSnafu)?;
 
-        let affected_containers = vec![
-            stackable_trino_crd::Container::Prepare,
-            stackable_trino_crd::Container::Trino,
-        ];
+        let affected_containers =
+            vec![crate::crd::Container::Prepare, crate::crd::Container::Trino];
 
         for container in &affected_containers {
             let volume_mounts = self.volume_mounts(role, container);
 
             match container {
-                stackable_trino_crd::Container::Prepare => {
+                crate::crd::Container::Prepare => {
                     prepare_builder
                         .add_volume_mounts(volume_mounts)
                         .context(AddVolumeMountSnafu)?;
                 }
-                stackable_trino_crd::Container::Trino => {
+                crate::crd::Container::Trino => {
                     trino_builder
                         .add_volume_mounts(volume_mounts)
                         .context(AddVolumeMountSnafu)?;
                 }
                 // handled internally
-                stackable_trino_crd::Container::PasswordFileUpdater => {}
+                crate::crd::Container::PasswordFileUpdater => {}
                 // nothing to do here
-                stackable_trino_crd::Container::Vector => {}
+                crate::crd::Container::Vector => {}
             }
         }
 
@@ -220,7 +220,7 @@ impl TrinoAuthenticationConfig {
     pub fn add_env_vars(
         &mut self,
         role: TrinoRole,
-        container: stackable_trino_crd::Container,
+        container: crate::crd::Container,
         env_var: Vec<EnvVar>,
     ) {
         self.env_vars
@@ -235,7 +235,7 @@ impl TrinoAuthenticationConfig {
     pub fn add_commands(
         &mut self,
         role: TrinoRole,
-        container: stackable_trino_crd::Container,
+        container: crate::crd::Container,
         commands: Vec<String>,
     ) {
         self.commands
@@ -265,7 +265,7 @@ impl TrinoAuthenticationConfig {
     pub fn add_volume_mount(
         &mut self,
         role: TrinoRole,
-        container: stackable_trino_crd::Container,
+        container: crate::crd::Container,
         volume_mount: VolumeMount,
     ) {
         let current_volume_mounts = self
@@ -288,7 +288,7 @@ impl TrinoAuthenticationConfig {
     pub fn add_volume_mounts(
         &mut self,
         role: TrinoRole,
-        container: stackable_trino_crd::Container,
+        container: crate::crd::Container,
         volume_mounts: Vec<VolumeMount>,
     ) {
         for volume_mount in volume_mounts {
@@ -319,11 +319,7 @@ impl TrinoAuthenticationConfig {
     }
 
     /// Retrieve additional env vars for a given role and container.
-    pub fn env_vars(
-        &self,
-        role: &TrinoRole,
-        container: &stackable_trino_crd::Container,
-    ) -> Vec<EnvVar> {
+    pub fn env_vars(&self, role: &TrinoRole, container: &crate::crd::Container) -> Vec<EnvVar> {
         self.env_vars
             .get(role)
             .cloned()
@@ -334,11 +330,7 @@ impl TrinoAuthenticationConfig {
     }
 
     /// Retrieve additional container commands for a given role and container.
-    pub fn commands(
-        &self,
-        role: &TrinoRole,
-        container: &stackable_trino_crd::Container,
-    ) -> Vec<String> {
+    pub fn commands(&self, role: &TrinoRole, container: &crate::crd::Container) -> Vec<String> {
         self.commands
             .get(role)
             .cloned()
@@ -357,7 +349,7 @@ impl TrinoAuthenticationConfig {
     pub fn volume_mounts(
         &self,
         role: &TrinoRole,
-        container: &stackable_trino_crd::Container,
+        container: &crate::crd::Container,
     ) -> Vec<VolumeMount> {
         if let Some(volume_mounts) = self.volume_mounts.get(role) {
             volume_mounts.get(container).cloned().unwrap_or_default()
@@ -565,9 +557,9 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
 #[cfg(test)]
 mod tests {
     use stackable_operator::commons::authentication::oidc::ClientAuthenticationOptions;
-    use stackable_trino_crd::RW_CONFIG_DIR_NAME;
 
     use super::*;
+    use crate::crd::RW_CONFIG_DIR_NAME;
 
     const OIDC_AUTH_CLASS_1: &str = "oidc-auth-1";
     const FILE_AUTH_CLASS_1: &str = "file-auth-1";
@@ -800,17 +792,15 @@ mod tests {
     fn test_trino_password_authenticator_volume_mounts() {
         // nothing for workers
         assert!(setup_authentication_config()
-            .volume_mounts(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino,)
+            .volume_mounts(&TrinoRole::Worker, &crate::crd::Container::Trino,)
             .is_empty());
         assert!(setup_authentication_config()
-            .volume_mounts(&TrinoRole::Worker, &stackable_trino_crd::Container::Prepare,)
+            .volume_mounts(&TrinoRole::Worker, &crate::crd::Container::Prepare,)
             .is_empty());
 
         // coordinator - main container
-        let coordinator_main_mounts = setup_authentication_config().volume_mounts(
-            &TrinoRole::Coordinator,
-            &stackable_trino_crd::Container::Trino,
-        );
+        let coordinator_main_mounts = setup_authentication_config()
+            .volume_mounts(&TrinoRole::Coordinator, &crate::crd::Container::Trino);
 
         // we expect one user password db mount
         assert_eq!(coordinator_main_mounts.len(), 1);
@@ -828,19 +818,16 @@ mod tests {
 
         // nothing for workers
         assert!(auth_config
-            .commands(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino)
+            .commands(&TrinoRole::Worker, &crate::crd::Container::Trino)
             .is_empty());
         assert!(auth_config_with_ldap_bind
-            .commands(&TrinoRole::Worker, &stackable_trino_crd::Container::Trino)
+            .commands(&TrinoRole::Worker, &crate::crd::Container::Trino)
             .is_empty());
 
         // we expect 0 entries because no bind credentials env export
         assert_eq!(
             auth_config
-                .commands(
-                    &TrinoRole::Coordinator,
-                    &stackable_trino_crd::Container::Trino
-                )
+                .commands(&TrinoRole::Coordinator, &crate::crd::Container::Trino)
                 .len(),
             0
         );
@@ -848,10 +835,7 @@ mod tests {
         // We expect 8 entries because of "set +x", "set -x" and 2x user:password bind credential env export
         assert_eq!(
             auth_config_with_ldap_bind
-                .commands(
-                    &TrinoRole::Coordinator,
-                    &stackable_trino_crd::Container::Trino
-                )
+                .commands(&TrinoRole::Coordinator, &crate::crd::Container::Trino)
                 .len(),
             8
         );

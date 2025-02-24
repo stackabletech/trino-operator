@@ -71,18 +71,6 @@ use stackable_operator::{
     time::Duration,
     utils::cluster_info::KubernetesClusterInfo,
 };
-use stackable_trino_crd::{
-    authentication::resolve_authentication_classes,
-    catalog::TrinoCatalog,
-    discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoConfigFragment, TrinoRole,
-    ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME,
-    DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
-    JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
-    LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -90,6 +78,18 @@ use crate::{
     authorization::opa::TrinoOpaConfig,
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command, config,
+    crd::{
+        authentication::resolve_authentication_classes,
+        catalog::TrinoCatalog,
+        discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
+        Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoConfigFragment, TrinoRole,
+        ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME,
+        DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
+        JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
+        LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME,
+        NODE_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+    },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
     },
@@ -200,7 +200,7 @@ pub enum Error {
     FailedToParseRole { source: strum::ParseError },
 
     #[snafu(display("internal operator failure: {source}"))]
-    InternalOperatorFailure { source: stackable_trino_crd::Error },
+    InternalOperatorFailure { source: crate::crd::Error },
 
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
@@ -233,7 +233,7 @@ pub enum Error {
     },
 
     #[snafu(display("failed to resolve and merge config for role and role group"))]
-    FailedToResolveConfig { source: stackable_trino_crd::Error },
+    FailedToResolveConfig { source: crate::crd::Error },
 
     #[snafu(display("failed to resolve the Vector aggregator address"))]
     ResolveVectorAggregatorAddress {
@@ -271,7 +271,7 @@ pub enum Error {
 
     #[snafu(display("Failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
-        source: stackable_trino_crd::authentication::Error,
+        source: crate::crd::authentication::Error,
     },
 
     #[snafu(display("Unsupported Trino authentication"))]
@@ -343,7 +343,7 @@ pub enum Error {
     },
 
     #[snafu(display("failed to read role"))]
-    ReadRole { source: stackable_trino_crd::Error },
+    ReadRole { source: crate::crd::Error },
 
     #[snafu(display("failed to get merged jvmArgumentOverrides"))]
     GetMergedJvmArgumentOverrides {

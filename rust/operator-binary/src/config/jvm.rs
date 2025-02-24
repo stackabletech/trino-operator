@@ -5,7 +5,8 @@ use stackable_operator::{
     memory::{BinaryMultiple, MemoryQuantity},
     role_utils::{self, GenericRoleConfig, JavaCommonConfig, JvmArgumentOverrides, Role},
 };
-use stackable_trino_crd::{
+
+use crate::crd::{
     TrinoConfig, TrinoConfigFragment, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT,
     RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
@@ -150,9 +151,9 @@ fn recommended_trino_jvm_args(product_version: &str) -> Result<Vec<String>, Erro
 #[cfg(test)]
 mod tests {
     use indoc::indoc;
-    use stackable_trino_crd::{TrinoCluster, TrinoRole};
 
     use super::*;
+    use crate::crd::{TrinoCluster, TrinoRole};
 
     #[test]
     fn test_jvm_config_defaults() {

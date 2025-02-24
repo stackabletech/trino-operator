@@ -5,7 +5,10 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{PodAffinity, PodAntiAffinity},
 };
 
-use crate::{catalog::TrinoCatalogConnector, TrinoCatalog, TrinoRole, APP_NAME};
+use crate::crd::{
+    catalog::{TrinoCatalog, TrinoCatalogConnector},
+    TrinoRole, APP_NAME,
+};
 
 pub fn get_affinity(
     cluster_name: &str,
@@ -99,7 +102,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::TrinoCluster;
+    use crate::crd::TrinoCluster;
 
     #[rstest]
     #[case(TrinoRole::Coordinator)]

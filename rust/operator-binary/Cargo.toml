@@ -10,7 +10,6 @@ publish = false
 build = "build.rs"
 
 [dependencies]
-stackable-trino-crd = { path = "../crd" }
 
 anyhow.workspace = true
 async-trait.workspace = true
@@ -28,9 +27,12 @@ strum.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 serde_yaml.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
+serde_yaml.workspace = true
 
 [build-dependencies]
 built.workspace = true

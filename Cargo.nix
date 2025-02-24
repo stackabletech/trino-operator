@@ -32,21 +32,23 @@ rec {
   # "public" attributes that we attempt to keep stable with new versions of crate2nix.
   #
 
+  rootCrate = rec {
+    packageId = "stackable-trino-operator";
 
+    # Use this attribute to refer to the derivation building your root crate package.
+    # You can override the features with rootCrate.build.override { features = [ "default" "feature1" ... ]; }.
+    build = internal.buildRustCrateWithFeatures {
+      inherit packageId;
+    };
+
+    # Debug support which might change between releases.
+    # File a bug if you depend on any for non-debug work!
+    debug = internal.debugCrate { inherit packageId; };
+  };
   # Refer your crate build derivation by name here.
   # You can override the features with
   # workspaceMembers."${crateName}".build.override { features = [ "default" "feature1" ... ]; }.
   workspaceMembers = {
-    "stackable-trino-crd" = rec {
-      packageId = "stackable-trino-crd";
-      build = internal.buildRustCrateWithFeatures {
-        packageId = "stackable-trino-crd";
-      };
-
-      # Debug support which might change between releases.
-      # File a bug if you depend on any for non-debug work!
-      debug = internal.debugCrate { inherit packageId; };
-    };
     "stackable-trino-operator" = rec {
       packageId = "stackable-trino-operator";
       build = internal.buildRustCrateWithFeatures {
@@ -4875,9 +4877,9 @@ rec {
       };
       "openssl" = rec {
         crateName = "openssl";
-        version = "0.10.68";
+        version = "0.10.70";
         edition = "2021";
-        sha256 = "1xbiz2bmba2fibg70s462yk2fndp3f9vz11c7iw0ilh2y54bqx31";
+        sha256 = "1ij21wa5hzip17v91gl9x3n4h0am10ivq065andqrfx8cvhv9kv1";
         authors = [
           "Steven Fackler <sfackler@gmail.com>"
         ];
@@ -4956,10 +4958,10 @@ rec {
       };
       "openssl-sys" = rec {
         crateName = "openssl-sys";
-        version = "0.9.104";
+        version = "0.9.105";
         edition = "2021";
         links = "openssl";
-        sha256 = "0hf712xcxmycnlc09r8d446b3mwqchsbfrjv374fp7grrc3g7as5";
+        sha256 = "1p59q259h73w58fgajyd588hzaj9r3vp3jy78xlqsnp09fwda8lb";
         build = "build/main.rs";
         libName = "openssl_sys";
         authors = [
@@ -7601,59 +7603,6 @@ rec {
         ];
 
       };
-      "stackable-trino-crd" = rec {
-        crateName = "stackable-trino-crd";
-        version = "0.0.0-dev";
-        edition = "2021";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./rust/crd; };
-        libName = "stackable_trino_crd";
-        authors = [
-          "Stackable GmbH <info@stackable.tech>"
-        ];
-        dependencies = [
-          {
-            name = "semver";
-            packageId = "semver";
-          }
-          {
-            name = "serde";
-            packageId = "serde";
-            features = [ "derive" ];
-          }
-          {
-            name = "serde_json";
-            packageId = "serde_json";
-          }
-          {
-            name = "snafu";
-            packageId = "snafu 0.8.5";
-          }
-          {
-            name = "stackable-operator";
-            packageId = "stackable-operator";
-          }
-          {
-            name = "strum";
-            packageId = "strum";
-            features = [ "derive" ];
-          }
-          {
-            name = "tracing";
-            packageId = "tracing";
-          }
-        ];
-        devDependencies = [
-          {
-            name = "rstest";
-            packageId = "rstest";
-          }
-          {
-            name = "serde_yaml";
-            packageId = "serde_yaml";
-          }
-        ];
-
-      };
       "stackable-trino-operator" = rec {
         crateName = "stackable-trino-operator";
         version = "0.0.0-dev";
@@ -7712,6 +7661,15 @@ rec {
             packageId = "semver";
           }
           {
+            name = "serde";
+            packageId = "serde";
+            features = [ "derive" ];
+          }
+          {
+            name = "serde_json";
+            packageId = "serde_json";
+          }
+          {
             name = "serde_yaml";
             packageId = "serde_yaml";
           }
@@ -7722,10 +7680,6 @@ rec {
           {
             name = "stackable-operator";
             packageId = "stackable-operator";
-          }
-          {
-            name = "stackable-trino-crd";
-            packageId = "stackable-trino-crd";
           }
           {
             name = "strum";
@@ -7753,6 +7707,10 @@ rec {
           {
             name = "rstest";
             packageId = "rstest";
+          }
+          {
+            name = "serde_yaml";
+            packageId = "serde_yaml";
           }
         ];
 

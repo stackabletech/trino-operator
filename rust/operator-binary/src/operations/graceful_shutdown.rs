@@ -8,7 +8,8 @@ use stackable_operator::{
     builder::pod::{container::ContainerBuilder, PodBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
 };
-use stackable_trino_crd::{
+
+use crate::crd::{
     TrinoCluster, TrinoConfig, TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD,
     WORKER_SHUTDOWN_GRACE_PERIOD,
 };

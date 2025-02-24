@@ -3,9 +3,12 @@
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::{authentication::oidc, tls_verification::TlsClientDetailsError};
-use stackable_trino_crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR};
 
-use crate::{authentication::TrinoAuthenticationConfig, command};
+use crate::{
+    authentication::TrinoAuthenticationConfig,
+    command,
+    crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR},
+};
 
 // Trino properties
 const HTTP_SERVER_AUTHENTICATION_OAUTH2_CLIENT_ID: &str =
@@ -115,7 +118,7 @@ impl TrinoOidcAuthentication {
 
         oauth2_authentication_config.add_env_vars(
             TrinoRole::Coordinator,
-            stackable_trino_crd::Container::Trino,
+            crate::crd::Container::Trino,
             oidc::AuthenticationProvider::client_credentials_env_var_mounts(
                 authenticator.client_credentials_secret,
             ),
@@ -159,12 +162,12 @@ impl TrinoOidcAuthentication {
         oauth2_authentication_config.add_volumes(tls_volumes);
         oauth2_authentication_config.add_volume_mounts(
             TrinoRole::Coordinator,
-            stackable_trino_crd::Container::Prepare,
+            crate::crd::Container::Prepare,
             tls_mounts.clone(),
         );
         oauth2_authentication_config.add_volume_mounts(
             TrinoRole::Worker,
-            stackable_trino_crd::Container::Prepare,
+            crate::crd::Container::Prepare,
             tls_mounts,
         );
 
@@ -178,7 +181,7 @@ impl TrinoOidcAuthentication {
             if let Some(path) = authenticator.oidc.tls.tls_ca_cert_mount_path() {
                 oauth2_authentication_config.add_commands(
                     TrinoRole::Coordinator,
-                    stackable_trino_crd::Container::Prepare,
+                    crate::crd::Container::Prepare,
                     command::add_cert_to_truststore(&path, STACKABLE_CLIENT_TLS_DIR, "oidc-idp"),
                 );
             }
@@ -210,9 +213,9 @@ mod tests {
     use std::mem;
 
     use rstest::rstest;
-    use stackable_trino_crd::Container;
 
     use super::*;
+    use crate::crd::Container;
 
     const IDP_PORT: u16 = 8080;
     const IDP_SCOPE_1: &str = "openid";

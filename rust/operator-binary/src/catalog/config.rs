@@ -7,9 +7,9 @@ use stackable_operator::{
     },
     kube::{Resource, ResourceExt},
 };
-use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
+use crate::crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
 
 pub struct CatalogConfig {
     /// Name of the catalog
