@@ -7649,16 +7649,8 @@ rec {
             packageId = "openssl";
           }
           {
-            name = "pin-project";
-            packageId = "pin-project";
-          }
-          {
             name = "product-config";
             packageId = "product-config";
-          }
-          {
-            name = "semver";
-            packageId = "semver";
           }
           {
             name = "serde";
