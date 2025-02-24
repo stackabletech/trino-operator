@@ -188,6 +188,44 @@ pub struct TrinoClusterSpec {
     pub workers: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
 }
 
+#[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
+#[fragment_attrs(
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        Merge,
+        JsonSchema,
+        PartialEq,
+        Serialize
+    ),
+    serde(rename_all = "camelCase")
+)]
+pub struct TrinoConfig {
+    // config.properties
+    pub query_max_memory: Option<String>,
+    pub query_max_memory_per_node: Option<String>,
+    #[fragment_attrs(serde(default))]
+    pub logging: Logging<Container>,
+    #[fragment_attrs(serde(default))]
+    pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
+    #[fragment_attrs(serde(default))]
+    pub affinity: StackableAffinity,
+
+    /// Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
+    #[fragment_attrs(serde(default))]
+    pub graceful_shutdown_timeout: Option<Duration>,
+
+    /// Request secret (currently only autoTls certificates) lifetime from the secret operator, e.g. `7d`, or `30d`.
+    /// This can be shortened by the `maxCertificateLifetime` setting on the SecretClass issuing the TLS certificate.
+    ///
+    /// Defaults to `15d` for coordinators (as currently a restart kills all running queries)
+    /// and `1d` for workers.
+    #[fragment_attrs(serde(default))]
+    pub requested_secret_lifetime: Option<Duration>,
+}
+
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoClusterConfig {
@@ -231,29 +269,6 @@ pub struct TrinoClusterConfig {
     pub listener_class: CurrentlySupportedListenerClasses,
 }
 
-// TODO: Temporary solution until listener-operator is finished
-#[derive(Clone, Debug, Default, Display, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum CurrentlySupportedListenerClasses {
-    #[default]
-    #[serde(rename = "cluster-internal")]
-    ClusterInternal,
-    #[serde(rename = "external-unstable")]
-    ExternalUnstable,
-    #[serde(rename = "external-stable")]
-    ExternalStable,
-}
-
-impl CurrentlySupportedListenerClasses {
-    pub fn k8s_service_type(&self) -> String {
-        match self {
-            CurrentlySupportedListenerClasses::ClusterInternal => "ClusterIP".to_string(),
-            CurrentlySupportedListenerClasses::ExternalUnstable => "NodePort".to_string(),
-            CurrentlySupportedListenerClasses::ExternalStable => "LoadBalancer".to_string(),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrinoAuthorization {
@@ -283,6 +298,55 @@ pub struct TrinoTls {
         skip_serializing_if = "Option::is_none"
     )]
     pub internal_secret_class: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, JsonSchema, PartialEq, Fragment)]
+#[fragment_attrs(
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        Merge,
+        JsonSchema,
+        PartialEq,
+        Serialize
+    ),
+    serde(rename_all = "camelCase")
+)]
+pub struct TrinoStorageConfig {
+    #[fragment_attrs(serde(default))]
+    pub data: PvcConfig,
+}
+
+#[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrinoClusterStatus {
+    #[serde(default)]
+    pub conditions: Vec<ClusterCondition>,
+}
+
+// TODO: Temporary solution until listener-operator is finished
+#[derive(Clone, Debug, Default, Display, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum CurrentlySupportedListenerClasses {
+    #[default]
+    #[serde(rename = "cluster-internal")]
+    ClusterInternal,
+    #[serde(rename = "external-unstable")]
+    ExternalUnstable,
+    #[serde(rename = "external-stable")]
+    ExternalStable,
+}
+
+impl CurrentlySupportedListenerClasses {
+    pub fn k8s_service_type(&self) -> String {
+        match self {
+            CurrentlySupportedListenerClasses::ClusterInternal => "ClusterIP".to_string(),
+            CurrentlySupportedListenerClasses::ExternalUnstable => "NodePort".to_string(),
+            CurrentlySupportedListenerClasses::ExternalStable => "LoadBalancer".to_string(),
+        }
+    }
 }
 
 impl Default for TrinoTls {
@@ -350,25 +414,6 @@ impl TrinoRole {
     }
 }
 
-#[derive(Clone, Debug, Default, JsonSchema, PartialEq, Fragment)]
-#[fragment_attrs(
-    derive(
-        Clone,
-        Debug,
-        Default,
-        Deserialize,
-        Merge,
-        JsonSchema,
-        PartialEq,
-        Serialize
-    ),
-    serde(rename_all = "camelCase")
-)]
-pub struct TrinoStorageConfig {
-    #[fragment_attrs(serde(default))]
-    pub data: PvcConfig,
-}
-
 #[derive(
     Clone,
     Debug,
@@ -394,44 +439,6 @@ pub enum Container {
     PasswordFileUpdater,
     // main
     Trino,
-}
-
-#[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
-#[fragment_attrs(
-    derive(
-        Clone,
-        Debug,
-        Default,
-        Deserialize,
-        Merge,
-        JsonSchema,
-        PartialEq,
-        Serialize
-    ),
-    serde(rename_all = "camelCase")
-)]
-pub struct TrinoConfig {
-    // config.properties
-    pub query_max_memory: Option<String>,
-    pub query_max_memory_per_node: Option<String>,
-    #[fragment_attrs(serde(default))]
-    pub logging: Logging<Container>,
-    #[fragment_attrs(serde(default))]
-    pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
-    #[fragment_attrs(serde(default))]
-    pub affinity: StackableAffinity,
-
-    /// Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
-    #[fragment_attrs(serde(default))]
-    pub graceful_shutdown_timeout: Option<Duration>,
-
-    /// Request secret (currently only autoTls certificates) lifetime from the secret operator, e.g. `7d`, or `30d`.
-    /// This can be shortened by the `maxCertificateLifetime` setting on the SecretClass issuing the TLS certificate.
-    ///
-    /// Defaults to `15d` for coordinators (as currently a restart kills all running queries)
-    /// and `1d` for workers.
-    #[fragment_attrs(serde(default))]
-    pub requested_secret_lifetime: Option<Duration>,
 }
 
 impl TrinoConfig {
@@ -857,13 +864,6 @@ impl TrinoCluster {
         tracing::debug!("Merged config: {:?}", conf_rolegroup);
         fragment::validate(conf_rolegroup).context(FragmentValidationFailureSnafu)
     }
-}
-
-#[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TrinoClusterStatus {
-    #[serde(default)]
-    pub conditions: Vec<ClusterCondition>,
 }
 
 impl HasStatusCondition for TrinoCluster {
