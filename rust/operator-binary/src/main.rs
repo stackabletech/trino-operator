@@ -29,12 +29,13 @@ use stackable_operator::{
         ResourceExt,
     },
     logging::controller::report_controller_reconciled,
-    CustomResourceExt,
+    shared::yaml::SerializeOptions,
+    YamlSchema,
 };
 
 use crate::{
     controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
-    crd::{v1alpha1, APP_NAME},
+    crd::{catalog::TrinoCatalog, v1alpha1, TrinoCluster, APP_NAME},
 };
 
 mod built_info {
@@ -53,8 +54,10 @@ async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => {
-            v1alpha1::TrinoCluster::print_yaml_schema(built_info::PKG_VERSION)?;
-            crd::catalog::v1alpha1::TrinoCatalog::print_yaml_schema(built_info::PKG_VERSION)?;
+            TrinoCluster::merged_crd(TrinoCluster::V1Alpha1)?
+                .print_yaml_schema(built_info::PKG_VERSION, SerializeOptions::default())?;
+            TrinoCatalog::merged_crd(TrinoCatalog::V1Alpha1)?
+                .print_yaml_schema(built_info::PKG_VERSION, SerializeOptions::default())?;
         }
         Command::Run(ProductOperatorRun {
             product_config,

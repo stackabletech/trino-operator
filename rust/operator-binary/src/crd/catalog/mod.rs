@@ -49,6 +49,7 @@ pub mod versioned {
         /// The `connector` defines which connector is used.
         pub connector: TrinoCatalogConnector,
         #[serde(default)]
+
         /// The `configOverrides` allow overriding arbitrary Trino settings.
         /// For example, for Hive you could add `hive.metastore.username: trino`.
         pub config_overrides: HashMap<String, String>,
