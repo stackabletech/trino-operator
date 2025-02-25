@@ -86,12 +86,9 @@ pub enum TrinoCatalogConnector {
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::kube::CustomResourceExt;
-
-    use super::*;
-
+    use crate::crd::catalog::TrinoCatalog;
     #[test]
     fn test_crd_generation() {
-        v1alpha1::TrinoCatalog::crd();
+        TrinoCatalog::merged_crd(TrinoCatalog::V1Alpha1).unwrap();
     }
 }
