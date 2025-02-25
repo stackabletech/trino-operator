@@ -5,9 +5,10 @@ use stackable_operator::{
     memory::{BinaryMultiple, MemoryQuantity},
     role_utils::{self, GenericRoleConfig, JavaCommonConfig, JvmArgumentOverrides, Role},
 };
-use stackable_trino_crd::{
-    TrinoConfig, TrinoConfigFragment, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT,
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+
+use crate::crd::{
+    v1alpha1, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT, RW_CONFIG_DIR_NAME,
+    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
 };
 
 #[derive(Snafu, Debug)]
@@ -38,8 +39,8 @@ pub enum Error {
 // in the future depending on the role and version.
 pub fn jvm_config(
     product_version: u16,
-    merged_config: &TrinoConfig,
-    role: &Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
+    merged_config: &v1alpha1::TrinoConfig,
+    role: &Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
     role_group: &str,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;
@@ -154,9 +155,9 @@ mod tests {
     use std::str::FromStr;
 
     use indoc::indoc;
-    use stackable_trino_crd::{TrinoCluster, TrinoRole};
 
     use super::*;
+    use crate::crd::{v1alpha1, TrinoRole};
 
     #[test]
     fn test_jvm_config_defaults() {
@@ -265,7 +266,8 @@ mod tests {
     }
 
     fn construct_jvm_config(trino_cluster: &str) -> String {
-        let trino: TrinoCluster = serde_yaml::from_str(trino_cluster).expect("illegal test input");
+        let trino: v1alpha1::TrinoCluster =
+            serde_yaml::from_str(trino_cluster).expect("illegal test input");
 
         let role = TrinoRole::Coordinator;
         let rolegroup_ref = role.rolegroup_ref(&trino, "default");

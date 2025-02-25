@@ -4,7 +4,8 @@ use stackable_operator::{
     client::Client,
     commons::opa::{OpaApiVersion, OpaConfig},
 };
-use stackable_trino_crd::TrinoCluster;
+
+use crate::crd::v1alpha1::TrinoCluster;
 
 pub struct TrinoOpaConfig {
     /// URI for OPA policies, e.g.

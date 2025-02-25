@@ -9,10 +9,6 @@ use stackable_operator::{
     },
     k8s_openapi::api::core::v1::ConfigMap,
 };
-use stackable_trino_crd::{
-    catalog::commons::{HdfsConnection, MetastoreConnection},
-    CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
-};
 
 use super::{
     config::CatalogConfig,
@@ -23,7 +19,13 @@ use super::{
     },
     ExtendCatalogConfig, FromTrinoCatalogError,
 };
-use crate::command;
+use crate::{
+    command,
+    crd::{
+        catalog::commons::{HdfsConnection, MetastoreConnection},
+        CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+    },
+};
 
 #[async_trait]
 impl ExtendCatalogConfig for MetastoreConnection {

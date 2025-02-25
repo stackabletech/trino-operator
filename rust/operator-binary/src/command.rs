@@ -5,23 +5,23 @@ use stackable_operator::{
     },
     utils::COMMON_BASH_TRAP_FUNCTIONS,
 };
-use stackable_trino_crd::{
-    Container, TrinoCluster, TrinoConfig, TrinoRole, CONFIG_DIR_NAME, DATA_DIR_NAME,
-    LOG_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-    STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
-};
 
 use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
     controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
+    crd::{
+        v1alpha1, Container, TrinoRole, CONFIG_DIR_NAME, DATA_DIR_NAME, LOG_PROPERTIES,
+        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+        STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
+    },
 };
 
 pub fn container_prepare_args(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     catalogs: &[CatalogConfig],
-    merged_config: &TrinoConfig,
+    merged_config: &v1alpha1::TrinoConfig,
 ) -> Vec<String> {
     let mut args = vec![];
 

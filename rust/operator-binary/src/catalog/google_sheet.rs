@@ -3,9 +3,9 @@ use stackable_operator::{
     builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
 };
-use stackable_trino_crd::{catalog::google_sheet::GoogleSheetConnector, CONFIG_DIR_NAME};
 
 use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
+use crate::crd::{catalog::google_sheet::GoogleSheetConnector, CONFIG_DIR_NAME};
 
 pub const CONNECTOR_NAME: &str = "gsheets";
 

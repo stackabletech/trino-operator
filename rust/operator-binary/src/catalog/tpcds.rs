@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use stackable_operator::client::Client;
-use stackable_trino_crd::catalog::tpcds::TpcdsConnector;
 
 use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
+use crate::crd::catalog::tpcds::TpcdsConnector;
 
 pub const CONNECTOR_NAME: &str = "tpcds";
 
