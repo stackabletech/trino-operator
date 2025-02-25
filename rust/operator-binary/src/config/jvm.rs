@@ -27,7 +27,7 @@ pub enum Error {
         unit: String,
     },
 
-    #[snafu(display("Trino version {version} is not yet supported, as the correct JVM configuration is not yet known"))]
+    #[snafu(display("Trino version {version} is not supported. Only specific versions are handled due to version specific JVM configuration generation"))]
     TrinoVersionNotSupported { version: u16 },
 
     #[snafu(display("failed to merge jvm argument overrides"))]
