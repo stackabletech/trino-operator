@@ -8,9 +8,9 @@ use stackable_operator::{
     builder::pod::{container::ContainerBuilder, PodBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
 };
-use stackable_trino_crd::{
-    TrinoCluster, TrinoConfig, TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD,
-    WORKER_SHUTDOWN_GRACE_PERIOD,
+
+use crate::crd::{
+    v1alpha1, TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD, WORKER_SHUTDOWN_GRACE_PERIOD,
 };
 
 #[derive(Debug, Snafu)]
@@ -22,7 +22,7 @@ pub enum Error {
 }
 
 pub fn graceful_shutdown_config_properties(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     role: &TrinoRole,
 ) -> BTreeMap<String, Option<String>> {
     match role {
@@ -46,9 +46,9 @@ pub fn graceful_shutdown_config_properties(
 }
 
 pub fn add_graceful_shutdown_config(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     role: &TrinoRole,
-    merged_config: &TrinoConfig,
+    merged_config: &v1alpha1::TrinoConfig,
     pod_builder: &mut PodBuilder,
     trino_builder: &mut ContainerBuilder,
 ) -> Result<(), Error> {

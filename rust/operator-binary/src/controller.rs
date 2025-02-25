@@ -1,4 +1,4 @@
-//! Ensures that `Pod`s are configured and running for each [`TrinoCluster`]
+//! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`]
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
@@ -71,18 +71,6 @@ use stackable_operator::{
     time::Duration,
     utils::cluster_info::KubernetesClusterInfo,
 };
-use stackable_trino_crd::{
-    authentication::resolve_authentication_classes,
-    catalog::TrinoCatalog,
-    discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-    Container, TrinoCluster, TrinoClusterStatus, TrinoConfig, TrinoConfigFragment, TrinoRole,
-    ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, DATA_DIR_NAME,
-    DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT, HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME,
-    JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE,
-    LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-    RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-    STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -90,6 +78,18 @@ use crate::{
     authorization::opa::TrinoOpaConfig,
     catalog::{config::CatalogConfig, FromTrinoCatalogError},
     command, config,
+    crd::{
+        authentication::resolve_authentication_classes,
+        catalog,
+        discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
+        v1alpha1, Container, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
+        CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT,
+        HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES,
+        LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES,
+        METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
+        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+    },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
     },
@@ -152,25 +152,25 @@ pub enum Error {
     #[snafu(display("failed to apply Service for {}", rolegroup))]
     ApplyRoleGroupService {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupRef<TrinoCluster>,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfig {
         source: stackable_operator::builder::configmap::Error,
-        rolegroup: RoleGroupRef<TrinoCluster>,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
     #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
     ApplyRoleGroupConfig {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupRef<TrinoCluster>,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
     #[snafu(display("failed to apply StatefulSet for {}", rolegroup))]
     ApplyRoleGroupStatefulSet {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupRef<TrinoCluster>,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
     #[snafu(display("failed to apply internal secret"))]
@@ -200,7 +200,7 @@ pub enum Error {
     FailedToParseRole { source: strum::ParseError },
 
     #[snafu(display("internal operator failure: {source}"))]
-    InternalOperatorFailure { source: stackable_trino_crd::Error },
+    InternalOperatorFailure { source: crate::crd::Error },
 
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
@@ -218,7 +218,7 @@ pub enum Error {
     #[snafu(display("failed to parse {catalog}"))]
     ParseCatalog {
         source: FromTrinoCatalogError,
-        catalog: ObjectRef<TrinoCatalog>,
+        catalog: ObjectRef<catalog::v1alpha1::TrinoCatalog>,
     },
 
     #[snafu(display("illegal container name: [{container_name}]"))]
@@ -233,7 +233,7 @@ pub enum Error {
     },
 
     #[snafu(display("failed to resolve and merge config for role and role group"))]
-    FailedToResolveConfig { source: stackable_trino_crd::Error },
+    FailedToResolveConfig { source: crate::crd::Error },
 
     #[snafu(display("failed to resolve the Vector aggregator address"))]
     ResolveVectorAggregatorAddress {
@@ -271,7 +271,7 @@ pub enum Error {
 
     #[snafu(display("Failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
-        source: stackable_trino_crd::authentication::Error,
+        source: crate::crd::authentication::Error,
     },
 
     #[snafu(display("Unsupported Trino authentication"))]
@@ -343,7 +343,7 @@ pub enum Error {
     },
 
     #[snafu(display("failed to read role"))]
-    ReadRole { source: stackable_trino_crd::Error },
+    ReadRole { source: crate::crd::Error },
 
     #[snafu(display("failed to get merged jvmArgumentOverrides"))]
     GetMergedJvmArgumentOverrides {
@@ -360,7 +360,7 @@ impl ReconcilerError for Error {
 }
 
 pub async fn reconcile_trino(
-    trino: Arc<DeserializeGuard<TrinoCluster>>,
+    trino: Arc<DeserializeGuard<v1alpha1::TrinoCluster>>,
     ctx: Arc<Ctx>,
 ) -> Result<Action> {
     tracing::info!("Starting reconcile");
@@ -389,7 +389,7 @@ pub async fn reconcile_trino(
     .context(InvalidAuthenticationConfigSnafu)?;
 
     let catalog_definitions = client
-        .list_with_label_selector::<TrinoCatalog>(
+        .list_with_label_selector::<catalog::v1alpha1::TrinoCatalog>(
             trino
                 .metadata
                 .namespace
@@ -475,7 +475,7 @@ pub async fn reconcile_trino(
 
     for (trino_role_str, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
-        let role: &Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> =
+        let role: &Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> =
             trino.role(&trino_role).context(ReadRoleSnafu)?;
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
@@ -561,7 +561,7 @@ pub async fn reconcile_trino(
     let cluster_operation_cond_builder =
         ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
 
-    let status = TrinoClusterStatus {
+    let status = v1alpha1::TrinoClusterStatus {
         conditions: compute_conditions(
             trino,
             &[&sts_cond_builder, &cluster_operation_cond_builder],
@@ -583,7 +583,7 @@ pub async fn reconcile_trino(
 /// The coordinator-role service is the primary endpoint that should be used by clients that do not
 /// perform internal load balancing, including targets outside of the cluster.
 pub fn build_coordinator_role_service(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
 ) -> Result<Service> {
     let role = TrinoRole::Coordinator;
@@ -622,13 +622,13 @@ pub fn build_coordinator_role_service(
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_config_map(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    role: &Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
+    role: &Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
     trino_role: &TrinoRole,
-    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    merged_config: &TrinoConfig,
+    merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
     vector_aggregator_address: Option<&str>,
@@ -830,9 +830,9 @@ fn build_rolegroup_config_map(
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
 /// given by the administrator
 fn build_rolegroup_catalog_config_map(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
     catalogs: &[CatalogConfig],
 ) -> Result<ConfigMap> {
     ConfigMapBuilder::new()
@@ -886,12 +886,12 @@ fn build_rolegroup_catalog_config_map(
 /// corresponding [`Service`] (from [`build_rolegroup_service`]).
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
-    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    merged_config: &TrinoConfig,
+    merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     sa_name: &str,
@@ -1226,9 +1226,9 @@ fn build_rolegroup_statefulset(
 ///
 /// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
 fn build_rolegroup_service(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    rolegroup_ref: &RoleGroupRef<TrinoCluster>,
+    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
 ) -> Result<Service> {
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
@@ -1268,7 +1268,7 @@ fn build_rolegroup_service(
 }
 
 pub fn error_policy(
-    _obj: Arc<DeserializeGuard<TrinoCluster>>,
+    _obj: Arc<DeserializeGuard<v1alpha1::TrinoCluster>>,
     error: &Error,
     _ctx: Arc<Ctx>,
 ) -> Action {
@@ -1306,7 +1306,7 @@ fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &st
 /// * `product_config`  - The product config to validate and complement the user config.
 ///
 fn validated_product_config(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     version: &str,
     product_config: &ProductConfigManager,
 ) -> Result<ValidatedRoleConfigByPropertyKind, Error> {
@@ -1357,11 +1357,11 @@ fn validated_product_config(
 }
 
 fn build_recommended_labels<'a>(
-    owner: &'a TrinoCluster,
+    owner: &'a v1alpha1::TrinoCluster,
     app_version: &'a str,
     role: &'a str,
     role_group: &'a str,
-) -> ObjectLabels<'a, TrinoCluster> {
+) -> ObjectLabels<'a, v1alpha1::TrinoCluster> {
     ObjectLabels {
         owner,
         app_name: APP_NAME,
@@ -1373,7 +1373,10 @@ fn build_recommended_labels<'a>(
     }
 }
 
-async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) -> Result<()> {
+async fn create_shared_internal_secret(
+    trino: &v1alpha1::TrinoCluster,
+    client: &Client,
+) -> Result<()> {
     let secret = build_shared_internal_secret(trino)?;
     if client
         .get_opt::<Secret>(
@@ -1396,7 +1399,7 @@ async fn create_shared_internal_secret(trino: &TrinoCluster, client: &Client) ->
     Ok(())
 }
 
-fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
+fn build_shared_internal_secret(trino: &v1alpha1::TrinoCluster) -> Result<Secret> {
     let mut internal_secret = BTreeMap::new();
     internal_secret.insert(ENV_INTERNAL_SECRET.to_string(), get_random_base64());
 
@@ -1413,7 +1416,7 @@ fn build_shared_internal_secret(trino: &TrinoCluster) -> Result<Secret> {
     })
 }
 
-fn build_shared_internal_secret_name(trino: &TrinoCluster) -> String {
+fn build_shared_internal_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
     format!("{}-internal-secret", trino.name_any())
 }
 
@@ -1423,7 +1426,7 @@ fn get_random_base64() -> String {
     openssl::base64::encode_block(&buf)
 }
 
-fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
+fn service_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ServicePort> {
     let mut ports = vec![ServicePort {
         name: Some(METRICS_PORT_NAME.to_string()),
         port: METRICS_PORT.into(),
@@ -1452,7 +1455,7 @@ fn service_ports(trino: &TrinoCluster) -> Vec<ServicePort> {
     ports
 }
 
-fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
+fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
     let mut ports = vec![ContainerPort {
         name: Some(METRICS_PORT_NAME.to_string()),
         container_port: METRICS_PORT.into(),
@@ -1481,7 +1484,7 @@ fn container_ports(trino: &TrinoCluster) -> Vec<ContainerPort> {
     ports
 }
 
-fn readiness_probe(trino: &TrinoCluster) -> Probe {
+fn readiness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
     let port_name = if trino.expose_https_port() {
         HTTPS_PORT_NAME
     } else {
@@ -1500,7 +1503,7 @@ fn readiness_probe(trino: &TrinoCluster) -> Probe {
     }
 }
 
-fn liveness_probe(trino: &TrinoCluster) -> Probe {
+fn liveness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
     let port_name = if trino.expose_https_port() {
         HTTPS_PORT_NAME
     } else {
@@ -1537,7 +1540,7 @@ fn create_tls_volume(
 }
 
 fn tls_volume_mounts(
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     pod_builder: &mut PodBuilder,
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
@@ -1686,7 +1689,8 @@ mod tests {
     }
 
     fn build_config_map(trino_yaml: &str) -> ConfigMap {
-        let mut trino: TrinoCluster = serde_yaml::from_str(trino_yaml).expect("illegal test input");
+        let mut trino: v1alpha1::TrinoCluster =
+            serde_yaml::from_str(trino_yaml).expect("illegal test input");
         trino.metadata.namespace = Some("default".to_owned());
         trino.metadata.uid = Some("42".to_owned());
         let cluster_info = KubernetesClusterInfo {
@@ -1803,7 +1807,7 @@ mod tests {
                 replicas: 1
         "#;
         let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
-        let trino: TrinoCluster =
+        let trino: v1alpha1::TrinoCluster =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         let validated_config = validated_product_config(

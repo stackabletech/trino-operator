@@ -20,36 +20,40 @@ use stackable_operator::{
     kube::CustomResource,
     schemars::{self, JsonSchema},
 };
+use stackable_versioned::versioned;
 use tpcds::TpcdsConnector;
 use tpch::TpchConnector;
 
 use self::delta_lake::DeltaLakeConnector;
 
-/// The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
-/// Read more about it in the [Trino operator concept docs](DOCS_BASE_URL_PLACEHOLDER/trino/concepts)
-/// and the [Trino operator usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/).
-/// The documentation also contains a list of all the supported backends.
-#[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[kube(
-    group = "trino.stackable.tech",
-    version = "v1alpha1",
-    kind = "TrinoCatalog",
-    plural = "trinocatalogs",
-    namespaced,
-    crates(
-        kube_core = "stackable_operator::kube::core",
-        k8s_openapi = "stackable_operator::k8s_openapi",
-        schemars = "stackable_operator::schemars"
-    )
-)]
-#[serde(rename_all = "camelCase")]
-pub struct TrinoCatalogSpec {
-    /// The `connector` defines which connector is used.
-    pub connector: TrinoCatalogConnector,
-    #[serde(default)]
-    /// The `configOverrides` allow overriding arbitrary Trino settings.
-    /// For example, for Hive you could add `hive.metastore.username: trino`.
-    pub config_overrides: HashMap<String, String>,
+#[versioned(version(name = "v1alpha1"), options(skip(from)))]
+pub mod versioned {
+    /// The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
+    /// Read more about it in the [Trino operator concept docs](DOCS_BASE_URL_PLACEHOLDER/trino/concepts)
+    /// and the [Trino operator usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/).
+    /// The documentation also contains a list of all the supported backends.
+    #[versioned(k8s(
+        group = "trino.stackable.tech",
+        kind = "TrinoCatalog",
+        plural = "trinocatalogs",
+        namespaced,
+        crates(
+            kube_core = "stackable_operator::kube::core",
+            k8s_openapi = "stackable_operator::k8s_openapi",
+            schemars = "stackable_operator::schemars"
+        )
+    ))]
+    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoCatalogSpec {
+        /// The `connector` defines which connector is used.
+        pub connector: TrinoCatalogConnector,
+        #[serde(default)]
+
+        /// The `configOverrides` allow overriding arbitrary Trino settings.
+        /// For example, for Hive you could add `hive.metastore.username: trino`.
+        pub config_overrides: HashMap<String, String>,
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -82,12 +86,9 @@ pub enum TrinoCatalogConnector {
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::kube::CustomResourceExt;
-
-    use super::*;
-
+    use crate::crd::catalog::TrinoCatalog;
     #[test]
     fn test_crd_generation() {
-        TrinoCatalog::crd();
+        TrinoCatalog::merged_crd(TrinoCatalog::V1Alpha1).unwrap();
     }
 }

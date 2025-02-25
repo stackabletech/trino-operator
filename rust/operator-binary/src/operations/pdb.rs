@@ -5,9 +5,11 @@ use stackable_operator::{
     builder::pdb::PodDisruptionBudgetBuilder, client::Client, cluster_resources::ClusterResources,
     commons::pdb::PdbConfig, kube::ResourceExt,
 };
-use stackable_trino_crd::{TrinoCluster, TrinoRole, APP_NAME};
 
-use crate::controller::{CONTROLLER_NAME, OPERATOR_NAME};
+use crate::{
+    controller::{CONTROLLER_NAME, OPERATOR_NAME},
+    crd::{v1alpha1, TrinoRole, APP_NAME},
+};
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -26,7 +28,7 @@ pub enum Error {
 
 pub async fn add_pdbs(
     pdb: &PdbConfig,
-    trino: &TrinoCluster,
+    trino: &v1alpha1::TrinoCluster,
     role: &TrinoRole,
     client: &Client,
     cluster_resources: &mut ClusterResources,

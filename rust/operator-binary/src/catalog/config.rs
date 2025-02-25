@@ -7,9 +7,9 @@ use stackable_operator::{
     },
     kube::{Resource, ResourceExt},
 };
-use stackable_trino_crd::catalog::{TrinoCatalog, TrinoCatalogConnector};
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
+use crate::crd::catalog::{v1alpha1, TrinoCatalogConnector};
 
 pub struct CatalogConfig {
     /// Name of the catalog
@@ -103,7 +103,7 @@ impl CatalogConfig {
     }
 
     pub async fn from_catalog(
-        catalog: &TrinoCatalog,
+        catalog: &v1alpha1::TrinoCatalog,
         client: &Client,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let catalog_name = catalog

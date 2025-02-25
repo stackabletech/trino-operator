@@ -116,17 +116,16 @@ pub fn build_password_file_update_container(
     resolved_product_image: &ResolvedProductImage,
     volume_mounts: Vec<VolumeMount>,
 ) -> Result<Container, Error> {
-    let mut cb_pw_file_updater =
-        ContainerBuilder::new(&stackable_trino_crd::Container::PasswordFileUpdater.to_string())
-            .expect(
-                "Invalid container name. This should not happen, as the container name is fixed",
-            );
+    let mut cb_pw_file_updater = ContainerBuilder::new(
+        &crate::crd::Container::PasswordFileUpdater.to_string(),
+    )
+    .expect("Invalid container name. This should not happen, as the container name is fixed");
 
     let mut commands = vec![];
 
     commands.push(product_logging::framework::capture_shell_output(
         STACKABLE_LOG_DIR,
-        &stackable_trino_crd::Container::PasswordFileUpdater.to_string(),
+        &crate::crd::Container::PasswordFileUpdater.to_string(),
         // we do not access any of the crd config options for this and just log it to file
         &AutomaticContainerLogConfig::default(),
     ));
