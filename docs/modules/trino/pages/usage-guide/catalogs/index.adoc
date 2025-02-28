@@ -72,8 +72,6 @@ This example illustrates how to use config overrides and config removals
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 spec:
-  connector:
-    # Config as normal...
   # Add some properties
   configOverrides:
     hive.metastore.username: trino
