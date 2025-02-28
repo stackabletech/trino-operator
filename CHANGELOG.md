@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 - Support configuring JVM arguments ([#677]).
 - Aggregate emitted Kubernetes events on the CustomResources ([#677]).
 - Support removing properties from catalogs.
-  This is helpful, because Trino fails to start in case you have any unused config properties ([#XXX]).
+  This is helpful, because Trino fails to start in case you have any unused config properties ([#713]).
 
 ## Changed
 
@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 [#687]: https://github.com/stackabletech/trino-operator/pull/687
 [#694]: https://github.com/stackabletech/trino-operator/pull/694
 [#695]: https://github.com/stackabletech/trino-operator/pull/695
+[#713]: https://github.com/stackabletech/trino-operator/pull/713
 
 ## [24.11.1] - 2025-01-10
 
