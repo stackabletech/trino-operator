@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 - Run a `containerdebug` process in the background of each Trino container to collect debugging information ([#687]).
 - Support configuring JVM arguments ([#677]).
 - Aggregate emitted Kubernetes events on the CustomResources ([#677]).
+- Support removing properties from catalogs.
+  This is helpful, because Trino fails to start in case you have any unused config properties ([#XXX]).
 
 ## Changed
 
