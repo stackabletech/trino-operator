@@ -31,9 +31,6 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
-# We can use configOverrides to add arbitrary properties to the Trino catalog configuration
-  configOverrides:
-    hive.metastore.username: trino
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
@@ -59,6 +56,31 @@ The `metadata.name` is the name of the catalog that shows up in your Trino insta
 The `metadata.labels` are used by TrinoCluster to determine the link between Trino clusters and `TrinoCatalogs`.
 The `spec.connector.<connector>` determines which connector is used.
 Each connector supports a different set of attributes.
+
+=== Config overrides and config removals
+
+You can use `.spec.configOverrides` to set arbitrary additional properties, which will be added to the catalog.
+
+There is also `.spec.experimentalConfigRemovals` to remove any properties the operator might set, but are not used by Trino.
+This causes Trino to log an error message such as `Error: Configuration property 'hive.s3.aws-access-key' was not used` and refuse startup.
+By removing the unneeded properties you can get Trino to start again.
+
+This example illustrates how to use config overrides and config removals
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+spec:
+  connector:
+    # Config as normal...
+  # Add some properties
+  configOverrides:
+    hive.metastore.username: trino
+  # Remove some properties
+  experimentalConfigRemovals:
+    - hive.s3.aws-access-key
+----
 
 === Add a catalog to a Trino cluster
 
