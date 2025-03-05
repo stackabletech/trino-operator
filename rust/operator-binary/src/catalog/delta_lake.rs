@@ -13,6 +13,7 @@ impl ToCatalogConfig for DeltaLakeConnector {
         catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
+        trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
 
@@ -24,12 +25,24 @@ impl ToCatalogConfig for DeltaLakeConnector {
         config.add_property("delta.security", "allow-all");
 
         self.metastore
-            .extend_catalog_config(&mut config, catalog_name, catalog_namespace.clone(), client)
+            .extend_catalog_config(
+                &mut config,
+                catalog_name,
+                catalog_namespace.clone(),
+                client,
+                trino_version,
+            )
             .await?;
 
         if let Some(ref s3) = self.s3 {
-            s3.extend_catalog_config(&mut config, catalog_name, catalog_namespace.clone(), client)
-                .await?;
+            s3.extend_catalog_config(
+                &mut config,
+                catalog_name,
+                catalog_namespace.clone(),
+                client,
+                trino_version,
+            )
+            .await?;
         }
 
         if let Some(ref hdfs) = self.hdfs {
@@ -38,6 +51,7 @@ impl ToCatalogConfig for DeltaLakeConnector {
                 catalog_name,
                 catalog_namespace.clone(),
                 client,
+                trino_version,
             )
             .await?;
         }
