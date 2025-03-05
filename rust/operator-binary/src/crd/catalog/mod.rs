@@ -48,11 +48,22 @@ pub mod versioned {
     pub struct TrinoCatalogSpec {
         /// The `connector` defines which connector is used.
         pub connector: TrinoCatalogConnector,
-        #[serde(default)]
 
         /// The `configOverrides` allow overriding arbitrary Trino settings.
         /// For example, for Hive you could add `hive.metastore.username: trino`.
+        #[serde(default)]
         pub config_overrides: HashMap<String, String>,
+
+        /// List of config properties which should be removed.
+        ///
+        /// This is helpful, because Trino fails to start in case you have any unused config
+        /// properties. The removals are executed after the `configOverrides`.
+        ///
+        /// This field is experimental, as ideally some general solution for the removal of
+        /// properties is found and added to configOverrides. This mechanism would replace this
+        /// field.
+        #[serde(default, rename = "experimentalConfigRemovals")]
+        pub config_removals: Vec<String>,
     }
 }
 

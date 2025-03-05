@@ -160,6 +160,16 @@ impl CatalogConfig {
             .properties
             .extend(catalog.spec.config_overrides.clone());
 
+        for removal in &catalog.spec.config_removals {
+            if catalog_config.properties.remove(removal).is_none() {
+                tracing::warn!(
+                    catalog.name = catalog_name,
+                    property = removal,
+                    "You asked to remove a non-existing config property from a catalog"
+                );
+            }
+        }
+
         Ok(catalog_config)
     }
 }
