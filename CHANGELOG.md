@@ -12,11 +12,16 @@ All notable changes to this project will be documented in this file.
 - Support configuring JVM arguments ([#677]).
 - Aggregate emitted Kubernetes events on the CustomResources ([#677]).
 
-## Changed
+### Changed
 
 - Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
 - Default to OCI for image metadata and product image selection ([#695]).
+
+### Fixed
+
+- Add a startupProbe, which checks via `/v1/info` that the coordinator/worker have finished starting.
+  Also migrate the other probes from `tcpSocket` to `httpGet` on `/v1/info` ([#XXX]).
 
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
