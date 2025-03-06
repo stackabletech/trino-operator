@@ -21,13 +21,14 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Add a startupProbe, which checks via `/v1/info` that the coordinator/worker have finished starting.
-  Also migrate the other probes from `tcpSocket` to `httpGet` on `/v1/info` ([#XXX]).
+  Also migrate the other probes from `tcpSocket` to `httpGet` on `/v1/info` ([#715]).
 
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
 [#687]: https://github.com/stackabletech/trino-operator/pull/687
 [#694]: https://github.com/stackabletech/trino-operator/pull/694
 [#695]: https://github.com/stackabletech/trino-operator/pull/695
+[#715]: https://github.com/stackabletech/trino-operator/pull/715
 
 ## [24.11.1] - 2025-01-10
 
