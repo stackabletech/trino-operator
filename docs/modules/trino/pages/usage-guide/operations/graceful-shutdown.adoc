@@ -110,7 +110,7 @@ If you use your own custom rego rules, you can achieve this by adding the follow
 
 [source,rego]
 ----
-allow {
+if allow {
   input.action.operation == "WriteSystemInformation"
   input.context.identity.user == "graceful-shutdown-user"
 }
