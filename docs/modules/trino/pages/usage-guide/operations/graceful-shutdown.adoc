@@ -110,7 +110,8 @@ If you use your own custom rego rules, you can achieve this by adding the follow
 
 [source,rego]
 ----
-if allow {
+# Allow graceful shutdown, see https://docs.stackable.tech/home/stable/trino/usage-guide/operations/graceful-shutdown/#_authorization_requirements
+allow if {
   input.action.operation == "WriteSystemInformation"
   input.context.identity.user == "graceful-shutdown-user"
 }
