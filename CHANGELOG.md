@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 - Default to OCI for image metadata and product image selection ([#695]).
 - Explicitly set `fs.native-s3.enabled=true` and `fs.hadoop.enabled=true` in applicable catalog config properties ([#705]).
   - Trino 470 requires the native S3 implementation to be used.
-- Set the S3 region unless it will be auto-discovered ([#705]).
+- BREAKING: Always set the S3 region ([#705]).
 
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
