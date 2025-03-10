@@ -114,11 +114,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
             469.. => ("s3.endpoint", "s3.region", "s3.path-style-access"),
         };
         catalog_config.add_property(endpoint_prop, s3.endpoint().context(ConfigureS3Snafu)?);
-
-        if let Some(region_name) = s3.region.name() {
-            catalog_config.add_property(region_prop, region_name);
-        }
-
+        catalog_config.add_property(region_prop, &s3.region.name);
         catalog_config.add_property(
             path_style_prop,
             (s3.access_style == S3AccessStyle::Path).to_string(),

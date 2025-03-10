@@ -8240,13 +8240,13 @@ rec {
       };
       "stackable-operator" = rec {
         crateName = "stackable-operator";
-        version = "0.86.2";
+        version = "0.87.2";
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "128b30cefe65f72b8b9113c5303856727e08221e";
-          sha256 = "0xjsq7qackca7i0f314alfq7zinbrq5dp1r7ac8bj9byfjsak077";
+          rev = "bc176bfc23f15533cdb3b7a7e7a773d4f29891e1";
+          sha256 = "0cqz1xmj3vbm5hm9x6wbgg2l265s30j5j5609wmg68p6giywh82a";
         };
         libName = "stackable_operator";
         authors = [
@@ -8405,8 +8405,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "128b30cefe65f72b8b9113c5303856727e08221e";
-          sha256 = "0xjsq7qackca7i0f314alfq7zinbrq5dp1r7ac8bj9byfjsak077";
+          rev = "bc176bfc23f15533cdb3b7a7e7a773d4f29891e1";
+          sha256 = "0cqz1xmj3vbm5hm9x6wbgg2l265s30j5j5609wmg68p6giywh82a";
         };
         procMacro = true;
         libName = "stackable_operator_derive";
@@ -8440,8 +8440,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "128b30cefe65f72b8b9113c5303856727e08221e";
-          sha256 = "0xjsq7qackca7i0f314alfq7zinbrq5dp1r7ac8bj9byfjsak077";
+          rev = "bc176bfc23f15533cdb3b7a7e7a773d4f29891e1";
+          sha256 = "0cqz1xmj3vbm5hm9x6wbgg2l265s30j5j5609wmg68p6giywh82a";
         };
         libName = "stackable_shared";
         authors = [
@@ -8696,9 +8696,9 @@ rec {
       };
       "strum" = rec {
         crateName = "strum";
-        version = "0.26.3";
-        edition = "2018";
-        sha256 = "01lgl6jvrf4j28v5kmx9bp480ygf1nhvac8b4p7rcj9hxw50zv4g";
+        version = "0.27.1";
+        edition = "2021";
+        sha256 = "0cic9r2sc2h17nnpjm2yfp7rsd35gkbcbqvrhl553jaiih4fykgn";
         authors = [
           "Peter Glotfelty <peter.glotfelty@microsoft.com>"
         ];
@@ -8707,12 +8707,6 @@ rec {
             name = "strum_macros";
             packageId = "strum_macros";
             optional = true;
-          }
-        ];
-        devDependencies = [
-          {
-            name = "strum_macros";
-            packageId = "strum_macros";
           }
         ];
         features = {
@@ -8725,9 +8719,9 @@ rec {
       };
       "strum_macros" = rec {
         crateName = "strum_macros";
-        version = "0.26.4";
-        edition = "2018";
-        sha256 = "1gl1wmq24b8md527cpyd5bw9rkbqldd7k1h38kf5ajd2ln2ywssc";
+        version = "0.27.1";
+        edition = "2021";
+        sha256 = "1s7x07nkrgjfvxrvcdjw6qanad4c55yjnd32bph9q3xgpid8qyn7";
         procMacro = true;
         authors = [
           "Peter Glotfelty <peter.glotfelty@microsoft.com>"
@@ -8752,7 +8746,7 @@ rec {
           {
             name = "syn";
             packageId = "syn 2.0.96";
-            features = [ "parsing" "extra-traits" ];
+            features = [ "parsing" ];
           }
         ];
 
