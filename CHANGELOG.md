@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - Aggregate emitted Kubernetes events on the CustomResources ([#677]).
 - Support for Trino 470 ([#705]).
 
-## Changed
+### Changed
 
 - Increased the default temporary secret lifetime for coordinators from 1 day to 15 days.
   This is because Trino currently does not offer a HA setup for them, a restart kills all running queries ([#694]).
@@ -22,12 +22,19 @@ All notable changes to this project will be documented in this file.
   - Trino 470 requires the native S3 implementation to be used.
 - BREAKING: Always set the S3 region ([#705]).
 
+### Fixed
+
+- Add a startupProbe, which checks via `/v1/info` that the coordinator/worker have finished starting.
+  Also migrate the other probes from `tcpSocket` to `httpGet` on `/v1/info` ([#715], [#717]).
+
 [#676]: https://github.com/stackabletech/trino-operator/pull/676
 [#677]: https://github.com/stackabletech/trino-operator/pull/677
 [#687]: https://github.com/stackabletech/trino-operator/pull/687
 [#694]: https://github.com/stackabletech/trino-operator/pull/694
 [#695]: https://github.com/stackabletech/trino-operator/pull/695
 [#705]: https://github.com/stackabletech/trino-operator/pull/705
+[#715]: https://github.com/stackabletech/trino-operator/pull/715
+[#717]: https://github.com/stackabletech/trino-operator/pull/717
 
 ## [24.11.1] - 2025-01-10
 
