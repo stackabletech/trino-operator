@@ -1,0 +1,29 @@
+---
+volumePermissions:
+  enabled: false
+  securityContext:
+    runAsUser: auto
+
+primary:
+  extendedConfiguration: |
+    password_encryption=md5
+  podSecurityContext:
+{% if test_scenario['values']['openshift'] == 'true' %}
+    enabled: false
+{% else %}
+    enabled: true
+{% endif %}
+  containerSecurityContext:
+    enabled: false
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "512m"
+    limits:
+      memory: "512Mi"
+      cpu: "1"
+
+auth:
+  username: hive
+  password: hive
+  database: hive

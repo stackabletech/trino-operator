@@ -1,27 +1,34 @@
-# These tests can run against an OpenShift cluster, provided you note the following:
+# The MinIO chart does not work on OpenShift due to it not using the applicable
+# ServiceAccount to the bucket creation job. Hence, the Bitnami chart is used.
 #
-# 1. Set the "openshift" dimension below to "true" (with quotes)
-# 2. Comment out the "true" option in the "s3-use-tls" dimension
+# However, the Bitnami chart for MinIO which cannot use self-signed TLS
+# certificates due to a bug in libminioclient.sh.
 #
-# Regarding point 2.: the bitnami chart is used for S3 on OpenShift as it correctly installs
-# a minio instance (the chart from minio does not correctly apply the service account to
-# the job that creates the bucket, and so the permissions are not sufficient). However, it
-# cannot correctly use self-signed TLS certificates due to a bug in libminioclient.sh: for
-# non-OpenShift clusters the minio chart is thus used instead.
-
+# Therefore, testing S3 access with TLS on OpenShift is currently broken due to
+# the Native S3 implementation in Trino requiring S3 connections to use TLS.
+#
+# libminioclient.sh hard-codes localhost in the certificate:
+# https://github.com/bitnami/containers/blob/7b976016fb6e926c91881bc4d824dd9e1c8e045f/bitnami/minio/2025/debian-12/rootfs/opt/bitnami/scripts/libminioclient.sh#L108
+#
+# See also:
+# https://github.com/bitnami/containers/issues/13489
+# https://github.com/bitnami/charts/issues/10307
+#
+# This should be revisited in case it now works.
 ---
 dimensions:
   - name: trino
     values:
       - "451"
       - "455"
+      - "470"
       # To use a custom image, add a comma and the full name after the product version
-      # - 455,oci.stackable.tech/sdp/trino:455-stackable0.0.0-dev
+      # - 470,oci.stackable.tech/sdp/trino:470-stackable0.0.0-dev
   - name: trino-latest
     values:
-      - "455"
+      - "470"
       # To use a custom image, add a comma and the full name after the product version
-      # - 455,oci.stackable.tech/sdp/trino:455-stackable0.0.0-dev
+      # - 470,oci.stackable.tech/sdp/trino:470-stackable0.0.0-dev
   - name: hive
     values:
       - 3.1.3
@@ -41,10 +48,6 @@ dimensions:
   - name: keycloak
     values:
       - 25.0.0
-  - name: s3-use-tls
-    values:
-      - "true"
-      - "false"
   - name: use-authentication
     values:
       - "true"
@@ -72,7 +75,6 @@ tests:
       - opa
       - hdfs
       - zookeeper
-      - s3-use-tls
       - openshift
   - name: tls
     dimensions:
@@ -122,8 +124,6 @@ suites:
             expr: last
           - name: zookeeper
             expr: last
-          - name: s3-use-tls
-            expr: "true"
   - name: smoke-latest
     # Useful during development
     select:
@@ -138,8 +138,6 @@ suites:
           - expr: last
       - dimensions:
           - name: openshift
-            expr: "true"
-          - name: s3-use-tls
             expr: "true"
           - name: use-tls
             expr: "true"

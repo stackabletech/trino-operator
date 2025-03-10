@@ -2,6 +2,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
+    num::ParseIntError,
     ops::Div,
     str::FromStr,
     sync::Arc,
@@ -349,6 +350,12 @@ pub enum Error {
     GetMergedJvmArgumentOverrides {
         source: stackable_operator::role_utils::Error,
     },
+
+    #[snafu(display("unable to parse Trino version: {product_version:?}"))]
+    ParseTrinoVersion {
+        source: ParseIntError,
+        product_version: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -400,14 +407,16 @@ pub async fn reconcile_trino(
         .await
         .context(GetCatalogsSnafu)?;
     let mut catalogs = vec![];
+    let product_version = trino.spec.image.product_version();
+    let product_version =
+        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config =
-            CatalogConfig::from_catalog(catalog, client)
-                .await
-                .context(ParseCatalogSnafu {
-                    catalog: catalog_ref,
-                })?;
+        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
+            .await
+            .context(ParseCatalogSnafu {
+                catalog: catalog_ref,
+            })?;
 
         catalogs.push(catalog_config);
     }
@@ -636,8 +645,11 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
+    let product_version = &resolved_product_image.product_version;
+    let product_version =
+        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
     let jvm_config = config::jvm::jvm_config(
-        &resolved_product_image.product_version,
+        product_version,
         merged_config,
         role,
         &rolegroup_ref.role_group,
@@ -1682,7 +1694,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "470"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
@@ -1828,7 +1840,7 @@ mod tests {
           name: trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "470"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
