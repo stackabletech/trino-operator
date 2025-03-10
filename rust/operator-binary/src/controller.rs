@@ -1545,6 +1545,12 @@ fn http_get_probe(trino: &v1alpha1::TrinoCluster) -> HTTPGetAction {
 /// This probe works on coordinators and workers.
 fn finished_starting_probe(trino: &v1alpha1::TrinoCluster) -> ExecAction {
     let port = trino.exposed_port();
+    let schema = if trino.expose_https_port() {
+        "https"
+    } else {
+        "http"
+    };
+
     ExecAction {
         command: Some(vec![
             "/bin/bash".to_string(),
@@ -1552,7 +1558,7 @@ fn finished_starting_probe(trino: &v1alpha1::TrinoCluster) -> ExecAction {
             "-euo".to_string(),
             "pipefail".to_string(),
             "-c".to_string(),
-            format!("curl --fail --insecure https://127.0.0.1:{port}/v1/info | grep --silent '\\\"starting\\\":false'"),
+            format!("curl --fail --insecure {schema}://127.0.0.1:{port}/v1/info | grep --silent '\\\"starting\\\":false'"),
         ]),
     }
 }
