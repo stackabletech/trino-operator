@@ -21,6 +21,10 @@ All notable changes to this project will be documented in this file.
 - Explicitly set `fs.native-s3.enabled=true` and `fs.hadoop.enabled=true` in applicable catalog config properties ([#705]).
   - Trino 470 requires the native S3 implementation to be used.
 - BREAKING: Always set the S3 region ([#705]).
+  - Previously Trino used the hadoop s3 implementation which auto-detected the region from the
+    endpoint if it was not provided, falling back to `us-east-2`.
+  - The default is now `us-east-1`. Please set the region explicitly if you are using a different
+    one.
 
 ### Fixed
 
