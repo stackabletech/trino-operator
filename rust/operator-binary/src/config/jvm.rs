@@ -107,7 +107,7 @@ fn recommended_trino_jvm_args(_product_version: u16) -> Result<Vec<String>, Erro
 fn recommended_trino_jvm_args(product_version: u16) -> Result<Vec<String>, Error> {
     match product_version {
         // Copied from https://trino.io/docs/451/installation/deployment.html
-        451..455 => Ok(vec![
+        451 => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),
@@ -127,7 +127,7 @@ fn recommended_trino_jvm_args(product_version: u16) -> Result<Vec<String>, Error
         // Copied from:
         // - https://trino.io/docs/455/installation/deployment.html#jvm-config
         // - https://trino.io/docs/470/installation/deployment.html#jvm-config
-        455.. => Ok(vec![
+        455 | 470 => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),
