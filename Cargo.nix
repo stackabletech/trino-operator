@@ -1594,7 +1594,7 @@ rec {
           "default" = [ "Debug" "Clone" "Copy" "PartialEq" "Eq" "PartialOrd" "Ord" "Hash" "Default" "Deref" "DerefMut" "Into" ];
           "full" = [ "syn/full" ];
         };
-        resolvedDefaultFeatures = [ "Clone" "Debug" "Default" "Hash" "PartialEq" ];
+        resolvedDefaultFeatures = [ "Clone" "Debug" "Default" "Eq" "Hash" "PartialEq" ];
       };
       "either" = rec {
         crateName = "either";
@@ -8211,13 +8211,13 @@ rec {
       };
       "stackable-operator" = rec {
         crateName = "stackable-operator";
-        version = "0.85.0";
+        version = "0.87.2";
         edition = "2021";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "59506c6202778889a27b6ae8153457e60a49c68d";
-          sha256 = "0rh476rmn5850yj85hq8znwmlfhd7l5bkxz0n5i9m4cddxhi2cl5";
+          rev = "bc176bfc23f15533cdb3b7a7e7a773d4f29891e1";
+          sha256 = "0cqz1xmj3vbm5hm9x6wbgg2l265s30j5j5609wmg68p6giywh82a";
         };
         libName = "stackable_operator";
         authors = [
@@ -8250,7 +8250,7 @@ rec {
             name = "educe";
             packageId = "educe";
             usesDefaultFeatures = false;
-            features = [ "Clone" "Debug" "Default" "PartialEq" ];
+            features = [ "Clone" "Debug" "Default" "PartialEq" "Eq" ];
           }
           {
             name = "either";
@@ -8376,8 +8376,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "59506c6202778889a27b6ae8153457e60a49c68d";
-          sha256 = "0rh476rmn5850yj85hq8znwmlfhd7l5bkxz0n5i9m4cddxhi2cl5";
+          rev = "bc176bfc23f15533cdb3b7a7e7a773d4f29891e1";
+          sha256 = "0cqz1xmj3vbm5hm9x6wbgg2l265s30j5j5609wmg68p6giywh82a";
         };
         procMacro = true;
         libName = "stackable_operator_derive";
@@ -8411,8 +8411,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "59506c6202778889a27b6ae8153457e60a49c68d";
-          sha256 = "0rh476rmn5850yj85hq8znwmlfhd7l5bkxz0n5i9m4cddxhi2cl5";
+          rev = "bc176bfc23f15533cdb3b7a7e7a773d4f29891e1";
+          sha256 = "0cqz1xmj3vbm5hm9x6wbgg2l265s30j5j5609wmg68p6giywh82a";
         };
         libName = "stackable_shared";
         authors = [
@@ -8667,9 +8667,9 @@ rec {
       };
       "strum" = rec {
         crateName = "strum";
-        version = "0.26.3";
-        edition = "2018";
-        sha256 = "01lgl6jvrf4j28v5kmx9bp480ygf1nhvac8b4p7rcj9hxw50zv4g";
+        version = "0.27.1";
+        edition = "2021";
+        sha256 = "0cic9r2sc2h17nnpjm2yfp7rsd35gkbcbqvrhl553jaiih4fykgn";
         authors = [
           "Peter Glotfelty <peter.glotfelty@microsoft.com>"
         ];
@@ -8678,12 +8678,6 @@ rec {
             name = "strum_macros";
             packageId = "strum_macros";
             optional = true;
-          }
-        ];
-        devDependencies = [
-          {
-            name = "strum_macros";
-            packageId = "strum_macros";
           }
         ];
         features = {
@@ -8696,9 +8690,9 @@ rec {
       };
       "strum_macros" = rec {
         crateName = "strum_macros";
-        version = "0.26.4";
-        edition = "2018";
-        sha256 = "1gl1wmq24b8md527cpyd5bw9rkbqldd7k1h38kf5ajd2ln2ywssc";
+        version = "0.27.1";
+        edition = "2021";
+        sha256 = "1s7x07nkrgjfvxrvcdjw6qanad4c55yjnd32bph9q3xgpid8qyn7";
         procMacro = true;
         authors = [
           "Peter Glotfelty <peter.glotfelty@microsoft.com>"
@@ -8723,7 +8717,7 @@ rec {
           {
             name = "syn";
             packageId = "syn 2.0.96";
-            features = [ "parsing" "extra-traits" ];
+            features = [ "parsing" ];
           }
         ];
 

@@ -11,6 +11,7 @@ impl ToCatalogConfig for GenericConnector {
         catalog_name: &str,
         _catalog_namespace: Option<String>,
         _client: &Client,
+        _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let connector_name = &self.connector_name;
         let mut config = CatalogConfig::new(catalog_name.to_string(), connector_name);

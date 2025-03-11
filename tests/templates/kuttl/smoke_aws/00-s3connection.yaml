@@ -1,0 +1,17 @@
+---
+apiVersion: s3.stackable.tech/v1alpha1
+kind: S3Connection
+metadata:
+  name: aws-s3
+spec:
+  host: s3.amazonaws.com
+  region:
+    name: eu-central-1
+  accessStyle: Path
+  credentials:
+    secretClass: s3-credentials-class
+  tls:
+    verification:
+      server:
+        caCert:
+          webPki: {}
