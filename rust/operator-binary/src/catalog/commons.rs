@@ -101,7 +101,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
 
         if trino_version >= 469 {
             // Since Trino 469, S3 native support has to be explicitly enabled
-            // unless using Legacy S3 support (which has been removed in 470).
+            // unless using Legacy S3 support (which has been deprecated in 470).
             catalog_config.add_property("fs.native-s3.enabled", "true");
         }
 
