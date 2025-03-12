@@ -2,6 +2,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
+    num::ParseIntError,
     ops::Div,
     str::FromStr,
     sync::Arc,
@@ -35,8 +36,8 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, Probe,
-                Secret, SecretKeySelector, Service, ServicePort, ServiceSpec, TCPSocketAction,
+                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, ExecAction,
+                HTTPGetAction, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
                 Volume,
             },
         },
@@ -349,6 +350,12 @@ pub enum Error {
     GetMergedJvmArgumentOverrides {
         source: stackable_operator::role_utils::Error,
     },
+
+    #[snafu(display("unable to parse Trino version: {product_version:?}"))]
+    ParseTrinoVersion {
+        source: ParseIntError,
+        product_version: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -400,14 +407,16 @@ pub async fn reconcile_trino(
         .await
         .context(GetCatalogsSnafu)?;
     let mut catalogs = vec![];
+    let product_version = trino.spec.image.product_version();
+    let product_version =
+        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config =
-            CatalogConfig::from_catalog(catalog, client)
-                .await
-                .context(ParseCatalogSnafu {
-                    catalog: catalog_ref,
-                })?;
+        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
+            .await
+            .context(ParseCatalogSnafu {
+                catalog: catalog_ref,
+            })?;
 
         catalogs.push(catalog_config);
     }
@@ -636,8 +645,11 @@ fn build_rolegroup_config_map(
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
+    let product_version = &resolved_product_image.product_version;
+    let product_version =
+        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
     let jvm_config = config::jvm::jvm_config(
-        &resolved_product_image.product_version,
+        product_version,
         merged_config,
         role,
         &rolegroup_ref.role_group,
@@ -1061,6 +1073,8 @@ fn build_rolegroup_statefulset(
         .context(AddVolumeMountSnafu)?
         .add_container_ports(container_ports(trino))
         .resources(merged_config.resources.clone().into())
+        // The probes are set on coordinators and workers
+        .startup_probe(startup_probe(trino))
         .readiness_probe(readiness_probe(trino))
         .liveness_probe(liveness_probe(trino))
         .build();
@@ -1484,40 +1498,80 @@ fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
     ports
 }
 
-fn readiness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
-    let port_name = if trino.expose_https_port() {
-        HTTPS_PORT_NAME
-    } else {
-        HTTP_PORT_NAME
-    };
-
+fn startup_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
     Probe {
-        initial_delay_seconds: Some(10),
-        period_seconds: Some(10),
-        failure_threshold: Some(5),
-        tcp_socket: Some(TCPSocketAction {
-            port: IntOrString::String(port_name.to_string()),
-            ..TCPSocketAction::default()
-        }),
+        exec: Some(finished_starting_probe(trino)),
+        period_seconds: Some(5),
+        // Give the coordinator or worker 10 minutes to start up
+        failure_threshold: Some(120),
+        timeout_seconds: Some(3),
+        ..Default::default()
+    }
+}
+
+fn readiness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
+    Probe {
+        http_get: Some(http_get_probe(trino)),
+        period_seconds: Some(5),
+        failure_threshold: Some(1),
+        timeout_seconds: Some(3),
         ..Probe::default()
     }
 }
 
 fn liveness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
-    let port_name = if trino.expose_https_port() {
-        HTTPS_PORT_NAME
+    Probe {
+        http_get: Some(http_get_probe(trino)),
+        period_seconds: Some(5),
+        // Coordinators are currently not highly available, so you always have a singe instance.
+        // Restarting it causes all queries to fail, so let's not restart it directly after the first
+        // probe failure, but wait for 3 failures
+        // NOTE: This also applies to workers
+        failure_threshold: Some(3),
+        timeout_seconds: Some(3),
+        ..Probe::default()
+    }
+}
+
+/// Check that `/v1/info` returns `200`.
+///
+/// This is the same probe as the [upstream helm-chart](https://github.com/trinodb/charts/blob/7cd0a7bff6c52e0ee6ca6d5394cd72c150ad4379/charts/trino/templates/deployment-coordinator.yaml#L214)
+/// is using.
+fn http_get_probe(trino: &v1alpha1::TrinoCluster) -> HTTPGetAction {
+    let (schema, port_name) = if trino.expose_https_port() {
+        ("HTTPS", HTTPS_PORT_NAME)
     } else {
-        HTTP_PORT_NAME
+        ("HTTP", HTTP_PORT_NAME)
     };
 
-    Probe {
-        initial_delay_seconds: Some(30),
-        period_seconds: Some(10),
-        tcp_socket: Some(TCPSocketAction {
-            port: IntOrString::String(port_name.to_string()),
-            ..TCPSocketAction::default()
-        }),
-        ..Probe::default()
+    HTTPGetAction {
+        port: IntOrString::String(port_name.to_string()),
+        scheme: Some(schema.to_string()),
+        path: Some("/v1/info".to_string()),
+        ..Default::default()
+    }
+}
+
+/// Wait until `/v1/info` returns `"starting":false`.
+///
+/// This probe works on coordinators and workers.
+fn finished_starting_probe(trino: &v1alpha1::TrinoCluster) -> ExecAction {
+    let port = trino.exposed_port();
+    let schema = if trino.expose_https_port() {
+        "https"
+    } else {
+        "http"
+    };
+
+    ExecAction {
+        command: Some(vec![
+            "/bin/bash".to_string(),
+            "-x".to_string(),
+            "-euo".to_string(),
+            "pipefail".to_string(),
+            "-c".to_string(),
+            format!("curl --fail --insecure {schema}://127.0.0.1:{port}/v1/info | grep --silent '\\\"starting\\\":false'"),
+        ]),
     }
 }
 
@@ -1640,7 +1694,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "470"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:
@@ -1786,7 +1840,7 @@ mod tests {
           name: trino
         spec:
           image:
-            productVersion: "455"
+            productVersion: "470"
           clusterConfig:
             catalogLabelSelector:
               matchLabels:

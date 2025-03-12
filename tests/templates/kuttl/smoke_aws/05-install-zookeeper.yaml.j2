@@ -1,0 +1,15 @@
+---
+apiVersion: zookeeper.stackable.tech/v1alpha1
+kind: ZookeeperCluster
+metadata:
+  name: zookeeper
+spec:
+  image:
+    productVersion: "{{ test_scenario['values']['zookeeper'] }}"
+    pullPolicy: IfNotPresent
+  servers:
+    config:
+      logging:
+    roleGroups:
+      default:
+        replicas: 1

@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+commands:
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u admin -p admin -n $NAMESPACE -w 1
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-opa.py -n $NAMESPACE
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-s3.py -n $NAMESPACE
