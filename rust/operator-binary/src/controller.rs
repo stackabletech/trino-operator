@@ -3,7 +3,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     convert::Infallible,
     num::ParseIntError,
-    ops::Div,
     str::FromStr,
     sync::Arc,
 };
@@ -86,10 +85,9 @@ use crate::{
         v1alpha1, Container, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
         CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT,
         HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES,
-        LOG_COMPRESSION, LOG_FORMAT, LOG_MAX_SIZE, LOG_MAX_TOTAL_SIZE, LOG_PATH, LOG_PROPERTIES,
-        METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
-        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+        LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
     },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
@@ -110,11 +108,6 @@ pub const TRINO_UID: i64 = 1000;
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
 
-const LOG_FILE_COUNT: u32 = 2;
-pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
-    value: 10.0,
-    unit: BinaryMultiple::Mebi,
-};
 pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     value: 1.0,
     unit: BinaryMultiple::Mebi,
@@ -663,7 +656,7 @@ fn build_rolegroup_config_map(
         .next()
         .context(MissingCoordinatorPodsSnafu)?;
 
-    // Add additional config files fore authentication
+    // Add additional config files for authentication
     cm_conf_data.extend(trino_authentication_config.config_files(trino_role));
 
     for (property_name_kind, config) in config {
@@ -702,45 +695,6 @@ fn build_rolegroup_config_map(
 
                 dynamic_resolved_config
                     .extend(graceful_shutdown_config_properties(trino, trino_role));
-
-                // The log format used by Trino
-                dynamic_resolved_config.insert(LOG_FORMAT.to_string(), Some("json".to_string()));
-                // The path to the log file used by Trino
-                dynamic_resolved_config.insert(
-                    LOG_PATH.to_string(),
-                    Some(format!(
-                        "{STACKABLE_LOG_DIR}/{container}/server.airlift.json",
-                        container = Container::Trino
-                    )),
-                );
-                // We do not compress. This will result in LOG_MAX_TOTAL_SIZE / LOG_MAX_SIZE files.
-                dynamic_resolved_config
-                    .insert(LOG_COMPRESSION.to_string(), Some("none".to_string()));
-                // The size of one log file
-                dynamic_resolved_config.insert(
-                    LOG_MAX_SIZE.to_string(),
-                    Some(format!(
-                        // Trino uses the unit "MB" for MiB.
-                        "{}MB",
-                        MAX_TRINO_LOG_FILES_SIZE
-                            .scale_to(BinaryMultiple::Mebi)
-                            .div(LOG_FILE_COUNT as f32)
-                            .ceil()
-                            .value,
-                    )),
-                );
-                // The maximum size of all logfiles combined
-                dynamic_resolved_config.insert(
-                    LOG_MAX_TOTAL_SIZE.to_string(),
-                    Some(format!(
-                        // Trino uses the unit "MB" for MiB.
-                        "{}MB",
-                        MAX_TRINO_LOG_FILES_SIZE
-                            .scale_to(BinaryMultiple::Mebi)
-                            .ceil()
-                            .value,
-                    )),
-                );
 
                 // Add static properties and overrides
                 dynamic_resolved_config.extend(transformed_config);
@@ -784,17 +738,24 @@ fn build_rolegroup_config_map(
                     );
                 }
             }
+            PropertyNameKind::File(file_name) if file_name == ACCESS_CONTROL_PROPERTIES => {
+                if let Some(trino_opa_config) = trino_opa_config {
+                    dynamic_resolved_config.extend(trino_opa_config.as_config());
+                }
+
+                // Add static properties and overrides
+                dynamic_resolved_config.extend(transformed_config);
+
+                let access_control_properties = product_config::writer::to_java_properties_string(
+                    dynamic_resolved_config.iter(),
+                )
+                .context(FailedToWriteJavaPropertiesSnafu)?;
+
+                cm_conf_data.insert(file_name.to_string(), access_control_properties);
+            }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
             _ => {}
         }
-    }
-
-    if let Some(trino_opa_config) = trino_opa_config {
-        let config = trino_opa_config.as_config();
-        let config_properties = product_config::writer::to_java_properties_string(config.iter())
-            .context(FailedToWriteJavaPropertiesSnafu)?;
-
-        cm_conf_data.insert(ACCESS_CONTROL_PROPERTIES.to_string(), config_properties);
     }
 
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
@@ -1333,6 +1294,7 @@ fn validated_product_config(
         PropertyNameKind::File(JVM_CONFIG.to_string()),
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
+        PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
     ];
 
     roles.insert(
@@ -1740,6 +1702,7 @@ mod tests {
         assert!(cm.contains_key("security.properties"));
         assert!(cm.contains_key("node.properties"));
         assert!(cm.contains_key("log.properties"));
+        assert!(cm.contains_key("access-control.properties"));
     }
 
     fn build_config_map(trino_yaml: &str) -> ConfigMap {
@@ -1761,6 +1724,7 @@ mod tests {
             PropertyNameKind::File(JVM_CONFIG.to_string()),
             PropertyNameKind::File(LOG_PROPERTIES.to_string()),
             PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
+            PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
         ];
         let validated_config = validate_all_roles_and_groups_config(
             // The Trino version is a single number like 396.
@@ -1807,6 +1771,23 @@ mod tests {
             TrinoAuthenticationTypes::try_from(Vec::new()).unwrap(),
         )
         .unwrap();
+        let trino_opa_config = Some(TrinoOpaConfig {
+            non_batched_connection_string:
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/allow"
+                    .to_string(),
+            batched_connection_string:
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch"
+                    .to_string(),
+            row_filters_connection_string: Some(
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/rowFilters"
+                    .to_string(),
+            ),
+            column_masking_connection_string: Some(
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/columnMask"
+                    .to_string(),
+            ),
+            allow_permission_management_operations: true,
+        });
         let merged_config = trino
             .merged_config(&trino_role, &rolegroup_ref, &[])
             .unwrap();
@@ -1824,11 +1805,63 @@ mod tests {
                 .unwrap(),
             &merged_config,
             &trino_authentication_config,
-            &None,
+            &trino_opa_config,
             None,
             &cluster_info,
         )
         .unwrap()
+    }
+
+    #[test]
+    fn test_access_control_overrides() {
+        let trino_yaml = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: trino
+        spec:
+          image:
+            productVersion: "470"
+          clusterConfig:
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
+            authorization:
+              opa:
+                configMapName: simple-opa
+                package: my-product
+          coordinators:
+            configOverrides:
+              access-control.properties:
+                hello-from-role: "true" # only defined here at role level
+                foo.bar: "false" # overriden by role group below
+                opa.allow-permission-management-operations: "false" # override logging value from config
+            roleGroups:
+              default:
+                configOverrides:
+                  access-control.properties:
+                    hello-from-role-group: "true" # only defined here at group level
+                    foo.bar: "true" # overrides role value
+                    opa.policy.batched-uri: "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch-new" # override logging value from config
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+
+        let cm = build_config_map(trino_yaml).data.unwrap();
+        let access_control_config = cm.get("access-control.properties").unwrap();
+
+        assert!(access_control_config.contains("access-control.name=opa"));
+        assert!(access_control_config.contains("hello-from-role=true"));
+        assert!(access_control_config.contains("hello-from-role-group=true"));
+        assert!(access_control_config.contains("foo.bar=true"));
+        assert!(access_control_config.contains("opa.allow-permission-management-operations=false"));
+        assert!(access_control_config.contains(r#"opa.policy.batched-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/batch-new"#));
+        assert!(access_control_config.contains(r#"opa.policy.column-masking-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/columnMask"#));
+        assert!(access_control_config.contains(r#"opa.policy.row-filters-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/rowFilters"#));
+        assert!(access_control_config.contains(r#"opa.policy.uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/allow"#));
     }
 
     #[test]
