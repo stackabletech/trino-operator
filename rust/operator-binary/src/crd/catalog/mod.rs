@@ -59,9 +59,7 @@ pub mod versioned {
         /// This is helpful, because Trino fails to start in case you have any unused config
         /// properties. The removals are executed after the `configOverrides`.
         ///
-        /// This field is experimental, as ideally some general solution for the removal of
-        /// properties is found and added to configOverrides. This mechanism would replace this
-        /// field.
+        /// This field is experimental, and might be replaced by a more generic mechanism to edit config properties
         #[serde(default, rename = "experimentalConfigRemovals")]
         pub config_removals: Vec<String>,
     }

@@ -62,7 +62,7 @@ Each connector supports a different set of attributes.
 You can use `.spec.configOverrides` to set arbitrary additional properties, which will be added to the catalog.
 
 There is also `.spec.experimentalConfigRemovals` to remove any properties the operator might set, but are not used by Trino.
-This causes Trino to log an error message such as `Error: Configuration property 'hive.s3.aws-access-key' was not used` and refuse startup.
+This causes Trino to refuse to startup with an error message such as `Error: Configuration property 'hive.s3.aws-access-key' was not used`.
 By removing the unneeded properties you can get Trino to start again.
 
 This example illustrates how to use config overrides and config removals
