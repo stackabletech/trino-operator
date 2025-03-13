@@ -1838,14 +1838,14 @@ mod tests {
               access-control.properties:
                 hello-from-role: "true" # only defined here at role level
                 foo.bar: "false" # overriden by role group below
-                opa.allow-permission-management-operations: "false" # override logging value from config
+                opa.allow-permission-management-operations: "false" # override value from config
             roleGroups:
               default:
                 configOverrides:
                   access-control.properties:
                     hello-from-role-group: "true" # only defined here at group level
                     foo.bar: "true" # overrides role value
-                    opa.policy.batched-uri: "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch-new" # override logging value from config
+                    opa.policy.batched-uri: "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch-new" # override value from config
                 replicas: 1
           workers:
             roleGroups:
