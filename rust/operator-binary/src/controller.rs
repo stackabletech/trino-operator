@@ -746,12 +746,15 @@ fn build_rolegroup_config_map(
                 // Add static properties and overrides
                 dynamic_resolved_config.extend(transformed_config);
 
-                let access_control_properties = product_config::writer::to_java_properties_string(
-                    dynamic_resolved_config.iter(),
-                )
-                .context(FailedToWriteJavaPropertiesSnafu)?;
+                if !dynamic_resolved_config.is_empty() {
+                    let access_control_properties =
+                        product_config::writer::to_java_properties_string(
+                            dynamic_resolved_config.iter(),
+                        )
+                        .context(FailedToWriteJavaPropertiesSnafu)?;
 
-                cm_conf_data.insert(file_name.to_string(), access_control_properties);
+                    cm_conf_data.insert(file_name.to_string(), access_control_properties);
+                }
             }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
             _ => {}
