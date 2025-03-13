@@ -3,7 +3,7 @@ pub mod authentication;
 pub mod catalog;
 pub mod discovery;
 
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, ops::Div, str::FromStr};
 
 use affinity::get_affinity;
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,7 @@ use stackable_operator::{
     },
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{runtime::reflector::ObjectRef, CustomResource, ResourceExt},
+    memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{Configuration, Error as ConfigError},
     product_logging::{self, spec::Logging},
     role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef},
@@ -91,6 +92,7 @@ pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const STACKABLE_SERVER_TLS_DIR: &str = "/stackable/server_tls";
 pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
 pub const STACKABLE_INTERNAL_TLS_DIR: &str = "/stackable/internal_tls";
+pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_MOUNT_SERVER_TLS_DIR: &str = "/stackable/mount_server_tls";
 pub const STACKABLE_MOUNT_INTERNAL_TLS_DIR: &str = "/stackable/mount_internal_tls";
 pub const SYSTEM_TRUST_STORE: &str = "/etc/pki/java/cacerts";
@@ -107,6 +109,11 @@ pub const LOG_PATH: &str = "log.path";
 pub const LOG_COMPRESSION: &str = "log.compression";
 pub const LOG_MAX_SIZE: &str = "log.max-size";
 pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
+const LOG_FILE_COUNT: u32 = 2;
+pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+    value: 10.0,
+    unit: BinaryMultiple::Mebi,
+};
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
@@ -552,6 +559,46 @@ impl Configuration for v1alpha1::TrinoConfigFragment {
                     );
                 }
 
+                // The log format used by Trino
+                result.insert(LOG_FORMAT.to_string(), Some("json".to_string()));
+                // The path to the log file used by Trino
+                result.insert(
+                    LOG_PATH.to_string(),
+                    Some(format!(
+                        "{STACKABLE_LOG_DIR}/{container}/server.airlift.json",
+                        container = Container::Trino
+                    )),
+                );
+
+                // We do not compress. This will result in LOG_MAX_TOTAL_SIZE / LOG_MAX_SIZE files.
+                result.insert(LOG_COMPRESSION.to_string(), Some("none".to_string()));
+
+                // The size of one log file
+                result.insert(
+                    LOG_MAX_SIZE.to_string(),
+                    Some(format!(
+                        // Trino uses the unit "MB" for MiB.
+                        "{}MB",
+                        MAX_TRINO_LOG_FILES_SIZE
+                            .scale_to(BinaryMultiple::Mebi)
+                            .div(LOG_FILE_COUNT as f32)
+                            .ceil()
+                            .value,
+                    )),
+                );
+                // The maximum size of all logfiles combined
+                result.insert(
+                    LOG_MAX_TOTAL_SIZE.to_string(),
+                    Some(format!(
+                        // Trino uses the unit "MB" for MiB.
+                        "{}MB",
+                        MAX_TRINO_LOG_FILES_SIZE
+                            .scale_to(BinaryMultiple::Mebi)
+                            .ceil()
+                            .value,
+                    )),
+                );
+
                 // disable http-request logs
                 result.insert(
                     "http-server.log.enabled".to_string(),
@@ -646,6 +693,7 @@ impl Configuration for v1alpha1::TrinoConfigFragment {
                 }
             }
             LOG_PROPERTIES => {}
+            ACCESS_CONTROL_PROPERTIES => {}
             _ => {}
         }
 

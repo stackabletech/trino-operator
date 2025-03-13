@@ -10,24 +10,24 @@ use crate::crd::v1alpha1::TrinoCluster;
 pub struct TrinoOpaConfig {
     /// URI for OPA policies, e.g.
     /// `http://localhost:8081/v1/data/trino/allow`
-    non_batched_connection_string: String,
+    pub(crate) non_batched_connection_string: String,
     /// URI for Batch OPA policies, e.g.
     /// `http://localhost:8081/v1/data/trino/batch` - if not set, a
     /// single request will be sent for each entry on filtering methods
-    batched_connection_string: String,
+    pub(crate) batched_connection_string: String,
     /// URI for fetching row filters, e.g.
     /// `http://localhost:8081/v1/data/trino/rowFilters` - if not set,
     /// no row filtering will be applied
-    row_filters_connection_string: Option<String>,
+    pub(crate) row_filters_connection_string: Option<String>,
     /// URI for fetching column masks, e.g.
     /// `http://localhost:8081/v1/data/trino/columnMask` - if not set,
     /// no masking will be applied
-    column_masking_connection_string: Option<String>,
+    pub(crate) column_masking_connection_string: Option<String>,
     /// Whether to allow permission management (GRANT, DENY, ...) and
     /// role management operations - OPA will not be queried for any
     /// such operations, they will be bulk allowed or denied depending
     /// on this setting
-    allow_permission_management_operations: bool,
+    pub(crate) allow_permission_management_operations: bool,
 }
 
 impl TrinoOpaConfig {
