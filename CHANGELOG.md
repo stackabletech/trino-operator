@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Support configuring JVM arguments ([#677]).
 - Aggregate emitted Kubernetes events on the CustomResources ([#677]).
 - Support for Trino 470 ([#705]).
+- Support `access-control.properties` in configOverrides ([#721]).
 
 ### Changed
 
@@ -39,6 +40,7 @@ All notable changes to this project will be documented in this file.
 [#705]: https://github.com/stackabletech/trino-operator/pull/705
 [#715]: https://github.com/stackabletech/trino-operator/pull/715
 [#717]: https://github.com/stackabletech/trino-operator/pull/717
+[#721]: https://github.com/stackabletech/trino-operator/pull/721
 
 ## [24.11.1] - 2025-01-10
 
