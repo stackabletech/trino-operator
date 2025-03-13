@@ -7,6 +7,7 @@ from datetime import datetime
 from trino.exceptions import TrinoUserError
 
 import urllib3
+
 urllib3.disable_warnings()
 
 # Currently missing operation checks:
@@ -32,7 +33,13 @@ TEST_DATA = [
             # ExecuteQuery, FilterCatalogs
             {
                 "query": "SHOW CATALOGS",
-                "expected": [["iceberg"], ["lakehouse"], ["system"], ["tpcds"], ["tpch"]],
+                "expected": [
+                    ["iceberg"],
+                    ["lakehouse"],
+                    ["system"],
+                    ["tpcds"],
+                    ["tpch"],
+                ],
             },
             # ExecuteQuery, FilterCatalogs, ImpersonateUser
             {
@@ -44,18 +51,34 @@ TEST_DATA = [
             {
                 "query": "SET SESSION iceberg.test=true",
                 # The requests are authorized, just a fake property
-                "error": "Session property 'iceberg.test' does not exist",
+                "error": "Session property iceberg.test does not exist",
             },
             # ## SCHEMA ##
             # ExecuteQuery, AccessCatalog, ShowSchemas, SelectFromColumns, FilterCatalogs, FilterSchemas
             {
                 "query": "SHOW SCHEMAS in tpch",
-                "expected": [["information_schema"], ["sf1"], ["sf100"], ["sf1000"], ["sf10000"], ["sf100000"], ["sf300"], ["sf3000"], ["sf30000"], ["tiny"]],
+                "expected": [
+                    ["information_schema"],
+                    ["sf1"],
+                    ["sf100"],
+                    ["sf1000"],
+                    ["sf10000"],
+                    ["sf100000"],
+                    ["sf300"],
+                    ["sf3000"],
+                    ["sf30000"],
+                    ["tiny"],
+                ],
             },
             # ExecuteQuery, AccessCatalog, ShowSchemas, SelectFromColumns, FilterCatalogs, FilterSchemas
             {
                 "query": "SHOW SCHEMAS in system",
-                "expected": [["information_schema"], ["jdbc"], ["metadata"], ["runtime"]],
+                "expected": [
+                    ["information_schema"],
+                    ["jdbc"],
+                    ["metadata"],
+                    ["runtime"],
+                ],
             },
             # ExecuteQuery, AccessCatalog, CreateSchema
             {
@@ -65,7 +88,11 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, ShowCreateSchema
             {
                 "query": "SHOW CREATE SCHEMA iceberg.test",
-                "expected": [["CREATE SCHEMA iceberg.test\nAUTHORIZATION USER admin\nWITH (\n   location = 's3a://trino/iceberg/test'\n)"]],
+                "expected": [
+                    [
+                        "CREATE SCHEMA iceberg.test\nAUTHORIZATION USER admin\nWITH (\n   location = 's3a://trino/iceberg/test'\n)"
+                    ]
+                ],
             },
             # ExecuteQuery, AccessCatalog, SetSchemaAuthorization
             {
@@ -88,7 +115,16 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, ShowTables, SelectFromColumns, FilterCatalogs, FilterTables
             {
                 "query": "SHOW TABLES in tpch.sf1",
-                "expected": [["customer"], ["lineitem"], ["nation"], ["orders"], ["part"], ["partsupp"], ["region"], ["supplier"]],
+                "expected": [
+                    ["customer"],
+                    ["lineitem"],
+                    ["nation"],
+                    ["orders"],
+                    ["part"],
+                    ["partsupp"],
+                    ["region"],
+                    ["supplier"],
+                ],
             },
             # ExecuteQuery, AccessCatalog, CreateTable
             {
@@ -129,7 +165,10 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, ShowColumns, SelectFromColumns, FilterCatalogs, FilterTables, FilterColumns
             {
                 "query": "DESCRIBE iceberg.test.test",
-                "expected": [["col1", "bigint", "", "This is a column comment!"], ["col2", "bigint", "", ""]],
+                "expected": [
+                    ["col1", "bigint", "", "This is a column comment!"],
+                    ["col2", "bigint", "", ""],
+                ],
             },
             # ExecuteQuery, AccessCatalog, InsertIntoTable
             {
@@ -194,7 +233,11 @@ TEST_DATA = [
             # ExecuteQuery, AccessCatalog, ShowCreateTable
             {
                 "query": "SHOW CREATE VIEW iceberg.test.v_customer_renamed",
-                "expected": [["CREATE VIEW iceberg.test.v_customer_renamed COMMENT 'This is a test view!' SECURITY DEFINER AS\nSELECT\n  name\n, address\nFROM\n  tpch.sf1.customer"]],
+                "expected": [
+                    [
+                        "CREATE VIEW iceberg.test.v_customer_renamed COMMENT 'This is a test view!' SECURITY DEFINER AS\nSELECT\n  name\n, address\nFROM\n  tpch.sf1.customer"
+                    ]
+                ],
             },
             # ExecuteQuery, AccessCatalog, DropView
             {
@@ -250,7 +293,7 @@ TEST_DATA = [
             # ## SystemSessionProperties ##
             # ExecuteQuery, SetSystemSessionProperty
             {
-                "query": "SET SESSION optimize_hash_generation = true",
+                "query": "SET SESSION dictionary_aggregation = true",
                 "expected": [],
             },
             # ## PROCEDURES ##
@@ -266,14 +309,13 @@ TEST_DATA = [
                 "query": "SELECT COUNT(*) FROM (SELECT * FROM system.runtime.queries LIMIT 1)",
                 "expected": [[1]],
             },
-
             # ## CLEAN UP ##
             # ExecuteQuery, AccessCatalog, DropSchema
             {
                 "query": "DROP SCHEMA iceberg.test",
                 "expected": [],
             },
-        ]
+        ],
     },
     {
         # User lakehouse can:
@@ -313,7 +355,18 @@ TEST_DATA = [
             },
             {
                 "query": "SELECT * FROM lakehouse.sf1.customer ORDER BY name LIMIT 1",
-                "expected": [[1, 'Customer#000000001', 'IVhzIApeRb ot,c,E', 15, '25-989-741-2988', 711.56, 'BUILDING', 'to the even, regular platelets. regular, ironic epitaphs nag e']],
+                "expected": [
+                    [
+                        1,
+                        "Customer#000000001",
+                        "IVhzIApeRb ot,c,E",
+                        15,
+                        "25-989-741-2988",
+                        711.56,
+                        "BUILDING",
+                        "to the even, regular platelets. regular, ironic epitaphs nag e",
+                    ]
+                ],
             },
             {
                 "query": "SELECT * FROM tpch.tiny.customer ORDER BY name LIMIT 1",
@@ -323,8 +376,8 @@ TEST_DATA = [
                 # fake values, authorization is checked first
                 "query": "INSERT INTO lakehouse.tiny.customer VALUES(1)",
                 "error": "Access Denied: Cannot insert into table lakehouse.tiny.customer",
-            }
-        ]
+            },
+        ],
     },
     {
         # User banned-user cannot do anything
@@ -337,7 +390,7 @@ TEST_DATA = [
                 "query": "SHOW CATALOGS",
                 "error": "Access Denied: Cannot execute query",
             },
-        ]
+        ],
     },
     {
         # User iceberg can:
@@ -404,13 +457,12 @@ TEST_DATA = [
                 "query": "DROP SCHEMA iceberg.test2",
                 "expected": [],
             },
-        ]
-    }
+        ],
+    },
 ]
 
 
 class TestOpa:
-
     def __init__(self, test_data, namespace):
         self.data = test_data
         self.namespace = namespace
@@ -428,7 +480,9 @@ class TestOpa:
                     impersonation = test["impersonation"]
 
                 # could be optimized to not create a connection for every call (currently due to user impersonation)
-                connection = TestOpa.get_connection(user, password, self.namespace, impersonation)
+                connection = TestOpa.get_connection(
+                    user, password, self.namespace, impersonation
+                )
 
                 if "error" in test:
                     error = test["error"]
@@ -444,8 +498,8 @@ class TestOpa:
             print("")
 
     def log(user, query):
-        timestamp = datetime.utcnow().isoformat(sep=' ', timespec='milliseconds')
-        print(f'[{timestamp}] - {user:20s} -> {query}')
+        timestamp = datetime.utcnow().isoformat(sep=" ", timespec="milliseconds")
+        print(f"[{timestamp}] - {user:20s} -> {query}")
 
     def run_query(connection, query):
         cursor = connection.cursor()
