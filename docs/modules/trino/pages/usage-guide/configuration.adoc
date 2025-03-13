@@ -10,9 +10,9 @@ This will lead to faulty installations.
 
 For a role or role group, at the same level of `config`, you can specify `configOverrides` for:
 
+* `access-control.properties`
 * `config.properties`
 * `node.properties`
-* `log.properties`
 * `password-authenticator.properties`
 * `security.properties`
 

@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Support for Trino 470 ([#705]).
 - Support removing properties from catalogs.
   This is helpful, because Trino fails to start in case you have any unused config properties ([#713]).
+- Support `access-control.properties` in configOverrides ([#721]).
 
 ### Changed
 
@@ -42,6 +43,7 @@ All notable changes to this project will be documented in this file.
 [#713]: https://github.com/stackabletech/trino-operator/pull/713
 [#715]: https://github.com/stackabletech/trino-operator/pull/715
 [#717]: https://github.com/stackabletech/trino-operator/pull/717
+[#721]: https://github.com/stackabletech/trino-operator/pull/721
 
 ## [24.11.1] - 2025-01-10
 
