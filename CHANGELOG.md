@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
     endpoint if it was not provided, falling back to `us-east-2`.
   - The default is now `us-east-1`. Please set the region explicitly if you are using a different
     one.
+- Bump `stackable-versioned` to 0.6.0 ([#722]).
 
 ### Fixed
 
@@ -44,6 +45,7 @@ All notable changes to this project will be documented in this file.
 [#715]: https://github.com/stackabletech/trino-operator/pull/715
 [#717]: https://github.com/stackabletech/trino-operator/pull/717
 [#721]: https://github.com/stackabletech/trino-operator/pull/721
+[#722]: https://github.com/stackabletech/trino-operator/pull/722
 
 ## [24.11.1] - 2025-01-10
 
