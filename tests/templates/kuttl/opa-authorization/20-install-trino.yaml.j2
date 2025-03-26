@@ -5,11 +5,11 @@ metadata:
   name: trino
 spec:
   image:
-{% if test_scenario['values']['trino-latest'].find(",") > 0 %}
-    custom: "{{ test_scenario['values']['trino-latest'].split(',')[1] }}"
-    productVersion: "{{ test_scenario['values']['trino-latest'].split(',')[0] }}"
+{% if test_scenario['values']['trino'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
 {% else %}
-    productVersion: "{{ test_scenario['values']['trino-latest'] }}"
+    productVersion: "{{ test_scenario['values']['trino'] }}"
 {% endif %}
     pullPolicy: IfNotPresent
   clusterConfig:

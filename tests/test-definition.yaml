@@ -106,7 +106,7 @@ tests:
       - openshift
   - name: opa-authorization
     dimensions:
-      - trino-latest
+      - trino
       - hive-latest
       - opa
       - keycloak
