@@ -3,5 +3,5 @@
 // Stackable Platform documentation.
 
 - 470
-- 455
+- 455 (deprecated)
 - 451 (LTS)
