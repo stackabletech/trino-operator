@@ -1,13 +1,13 @@
 use stackable_operator::{
     commons::affinity::{
-        affinity_between_cluster_pods, affinity_between_role_pods, StackableAffinityFragment,
+        StackableAffinityFragment, affinity_between_cluster_pods, affinity_between_role_pods,
     },
     k8s_openapi::api::core::v1::{PodAffinity, PodAntiAffinity},
 };
 
 use crate::crd::{
+    APP_NAME, TrinoRole,
     catalog::{self, TrinoCatalogConnector},
-    TrinoRole, APP_NAME,
 };
 
 pub fn get_affinity(
@@ -135,61 +135,55 @@ mod tests {
             .merged_config(&role, &role.rolegroup_ref(&trino, "default"), &[])
             .unwrap();
 
-        assert_eq!(
-            merged_config.affinity,
-            StackableAffinity {
-                pod_affinity: Some(PodAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(vec![
-                        WeightedPodAffinityTerm {
-                            pod_affinity_term: PodAffinityTerm {
-                                label_selector: Some(LabelSelector {
-                                    match_labels: Some(BTreeMap::from([
-                                        ("app.kubernetes.io/name".to_string(), "trino".to_string()),
-                                        (
-                                            "app.kubernetes.io/instance".to_string(),
-                                            "simple-trino".to_string(),
-                                        ),
-                                    ])),
-                                    ..LabelSelector::default()
-                                }),
-                                topology_key: "kubernetes.io/hostname".to_string(),
-                                ..PodAffinityTerm::default()
-                            },
-                            weight: 20,
-                        }
-                    ]),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                pod_anti_affinity: Some(PodAntiAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(vec![
-                        WeightedPodAffinityTerm {
-                            pod_affinity_term: PodAffinityTerm {
-                                label_selector: Some(LabelSelector {
-                                    match_labels: Some(BTreeMap::from([
-                                        ("app.kubernetes.io/name".to_string(), "trino".to_string(),),
-                                        (
-                                            "app.kubernetes.io/instance".to_string(),
-                                            "simple-trino".to_string(),
-                                        ),
-                                        (
-                                            "app.kubernetes.io/component".to_string(),
-                                            role.to_string(),
-                                        )
-                                    ])),
-                                    ..LabelSelector::default()
-                                }),
-                                topology_key: "kubernetes.io/hostname".to_string(),
-                                ..PodAffinityTerm::default()
-                            },
-                            weight: 70
-                        }
-                    ]),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                node_affinity: None,
-                node_selector: None,
-            }
-        );
+        assert_eq!(merged_config.affinity, StackableAffinity {
+            pod_affinity: Some(PodAffinity {
+                preferred_during_scheduling_ignored_during_execution: Some(vec![
+                    WeightedPodAffinityTerm {
+                        pod_affinity_term: PodAffinityTerm {
+                            label_selector: Some(LabelSelector {
+                                match_labels: Some(BTreeMap::from([
+                                    ("app.kubernetes.io/name".to_string(), "trino".to_string()),
+                                    (
+                                        "app.kubernetes.io/instance".to_string(),
+                                        "simple-trino".to_string(),
+                                    ),
+                                ])),
+                                ..LabelSelector::default()
+                            }),
+                            topology_key: "kubernetes.io/hostname".to_string(),
+                            ..PodAffinityTerm::default()
+                        },
+                        weight: 20,
+                    }
+                ]),
+                required_during_scheduling_ignored_during_execution: None,
+            }),
+            pod_anti_affinity: Some(PodAntiAffinity {
+                preferred_during_scheduling_ignored_during_execution: Some(vec![
+                    WeightedPodAffinityTerm {
+                        pod_affinity_term: PodAffinityTerm {
+                            label_selector: Some(LabelSelector {
+                                match_labels: Some(BTreeMap::from([
+                                    ("app.kubernetes.io/name".to_string(), "trino".to_string(),),
+                                    (
+                                        "app.kubernetes.io/instance".to_string(),
+                                        "simple-trino".to_string(),
+                                    ),
+                                    ("app.kubernetes.io/component".to_string(), role.to_string(),)
+                                ])),
+                                ..LabelSelector::default()
+                            }),
+                            topology_key: "kubernetes.io/hostname".to_string(),
+                            ..PodAffinityTerm::default()
+                        },
+                        weight: 70
+                    }
+                ]),
+                required_during_scheduling_ignored_during_execution: None,
+            }),
+            node_affinity: None,
+            node_selector: None,
+        });
     }
 
     #[rstest]
@@ -274,11 +268,11 @@ mod tests {
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         let merged_config = trino
-            .merged_config(
-                &role,
-                &role.rolegroup_ref(&trino, "default"),
-                &[hive_catalog_1, tpch_catalog, hive_catalog_2],
-            )
+            .merged_config(&role, &role.rolegroup_ref(&trino, "default"), &[
+                hive_catalog_1,
+                tpch_catalog,
+                hive_catalog_2,
+            ])
             .unwrap();
 
         let mut expected_affinities = vec![WeightedPodAffinityTerm {
@@ -369,42 +363,36 @@ mod tests {
             }
         };
 
-        assert_eq!(
-            merged_config.affinity,
-            StackableAffinity {
-                pod_affinity: Some(PodAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(expected_affinities),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                pod_anti_affinity: Some(PodAntiAffinity {
-                    preferred_during_scheduling_ignored_during_execution: Some(vec![
-                        WeightedPodAffinityTerm {
-                            pod_affinity_term: PodAffinityTerm {
-                                label_selector: Some(LabelSelector {
-                                    match_labels: Some(BTreeMap::from([
-                                        ("app.kubernetes.io/name".to_string(), "trino".to_string(),),
-                                        (
-                                            "app.kubernetes.io/instance".to_string(),
-                                            "simple-trino".to_string(),
-                                        ),
-                                        (
-                                            "app.kubernetes.io/component".to_string(),
-                                            role.to_string(),
-                                        )
-                                    ])),
-                                    ..LabelSelector::default()
-                                }),
-                                topology_key: "kubernetes.io/hostname".to_string(),
-                                ..PodAffinityTerm::default()
-                            },
-                            weight: 70
-                        }
-                    ]),
-                    required_during_scheduling_ignored_during_execution: None,
-                }),
-                node_affinity: None,
-                node_selector: None,
-            }
-        );
+        assert_eq!(merged_config.affinity, StackableAffinity {
+            pod_affinity: Some(PodAffinity {
+                preferred_during_scheduling_ignored_during_execution: Some(expected_affinities),
+                required_during_scheduling_ignored_during_execution: None,
+            }),
+            pod_anti_affinity: Some(PodAntiAffinity {
+                preferred_during_scheduling_ignored_during_execution: Some(vec![
+                    WeightedPodAffinityTerm {
+                        pod_affinity_term: PodAffinityTerm {
+                            label_selector: Some(LabelSelector {
+                                match_labels: Some(BTreeMap::from([
+                                    ("app.kubernetes.io/name".to_string(), "trino".to_string(),),
+                                    (
+                                        "app.kubernetes.io/instance".to_string(),
+                                        "simple-trino".to_string(),
+                                    ),
+                                    ("app.kubernetes.io/component".to_string(), role.to_string(),)
+                                ])),
+                                ..LabelSelector::default()
+                            }),
+                            topology_key: "kubernetes.io/hostname".to_string(),
+                            ..PodAffinityTerm::default()
+                        },
+                        weight: 70
+                    }
+                ]),
+                required_during_scheduling_ignored_during_execution: None,
+            }),
+            node_affinity: None,
+            node_selector: None,
+        });
     }
 }

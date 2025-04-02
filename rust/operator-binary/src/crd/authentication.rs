@@ -2,7 +2,7 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     client::Client,
     commons::authentication::{
-        oidc, AuthenticationClass, AuthenticationClassProvider, ClientAuthenticationDetails,
+        AuthenticationClass, AuthenticationClassProvider, ClientAuthenticationDetails, oidc,
     },
     kube::ResourceExt,
 };

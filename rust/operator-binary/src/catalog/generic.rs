@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use stackable_operator::client::Client;
 
-use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
+use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
 use crate::crd::catalog::generic::{GenericConnector, Property};
 
 #[async_trait]

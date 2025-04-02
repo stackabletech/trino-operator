@@ -9,7 +9,7 @@ use stackable_operator::{
 };
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
-use crate::crd::catalog::{v1alpha1, TrinoCatalogConnector};
+use crate::crd::catalog::{TrinoCatalogConnector, v1alpha1};
 
 pub struct CatalogConfig {
     /// Name of the catalog

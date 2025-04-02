@@ -16,10 +16,10 @@ use tracing::trace;
 
 use crate::{
     authentication::{
-        password::{file::FileAuthenticator, ldap::LdapAuthenticator},
         TrinoAuthenticationConfig,
+        password::{file::FileAuthenticator, ldap::LdapAuthenticator},
     },
-    crd::{Container, TrinoRole, RW_CONFIG_DIR_NAME},
+    crd::{Container, RW_CONFIG_DIR_NAME, TrinoRole},
 };
 
 pub mod file;
@@ -299,24 +299,32 @@ mod tests {
         // check file auth
         assert_eq!(
             config_files.get(&file_auth_1.config_file_name()).unwrap(),
-            &format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n")
+            &format!(
+                "file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n"
+            )
         );
         // check ldap
-        assert!(config_files
-            .get(&ldap_auth_1.config_file_name())
-            .unwrap()
-            .contains("password-authenticator.name=ldap"));
+        assert!(
+            config_files
+                .get(&ldap_auth_1.config_file_name())
+                .unwrap()
+                .contains("password-authenticator.name=ldap")
+        );
 
         // Coordinator
-        assert!(!auth_config
-            .volume_mounts(&TrinoRole::Coordinator, &Container::Trino)
-            .is_empty());
+        assert!(
+            !auth_config
+                .volume_mounts(&TrinoRole::Coordinator, &Container::Trino)
+                .is_empty()
+        );
         assert!(!auth_config.volumes().is_empty());
 
         // Nothing to be set for workers
-        assert!(auth_config
-            .volume_mounts(&TrinoRole::Worker, &Container::Trino)
-            .is_empty());
+        assert!(
+            auth_config
+                .volume_mounts(&TrinoRole::Worker, &Container::Trino)
+                .is_empty()
+        );
         assert!(auth_config.config_files(&TrinoRole::Worker).is_empty());
     }
 }

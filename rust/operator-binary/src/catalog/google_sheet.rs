@@ -4,8 +4,8 @@ use stackable_operator::{
     client::Client,
 };
 
-use super::{config::CatalogConfig, FromTrinoCatalogError, ToCatalogConfig};
-use crate::crd::{catalog::google_sheet::GoogleSheetConnector, CONFIG_DIR_NAME};
+use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
+use crate::crd::{CONFIG_DIR_NAME, catalog::google_sheet::GoogleSheetConnector};
 
 pub const CONNECTOR_NAME: &str = "gsheets";
 
