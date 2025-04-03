@@ -11,10 +11,10 @@ use crate::{
     catalog::config::CatalogConfig,
     controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
     crd::{
-        v1alpha1, Container, TrinoRole, CONFIG_DIR_NAME, DATA_DIR_NAME, LOG_PROPERTIES,
-        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-        STACKABLE_TLS_STORE_PASSWORD, SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD,
+        CONFIG_DIR_NAME, Container, DATA_DIR_NAME, LOG_PROPERTIES, RW_CONFIG_DIR_NAME,
+        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+        SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole, v1alpha1,
     },
 };
 
@@ -140,8 +140,12 @@ pub fn add_cert_to_truststore(
     alias_name: &str,
 ) -> Vec<String> {
     vec![
-        format!("echo Adding cert from {cert_file} to truststore {destination_directory}/truststore.p12"),
-        format!("keytool -importcert -file {cert_file} -keystore {destination_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias_name} -storepass {STACKABLE_TLS_STORE_PASSWORD}"),
+        format!(
+            "echo Adding cert from {cert_file} to truststore {destination_directory}/truststore.p12"
+        ),
+        format!(
+            "keytool -importcert -file {cert_file} -keystore {destination_directory}/truststore.p12 -storetype pkcs12 -noprompt -alias {alias_name} -storepass {STACKABLE_TLS_STORE_PASSWORD}"
+        ),
     ]
 }
 
@@ -160,8 +164,12 @@ fn import_keystore(source_directory: &str, destination_directory: &str) -> Vec<S
         // Keytool is only barking if a password is not set for the destination keystore (which we set)
         // and do provide an empty password for the source keystore coming from the secret-operator.
         // Using no password will result in a warning.
-        format!("echo Importing {source_directory}/keystore.p12 to {destination_directory}/keystore.p12"),
-        format!("keytool -importkeystore -srckeystore {source_directory}/keystore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/keystore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
+        format!(
+            "echo Importing {source_directory}/keystore.p12 to {destination_directory}/keystore.p12"
+        ),
+        format!(
+            "keytool -importkeystore -srckeystore {source_directory}/keystore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -destkeystore {destination_directory}/keystore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"
+        ),
     ]
 }
 
@@ -184,8 +192,12 @@ fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec
         // the destination truststore to avoid conflicts when importing multiple secret-op generated
         // truststores. We do not use the UUID rust crate since this will continuously change the STS... and
         // leads to never-ending reconciles.
-        format!("echo Importing {source_directory}/truststore.p12 to {destination_directory}/truststore.p12"),
-        format!("keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -srcalias 1 -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -destalias $(cat /proc/sys/kernel/random/uuid) -noprompt"),
+        format!(
+            "echo Importing {source_directory}/truststore.p12 to {destination_directory}/truststore.p12"
+        ),
+        format!(
+            "keytool -importkeystore -srckeystore {source_directory}/truststore.p12 -srcstoretype PKCS12 -srcstorepass \"\" -srcalias 1 -destkeystore {destination_directory}/truststore.p12 -deststoretype PKCS12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -destalias $(cat /proc/sys/kernel/random/uuid) -noprompt"
+        ),
     ]
 }
 
@@ -193,6 +205,8 @@ fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec
 fn import_system_truststore(destination_directory: &str) -> Vec<String> {
     vec![
         format!("echo Importing {SYSTEM_TRUST_STORE} to {destination_directory}/truststore.p12"),
-        format!("keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {destination_directory}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"),
+        format!(
+            "keytool -importkeystore -srckeystore {SYSTEM_TRUST_STORE} -srcstoretype jks -srcstorepass {SYSTEM_TRUST_STORE_PASSWORD} -destkeystore {destination_directory}/truststore.p12 -deststoretype pkcs12 -deststorepass {STACKABLE_TLS_STORE_PASSWORD} -noprompt"
+        ),
     ]
 }

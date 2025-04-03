@@ -9,10 +9,9 @@ use std::{
 
 use const_format::concatcp;
 use product_config::{
-    self,
+    self, ProductConfigManager,
     types::PropertyNameKind,
-    writer::{to_java_properties_string, PropertiesWriterError},
-    ProductConfigManager,
+    writer::{PropertiesWriterError, to_java_properties_string},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -21,17 +20,18 @@ use stackable_operator::{
         configmap::ConfigMapBuilder,
         meta::ObjectMetaBuilder,
         pod::{
+            PodBuilder,
             container::ContainerBuilder,
             resources::ResourceRequirementsBuilder,
             security::PodSecurityContextBuilder,
             volume::{SecretFormat, SecretOperatorVolumeSourceBuilder, VolumeBuilder},
-            PodBuilder,
         },
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
     commons::{product_image_selection::ResolvedProductImage, rbac::build_rbac_resources},
     k8s_openapi::{
+        DeepMerge,
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
@@ -41,19 +41,18 @@ use stackable_operator::{
             },
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
-        DeepMerge,
     },
     kube::{
-        core::{error_boundary, DeserializeGuard},
-        runtime::{controller::Action, reflector::ObjectRef},
         Resource, ResourceExt,
+        core::{DeserializeGuard, error_boundary},
+        runtime::{controller::Action, reflector::ObjectRef},
     },
     kvp::{Annotation, Label, Labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{
-        transform_all_roles_to_config, validate_all_roles_and_groups_config,
-        ValidatedRoleConfigByPropertyKind,
+        ValidatedRoleConfigByPropertyKind, transform_all_roles_to_config,
+        validate_all_roles_and_groups_config,
     },
     product_logging::{
         self,
@@ -76,18 +75,20 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     authorization::opa::TrinoOpaConfig,
-    catalog::{config::CatalogConfig, FromTrinoCatalogError},
+    catalog::{FromTrinoCatalogError, config::CatalogConfig},
     command, config,
     crd::{
+        ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
+        DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT,
+        HTTPS_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES,
+        MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+        TrinoRole,
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        v1alpha1, Container, TrinoRole, ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME,
-        CONFIG_PROPERTIES, DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTPS_PORT,
-        HTTPS_PORT_NAME, HTTP_PORT, HTTP_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES,
-        LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+        v1alpha1,
     },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
@@ -564,10 +565,10 @@ pub async fn reconcile_trino(
         ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
 
     let status = v1alpha1::TrinoClusterStatus {
-        conditions: compute_conditions(
-            trino,
-            &[&sts_cond_builder, &cluster_operation_cond_builder],
-        ),
+        conditions: compute_conditions(trino, &[
+            &sts_cond_builder,
+            &cluster_operation_cond_builder,
+        ]),
     };
 
     cluster_resources
@@ -1019,11 +1020,9 @@ fn build_rolegroup_statefulset(
             "pipefail".to_string(),
             "-c".to_string(),
         ])
-        .args(vec![command::container_trino_args(
-            trino_authentication_config,
-            catalogs,
-        )
-        .join("\n")])
+        .args(vec![
+            command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
+        ])
         .add_env_vars(env)
         .add_volume_mount("data", DATA_DIR_NAME)
         .context(AddVolumeMountSnafu)?
@@ -1189,11 +1188,13 @@ fn build_rolegroup_statefulset(
             },
             service_name: rolegroup_ref.object_name(),
             template: pod_template,
-            volume_claim_templates: Some(vec![merged_config
-                .resources
-                .storage
-                .data
-                .build_pvc("data", Some(vec!["ReadWriteOnce"]))]),
+            volume_claim_templates: Some(vec![
+                merged_config
+                    .resources
+                    .storage
+                    .data
+                    .build_pvc("data", Some(vec!["ReadWriteOnce"])),
+            ]),
             ..StatefulSetSpec::default()
         }),
         status: None,
@@ -1535,7 +1536,9 @@ fn finished_starting_probe(trino: &v1alpha1::TrinoCluster) -> ExecAction {
             "-euo".to_string(),
             "pipefail".to_string(),
             "-c".to_string(),
-            format!("curl --fail --insecure {schema}://127.0.0.1:{port}/v1/info | grep --silent '\\\"starting\\\":false'"),
+            format!(
+                "curl --fail --insecure {schema}://127.0.0.1:{port}/v1/info | grep --silent '\\\"starting\\\":false'"
+            ),
         ]),
     }
 }

@@ -5,12 +5,12 @@ use std::collections::BTreeMap;
 use indoc::formatdoc;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    builder::pod::{container::ContainerBuilder, PodBuilder},
+    builder::pod::{PodBuilder, container::ContainerBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
 };
 
 use crate::crd::{
-    v1alpha1, TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD, WORKER_SHUTDOWN_GRACE_PERIOD,
+    TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD, WORKER_SHUTDOWN_GRACE_PERIOD, v1alpha1,
 };
 
 #[derive(Debug, Snafu)]
