@@ -38,7 +38,7 @@ pub enum Property {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crd::catalog::{v1alpha1, TrinoCatalogConnector};
+    use crate::crd::catalog::{TrinoCatalogConnector, v1alpha1};
 
     #[test]
     fn test_cr_parsing() {
@@ -78,16 +78,13 @@ mod tests {
                         "connection-url".to_string(),
                         Property::Value("jdbc:postgresql://example.net:5432/database".to_string())
                     ),
-                    (
-                        "connection-user".to_string(),
-                        Property::ValueFromSecret {
-                            secret_key_selector: SecretKeySelector {
-                                key: "user".to_string(),
-                                name: "my-postgresql-credentials-secret".to_string(),
-                                optional: None,
-                            }
+                    ("connection-user".to_string(), Property::ValueFromSecret {
+                        secret_key_selector: SecretKeySelector {
+                            key: "user".to_string(),
+                            name: "my-postgresql-credentials-secret".to_string(),
+                            optional: None,
                         }
-                    ),
+                    }),
                     (
                         "connection-password".to_string(),
                         Property::ValueFromSecret {

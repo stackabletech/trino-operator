@@ -7,8 +7,8 @@ use stackable_operator::{
 };
 
 use crate::crd::{
-    v1alpha1, JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT, RW_CONFIG_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT, RW_CONFIG_DIR_NAME,
+    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, v1alpha1,
 };
 
 #[derive(Snafu, Debug)]
@@ -28,7 +28,9 @@ pub enum Error {
         unit: String,
     },
 
-    #[snafu(display("Trino version {version} is not supported. Only specific versions are handled due to version specific JVM configuration generation"))]
+    #[snafu(display(
+        "Trino version {version} is not supported. Only specific versions are handled due to version specific JVM configuration generation"
+    ))]
     TrinoVersionNotSupported { version: u16 },
 
     #[snafu(display("failed to merge jvm argument overrides"))]
@@ -72,7 +74,9 @@ pub fn jvm_config(
         "# Specify security.properties".to_owned(),
         format!("-Djava.security.properties={RW_CONFIG_DIR_NAME}/{JVM_SECURITY_PROPERTIES}"),
         "# Prometheus metrics exporter".to_owned(),
-        format!("-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={METRICS_PORT}:/stackable/jmx/config.yaml"),
+        format!(
+            "-javaagent:/stackable/jmx/jmx_prometheus_javaagent.jar={METRICS_PORT}:/stackable/jmx/config.yaml"
+        ),
         "# Truststore settings".to_owned(),
         format!("-Djavax.net.ssl.trustStore={STACKABLE_CLIENT_TLS_DIR}/truststore.p12"),
         "-Djavax.net.ssl.trustStoreType=pkcs12".to_owned(),
@@ -157,7 +161,7 @@ mod tests {
     use indoc::indoc;
 
     use super::*;
-    use crate::crd::{v1alpha1, TrinoRole};
+    use crate::crd::{TrinoRole, v1alpha1};
 
     #[test]
     fn test_jvm_config_defaults() {
@@ -182,9 +186,7 @@ mod tests {
         "#;
         let jvm_config = construct_jvm_config(input);
 
-        assert_eq!(
-            jvm_config,
-            indoc! {"
+        assert_eq!(jvm_config, indoc! {"
               -server
               # Heap settings
               -Xms34406m
@@ -199,8 +201,7 @@ mod tests {
               -Djavax.net.ssl.trustStorePassword=changeit
               # Recommended JVM arguments from Trino
               -RecommendedTrinoFlag
-              # Arguments from jvmArgumentOverrides"}
-        );
+              # Arguments from jvmArgumentOverrides"});
     }
 
     #[test]
@@ -241,9 +242,7 @@ mod tests {
         "#;
         let jvm_config = construct_jvm_config(input);
 
-        assert_eq!(
-            jvm_config,
-            indoc! {"
+        assert_eq!(jvm_config, indoc! {"
               -server
               # Heap settings
               -Xms34406m
@@ -261,8 +260,7 @@ mod tests {
               -Dhttps.proxyHost=proxy.my.corp
               -Djava.net.preferIPv4Stack=true
               -Xmx40000m
-              -Dhttps.proxyPort=1234"}
-        );
+              -Dhttps.proxyPort=1234"});
     }
 
     fn construct_jvm_config(trino_cluster: &str) -> String {

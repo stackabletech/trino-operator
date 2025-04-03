@@ -13,14 +13,14 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
         self,
-        pod::{container::ContainerBuilder, PodBuilder},
+        pod::{PodBuilder, container::ContainerBuilder},
     },
     commons::{
         authentication::{AuthenticationClass, AuthenticationClassProvider},
         product_image_selection::ResolvedProductImage,
     },
     k8s_openapi::api::core::v1::{Container, EnvVar, Volume, VolumeMount},
-    kube::{runtime::reflector::ObjectRef, ResourceExt},
+    kube::{ResourceExt, runtime::reflector::ObjectRef},
 };
 use strum::EnumDiscriminants;
 use tracing::trace;
@@ -29,11 +29,11 @@ use crate::{
     authentication::{
         oidc::{OidcAuthenticator, TrinoOidcAuthentication},
         password::{
-            file::FileAuthenticator, ldap::LdapAuthenticator, TrinoPasswordAuthentication,
-            TrinoPasswordAuthenticator,
+            TrinoPasswordAuthentication, TrinoPasswordAuthenticator, file::FileAuthenticator,
+            ldap::LdapAuthenticator,
         },
     },
-    crd::{authentication::ResolvedAuthenticationClassRef, TrinoRole},
+    crd::{TrinoRole, authentication::ResolvedAuthenticationClassRef},
 };
 
 pub(crate) mod oidc;
@@ -44,7 +44,9 @@ const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("The Trino Operator does not support the AuthenticationClass provider [{authentication_class_provider}] from AuthenticationClass [{authentication_class}]."))]
+    #[snafu(display(
+        "The Trino Operator does not support the AuthenticationClass provider [{authentication_class_provider}] from AuthenticationClass [{authentication_class}]."
+    ))]
     AuthenticationClassProviderNotSupported {
         authentication_class_provider: String,
         authentication_class: ObjectRef<AuthenticationClass>,
@@ -61,7 +63,9 @@ pub enum Error {
     #[snafu(display("Failed to configure trino OAuth2 authentication"))]
     InvalidOauth2AuthenticationConfig { source: oidc::Error },
 
-    #[snafu(display("OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"))]
+    #[snafu(display(
+        "OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"
+    ))]
     OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
 
     #[snafu(display("failed to add needed volume"))]
@@ -740,9 +744,11 @@ mod tests {
     #[test]
     fn test_trino_password_authenticator_config_files() {
         // Nothing for workers
-        assert!(setup_authentication_config()
-            .config_files(&TrinoRole::Worker)
-            .is_empty());
+        assert!(
+            setup_authentication_config()
+                .config_files(&TrinoRole::Worker)
+                .is_empty()
+        );
 
         // coordinators
         let config_files = setup_authentication_config().config_files(&TrinoRole::Coordinator);
@@ -791,12 +797,16 @@ mod tests {
     #[test]
     fn test_trino_password_authenticator_volume_mounts() {
         // nothing for workers
-        assert!(setup_authentication_config()
-            .volume_mounts(&TrinoRole::Worker, &crate::crd::Container::Trino,)
-            .is_empty());
-        assert!(setup_authentication_config()
-            .volume_mounts(&TrinoRole::Worker, &crate::crd::Container::Prepare,)
-            .is_empty());
+        assert!(
+            setup_authentication_config()
+                .volume_mounts(&TrinoRole::Worker, &crate::crd::Container::Trino,)
+                .is_empty()
+        );
+        assert!(
+            setup_authentication_config()
+                .volume_mounts(&TrinoRole::Worker, &crate::crd::Container::Prepare,)
+                .is_empty()
+        );
 
         // coordinator - main container
         let coordinator_main_mounts = setup_authentication_config()
@@ -817,12 +827,16 @@ mod tests {
         let auth_config_with_ldap_bind = setup_authentication_config_bind_credentials();
 
         // nothing for workers
-        assert!(auth_config
-            .commands(&TrinoRole::Worker, &crate::crd::Container::Trino)
-            .is_empty());
-        assert!(auth_config_with_ldap_bind
-            .commands(&TrinoRole::Worker, &crate::crd::Container::Trino)
-            .is_empty());
+        assert!(
+            auth_config
+                .commands(&TrinoRole::Worker, &crate::crd::Container::Trino)
+                .is_empty()
+        );
+        assert!(
+            auth_config_with_ldap_bind
+                .commands(&TrinoRole::Worker, &crate::crd::Container::Trino)
+                .is_empty()
+        );
 
         // we expect 0 entries because no bind credentials env export
         assert_eq!(

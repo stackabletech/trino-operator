@@ -7,7 +7,7 @@ use stackable_operator::commons::{authentication::oidc, tls_verification::TlsCli
 use crate::{
     authentication::TrinoAuthenticationConfig,
     command,
-    crd::{TrinoRole, STACKABLE_CLIENT_TLS_DIR},
+    crd::{STACKABLE_CLIENT_TLS_DIR, TrinoRole},
 };
 
 // Trino properties

@@ -8,7 +8,7 @@ use stackable_operator::{
 
 use crate::{
     controller::{CONTROLLER_NAME, OPERATOR_NAME},
-    crd::{v1alpha1, TrinoRole, APP_NAME},
+    crd::{APP_NAME, TrinoRole, v1alpha1},
 };
 
 #[derive(Snafu, Debug)]

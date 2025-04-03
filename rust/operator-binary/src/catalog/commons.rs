@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use snafu::{ensure, OptionExt, ResultExt};
+use snafu::{OptionExt, ResultExt, ensure};
 use stackable_operator::{
     builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
@@ -11,19 +11,19 @@ use stackable_operator::{
 };
 
 use super::{
+    ExtendCatalogConfig, FromTrinoCatalogError,
     config::CatalogConfig,
     from_trino_catalog_error::{
         ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
         FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
         ObjectHasNoNamespaceSnafu, S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
     },
-    ExtendCatalogConfig, FromTrinoCatalogError,
 };
 use crate::{
     command,
     crd::{
-        catalog::commons::{HdfsConnection, MetastoreConnection},
         CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+        catalog::commons::{HdfsConnection, MetastoreConnection},
     },
 };
 

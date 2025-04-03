@@ -14,7 +14,7 @@ use stackable_operator::{
 };
 use strum::Display;
 
-use crate::crd::{v1alpha1, Container};
+use crate::crd::{Container, v1alpha1};
 
 #[derive(Snafu, Debug)]
 pub enum Error {

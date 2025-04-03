@@ -5,12 +5,11 @@
         "homepage": null,
         "owner": "stackabletech",
         "repo": "beku.py",
-        "rev": "957073f646a1d5481d95db03acdd74933fb265e3",
-        "sha256": "0jqkcy8xsfv5ki7js9xy36qg5hcwwnpv72rrgpg3lgj0arr5zmbd",
+        "rev": "1ebc9e7b70fb8ee11dfb569ae45b3bcd63666d0e",
+        "sha256": "1zg24h5wdis7cysa08r8vvbw2rpyx6fgv148i1lg54dwd3sa0h0d",
         "type": "tarball",
-        "url": "https://github.com/stackabletech/beku.py/archive/957073f646a1d5481d95db03acdd74933fb265e3.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "0.0.14"
+        "url": "https://github.com/stackabletech/beku.py/archive/1ebc9e7b70fb8ee11dfb569ae45b3bcd63666d0e.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "crate2nix": {
         "branch": "master",

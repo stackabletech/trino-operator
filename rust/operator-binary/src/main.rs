@@ -13,6 +13,7 @@ use std::sync::Arc;
 use clap::Parser;
 use futures::stream::StreamExt;
 use stackable_operator::{
+    YamlSchema,
     cli::{Command, ProductOperatorRun},
     commons::authentication::AuthenticationClass,
     k8s_openapi::api::{
@@ -20,22 +21,22 @@ use stackable_operator::{
         core::v1::{ConfigMap, Service},
     },
     kube::{
+        ResourceExt,
         core::DeserializeGuard,
         runtime::{
+            Controller,
             events::{Recorder, Reporter},
             reflector::ObjectRef,
-            watcher, Controller,
+            watcher,
         },
-        ResourceExt,
     },
     logging::controller::report_controller_reconciled,
     shared::yaml::SerializeOptions,
-    YamlSchema,
 };
 
 use crate::{
     controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
-    crd::{catalog::TrinoCatalog, v1alpha1, TrinoCluster, APP_NAME},
+    crd::{APP_NAME, TrinoCluster, catalog::TrinoCatalog, v1alpha1},
 };
 
 mod built_info {
@@ -89,13 +90,10 @@ async fn main() -> anyhow::Result<()> {
                 &cluster_info_opts,
             )
             .await?;
-            let event_recorder = Arc::new(Recorder::new(
-                client.as_kube_client(),
-                Reporter {
-                    controller: FULL_CONTROLLER_NAME.to_string(),
-                    instance: None,
-                },
-            ));
+            let event_recorder = Arc::new(Recorder::new(client.as_kube_client(), Reporter {
+                controller: FULL_CONTROLLER_NAME.to_string(),
+                instance: None,
+            }));
 
             let cluster_controller = Controller::new(
                 watch_namespace.get_api::<DeserializeGuard<v1alpha1::TrinoCluster>>(&client),

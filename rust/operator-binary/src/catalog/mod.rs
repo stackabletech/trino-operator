@@ -46,9 +46,7 @@ pub enum FromTrinoCatalogError {
         cm_name: String,
     },
 
-    #[snafu(display(
-        "failed to retrieve [{catalog}] discovery config map [{cm_name}] data field"
-    ))]
+    #[snafu(display("failed to retrieve [{catalog}] discovery config map [{cm_name}] data field"))]
     FailedToGetDiscoveryConfigMapData { catalog: String, cm_name: String },
 
     #[snafu(display(
