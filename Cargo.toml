@@ -10,6 +10,11 @@ edition = "2021"
 repository = "https://github.com/stackabletech/trino-operator"
 
 [workspace.dependencies]
+product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.7.0" }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "stackable-operator-0.89.1" }
+stackable-telemetry = { git = "https://github.com/stackabletech/operator-rs.git", tag = "stackable-telemetry-0.4.0" }
+stackable-versioned = { git = "https://github.com/stackabletech/operator-rs.git", features = ["k8s"], tag = "stackable-versioned-0.7.1" }
+
 anyhow = "1.0"
 async-trait = "0.1"
 built = { version = "0.7", features = ["chrono", "git2"] }
@@ -23,9 +28,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
 snafu = "0.8"
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "stackable-operator-0.87.2" }
-stackable-versioned = { git = "https://github.com/stackabletech/operator-rs.git", features = ["k8s"], tag = "stackable-versioned-0.6.0" }
-product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.7.0" }
 strum = { version = "0.27", features = ["derive"] }
 tokio = { version = "1.40", features = ["full"] }
 tracing = "0.1"
