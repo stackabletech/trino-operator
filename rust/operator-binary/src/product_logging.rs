@@ -1,8 +1,5 @@
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::Snafu;
 use stackable_operator::{
-    client::Client,
-    k8s_openapi::api::core::v1::ConfigMap,
-    kube::ResourceExt,
     product_logging::{
         framework::create_vector_config,
         spec::{
@@ -32,14 +29,9 @@ pub enum Error {
         entry: &'static str,
         cm_name: String,
     },
-
-    #[snafu(display("vectorAggregatorConfigMapName must be set"))]
-    MissingVectorAggregatorAddress,
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
-
-const VECTOR_AGGREGATOR_CM_ENTRY: &str = "ADDRESS";
 
 #[derive(Display)]
 #[strum(serialize_all = "lowercase")]
@@ -63,44 +55,6 @@ impl From<LogLevel> for TrinoLogLevel {
     }
 }
 
-/// Return the address of the Vector aggregator if the corresponding ConfigMap name is given in the
-/// cluster spec
-pub async fn resolve_vector_aggregator_address(
-    trino: &v1alpha1::TrinoCluster,
-    client: &Client,
-) -> Result<Option<String>> {
-    let vector_aggregator_address = if let Some(vector_aggregator_config_map_name) = &trino
-        .spec
-        .cluster_config
-        .vector_aggregator_config_map_name
-        .as_ref()
-    {
-        let vector_aggregator_address = client
-            .get::<ConfigMap>(
-                vector_aggregator_config_map_name,
-                trino
-                    .namespace()
-                    .as_deref()
-                    .context(ObjectHasNoNamespaceSnafu)?,
-            )
-            .await
-            .context(ConfigMapNotFoundSnafu {
-                cm_name: vector_aggregator_config_map_name.to_string(),
-            })?
-            .data
-            .and_then(|mut data| data.remove(VECTOR_AGGREGATOR_CM_ENTRY))
-            .context(MissingConfigMapEntrySnafu {
-                entry: VECTOR_AGGREGATOR_CM_ENTRY,
-                cm_name: vector_aggregator_config_map_name.to_string(),
-            })?;
-        Some(vector_aggregator_address)
-    } else {
-        None
-    };
-
-    Ok(vector_aggregator_address)
-}
-
 /// Return the `log.properties` configuration
 pub fn get_log_properties(logging: &Logging<Container>) -> Option<String> {
     if let Some(ContainerLogConfig {
@@ -116,7 +70,6 @@ pub fn get_log_properties(logging: &Logging<Container>) -> Option<String> {
 /// Return the vector toml configuration
 pub fn get_vector_toml(
     rolegroup: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    vector_aggregator_address: Option<&str>,
     logging: &Logging<Container>,
 ) -> Result<Option<String>> {
     let vector_log_config = if let Some(ContainerLogConfig {
@@ -129,11 +82,7 @@ pub fn get_vector_toml(
     };
 
     if logging.enable_vector_agent {
-        Ok(Some(create_vector_config(
-            rolegroup,
-            vector_aggregator_address.context(MissingVectorAggregatorAddressSnafu)?,
-            vector_log_config,
-        )))
+        Ok(Some(create_vector_config(rolegroup, vector_log_config)))
     } else {
         Ok(None)
     }

@@ -10,12 +10,16 @@ All notable changes to this project will be documented in this file.
   - BREAKING: The file log directory was set by `TRINO_OPERATOR_LOG_DIRECTORY`,
     and is now set by `ROLLING_LOGS` (or via `--rolling-logs <DIRECTORY>`).
   - Replace stackable-operator `print_startup_string` with `tracing::info!` with fields.
+- BREAKING: Inject the vector aggregator address into the vector config using the env var `VECTOR_AGGREGATOR_ADDRESS` instead
+    of having the operator write it to the vector config ([#734]).
 
 ### Fixed
 
 - Use `json` file extension for log files ([#733]).
+- Fix a bug where changes to ConfigMaps that are referenced in the TrinoCluster spec didn't trigger a reconciliation ([#734]).
 
 [#728]: https://github.com/stackabletech/trino-operator/pull/728
+[#734]: https://github.com/stackabletech/trino-operator/pull/734
 [#733]: https://github.com/stackabletech/trino-operator/pull/733
 
 ## [25.3.0] - 2025-03-21
