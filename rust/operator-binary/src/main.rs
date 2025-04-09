@@ -137,8 +137,8 @@ async fn main() -> anyhow::Result<()> {
                 watch_namespace.get_api::<DeserializeGuard<v1alpha1::TrinoCluster>>(&client),
                 watcher::Config::default(),
             );
-            let catalog_cluster_store = Arc::new(cluster_controller.store());
-            let authentication_class_cluster_store = catalog_cluster_store.clone();
+            let catalog_cluster_store = cluster_controller.store();
+            let authentication_class_cluster_store = cluster_controller.store();
             let config_map_cluster_store = cluster_controller.store();
 
             cluster_controller
