@@ -139,6 +139,7 @@ async fn main() -> anyhow::Result<()> {
             );
             let catalog_cluster_store = Arc::new(cluster_controller.store());
             let authentication_class_cluster_store = catalog_cluster_store.clone();
+            let config_map_cluster_store = cluster_controller.store();
 
             cluster_controller
                 .owns(
@@ -179,6 +180,17 @@ async fn main() -> anyhow::Result<()> {
                                 references_authentication_class(trino, &authentication_class)
                             })
                             .map(|trino| ObjectRef::from_obj(&*trino))
+                    },
+                )
+                .watches(
+                    watch_namespace.get_api::<DeserializeGuard<ConfigMap>>(&client),
+                    watcher::Config::default(),
+                    move |config_map| {
+                        config_map_cluster_store
+                            .state()
+                            .into_iter()
+                            .filter(move |druid| references_config_map(druid, &config_map))
+                            .map(|druid| ObjectRef::from_obj(&*druid))
                     },
                 )
                 .run(
@@ -228,4 +240,21 @@ fn references_authentication_class(
         .authentication
         .iter()
         .any(|c| c.authentication_class_name() == &authentication_class_name)
+}
+
+fn references_config_map(
+    trino: &DeserializeGuard<v1alpha1::TrinoCluster>,
+    config_map: &DeserializeGuard<ConfigMap>,
+) -> bool {
+    let Ok(trino) = &trino.0 else {
+        return false;
+    };
+
+    match trino.spec.cluster_config.authorization.to_owned() {
+        Some(trino_authorization) => match trino_authorization.opa {
+            Some(opa_config) => opa_config.config_map_name == config_map.name_any(),
+            None => false,
+        },
+        None => false,
+    }
 }

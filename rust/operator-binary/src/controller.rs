@@ -93,7 +93,7 @@ use crate::{
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
     },
-    product_logging::{get_log_properties, get_vector_toml, resolve_vector_aggregator_address},
+    product_logging::{get_log_properties, get_vector_toml},
 };
 
 pub struct Ctx {
@@ -230,10 +230,8 @@ pub enum Error {
     #[snafu(display("failed to resolve and merge config for role and role group"))]
     FailedToResolveConfig { source: crate::crd::Error },
 
-    #[snafu(display("failed to resolve the Vector aggregator address"))]
-    ResolveVectorAggregatorAddress {
-        source: crate::product_logging::Error,
-    },
+    #[snafu(display("vector agent is enabled but vector aggregator ConfigMap is missing"))]
+    VectorAggregatorConfigMapMissing,
 
     #[snafu(display("failed to build vector container"))]
     BuildVectorContainer { source: LoggingError },
@@ -470,10 +468,6 @@ pub async fn reconcile_trino(
 
     create_shared_internal_secret(trino, client).await?;
 
-    let vector_aggregator_address = resolve_vector_aggregator_address(trino, client)
-        .await
-        .context(ResolveVectorAggregatorAddressSnafu)?;
-
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
     for (trino_role_str, role_config) in validated_config {
@@ -498,7 +492,6 @@ pub async fn reconcile_trino(
                 &merged_config,
                 &trino_authentication_config,
                 &trino_opa_config,
-                vector_aggregator_address.as_deref(),
                 &client.kubernetes_cluster_info,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
@@ -634,7 +627,6 @@ fn build_rolegroup_config_map(
     merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
-    vector_aggregator_address: Option<&str>,
     cluster_info: &KubernetesClusterInfo,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
@@ -725,14 +717,11 @@ fn build_rolegroup_config_map(
                     cm_conf_data.insert(file_name.to_string(), log_properties);
                 }
 
-                if let Some(vector_toml) = get_vector_toml(
-                    rolegroup_ref,
-                    vector_aggregator_address,
-                    &merged_config.logging,
-                )
-                .context(InvalidLoggingConfigSnafu {
-                    cm_name: rolegroup_ref.object_name(),
-                })? {
+                if let Some(vector_toml) = get_vector_toml(rolegroup_ref, &merged_config.logging)
+                    .context(InvalidLoggingConfigSnafu {
+                        cm_name: rolegroup_ref.object_name(),
+                    })?
+                {
                     cm_conf_data.insert(
                         product_logging::framework::VECTOR_CONFIG_FILE.to_string(),
                         vector_toml,
@@ -1079,21 +1068,34 @@ fn build_rolegroup_statefulset(
     }
 
     if merged_config.logging.enable_vector_agent {
-        pod_builder.add_container(
-            product_logging::framework::vector_container(
-                resolved_product_image,
-                "config",
-                "log",
-                merged_config.logging.containers.get(&Container::Vector),
-                ResourceRequirementsBuilder::new()
-                    .with_cpu_request("250m")
-                    .with_cpu_limit("500m")
-                    .with_memory_request("128Mi")
-                    .with_memory_limit("128Mi")
-                    .build(),
-            )
-            .context(BuildVectorContainerSnafu)?,
-        );
+        match trino
+            .spec
+            .cluster_config
+            .vector_aggregator_config_map_name
+            .to_owned()
+        {
+            Some(vector_aggregator_config_map_name) => {
+                pod_builder.add_container(
+                    product_logging::framework::vector_container(
+                        resolved_product_image,
+                        "config",
+                        "log",
+                        merged_config.logging.containers.get(&Container::Vector),
+                        ResourceRequirementsBuilder::new()
+                            .with_cpu_request("250m")
+                            .with_cpu_limit("500m")
+                            .with_memory_request("128Mi")
+                            .with_memory_limit("128Mi")
+                            .build(),
+                        &vector_aggregator_config_map_name,
+                    )
+                    .context(BuildVectorContainerSnafu)?,
+                );
+            }
+            None => {
+                VectorAggregatorConfigMapMissingSnafu.fail()?;
+            }
+        }
     }
 
     let metadata = ObjectMetaBuilder::new()
@@ -1812,7 +1814,6 @@ mod tests {
             &merged_config,
             &trino_authentication_config,
             &trino_opa_config,
-            None,
             &cluster_info,
         )
         .unwrap()
