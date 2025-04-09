@@ -948,9 +948,9 @@ rec {
       };
       "backon" = rec {
         crateName = "backon";
-        version = "1.4.1";
+        version = "1.5.0";
         edition = "2021";
-        sha256 = "1drv0gvhjs3g0q88f1mknqjdyhh6qg8pvb9nkfasba011ibr23cp";
+        sha256 = "15k4p6xyxi4lkiyw5yxrmcws3wwnwjacgcqqmd2dvfldnyqm02zx";
         dependencies = [
           {
             name = "fastrand";
@@ -8958,13 +8958,13 @@ rec {
       };
       "stackable-telemetry" = rec {
         crateName = "stackable-telemetry";
-        version = "0.5.0";
+        version = "0.4.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "0f9b6f9669051e9c4f29e6e882acf3eff3ac3f14";
-          sha256 = "11zqwlwvfigca7lfsdch1wqd3vl694hff1avf6rhiawpnassj2cw";
+          url = "https://github.com/stackabletech//operator-rs.git";
+          rev = "861ded97bb2d9f49232a892afba294ae88e606ae";
+          sha256 = "03mldfkggcm27h5w2cdllsdn8jpaxccm2by03y0d6q7zkz986di6";
         };
         libName = "stackable_telemetry";
         authors = [
@@ -13057,10 +13057,10 @@ rec {
       };
       "xml-rs" = rec {
         crateName = "xml-rs";
-        version = "0.8.25";
+        version = "0.8.26";
         edition = "2021";
         crateBin = [];
-        sha256 = "1i73ajf6scni5bi1a51r19xykgrambdx5fkks0fyg5jqqbml1ff5";
+        sha256 = "1nkbzksai36pvx3ag1fn9b5cffwb1ldl66aglwcip42nkdnyfb56";
         libName = "xml";
         authors = [
           "Vladimir Matveev <vmatveev@citrine.cc>"

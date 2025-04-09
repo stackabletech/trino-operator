@@ -276,9 +276,9 @@ dependencies = [
 
 [[package]]
 name = "backon"
-version = "1.4.1"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "970d91570c01a8a5959b36ad7dd1c30642df24b6b3068710066f6809f7033bb7"
+checksum = "fd0b50b1b78dbadd44ab18b3c794e496f3a139abb9fbc27d9c94c4eebbb96496"
 dependencies = [
  "fastrand",
  "gloo-timers",
@@ -2756,8 +2756,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-telemetry"
-version = "0.5.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.91.1#0f9b6f9669051e9c4f29e6e882acf3eff3ac3f14"
+version = "0.4.0"
+source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat%2Fstackable-telemetry-tracing-default#861ded97bb2d9f49232a892afba294ae88e606ae"
 dependencies = [
  "axum 0.8.3",
  "clap",
@@ -3766,9 +3766,9 @@ checksum = "1e9df38ee2d2c3c5948ea468a8406ff0db0b29ae1ffde1bcf20ef305bcc95c51"
 
 [[package]]
 name = "xml-rs"
-version = "0.8.25"
+version = "0.8.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5b940ebc25896e71dd073bad2dbaa2abfe97b0a391415e22ad1326d9c54e3c4"
+checksum = "a62ce76d9b56901b19a74f19431b0d8b3bc7ca4ad685a746dfd78ca8f4fc6bda"
 
 [[package]]
 name = "yoke"
@@ -3886,9 +3886,4 @@ dependencies = [
 [[patch.unused]]
 name = "stackable-operator"
 version = "0.89.1"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat%2Fstackable-telemetry-tracing-default#861ded97bb2d9f49232a892afba294ae88e606ae"
-
-[[patch.unused]]
-name = "stackable-telemetry"
-version = "0.4.0"
 source = "git+https://github.com/stackabletech//operator-rs.git?branch=feat%2Fstackable-telemetry-tracing-default#861ded97bb2d9f49232a892afba294ae88e606ae"
