@@ -15,10 +15,12 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Use `json` file extension for log files ([#733]).
 - Fix a bug where changes to ConfigMaps that are referenced in the TrinoCluster spec didn't trigger a reconciliation ([#734]).
 
 [#728]: https://github.com/stackabletech/trino-operator/pull/728
 [#734]: https://github.com/stackabletech/trino-operator/pull/734
+[#733]: https://github.com/stackabletech/trino-operator/pull/733
 
 ## [25.3.0] - 2025-03-21
 
