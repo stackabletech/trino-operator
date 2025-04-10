@@ -6,9 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Replace stackable-operator `initialize_logging` with stackable-telemetry `Tracing` ([#728]).
-  - BREAKING: The file log directory was set by `TRINO_OPERATOR_LOG_DIRECTORY`,
-    and is now set by `ROLLING_LOGS` (or via `--rolling-logs <DIRECTORY>`).
+- BREAKING: Replace stackable-operator `initialize_logging` with stackable-telemetry `Tracing` ([#728], [#735]).
+  - The console log level was set by `TRINO_OPERATOR_LOG`, and is now set by `CONSOLE_LOG`.
+  - The file log level was set by `TRINO_OPERATOR_LOG`, and is now set by `FILE_LOG`.
+  - The file log directory was set by `TRINO_OPERATOR_LOG_DIRECTORY`, and is now set
+    by `ROLLING_LOGS_DIR` (or via `--rolling-logs <DIRECTORY>`).
   - Replace stackable-operator `print_startup_string` with `tracing::info!` with fields.
 - BREAKING: Inject the vector aggregator address into the vector config using the env var `VECTOR_AGGREGATOR_ADDRESS` instead
     of having the operator write it to the vector config ([#734]).
@@ -21,6 +23,7 @@ All notable changes to this project will be documented in this file.
 [#728]: https://github.com/stackabletech/trino-operator/pull/728
 [#734]: https://github.com/stackabletech/trino-operator/pull/734
 [#733]: https://github.com/stackabletech/trino-operator/pull/733
+[#735]: https://github.com/stackabletech/trino-operator/pull/735
 
 ## [25.3.0] - 2025-03-21
 

@@ -19,8 +19,8 @@ use serde::{Deserialize, Serialize};
 use stackable_operator::{
     kube::CustomResource,
     schemars::{self, JsonSchema},
+    versioned::versioned,
 };
-use stackable_versioned::versioned;
 use tpcds::TpcdsConnector;
 use tpch::TpchConnector;
 
