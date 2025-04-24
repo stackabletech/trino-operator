@@ -33,14 +33,9 @@ TIP: Consult the xref:management:stackablectl:quickstart.adoc[] to learn more ab
 Helm::
 +
 --
-To use Helm to install the operators, first add the Stackable Helm repository:
+NOTE: `helm repo` subcommands are not supported for OCI registries. The operators are installed directly, without adding the Helm Chart repository first.
 
-[source,console]
-----
-include::example$getting_started/code/getting_started.sh[tag=helm-add-repo]
-----
-
-Then install the Stackable operators:
+Install the Stackable operators:
 
 [source,console]
 ----

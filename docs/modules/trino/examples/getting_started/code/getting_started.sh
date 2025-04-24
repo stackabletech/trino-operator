@@ -24,19 +24,12 @@ cd "$(dirname "$0")"
 
 case "$1" in
 "helm")
-echo "Adding 'stackable-dev' Helm Chart repository"
-# tag::helm-add-repo[]
-helm repo add stackable-dev https://repo.stackable.tech/repository/helm-dev/
-# end::helm-add-repo[]
-echo "Updating Helm repo"
-helm repo update
-
 echo "Installing Operators with Helm"
 # tag::helm-install-operators[]
-helm install --wait commons-operator stackable-dev/commons-operator --version 0.0.0-dev
-helm install --wait secret-operator stackable-dev/secret-operator --version 0.0.0-dev
-helm install --wait listener-operator stackable-dev/listener-operator --version 0.0.0-dev
-helm install --wait trino-operator stackable-dev/trino-operator --version 0.0.0-dev
+helm install --wait commons-operator oci://oci.stackable.tech/sdp-charts/commons-operator --version 0.0.0-dev
+helm install --wait secret-operator oci://oci.stackable.tech/sdp-charts/secret-operator --version 0.0.0-dev
+helm install --wait listener-operator oci://oci.stackable.tech/sdp-charts/listener-operator --version 0.0.0-dev
+helm install --wait trino-operator oci://oci.stackable.tech/sdp-charts/trino-operator --version 0.0.0-dev
 # end::helm-install-operators[]
 ;;
 "stackablectl")
