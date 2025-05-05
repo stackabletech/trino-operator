@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
   - Replace stackable-operator `print_startup_string` with `tracing::info!` with fields.
 - BREAKING: Inject the vector aggregator address into the vector config using the env var `VECTOR_AGGREGATOR_ADDRESS` instead
     of having the operator write it to the vector config ([#734]).
+- test: Bump HDFS to `3.4.1` ([#741]).
 
 ### Fixed
 
@@ -32,6 +33,7 @@ All notable changes to this project will be documented in this file.
 [#733]: https://github.com/stackabletech/trino-operator/pull/733
 [#735]: https://github.com/stackabletech/trino-operator/pull/735
 [#739]: https://github.com/stackabletech/trino-operator/pull/739
+[#741]: https://github.com/stackabletech/trino-operator/pull/741
 
 ## [25.3.0] - 2025-03-21
 
