@@ -11,7 +11,12 @@ commands:
         name: opa
       spec:
         image:
+{% if test_scenario['values']['opa'].find(",") > 0 %}
+          custom: "{{ test_scenario['values']['opa'].split(',')[1] }}"
+          productVersion: "{{ test_scenario['values']['opa'].split(',')[0] }}"
+{% else %}
           productVersion: "{{ test_scenario['values']['opa'] }}"
+{% endif %}
           pullPolicy: IfNotPresent
         clusterConfig:
           userInfo:
