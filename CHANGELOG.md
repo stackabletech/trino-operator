@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
     of having the operator write it to the vector config ([#734]).
 - test: Bump HDFS to `3.4.1` ([#741]).
 - test: Bump to Vector `0.46.1` ([#743]).
+- test: Bump OPA `1.4.2` ([#745]).
 
 ### Fixed
 
@@ -36,6 +37,7 @@ All notable changes to this project will be documented in this file.
 [#739]: https://github.com/stackabletech/trino-operator/pull/739
 [#741]: https://github.com/stackabletech/trino-operator/pull/741
 [#743]: https://github.com/stackabletech/trino-operator/pull/743
+[#745]: https://github.com/stackabletech/trino-operator/pull/745
 
 ## [25.3.0] - 2025-03-21
 
