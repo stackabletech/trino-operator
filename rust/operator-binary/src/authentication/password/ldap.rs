@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    commons::authentication::ldap,
+    crd::authentication::ldap,
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 
@@ -27,23 +27,23 @@ pub enum Error {
 
     #[snafu(display("Failed to construct LDAP endpoint URL"))]
     LdapEndpoint {
-        source: stackable_operator::commons::authentication::ldap::Error,
+        source: stackable_operator::crd::authentication::ldap::v1alpha1::Error,
     },
 
     #[snafu(display("Failed to construct LDAP Volumes and VolumeMounts"))]
     LdapVolumeAndVolumeMounts {
-        source: stackable_operator::commons::authentication::ldap::Error,
+        source: stackable_operator::crd::authentication::ldap::v1alpha1::Error,
     },
 }
 
 #[derive(Clone, Debug)]
 pub struct LdapAuthenticator {
     name: String,
-    ldap: ldap::AuthenticationProvider,
+    ldap: ldap::v1alpha1::AuthenticationProvider,
 }
 
 impl LdapAuthenticator {
-    pub fn new(name: String, provider: ldap::AuthenticationProvider) -> Self {
+    pub fn new(name: String, provider: ldap::v1alpha1::AuthenticationProvider) -> Self {
         Self {
             name,
             ldap: provider,
@@ -161,8 +161,9 @@ mod tests {
     const LDAP_SEARCH_BASE: &str = "ou=users,dc=example,dc=org";
 
     fn setup_test_authenticator() -> LdapAuthenticator {
-        let auth_provider = serde_yaml::from_str::<ldap::AuthenticationProvider>(&format!(
-            r#"
+        let auth_provider =
+            serde_yaml::from_str::<ldap::v1alpha1::AuthenticationProvider>(&format!(
+                r#"
             hostname: {LDAP_HOST_NAME}
             searchBase: {LDAP_SEARCH_BASE}
             bindCredentials:
@@ -173,8 +174,8 @@ mod tests {
                   caCert:
                     secretClass: {TLS_SECRET_CLASS_NAME}
             "#
-        ))
-        .unwrap();
+            ))
+            .unwrap();
 
         LdapAuthenticator::new(AUTH_CLASS_NAME.to_string(), auth_provider)
     }

@@ -3,10 +3,8 @@ use snafu::{OptionExt, ResultExt, ensure};
 use stackable_operator::{
     builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
-    commons::{
-        s3::{S3AccessStyle, S3ConnectionInlineOrReference},
-        tls_verification::{CaCert, TlsServerVerification, TlsVerification},
-    },
+    commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
+    crd::s3,
     k8s_openapi::api::core::v1::ConfigMap,
 };
 
@@ -75,7 +73,7 @@ impl ExtendCatalogConfig for MetastoreConnection {
 }
 
 #[async_trait]
-impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
+impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
@@ -117,7 +115,7 @@ impl ExtendCatalogConfig for S3ConnectionInlineOrReference {
         catalog_config.add_property(region_prop, &s3.region.name);
         catalog_config.add_property(
             path_style_prop,
-            (s3.access_style == S3AccessStyle::Path).to_string(),
+            (s3.access_style == s3::v1alpha1::S3AccessStyle::Path).to_string(),
         );
 
         if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {

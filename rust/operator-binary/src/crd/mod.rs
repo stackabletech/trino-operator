@@ -11,7 +11,6 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
-        authentication::ClientAuthenticationDetails,
         cluster_operation::ClusterOperation,
         opa::OpaConfig,
         product_image_selection::ProductImage,
@@ -24,6 +23,7 @@ use stackable_operator::{
         fragment::{self, Fragment, ValidationError},
         merge::Merge,
     },
+    crd::authentication::core,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt, runtime::reflector::ObjectRef},
     memory::{BinaryMultiple, MemoryQuantity},
@@ -240,7 +240,7 @@ pub mod versioned {
         /// Authentication options for Trino.
         /// Learn more in the [Trino authentication usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authentication).
         #[serde(default)]
-        pub authentication: Vec<ClientAuthenticationDetails>,
+        pub authentication: Vec<core::v1alpha1::ClientAuthenticationDetails>,
 
         /// Authorization options for Trino.
         /// Learn more in the [Trino authorization usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/security#authorization).
@@ -827,7 +827,7 @@ impl v1alpha1::TrinoCluster {
     }
 
     /// Returns user provided authentication settings
-    pub fn get_authentication(&self) -> &Vec<ClientAuthenticationDetails> {
+    pub fn get_authentication(&self) -> &Vec<core::v1alpha1::ClientAuthenticationDetails> {
         &self.spec.cluster_config.authentication
     }
 

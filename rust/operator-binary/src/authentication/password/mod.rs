@@ -203,9 +203,7 @@ impl TrinoPasswordAuthentication {
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::commons::authentication::{
-        ldap, static_, static_::UserCredentialsSecretRef,
-    };
+    use stackable_operator::crd::authentication::{ldap, r#static};
 
     use super::*;
 
@@ -214,8 +212,8 @@ mod tests {
     const LDAP_AUTH_CLASS_1: &str = "ldap-auth-1";
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
-    fn ldap_provider() -> ldap::AuthenticationProvider {
-        serde_yaml::from_str::<ldap::AuthenticationProvider>(
+    fn ldap_provider() -> ldap::v1alpha1::AuthenticationProvider {
+        serde_yaml::from_str::<ldap::v1alpha1::AuthenticationProvider>(
             "
             hostname: my-ldap
             ",
@@ -227,16 +225,16 @@ mod tests {
         let authenticators = vec![
             TrinoPasswordAuthenticator::File(FileAuthenticator::new(
                 FILE_AUTH_CLASS_1.to_string(),
-                static_::AuthenticationProvider {
-                    user_credentials_secret: UserCredentialsSecretRef {
+                r#static::v1alpha1::AuthenticationProvider {
+                    user_credentials_secret: r#static::v1alpha1::UserCredentialsSecretRef {
                         name: FILE_AUTH_CLASS_1.to_string(),
                     },
                 },
             )),
             TrinoPasswordAuthenticator::File(FileAuthenticator::new(
                 FILE_AUTH_CLASS_2.to_string(),
-                static_::AuthenticationProvider {
-                    user_credentials_secret: UserCredentialsSecretRef {
+                r#static::v1alpha1::AuthenticationProvider {
+                    user_credentials_secret: r#static::v1alpha1::UserCredentialsSecretRef {
                         name: FILE_AUTH_CLASS_2.to_string(),
                     },
                 },
@@ -283,8 +281,8 @@ mod tests {
     fn test_password_authentication_config_files() {
         let file_auth_1 = FileAuthenticator::new(
             FILE_AUTH_CLASS_1.to_string(),
-            static_::AuthenticationProvider {
-                user_credentials_secret: UserCredentialsSecretRef {
+            r#static::v1alpha1::AuthenticationProvider {
+                user_credentials_secret: r#static::v1alpha1::UserCredentialsSecretRef {
                     name: FILE_AUTH_CLASS_1.to_string(),
                 },
             },

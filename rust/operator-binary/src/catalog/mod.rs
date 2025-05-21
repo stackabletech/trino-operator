@@ -11,10 +11,7 @@ pub mod tpch;
 
 use async_trait::async_trait;
 use snafu::Snafu;
-use stackable_operator::{
-    client::Client,
-    commons::{s3::S3Error, tls_verification::TlsClientDetailsError},
-};
+use stackable_operator::{client::Client, commons::tls_verification::TlsClientDetailsError};
 
 use self::config::CatalogConfig;
 
@@ -25,7 +22,9 @@ pub enum FromTrinoCatalogError {
     ObjectHasNoNamespace,
 
     #[snafu(display("failed to configure S3 connection"))]
-    ConfigureS3 { source: S3Error },
+    ConfigureS3 {
+        source: stackable_operator::crd::s3::v1alpha1::ConnectionError,
+    },
 
     #[snafu(display("failed to configure S3 TLS client details"))]
     ConfigureS3TlsClientDetails { source: TlsClientDetailsError },

@@ -15,7 +15,7 @@ use futures::stream::StreamExt;
 use stackable_operator::{
     YamlSchema,
     cli::{Command, ProductOperatorRun},
-    commons::authentication::AuthenticationClass,
+    crd::authentication::core,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service},
@@ -135,7 +135,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                 )
                 .watches(
-                    client.get_api::<DeserializeGuard<AuthenticationClass>>(&()),
+                    client.get_api::<DeserializeGuard<core::v1alpha1::AuthenticationClass>>(&()),
                     watcher::Config::default(),
                     move |authentication_class| {
                         authentication_class_cluster_store
@@ -192,7 +192,7 @@ async fn main() -> anyhow::Result<()> {
 
 fn references_authentication_class(
     trino: &DeserializeGuard<v1alpha1::TrinoCluster>,
-    authentication_class: &DeserializeGuard<AuthenticationClass>,
+    authentication_class: &DeserializeGuard<core::v1alpha1::AuthenticationClass>,
 ) -> bool {
     let Ok(trino) = &trino.0 else {
         return false;
