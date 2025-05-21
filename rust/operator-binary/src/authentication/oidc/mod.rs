@@ -2,7 +2,9 @@
 //!
 
 use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::{authentication::oidc, tls_verification::TlsClientDetailsError};
+use stackable_operator::{
+    commons::tls_verification::TlsClientDetailsError, crd::authentication::oidc,
+};
 
 use crate::{
     authentication::TrinoAuthenticationConfig,
@@ -41,7 +43,7 @@ pub enum Error {
 
     #[snafu(display("Failed to create OAuth2 issuer endpoint url."))]
     FailedToCreateIssuerEndpointUrl {
-        source: stackable_operator::commons::authentication::oidc::Error,
+        source: stackable_operator::crd::authentication::oidc::v1alpha1::Error,
     },
 
     #[snafu(display("Trino does not support unverified TLS connections to OIDC"))]
@@ -59,7 +61,7 @@ pub struct TrinoOidcAuthentication {
 #[derive(Clone, Debug)]
 pub struct OidcAuthenticator {
     name: String,
-    oidc: oidc::AuthenticationProvider,
+    oidc: oidc::v1alpha1::AuthenticationProvider,
     client_credentials_secret: String,
     extra_scopes: Vec<String>,
 }
@@ -67,7 +69,7 @@ pub struct OidcAuthenticator {
 impl OidcAuthenticator {
     pub fn new(
         name: String,
-        provider: oidc::AuthenticationProvider,
+        provider: oidc::v1alpha1::AuthenticationProvider,
         client_credentials_secret: String,
         extra_scopes: Vec<String>,
     ) -> Self {
@@ -112,14 +114,14 @@ impl TrinoOidcAuthentication {
         );
 
         let (client_id_env, client_secret_env) =
-            oidc::AuthenticationProvider::client_credentials_env_names(
+            oidc::v1alpha1::AuthenticationProvider::client_credentials_env_names(
                 &authenticator.client_credentials_secret,
             );
 
         oauth2_authentication_config.add_env_vars(
             TrinoRole::Coordinator,
             crate::crd::Container::Trino,
-            oidc::AuthenticationProvider::client_credentials_env_var_mounts(
+            oidc::v1alpha1::AuthenticationProvider::client_credentials_env_var_mounts(
                 authenticator.client_credentials_secret,
             ),
         );
@@ -240,7 +242,7 @@ mod tests {
         "#
         );
         let deserializer = serde_yaml::Deserializer::from_str(&input);
-        let oidc_auth_provider: oidc::AuthenticationProvider =
+        let oidc_auth_provider: oidc::v1alpha1::AuthenticationProvider =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         OidcAuthenticator::new(

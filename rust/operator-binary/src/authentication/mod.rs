@@ -15,10 +15,8 @@ use stackable_operator::{
         self,
         pod::{PodBuilder, container::ContainerBuilder},
     },
-    commons::{
-        authentication::{AuthenticationClass, AuthenticationClassProvider},
-        product_image_selection::ResolvedProductImage,
-    },
+    commons::product_image_selection::ResolvedProductImage,
+    crd::authentication::core,
     k8s_openapi::api::core::v1::{Container, EnvVar, Volume, VolumeMount},
     kube::{ResourceExt, runtime::reflector::ObjectRef},
 };
@@ -49,7 +47,7 @@ pub enum Error {
     ))]
     AuthenticationClassProviderNotSupported {
         authentication_class_provider: String,
-        authentication_class: ObjectRef<AuthenticationClass>,
+        authentication_class: ObjectRef<core::v1alpha1::AuthenticationClass>,
     },
 
     #[snafu(display("Failed to format trino authentication java properties"))]
@@ -483,7 +481,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
         for resolved_auth_class in resolved_auth_classes {
             let auth_class_name = resolved_auth_class.authentication_class.name_any();
             match resolved_auth_class.authentication_class.spec.provider {
-                AuthenticationClassProvider::Static(provider) => {
+                core::v1alpha1::AuthenticationClassProvider::Static(provider) => {
                     password_authenticators.push(TrinoPasswordAuthenticator::File(
                         FileAuthenticator::new(auth_class_name, provider),
                     ));
@@ -493,7 +491,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                         TrinoAuthenticationTypeDiscriminants::Password,
                     );
                 }
-                AuthenticationClassProvider::Ldap(provider) => {
+                core::v1alpha1::AuthenticationClassProvider::Ldap(provider) => {
                     password_authenticators.push(TrinoPasswordAuthenticator::Ldap(
                         LdapAuthenticator::new(auth_class_name, provider),
                     ));
@@ -503,7 +501,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                         TrinoAuthenticationTypeDiscriminants::Password,
                     );
                 }
-                AuthenticationClassProvider::Oidc(provider) => {
+                core::v1alpha1::AuthenticationClassProvider::Oidc(provider) => {
                     let oidc = resolved_auth_class.client_auth_options.context(
                         OidcAuthenticationDetailsNotSpecifiedSnafu {
                             auth_class_name: auth_class_name.clone(),
@@ -527,9 +525,10 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                         .spec
                         .provider
                         .to_string(),
-                    authentication_class: ObjectRef::<AuthenticationClass>::from_obj(
-                        &resolved_auth_class.authentication_class,
-                    ),
+                    authentication_class:
+                        ObjectRef::<core::v1alpha1::AuthenticationClass>::from_obj(
+                            &resolved_auth_class.authentication_class,
+                        ),
                 }
                 .fail()?,
             }
@@ -560,7 +559,7 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::commons::authentication::oidc::ClientAuthenticationOptions;
+    use stackable_operator::crd::authentication::oidc;
 
     use super::*;
     use crate::crd::RW_CONFIG_DIR_NAME;
@@ -660,7 +659,7 @@ mod tests {
                 deserializer,
             )
             .unwrap(),
-            client_auth_options: Some(ClientAuthenticationOptions {
+            client_auth_options: Some(oidc::v1alpha1::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
                 product_specific_fields: (),

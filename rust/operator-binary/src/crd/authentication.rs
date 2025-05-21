@@ -1,9 +1,7 @@
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     client::Client,
-    commons::authentication::{
-        AuthenticationClass, AuthenticationClassProvider, ClientAuthenticationDetails, oidc,
-    },
+    crd::authentication::{core, oidc},
     kube::ResourceExt,
 };
 
@@ -16,7 +14,7 @@ pub enum Error {
 
     #[snafu(display("Invalid OIDC configuration"))]
     InvalidOidcConfiguration {
-        source: stackable_operator::commons::authentication::Error,
+        source: stackable_operator::crd::authentication::core::v1alpha1::Error,
     },
 }
 
@@ -24,14 +22,14 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub struct ResolvedAuthenticationClassRef {
     /// An [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) to use.
-    pub authentication_class: AuthenticationClass,
-    pub client_auth_options: Option<oidc::ClientAuthenticationOptions>,
+    pub authentication_class: core::v1alpha1::AuthenticationClass,
+    pub client_auth_options: Option<oidc::v1alpha1::ClientAuthenticationOptions>,
 }
 
 /// Retrieve all provided AuthenticationClass references.
 pub async fn resolve_authentication_classes(
     client: &Client,
-    client_authentication_details: &Vec<ClientAuthenticationDetails>,
+    client_authentication_details: &Vec<core::v1alpha1::ClientAuthenticationDetails>,
 ) -> Result<Vec<ResolvedAuthenticationClassRef>> {
     let mut resolved_auth_classes = vec![];
 
@@ -44,7 +42,7 @@ pub async fn resolve_authentication_classes(
 
         resolved_auth_classes.push(ResolvedAuthenticationClassRef {
             client_auth_options: match &resolved_auth_class.spec.provider {
-                AuthenticationClassProvider::Oidc(_) => Some(
+                core::v1alpha1::AuthenticationClassProvider::Oidc(_) => Some(
                     client_authentication_detail
                         .oidc_or_error(&auth_class_name)
                         .context(InvalidOidcConfigurationSnafu)?
