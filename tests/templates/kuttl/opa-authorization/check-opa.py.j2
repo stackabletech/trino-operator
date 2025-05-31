@@ -3,7 +3,7 @@ import argparse
 import pytest
 import trino
 
-from datetime import datetime
+from datetime import datetime, UTC
 from trino.exceptions import TrinoUserError
 
 import urllib3
@@ -502,7 +502,7 @@ class TestOpa:
             print("")
 
     def log(user, query):
-        timestamp = datetime.utcnow().isoformat(sep=" ", timespec="milliseconds")
+        timestamp = datetime.now(UTC).isoformat(sep=" ", timespec="milliseconds")
         print(f"[{timestamp}] - {user:20s} -> {query}")
 
     def run_query(connection, query):

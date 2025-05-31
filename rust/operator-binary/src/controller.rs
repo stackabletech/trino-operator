@@ -104,7 +104,6 @@ pub struct Ctx {
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
 pub const FULL_CONTROLLER_NAME: &str = concatcp!(CONTROLLER_NAME, '.', OPERATOR_NAME);
-pub const TRINO_UID: i64 = 1000;
 
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
@@ -1141,13 +1140,7 @@ fn build_rolegroup_statefulset(
         )
         .context(AddVolumeSnafu)?
         .service_account_name(sa_name)
-        .security_context(
-            PodSecurityContextBuilder::new()
-                .run_as_user(TRINO_UID)
-                .run_as_group(0)
-                .fs_group(1000)
-                .build(),
-        );
+        .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
 
     let mut pod_template = pod_builder.build_template();
     pod_template.merge_from(role.config.pod_overrides.clone());
