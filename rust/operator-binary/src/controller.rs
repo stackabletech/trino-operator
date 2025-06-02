@@ -548,10 +548,10 @@ pub async fn reconcile_trino(
         ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
 
     let status = v1alpha1::TrinoClusterStatus {
-        conditions: compute_conditions(
-            trino,
-            &[&sts_cond_builder, &cluster_operation_cond_builder],
-        ),
+        conditions: compute_conditions(trino, &[
+            &sts_cond_builder,
+            &cluster_operation_cond_builder,
+        ]),
     };
 
     cluster_resources
@@ -1690,12 +1690,12 @@ mod tests {
                         TrinoRole::Coordinator.to_string(),
                         (
                             config_files.clone(),
-                            trino.spec.coordinators.clone().unwrap(),
+                            trino.role(&TrinoRole::Coordinator).unwrap(),
                         ),
                     ),
                     (
                         TrinoRole::Worker.to_string(),
-                        (config_files, trino.spec.workers.clone().unwrap()),
+                        (config_files, trino.role(&TrinoRole::Worker).unwrap()),
                     ),
                 ]
                 .into(),
@@ -1747,7 +1747,7 @@ mod tests {
         build_rolegroup_config_map(
             &trino,
             &resolved_product_image,
-            role,
+            &role,
             &trino_role,
             &rolegroup_ref,
             validated_config
