@@ -25,6 +25,10 @@ All notable changes to this project will be documented in this file.
 - test: Bump to Vector `0.46.1` ([#743]).
 - test: Bump OPA `1.4.2` ([#745]).
 - Use versioned common structs ([#748]).
+- BREAKING: Previously this operator would hardcode the UID and GID of the Pods being created to 1000/0, this has changed now ([#752])
+  - The `runAsUser` and `runAsGroup` fields will not be set anymore by the operator
+  - The defaults from the docker images itself will now apply, which will be different from 1000/0 going forward
+  - This is marked as breaking because tools and policies might exist, which require these fields to be set
 
 ### Fixed
 
@@ -40,6 +44,7 @@ All notable changes to this project will be documented in this file.
 [#743]: https://github.com/stackabletech/trino-operator/pull/743
 [#745]: https://github.com/stackabletech/trino-operator/pull/745
 [#748]: https://github.com/stackabletech/trino-operator/pull/748
+[#752]: https://github.com/stackabletech/trino-operator/pull/752
 
 ## [25.3.0] - 2025-03-21
 
@@ -116,7 +121,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: The fields `connection` and `host` on `S3Connection` as well as `bucketName` on `S3Bucket`are now mandatory ([#646]).
 - Don't ignore envOverrides ([#633]).
-- Don't print credentials to STDOUT during startup. Ideally we should use [config-utils](https://github.com/stackabletech/config-utils), but that's not easy (see [here](https://github.com/stackabletech/trino-operator/tree/fix/secret-printing)) ([#634]).
+- Don't print credentials to STDOUT during startup. Ideally, we should use [config-utils](https://github.com/stackabletech/config-utils), but that's not easy (see [our experimental branch](https://github.com/stackabletech/trino-operator/tree/fix/secret-printing)) ([#634]).
 - Invalid `TrinoCluster`, `TrinoCatalog` or `AuthenticationClass` objects don't stop the operator from reconciliation ([#657])
 
 ### Removed
