@@ -78,13 +78,16 @@ mod tests {
                         "connection-url".to_string(),
                         Property::Value("jdbc:postgresql://example.net:5432/database".to_string())
                     ),
-                    ("connection-user".to_string(), Property::ValueFromSecret {
-                        secret_key_selector: SecretKeySelector {
-                            key: "user".to_string(),
-                            name: "my-postgresql-credentials-secret".to_string(),
-                            optional: None,
+                    (
+                        "connection-user".to_string(),
+                        Property::ValueFromSecret {
+                            secret_key_selector: SecretKeySelector {
+                                key: "user".to_string(),
+                                name: "my-postgresql-credentials-secret".to_string(),
+                                optional: None,
+                            }
                         }
-                    }),
+                    ),
                     (
                         "connection-password".to_string(),
                         Property::ValueFromSecret {

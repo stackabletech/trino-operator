@@ -933,17 +933,20 @@ fn extract_role_from_coordinator_config(
             .role_groups
             .into_iter()
             .map(|(k, v)| {
-                (k, RoleGroup {
-                    config: CommonConfiguration {
-                        config: v.config.config.trino_config,
-                        config_overrides: v.config.config_overrides,
-                        env_overrides: v.config.env_overrides,
-                        cli_overrides: v.config.cli_overrides,
-                        pod_overrides: v.config.pod_overrides,
-                        product_specific_common_config: v.config.product_specific_common_config,
+                (
+                    k,
+                    RoleGroup {
+                        config: CommonConfiguration {
+                            config: v.config.config.trino_config,
+                            config_overrides: v.config.config_overrides,
+                            env_overrides: v.config.env_overrides,
+                            cli_overrides: v.config.cli_overrides,
+                            pod_overrides: v.config.pod_overrides,
+                            product_specific_common_config: v.config.product_specific_common_config,
+                        },
+                        replicas: v.replicas,
                     },
-                    replicas: v.replicas,
-                })
+                )
             })
             .collect(),
     }
