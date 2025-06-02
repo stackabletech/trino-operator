@@ -341,11 +341,6 @@ pub enum Error {
     #[snafu(display("failed to read role"))]
     ReadRole { source: crate::crd::Error },
 
-    #[snafu(display("failed to get merged jvmArgumentOverrides"))]
-    GetMergedJvmArgumentOverrides {
-        source: stackable_operator::role_utils::Error,
-    },
-
     #[snafu(display("unable to parse Trino version: {product_version:?}"))]
     ParseTrinoVersion {
         source: ParseIntError,
