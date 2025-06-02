@@ -127,7 +127,10 @@ pub enum Error {
     ObjectHasNoNamespace,
 
     #[snafu(display("object defines no {role:?} role"))]
-    MissingTrinoRole { role: String },
+    MissingTrinoRole {
+        source: crate::crd::Error,
+        role: String,
+    },
 
     #[snafu(display("failed to create cluster resources"))]
     CreateClusterResources {
@@ -459,21 +462,13 @@ pub async fn reconcile_trino(
         None => None,
     };
 
-    let coordinator_role_service = build_coordinator_role_service(trino, &resolved_product_image)?;
-
-    cluster_resources
-        .add(client, coordinator_role_service)
-        .await
-        .context(ApplyRoleServiceSnafu)?;
-
     create_shared_internal_secret(trino, client).await?;
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
     for (trino_role_str, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
-        let role: &Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> =
-            trino.role(&trino_role).context(ReadRoleSnafu)?;
+        let role = trino.role(&trino_role).context(ReadRoleSnafu)?;
         for (role_group, config) in role_config {
             let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
 
@@ -485,7 +480,7 @@ pub async fn reconcile_trino(
             let rg_configmap = build_rolegroup_config_map(
                 trino,
                 &resolved_product_image,
-                role,
+                &role,
                 &trino_role,
                 &rolegroup,
                 &config,
@@ -574,45 +569,6 @@ pub async fn reconcile_trino(
         .context(ApplyStatusSnafu)?;
 
     Ok(Action::await_change())
-}
-
-/// The coordinator-role service is the primary endpoint that should be used by clients that do not
-/// perform internal load balancing, including targets outside of the cluster.
-pub fn build_coordinator_role_service(
-    trino: &v1alpha1::TrinoCluster,
-    resolved_product_image: &ResolvedProductImage,
-) -> Result<Service> {
-    let role = TrinoRole::Coordinator;
-    let role_name = role.to_string();
-    let role_svc_name = trino
-        .role_service_name(&role)
-        .context(InternalOperatorFailureSnafu)?;
-    Ok(Service {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
-            .name(&role_svc_name)
-            .ownerreference_from_resource(trino, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(build_recommended_labels(
-                trino,
-                &resolved_product_image.app_version_label,
-                &role_name,
-                "global",
-            ))
-            .context(MetadataBuildSnafu)?
-            .build(),
-        spec: Some(ServiceSpec {
-            ports: Some(service_ports(trino)),
-            selector: Some(
-                Labels::role_selector(trino, APP_NAME, &role_name)
-                    .context(LabelBuildSnafu)?
-                    .into(),
-            ),
-            type_: Some(trino.spec.cluster_config.listener_class.k8s_service_type()),
-            ..ServiceSpec::default()
-        }),
-        status: None,
-    })
 }
 
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
@@ -1298,30 +1254,28 @@ fn validated_product_config(
         PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
     ];
 
+    let coordinator_role = TrinoRole::Coordinator;
     roles.insert(
-        TrinoRole::Coordinator.to_string(),
+        coordinator_role.to_string(),
         (
             config_files.clone(),
             trino
-                .spec
-                .coordinators
-                .clone()
-                .with_context(|| MissingTrinoRoleSnafu {
-                    role: TrinoRole::Coordinator.to_string(),
+                .role(&coordinator_role)
+                .with_context(|_| MissingTrinoRoleSnafu {
+                    role: coordinator_role.to_string(),
                 })?,
         ),
     );
 
+    let worker_role = TrinoRole::Worker;
     roles.insert(
-        TrinoRole::Worker.to_string(),
+        worker_role.to_string(),
         (
             config_files,
             trino
-                .spec
-                .workers
-                .clone()
-                .with_context(|| MissingTrinoRoleSnafu {
-                    role: TrinoRole::Worker.to_string(),
+                .role(&worker_role)
+                .with_context(|_| MissingTrinoRoleSnafu {
+                    role: worker_role.to_string(),
                 })?,
         ),
     );
