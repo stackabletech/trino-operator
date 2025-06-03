@@ -186,7 +186,9 @@ mod tests {
         "#;
         let jvm_config = construct_jvm_config(input);
 
-        assert_eq!(jvm_config, indoc! {"
+        assert_eq!(
+            jvm_config,
+            indoc! {"
               -server
               # Heap settings
               -Xms34406m
@@ -201,7 +203,8 @@ mod tests {
               -Djavax.net.ssl.trustStorePassword=changeit
               # Recommended JVM arguments from Trino
               -RecommendedTrinoFlag
-              # Arguments from jvmArgumentOverrides"});
+              # Arguments from jvmArgumentOverrides"}
+        );
     }
 
     #[test]
@@ -242,7 +245,9 @@ mod tests {
         "#;
         let jvm_config = construct_jvm_config(input);
 
-        assert_eq!(jvm_config, indoc! {"
+        assert_eq!(
+            jvm_config,
+            indoc! {"
               -server
               # Heap settings
               -Xms34406m
@@ -260,7 +265,8 @@ mod tests {
               -Dhttps.proxyHost=proxy.my.corp
               -Djava.net.preferIPv4Stack=true
               -Xmx40000m
-              -Dhttps.proxyPort=1234"});
+              -Dhttps.proxyPort=1234"}
+        );
     }
 
     fn construct_jvm_config(trino_cluster: &str) -> String {
