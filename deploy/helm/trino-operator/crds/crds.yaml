@@ -105,23 +105,6 @@ spec:
                           description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                           type: object
                       type: object
-                    listenerClass:
-                      default: cluster-internal
-                      description: |-
-                        This field controls which type of Service the Operator creates for this TrinoCluster:
-
-                        * cluster-internal: Use a ClusterIP service
-
-                        * external-unstable: Use a NodePort service
-
-                        * external-stable: Use a LoadBalancer service
-
-                        This is a temporary solution with the goal to keep yaml manifests forward compatible. In the future, this setting will control which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) will be used to expose the service, and ListenerClass names will stay the same, allowing for a non-breaking change.
-                      enum:
-                        - cluster-internal
-                        - external-unstable
-                        - external-stable
-                      type: string
                     tls:
                       default:
                         internalSecretClass: tls
@@ -205,6 +188,10 @@ spec:
                           type: object
                         gracefulShutdownTimeout:
                           description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
+                          nullable: true
+                          type: string
+                        listenerClass:
+                          description: This field controls which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) is used to expose the coordinator.
                           nullable: true
                           type: string
                         logging:
@@ -507,6 +494,10 @@ spec:
                                 type: object
                               gracefulShutdownTimeout:
                                 description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
+                                nullable: true
+                                type: string
+                              listenerClass:
+                                description: This field controls which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) is used to expose the coordinator.
                                 nullable: true
                                 type: string
                               logging:
