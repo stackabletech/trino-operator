@@ -65,7 +65,7 @@ if __name__ == '__main__':
     namespace = args["namespace"]
 
     conf = read_json("/tmp/test-config.json")  # config file to indicate our test script if auth / tls is used or not
-    coordinator_host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
+    coordinator_host = 'trino-coordinator-default-metrics.' + namespace + '.svc.cluster.local'
     trusted_ca = "/stackable/trusted/ca.crt"  # will be mounted from secret op
     untrusted_ca = "/stackable/untrusted-cert.crt"  # some random CA
     query = "SHOW CATALOGS"
