@@ -8,18 +8,12 @@ if not sys.warnoptions:
 warnings.simplefilter("ignore")
 
 
-def get_connection(username, password, namespace):
-    host = (
-        "trino-coordinator-default-0.trino-coordinator-default."
-        + namespace
-        + ".svc.cluster.local"
-    )
+def get_connection(username, password, coordinator):
     # If you want to debug this locally use
     # kubectl -n kuttl-test-XXX port-forward svc/trino-coordinator-default 8443
     # host = '127.0.0.1'
-
     conn = trino.dbapi.connect(
-        host=host,
+        host=coordinator,
         port=8443,
         user=username,
         http_scheme="https",
@@ -41,15 +35,15 @@ if __name__ == "__main__":
     # Construct an argument parser
     all_args = argparse.ArgumentParser()
     # Add arguments to the parser
-    all_args.add_argument(
-        "-n", "--namespace", required=True, help="Namespace the test is running in"
-    )
+    all_args.add_argument("-c", "--coordinator", required=True, help="Trino Coordinator Host to connect to")
+    all_args.add_argument("-b", "--bucket", required=True, help="The S3 bucket name to use")
 
     args = vars(all_args.parse_args())
-    namespace = args["namespace"]
+    coordinator = args["coordinator"]
+    bucket_name = args["bucket"]
 
     print("Starting S3 tests...")
-    connection = get_connection("admin", "admin", namespace)
+    connection = get_connection("admin", "admin", coordinator)
 
     trino_version = run_query(
         connection,
@@ -61,10 +55,9 @@ if __name__ == "__main__":
     assert trino_version.isnumeric()
     assert trino_version == run_query(connection, "select version()")[0][0]
 
-    # WARNING (@NickLarsenNZ): Hard-coded bucket
     run_query(
         connection,
-        "CREATE SCHEMA IF NOT EXISTS hive.s3 WITH (location = 's3a://my-bucket/')",
+        f"CREATE SCHEMA IF NOT EXISTS hive.s3 WITH (location = 's3a://{bucket_name}/')",
     )
 
     run_query(connection, "DROP TABLE IF EXISTS hive.s3.taxi_data")
@@ -75,7 +68,7 @@ if __name__ == "__main__":
 
     run_query(
         connection,
-        """
+        f"""
 CREATE TABLE IF NOT EXISTS hive.s3.taxi_data (
     vendor_id VARCHAR,
     tpep_pickup_datetime VARCHAR,
@@ -84,7 +77,7 @@ CREATE TABLE IF NOT EXISTS hive.s3.taxi_data (
     trip_distance VARCHAR,
     ratecode_id VARCHAR
 ) WITH (
-    external_location = 's3a://sble-s3-smoke-bucket-1/taxi-data/',
+    external_location = 's3a://{bucket_name}/taxi-data/',
     format = 'csv',
     skip_header_line_count = 1
 )

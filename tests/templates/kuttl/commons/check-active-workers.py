@@ -8,14 +8,14 @@ if not sys.warnoptions:
 warnings.simplefilter("ignore")
 
 
-def get_connection(username, password, namespace):
-    host = 'trino-coordinator-default-0.trino-coordinator-default.' + namespace + '.svc.cluster.local'
+def get_connection(username, password, coordinator):
     conn = trino.dbapi.connect(
-        host=host,
+        host=coordinator,
         port=8443,
         user=username,
         http_scheme='https',
         auth=trino.auth.BasicAuthentication(username, password),
+        session_properties={"query_max_execution_time": "60s"},
     )
     conn._http_session.verify = False
     return conn
@@ -30,15 +30,15 @@ if __name__ == '__main__':
                           help="Username to connect as")
     all_args.add_argument("-p", "--password", required=True,
                           help="Password for the user")
-    all_args.add_argument("-n", "--namespace", required=True,
-                          help="Namespace the test is running in")
+    all_args.add_argument("-c", "--coordinator", required=True,
+                          help="Trino Coordinator Host to connect to")
     all_args.add_argument("-w", "--workers", required=True,
                           help="Expected amount of workers to be present")
 
     args = vars(all_args.parse_args())
 
     expected_workers = args['workers']
-    conn = get_connection(args['user'], args['password'], args['namespace'])
+    conn = get_connection(args['user'], args['password'], args['coordinator'])
 
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) as nodes FROM system.runtime.nodes WHERE coordinator=false AND state='active'")
