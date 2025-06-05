@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
   - Use `--file-log-max-files` (or `FILE_LOG_MAX_FILES`) to limit the number of log files kept.
   - Use `--file-log-rotation-period` (or `FILE_LOG_ROTATION_PERIOD`) to configure the frequency of rotation.
   - Use `--console-log-format` (or `CONSOLE_LOG_FORMAT`) to set the format to `plain` (default) or `json`.
+- Adds Listener integration for Trino ([#753]).
 
 ### Changed
 
@@ -45,6 +46,7 @@ All notable changes to this project will be documented in this file.
 [#745]: https://github.com/stackabletech/trino-operator/pull/745
 [#748]: https://github.com/stackabletech/trino-operator/pull/748
 [#752]: https://github.com/stackabletech/trino-operator/pull/752
+[#753]: https://github.com/stackabletech/trino-operator/pull/753
 
 ## [25.3.0] - 2025-03-21
 
