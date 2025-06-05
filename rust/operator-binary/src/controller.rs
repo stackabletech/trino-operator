@@ -79,9 +79,9 @@ use crate::{
     command, config,
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
-        DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HEADLESS_SERVICE_SUFFIX, HTTP_PORT,
-        HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES,
-        LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+        DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT,
+        HTTPS_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES,
+        MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
         RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
         TrinoRole,
@@ -1203,9 +1203,8 @@ fn build_rolegroup_statefulset(
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(format!(
-                "{}-{HEADLESS_SERVICE_SUFFIX}",
-                role_group_ref.object_name()
+            service_name: Some(v1alpha1::TrinoCluster::rolegroup_headless_service_name(
+                &role_group_ref.object_name(),
             )),
             template: pod_template,
             volume_claim_templates: Some(persistent_volume_claims),
@@ -1221,23 +1220,21 @@ fn build_rolegroup_statefulset(
 fn build_rolegroup_service(
     trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
 ) -> Result<Service> {
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(format!(
-                "{}-{}",
-                rolegroup_ref.object_name(),
-                HEADLESS_SERVICE_SUFFIX
+            .name(v1alpha1::TrinoCluster::rolegroup_headless_service_name(
+                &role_group_ref.object_name(),
             ))
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
                 trino,
                 &resolved_product_image.app_version_label,
-                &rolegroup_ref.role,
-                &rolegroup_ref.role_group,
+                &role_group_ref.role,
+                &role_group_ref.role_group,
             ))
             .context(MetadataBuildSnafu)?
             .with_label(Label::try_from(("prometheus.io/scrape", "true")).context(LabelBuildSnafu)?)
@@ -1251,8 +1248,8 @@ fn build_rolegroup_service(
                 Labels::role_group_selector(
                     trino,
                     APP_NAME,
-                    &rolegroup_ref.role,
-                    &rolegroup_ref.role_group,
+                    &role_group_ref.role,
+                    &role_group_ref.role_group,
                 )
                 .context(LabelBuildSnafu)?
                 .into(),
