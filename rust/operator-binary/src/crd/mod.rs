@@ -117,6 +117,10 @@ pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
     value: 10.0,
     unit: BinaryMultiple::Mebi,
 };
+// Headless service suffix
+// TODO(malte): Imho this should be "headless". Its metrics for consistency for now.
+// See: https://github.com/stackabletech/decisions/issues/54
+pub const HEADLESS_SERVICE_SUFFIX: &str = "metrics";
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
@@ -818,7 +822,11 @@ impl v1alpha1::TrinoCluster {
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
-                    role_group_service_name: rolegroup_ref.object_name(),
+                    role_group_service_name: format!(
+                        "{}-{}",
+                        rolegroup_ref.object_name(),
+                        HEADLESS_SERVICE_SUFFIX
+                    ),
                     pod_name: format!("{}-{}", rolegroup_ref.object_name(), i),
                 })
             }))
@@ -933,20 +941,17 @@ fn extract_role_from_coordinator_config(
             .role_groups
             .into_iter()
             .map(|(k, v)| {
-                (
-                    k,
-                    RoleGroup {
-                        config: CommonConfiguration {
-                            config: v.config.config.trino_config,
-                            config_overrides: v.config.config_overrides,
-                            env_overrides: v.config.env_overrides,
-                            cli_overrides: v.config.cli_overrides,
-                            pod_overrides: v.config.pod_overrides,
-                            product_specific_common_config: v.config.product_specific_common_config,
-                        },
-                        replicas: v.replicas,
+                (k, RoleGroup {
+                    config: CommonConfiguration {
+                        config: v.config.config.trino_config,
+                        config_overrides: v.config.config_overrides,
+                        env_overrides: v.config.env_overrides,
+                        cli_overrides: v.config.cli_overrides,
+                        pod_overrides: v.config.pod_overrides,
+                        product_specific_common_config: v.config.product_specific_common_config,
                     },
-                )
+                    replicas: v.replicas,
+                })
             })
             .collect(),
     }
