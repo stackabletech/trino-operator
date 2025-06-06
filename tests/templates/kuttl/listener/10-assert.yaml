@@ -1,0 +1,59 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 600
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-trino-coordinator-default
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-trino-worker-default
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: test-trino-coordinator
+status:
+  expectedPods: 1
+  currentHealthy: 1
+  disruptionsAllowed: 1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: test-trino-worker
+status:
+  expectedPods: 1
+  currentHealthy: 1
+  disruptionsAllowed: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-trino-coordinator-default
+spec:
+  type: NodePort # external-unstable - by listener op
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-trino-coordinator-default-metrics
+spec:
+  type: ClusterIP # cluster-internal - by trino op
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-trino-worker-default-metrics
+spec:
+  type: ClusterIP # cluster-internal - by trino op
