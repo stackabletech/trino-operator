@@ -35,8 +35,15 @@ if __name__ == "__main__":
     # Construct an argument parser
     all_args = argparse.ArgumentParser()
     # Add arguments to the parser
-    all_args.add_argument("-c", "--coordinator", required=True, help="Trino Coordinator Host to connect to")
-    all_args.add_argument("-b", "--bucket", required=True, help="The S3 bucket name to use")
+    all_args.add_argument(
+        "-c",
+        "--coordinator",
+        required=True,
+        help="Trino Coordinator Host to connect to",
+    )
+    all_args.add_argument(
+        "-b", "--bucket", required=True, help="The S3 bucket name to use"
+    )
 
     args = vars(all_args.parse_args())
     coordinator = args["coordinator"]
