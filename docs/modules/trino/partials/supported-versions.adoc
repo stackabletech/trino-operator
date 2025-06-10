@@ -2,6 +2,6 @@
 // This is a separate file, since it is used by both the direct Trino documentation, and the overarching
 // Stackable Platform documentation.
 
-- 470
-- 455 (deprecated)
+- 476
+- 470 (deprecated)
 - 451 (LTS)
