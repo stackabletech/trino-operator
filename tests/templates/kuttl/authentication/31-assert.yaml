@@ -5,4 +5,4 @@ timeout: 600
 commands:
   # file
   # new user?
-  - script: kubectl exec -n $NAMESPACE test-trino-0 -- python /tmp/check-active-workers.py -u hot_reloaded -p hot_reloaded -n $NAMESPACE -w 1
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u hot_reloaded -p hot_reloaded -c trino-coordinator-default-metrics.$NAMESPACE.svc.cluster.local -w 1

@@ -276,7 +276,7 @@ mod tests {
         let role = TrinoRole::Coordinator;
         let rolegroup_ref = role.rolegroup_ref(&trino, "default");
         let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
-        let coordinators = trino.spec.coordinators.unwrap();
+        let coordinators = trino.role(&role).unwrap();
 
         let product_version = trino.spec.image.product_version();
 

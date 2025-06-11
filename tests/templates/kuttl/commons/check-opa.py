@@ -10,14 +10,9 @@ if not sys.warnoptions:
 warnings.simplefilter("ignore")
 
 
-def get_connection(username, password, namespace):
-    host = (
-        "trino-coordinator-default-0.trino-coordinator-default."
-        + namespace
-        + ".svc.cluster.local"
-    )
+def get_connection(username, password, coordinator):
     conn = trino.dbapi.connect(
-        host=host,
+        host=coordinator,
         port=8443,
         user=username,
         http_scheme="https",
@@ -31,8 +26,8 @@ def get_connection(username, password, namespace):
     return conn
 
 
-def test_user(user, password, namespace, query):
-    conn = get_connection(user, password, namespace)
+def test_user(user, password, coordinator, query):
+    conn = get_connection(user, password, coordinator)
     cursor = conn.cursor()
     try:
         cursor.execute(query)
@@ -47,26 +42,29 @@ def main():
     all_args = argparse.ArgumentParser()
     # Add arguments to the parser
     all_args.add_argument(
-        "-n", "--namespace", required=True, help="Namespace the test is running in"
+        "-c",
+        "--coordinator",
+        required=True,
+        help="Trino Coordinator Host to connect to",
     )
 
     args = vars(all_args.parse_args())
-    namespace = args["namespace"]
+    coordinator = args["coordinator"]
 
     # We expect the admin user query to pass
-    if not test_user("admin", "admin", namespace, "SHOW CATALOGS"):
+    if not test_user("admin", "admin", coordinator, "SHOW CATALOGS"):
         print("User admin cannot show catalogs!")
         sys.exit(-1)
     # We expect the admin user query to pass
-    if not test_user("admin", "admin", namespace, "SHOW SCHEMAS FROM system"):
+    if not test_user("admin", "admin", coordinator, "SHOW SCHEMAS FROM system"):
         print("User admin cannot select schemas from system")
         sys.exit(-1)
     # We expect the bob query for catalogs to pass
-    if not test_user("bob", "bob", namespace, "SHOW CATALOGS"):
+    if not test_user("bob", "bob", coordinator, "SHOW CATALOGS"):
         print("User bob cannot show catalogs!")
         sys.exit(-1)
     # We expect the bob query for schemas to fail
-    if test_user("bob", "bob", namespace, "SHOW SCHEMAS FROM system"):
+    if test_user("bob", "bob", coordinator, "SHOW SCHEMAS FROM system"):
         print("User bob can show schemas from system. This should not be happening!")
         sys.exit(-1)
 

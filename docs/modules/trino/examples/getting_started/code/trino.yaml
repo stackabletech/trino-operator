@@ -10,8 +10,9 @@ spec:
     catalogLabelSelector:
       matchLabels:
         trino: simple-trino
-    listenerClass: external-unstable
   coordinators:
+    config:
+      listenerClass: external-unstable
     roleGroups:
       default:
         replicas: 1
