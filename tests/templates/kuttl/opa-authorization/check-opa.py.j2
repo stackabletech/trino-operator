@@ -51,10 +51,10 @@ TEST_DATA = [
             {
                 "query": "SET SESSION iceberg.test=true",
                 # The requests are authorized, just a fake property
-{% if test_scenario['values']['trino'] == '470' %}
-                "error": "Session property iceberg.test does not exist",
-{% else %}
+{% if test_scenario['values']['trino'] == '451' %}
                 "error": "Session property 'iceberg.test' does not exist",
+{% else %}
+                "error": "Session property iceberg.test does not exist",
 {% endif %}
             },
             # ## SCHEMA ##
