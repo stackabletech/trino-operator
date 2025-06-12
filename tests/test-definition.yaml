@@ -20,13 +20,13 @@ dimensions:
   - name: trino
     values:
       - "451"
-      - "455"
       - "470"
+      - "476"
       # To use a custom image, add a comma and the full name after the product version
       # - 470,oci.stackable.tech/sdp/trino:470-stackable0.0.0-dev
   - name: trino-latest
     values:
-      - "470"
+      - "476"
       # To use a custom image, add a comma and the full name after the product version
       # - 470,oci.stackable.tech/sdp/trino:470-stackable0.0.0-dev
   - name: hive

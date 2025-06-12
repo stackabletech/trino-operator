@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
   - Use `--file-log-max-files` (or `FILE_LOG_MAX_FILES`) to limit the number of log files kept.
   - Use `--file-log-rotation-period` (or `FILE_LOG_ROTATION_PERIOD`) to configure the frequency of rotation.
   - Use `--console-log-format` (or `CONSOLE_LOG_FORMAT`) to set the format to `plain` (default) or `json`.
+- Add support for Trino 476 ([#755]).
 
 ### Changed
 
@@ -29,11 +30,16 @@ All notable changes to this project will be documented in this file.
   - The `runAsUser` and `runAsGroup` fields will not be set anymore by the operator
   - The defaults from the docker images itself will now apply, which will be different from 1000/0 going forward
   - This is marked as breaking because tools and policies might exist, which require these fields to be set
+- Deprecate Trino 470 ([#755]).
 
 ### Fixed
 
 - Use `json` file extension for log files ([#733]).
 - Fix a bug where changes to ConfigMaps that are referenced in the TrinoCluster spec didn't trigger a reconciliation ([#734]).
+
+### Removed
+
+- Remove support for Trino 455 ([#755]).
 
 [#728]: https://github.com/stackabletech/trino-operator/pull/728
 [#734]: https://github.com/stackabletech/trino-operator/pull/734
@@ -45,6 +51,7 @@ All notable changes to this project will be documented in this file.
 [#745]: https://github.com/stackabletech/trino-operator/pull/745
 [#748]: https://github.com/stackabletech/trino-operator/pull/748
 [#752]: https://github.com/stackabletech/trino-operator/pull/752
+[#755]: https://github.com/stackabletech/trino-operator/pull/755
 
 ## [25.3.0] - 2025-03-21
 
