@@ -59,7 +59,7 @@ if __name__ == "__main__":
     print(f'[INFO] Testing against Trino version "{trino_version}"')
 
     # Strip SDP release suffix from the version string
-    trino_product_version = re.split(r'-stackable', trino_version, maxsplit=1)[0]
+    trino_product_version = re.split(r"-stackable", trino_version, maxsplit=1)[0]
 
     assert len(trino_product_version) >= 3
     assert trino_product_version.isnumeric()
