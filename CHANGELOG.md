@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
   - The defaults from the docker images itself will now apply, which will be different from 1000/0 going forward
   - This is marked as breaking because tools and policies might exist, which require these fields to be set
 - Deprecate Trino 470 ([#755]).
+- test: support custom versions ([#760]).
 
 ### Fixed
 
@@ -52,6 +53,7 @@ All notable changes to this project will be documented in this file.
 [#748]: https://github.com/stackabletech/trino-operator/pull/748
 [#752]: https://github.com/stackabletech/trino-operator/pull/752
 [#755]: https://github.com/stackabletech/trino-operator/pull/755
+[#760]: https://github.com/stackabletech/trino-operator/pull/760
 
 ## [25.3.0] - 2025-03-21
 
