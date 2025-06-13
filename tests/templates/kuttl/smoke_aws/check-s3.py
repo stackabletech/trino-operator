@@ -2,6 +2,7 @@
 import trino
 import argparse
 import sys
+import re
 
 if not sys.warnoptions:
     import warnings
@@ -57,8 +58,11 @@ if __name__ == "__main__":
     )[0][0]
     print(f'[INFO] Testing against Trino version "{trino_version}"')
 
-    assert len(trino_version) >= 3
-    assert trino_version.isnumeric()
+    # Strip SDP release suffix from the version string
+    trino_product_version = re.split(r"-stackable", trino_version, maxsplit=1)[0]
+
+    assert len(trino_product_version) >= 3
+    assert trino_product_version.isnumeric()
     assert trino_version == run_query(connection, "select version()")[0][0]
 
     # WARNING (@NickLarsenNZ): Hard-coded bucket
