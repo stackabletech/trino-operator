@@ -37,15 +37,13 @@ spec:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
   coordinators:
+    roleConfig:
+      listenerClass: external-unstable
     config:
-      listenerClass: cluster-internal
       gracefulShutdownTimeout: 5s # Let the test run faster
     roleGroups:
       default:
         replicas: 1
-        config:
-          # test merge -> we expect node port service
-          listenerClass: external-unstable
   workers:
     config:
       gracefulShutdownTimeout: 5s # Let the test run faster

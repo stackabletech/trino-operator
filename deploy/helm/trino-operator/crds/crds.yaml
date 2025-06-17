@@ -190,10 +190,6 @@ spec:
                           description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
                           nullable: true
                           type: string
-                        listenerClass:
-                          description: This field controls which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) is used to expose the coordinator.
-                          nullable: true
-                          type: string
                         logging:
                           default:
                             containers: {}
@@ -423,11 +419,15 @@ spec:
                       x-kubernetes-preserve-unknown-fields: true
                     roleConfig:
                       default:
+                        listenerClass: cluster-internal
                         podDisruptionBudget:
                           enabled: true
                           maxUnavailable: null
                       description: This is a product-agnostic RoleConfig, which is sufficient for most of the products.
                       properties:
+                        listenerClass:
+                          default: cluster-internal
+                          type: string
                         podDisruptionBudget:
                           default:
                             enabled: true
@@ -494,10 +494,6 @@ spec:
                                 type: object
                               gracefulShutdownTimeout:
                                 description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
-                                nullable: true
-                                type: string
-                              listenerClass:
-                                description: This field controls which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) is used to expose the coordinator.
                                 nullable: true
                                 type: string
                               logging:

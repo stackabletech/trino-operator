@@ -39,9 +39,9 @@ use stackable_operator::{
     versioned::versioned,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
-use v1alpha1::{TrinoConfigFragment, TrinoCoordinatorConfigFragment};
+use v1alpha1::TrinoConfigFragment;
 
-use crate::crd::discovery::TrinoPodRef;
+use crate::crd::{discovery::TrinoPodRef, v1alpha1::TrinoCoordinatorRoleConfig};
 
 pub const APP_NAME: &str = "trino";
 // ports
@@ -117,10 +117,8 @@ pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
     value: 10.0,
     unit: BinaryMultiple::Mebi,
 };
-// Headless service suffix
-// TODO(malte): Imho this should be "headless". Its metrics for consistency for now.
-// See: https://github.com/stackabletech/decisions/issues/54
-pub const HEADLESS_SERVICE_SUFFIX: &str = "metrics";
+
+pub const METRICS_SERVICE_SUFFIX: &str = "metrics";
 
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
@@ -197,11 +195,22 @@ pub mod versioned {
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub coordinators:
-            Option<Role<TrinoCoordinatorConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
+            Option<Role<TrinoConfigFragment, TrinoCoordinatorRoleConfig, JavaCommonConfig>>,
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub workers: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
+    }
+
+    // TODO: move generic version to op-rs?
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoCoordinatorRoleConfig {
+        #[serde(flatten)]
+        pub common: GenericRoleConfig,
+
+        #[serde(default = "coordinator_default_listener_class")]
+        pub listener_class: String,
     }
 
     #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
@@ -240,29 +249,6 @@ pub mod versioned {
         /// and `1d` for workers.
         #[fragment_attrs(serde(default))]
         pub requested_secret_lifetime: Option<Duration>,
-    }
-
-    #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
-    #[fragment_attrs(
-        derive(
-            Clone,
-            Debug,
-            Default,
-            Deserialize,
-            Merge,
-            JsonSchema,
-            PartialEq,
-            Serialize
-        ),
-        serde(rename_all = "camelCase")
-    )]
-    pub struct TrinoCoordinatorConfig {
-        #[fragment_attrs(serde(default, flatten))]
-        pub trino_config: TrinoConfig,
-
-        /// This field controls which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html) is used to expose the coordinator.
-        #[serde(default)]
-        pub listener_class: String,
     }
 
     #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -352,6 +338,19 @@ pub mod versioned {
     }
 }
 
+impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
+    fn default() -> Self {
+        v1alpha1::TrinoCoordinatorRoleConfig {
+            listener_class: coordinator_default_listener_class(),
+            common: Default::default(),
+        }
+    }
+}
+
+fn coordinator_default_listener_class() -> String {
+    "cluster-internal".to_string()
+}
+
 impl Default for v1alpha1::TrinoTls {
     fn default() -> Self {
         v1alpha1::TrinoTls {
@@ -414,6 +413,17 @@ impl TrinoRole {
             roles.push(role.to_string())
         }
         roles
+    }
+
+    pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<String> {
+        match self {
+            Self::Coordinator => trino
+                .spec
+                .coordinators
+                .to_owned()
+                .map(|coordinator| coordinator.role_config.listener_class),
+            Self::Worker => None,
+        }
     }
 }
 
@@ -764,9 +774,13 @@ impl v1alpha1::TrinoCluster {
             })
     }
 
-    pub fn role_config(&self, role: &TrinoRole) -> Option<&GenericRoleConfig> {
+    pub fn generic_role_config(&self, role: &TrinoRole) -> Option<&GenericRoleConfig> {
         match role {
-            TrinoRole::Coordinator => self.spec.coordinators.as_ref().map(|c| &c.role_config),
+            TrinoRole::Coordinator => self
+                .spec
+                .coordinators
+                .as_ref()
+                .map(|c| &c.role_config.common),
             TrinoRole::Worker => self.spec.workers.as_ref().map(|w| &w.role_config),
         }
     }
@@ -822,7 +836,7 @@ impl v1alpha1::TrinoCluster {
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
-                    role_group_service_name: Self::rolegroup_headless_service_name(
+                    role_group_service_name: Self::rolegroup_metrics_service_name(
                         &role_group_ref.object_name(),
                     ),
                     pod_name: format!("{}-{}", role_group_ref.object_name(), i),
@@ -831,8 +845,8 @@ impl v1alpha1::TrinoCluster {
     }
 
     /// Returns the headless rolegroup service name `simple-trino-coordinator-default-<HEADLESS_SERVICE_SUFFIX>`.
-    pub fn rolegroup_headless_service_name(role_group_ref_object_name: &str) -> String {
-        format!("{}-{}", role_group_ref_object_name, HEADLESS_SERVICE_SUFFIX)
+    pub fn rolegroup_metrics_service_name(role_group_ref_object_name: &str) -> String {
+        format!("{}-{}", role_group_ref_object_name, METRICS_SERVICE_SUFFIX)
     }
 
     /// Returns user provided authentication settings
@@ -928,18 +942,18 @@ impl v1alpha1::TrinoCluster {
 }
 
 fn extract_role_from_coordinator_config(
-    fragment: Role<TrinoCoordinatorConfigFragment, GenericRoleConfig, JavaCommonConfig>,
+    fragment: Role<TrinoConfigFragment, TrinoCoordinatorRoleConfig, JavaCommonConfig>,
 ) -> Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> {
     Role {
         config: CommonConfiguration {
-            config: fragment.config.config.trino_config,
+            config: fragment.config.config,
             config_overrides: fragment.config.config_overrides,
             env_overrides: fragment.config.env_overrides,
             cli_overrides: fragment.config.cli_overrides,
             pod_overrides: fragment.config.pod_overrides,
             product_specific_common_config: fragment.config.product_specific_common_config,
         },
-        role_config: fragment.role_config,
+        role_config: fragment.role_config.common,
         role_groups: fragment
             .role_groups
             .into_iter()
@@ -948,7 +962,7 @@ fn extract_role_from_coordinator_config(
                     k,
                     RoleGroup {
                         config: CommonConfiguration {
-                            config: v.config.config.trino_config,
+                            config: v.config.config,
                             config_overrides: v.config.config_overrides,
                             env_overrides: v.config.env_overrides,
                             cli_overrides: v.config.cli_overrides,

@@ -40,7 +40,7 @@ status:
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-trino-coordinator-default
+  name: test-trino-coordinator
 spec:
   type: NodePort # external-unstable - by listener op
 ---

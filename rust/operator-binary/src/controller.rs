@@ -92,7 +92,7 @@ use crate::{
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
-        group_listener_name, merged_listener_class,
+        group_listener_name,
     },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
@@ -543,34 +543,26 @@ pub async fn reconcile_trino(
                         rolegroup: role_group_ref.clone(),
                     })?,
             );
+        }
 
-            if let Some(listener_class) =
-                merged_listener_class(trino, &trino_role, &role_group_ref.role_group)
-            {
-                if let Some(listener_group_name) = group_listener_name(&trino_role, &role_group_ref)
-                {
-                    let role_group_listener = build_group_listener(
-                        trino,
-                        build_recommended_labels(
-                            trino,
-                            CONTROLLER_NAME,
-                            &role_group_ref.role,
-                            &role_group_ref.role_group,
-                        ),
-                        listener_class.to_string(),
-                        listener_group_name,
-                    )
-                    .context(ListenerConfigurationSnafu)?;
+        if let Some(listener_class) = trino_role.listener_class_name(trino) {
+            if let Some(listener_group_name) = group_listener_name(trino, &trino_role) {
+                let role_group_listener = build_group_listener(
+                    trino,
+                    build_recommended_labels(trino, CONTROLLER_NAME, &trino_role_str, "none"),
+                    listener_class.to_string(),
+                    listener_group_name,
+                )
+                .context(ListenerConfigurationSnafu)?;
 
-                    cluster_resources
-                        .add(client, role_group_listener)
-                        .await
-                        .context(ApplyGroupListenerSnafu)?;
-                }
+                cluster_resources
+                    .add(client, role_group_listener)
+                    .await
+                    .context(ApplyGroupListenerSnafu)?;
             }
         }
 
-        let role_config = trino.role_config(&trino_role);
+        let role_config = trino.generic_role_config(&trino_role);
         if let Some(GenericRoleConfig {
             pod_disruption_budget: pdb,
         }) = role_config
@@ -998,7 +990,7 @@ fn build_rolegroup_statefulset(
             .build_pvc("data", Some(vec!["ReadWriteOnce"])),
     ];
     // Add listener
-    if let Some(group_listener_name) = group_listener_name(trino_role, role_group_ref) {
+    if let Some(group_listener_name) = group_listener_name(trino, trino_role) {
         cb_trino
             .add_volume_mount(LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
             .context(AddVolumeMountSnafu)?;
@@ -1009,7 +1001,7 @@ fn build_rolegroup_statefulset(
             // A version value is required, and we do want to use the "recommended" format for the other desired labels
             "none",
             &role_group_ref.role,
-            &role_group_ref.role_group,
+            "none",
         ))
         .context(LabelBuildSnafu)?;
 
@@ -1196,7 +1188,7 @@ fn build_rolegroup_statefulset(
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(v1alpha1::TrinoCluster::rolegroup_headless_service_name(
+            service_name: Some(v1alpha1::TrinoCluster::rolegroup_metrics_service_name(
                 &role_group_ref.object_name(),
             )),
             template: pod_template,
@@ -1218,7 +1210,7 @@ fn build_rolegroup_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(v1alpha1::TrinoCluster::rolegroup_headless_service_name(
+            .name(v1alpha1::TrinoCluster::rolegroup_metrics_service_name(
                 &role_group_ref.object_name(),
             ))
             .ownerreference_from_resource(trino, None, Some(true))
@@ -1236,7 +1228,7 @@ fn build_rolegroup_service(
             // Internal communication does not need to be exposed
             type_: Some("ClusterIP".to_string()),
             cluster_ip: Some("None".to_string()),
-            ports: Some(service_ports(trino)),
+            ports: Some(service_ports()),
             selector: Some(
                 Labels::role_group_selector(
                     trino,
@@ -1412,33 +1404,13 @@ fn get_random_base64() -> String {
     openssl::base64::encode_block(&buf)
 }
 
-fn service_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ServicePort> {
-    let mut ports = vec![ServicePort {
+fn service_ports() -> Vec<ServicePort> {
+    vec![ServicePort {
         name: Some(METRICS_PORT_NAME.to_string()),
         port: METRICS_PORT.into(),
         protocol: Some("TCP".to_string()),
         ..ServicePort::default()
-    }];
-
-    if trino.expose_http_port() {
-        ports.push(ServicePort {
-            name: Some(HTTP_PORT_NAME.to_string()),
-            port: HTTP_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ServicePort::default()
-        });
-    }
-
-    if trino.expose_https_port() {
-        ports.push(ServicePort {
-            name: Some(HTTPS_PORT_NAME.to_string()),
-            port: HTTPS_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ServicePort::default()
-        });
-    }
-
-    ports
+    }]
 }
 
 fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
