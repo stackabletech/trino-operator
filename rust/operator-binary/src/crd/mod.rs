@@ -209,6 +209,7 @@ pub mod versioned {
         #[serde(flatten)]
         pub common: GenericRoleConfig,
 
+        /// This field controls which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html) is used to expose the coordinator.
         #[serde(default = "coordinator_default_listener_class")]
         pub listener_class: String,
     }
