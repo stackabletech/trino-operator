@@ -845,7 +845,7 @@ impl v1alpha1::TrinoCluster {
             }))
     }
 
-    /// Returns the headless rolegroup service name `simple-trino-coordinator-default-<HEADLESS_SERVICE_SUFFIX>`.
+    /// Returns the metrics rolegroup service name `simple-trino-coordinator-default-<METRICS_SERVICE_SUFFIX>`.
     pub fn rolegroup_metrics_service_name(role_group_ref_object_name: &str) -> String {
         format!("{}-{}", role_group_ref_object_name, METRICS_SERVICE_SUFFIX)
     }

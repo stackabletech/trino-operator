@@ -2,13 +2,13 @@
 :description: Configure Trino service exposure with ListenerClasses: cluster-internal, external-unstable, or external-stable.
 
 The operator deploys a xref:listener-operator:listener.adoc[Listener] for the coodinator pod.
-The listener defaults to only being accessible from within the Kubernetes cluster, but this can be changed by setting `.spec.coordinators.config.listenerClass`:
+The listener defaults to only being accessible from within the Kubernetes cluster, but this can be changed by setting `.spec.coordinators.roleConfig.listenerClass`:
 
 [source,yaml]
 ----
 spec:
   coordinators:
-    config:
+    roleConfig:
       listenerClass: external-unstable  # <1>
     ...
   workers:
