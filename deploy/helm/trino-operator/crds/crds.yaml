@@ -76,7 +76,7 @@ spec:
                           type: object
                       type: object
                     catalogLabelSelector:
-                      description: '[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance.'
+                      description: "[LabelSelector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) selecting the Catalogs to include in the Trino instance."
                       properties:
                         matchExpressions:
                           description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -113,12 +113,12 @@ spec:
                       properties:
                         internalSecretClass:
                           default: tls
-                          description: 'Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server'
+                          description: "Only affects internal communication. Use mutual verification between Trino nodes This setting controls: - Which cert the servers should use to authenticate themselves against other servers - Which ca.crt to use when validating the other server"
                           nullable: true
                           type: string
                         serverSecretClass:
                           default: tls
-                          description: 'Only affects client connections. This setting controls: - If TLS encryption is used at all - Which cert the servers should use to authenticate themselves against the client'
+                          description: "Only affects client connections. This setting controls: - If TLS encryption is used at all - Which cert the servers should use to authenticate themselves against the client"
                           nullable: true
                           type: string
                       type: object
@@ -133,7 +133,7 @@ spec:
                   default:
                     reconciliationPaused: false
                     stopped: false
-                  description: '[Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations) properties, allow stopping the product instance as well as pausing reconciliation.'
+                  description: "[Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations) properties, allow stopping the product instance as well as pausing reconciliation."
                   properties:
                     reconciliationPaused:
                       default: false
@@ -317,7 +317,7 @@ spec:
                             memory:
                               properties:
                                 limit:
-                                  description: 'The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`'
+                                  description: "The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`"
                                   nullable: true
                                   type: string
                                 runtimeLimits:
@@ -384,7 +384,7 @@ spec:
                       additionalProperties:
                         type: string
                       default: {}
-                      description: '`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available.'
+                      description: "`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available."
                       type: object
                     jvmArgumentOverrides:
                       default:
@@ -427,6 +427,7 @@ spec:
                       properties:
                         listenerClass:
                           default: cluster-internal
+                          description: This field controls which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) is used to expose the coordinator.
                           type: string
                         podDisruptionBudget:
                           default:
@@ -623,7 +624,7 @@ spec:
                                   memory:
                                     properties:
                                       limit:
-                                        description: 'The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`'
+                                        description: "The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`"
                                         nullable: true
                                         type: string
                                       runtimeLimits:
@@ -690,7 +691,7 @@ spec:
                             additionalProperties:
                               type: string
                             default: {}
-                            description: '`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available.'
+                            description: "`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available."
                             type: object
                           jvmArgumentOverrides:
                             default:
@@ -753,19 +754,19 @@ spec:
                       type: string
                     pullPolicy:
                       default: Always
-                      description: '[Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the image.'
+                      description: "[Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the image."
                       enum:
                         - IfNotPresent
                         - Always
                         - Never
                       type: string
                     pullSecrets:
-                      description: '[Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry.'
+                      description: "[Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry."
                       items:
                         description: LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
                         properties:
                           name:
-                            description: 'Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                            description: "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
                             type: string
                         required:
                           - name
@@ -954,7 +955,7 @@ spec:
                             memory:
                               properties:
                                 limit:
-                                  description: 'The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`'
+                                  description: "The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`"
                                   nullable: true
                                   type: string
                                 runtimeLimits:
@@ -1021,7 +1022,7 @@ spec:
                       additionalProperties:
                         type: string
                       default: {}
-                      description: '`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available.'
+                      description: "`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available."
                       type: object
                     jvmArgumentOverrides:
                       default:
@@ -1256,7 +1257,7 @@ spec:
                                   memory:
                                     properties:
                                       limit:
-                                        description: 'The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`'
+                                        description: "The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`"
                                         nullable: true
                                         type: string
                                       runtimeLimits:
@@ -1323,7 +1324,7 @@ spec:
                             additionalProperties:
                               type: string
                             default: {}
-                            description: '`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available.'
+                            description: "`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available."
                             type: object
                           jvmArgumentOverrides:
                             default:
@@ -1398,8 +1399,8 @@ spec:
                       status:
                         description: Status of the condition, one of True, False, Unknown.
                         enum:
-                          - 'True'
-                          - 'False'
+                          - "True"
+                          - "False"
                           - Unknown
                         type: string
                       type:
@@ -1455,7 +1456,7 @@ spec:
                   additionalProperties:
                     type: string
                   default: {}
-                  description: 'The `configOverrides` allow overriding arbitrary Trino settings. For example, for Hive you could add `hive.metastore.username: trino`.'
+                  description: "The `configOverrides` allow overriding arbitrary Trino settings. For example, for Hive you could add `hive.metastore.username: trino`."
                   type: object
                 connector:
                   description: The `connector` defines which connector is used.
@@ -1526,7 +1527,7 @@ spec:
                                   nullable: true
                                   properties:
                                     scope:
-                                      description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                                      description: "[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)."
                                       nullable: true
                                       properties:
                                         listenerVolumes:
@@ -1551,13 +1552,13 @@ spec:
                                           type: array
                                       type: object
                                     secretClass:
-                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                      description: "[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials."
                                       type: string
                                   required:
                                     - secretClass
                                   type: object
                                 host:
-                                  description: 'Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
+                                  description: "Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`."
                                   type: string
                                 port:
                                   description: Port the S3 server listens on. If not specified the product will determine the port to use.
@@ -1653,7 +1654,7 @@ spec:
                                     description: The key to select.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                    description: "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
                                     type: string
                                   optional:
                                     description: Specify whether the ConfigMap or its key must be defined
@@ -1669,7 +1670,7 @@ spec:
                                     description: The key of the secret to select from.  Must be a valid secret key.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                                    description: "Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names"
                                     type: string
                                   optional:
                                     description: Specify whether the Secret or its key must be defined
@@ -1757,7 +1758,7 @@ spec:
                                   nullable: true
                                   properties:
                                     scope:
-                                      description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                                      description: "[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)."
                                       nullable: true
                                       properties:
                                         listenerVolumes:
@@ -1782,13 +1783,13 @@ spec:
                                           type: array
                                       type: object
                                     secretClass:
-                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                      description: "[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials."
                                       type: string
                                   required:
                                     - secretClass
                                   type: object
                                 host:
-                                  description: 'Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
+                                  description: "Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`."
                                   type: string
                                 port:
                                   description: Port the S3 server listens on. If not specified the product will determine the port to use.
@@ -1905,7 +1906,7 @@ spec:
                                   nullable: true
                                   properties:
                                     scope:
-                                      description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                                      description: "[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)."
                                       nullable: true
                                       properties:
                                         listenerVolumes:
@@ -1930,13 +1931,13 @@ spec:
                                           type: array
                                       type: object
                                     secretClass:
-                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                      description: "[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials."
                                       type: string
                                   required:
                                     - secretClass
                                   type: object
                                 host:
-                                  description: 'Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
+                                  description: "Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`."
                                   type: string
                                 port:
                                   description: Port the S3 server listens on. If not specified the product will determine the port to use.

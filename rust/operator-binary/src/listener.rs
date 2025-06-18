@@ -2,10 +2,7 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::{
         meta::ObjectMetaBuilder,
-        pod::volume::{
-            ListenerOperatorVolumeSourceBuilder, ListenerOperatorVolumeSourceBuilderError,
-            ListenerReference,
-        },
+        pod::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference},
     },
     crd::listener::v1alpha1::{Listener, ListenerPort, ListenerSpec},
     k8s_openapi::api::core::v1::PersistentVolumeClaim,
