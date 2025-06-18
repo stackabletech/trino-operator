@@ -32,7 +32,7 @@ pub enum Error {
 
     #[snafu(display("failed to build listener volume"))]
     BuildListenerPersistentVolume {
-        source: ListenerOperatorVolumeSourceBuilderError,
+        source: stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilderError,
     },
 }
 
