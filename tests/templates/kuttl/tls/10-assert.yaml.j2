@@ -25,10 +25,6 @@ metadata:
   name: trino-coordinator
 spec:
   ports:
-    - name: metrics
-      port: 8081
-      protocol: TCP
-      targetPort: 8081
 {% if test_scenario['values']['use-tls'] == 'false' %}
     - name: http
       port: 8080

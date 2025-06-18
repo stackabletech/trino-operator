@@ -8,14 +8,9 @@ if not sys.warnoptions:
 warnings.simplefilter("ignore")
 
 
-def get_connection(username, password, namespace):
-    host = (
-        "trino-coordinator-default-0.trino-coordinator-default."
-        + namespace
-        + ".svc.cluster.local"
-    )
+def get_connection(username, password, coordinator):
     conn = trino.dbapi.connect(
-        host=host,
+        host=coordinator,
         port=8443,
         user=username,
         http_scheme="https",
@@ -36,7 +31,10 @@ if __name__ == "__main__":
         "-p", "--password", required=True, help="Password for the user"
     )
     all_args.add_argument(
-        "-n", "--namespace", required=True, help="Namespace the test is running in"
+        "-c",
+        "--coordinator",
+        required=True,
+        help="Trino Coordinator Host to connect to",
     )
     all_args.add_argument(
         "-w",
@@ -48,7 +46,7 @@ if __name__ == "__main__":
     args = vars(all_args.parse_args())
 
     expected_workers = args["workers"]
-    conn = get_connection(args["user"], args["password"], args["namespace"])
+    conn = get_connection(args["user"], args["password"], args["coordinator"])
 
     cursor = conn.cursor()
     cursor.execute(

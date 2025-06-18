@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: test-trino
+  name: trino-test-helper
   labels:
-    app: test-trino
+    app: trino-test-helper
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: test-trino
+      app: trino-test-helper
   template:
     metadata:
       labels:
-        app: test-trino
+        app: trino-test-helper
     spec:
       serviceAccount: integration-tests-sa
 {% if test_scenario['values']['openshift'] == 'false' %}
@@ -21,7 +21,7 @@ spec:
         fsGroup: 1000
 {% endif %}
       containers:
-        - name: test-trino
+        - name: trino-test-helper
           image: oci.stackable.tech/sdp/testing-tools:0.2.0-stackable0.0.0-dev
           command: ["sleep", "infinity"]
           volumeMounts:
@@ -36,4 +36,4 @@ spec:
             driver: secrets.stackable.tech
             volumeAttributes:
               secrets.stackable.tech/class: tls
-              secrets.stackable.tech/scope: pod
+              secrets.stackable.tech/scope: pod,node
