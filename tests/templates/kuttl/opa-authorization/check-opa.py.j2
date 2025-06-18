@@ -515,7 +515,7 @@ class TestOpa:
     @staticmethod
     def get_connection(username, password, namespace, impersonation=None):
         connection = trino.dbapi.connect(
-            host="trino-coordinator-default.{0}.svc.cluster.local".format(namespace),
+            host="trino-coordinator.{0}.svc.cluster.local".format(namespace),
             port=8443,
             user=impersonation if impersonation is not None else username,
             http_scheme="https",
