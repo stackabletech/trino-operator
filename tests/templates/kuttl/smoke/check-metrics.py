@@ -65,16 +65,8 @@ if __name__ == "__main__":
     args = vars(all_args.parse_args())
     namespace = args["namespace"]
 
-    host_coordinator_0 = (
-        "http://trino-coordinator-default-0.trino-coordinator-default."
-        + namespace
-        + ".svc.cluster.local"
-    )
-    host_worker_0 = (
-        "http://trino-worker-default-0.trino-worker-default."
-        + namespace
-        + ".svc.cluster.local"
-    )
+    host_coordinator_0 = f"http://trino-coordinator-default-0.trino-coordinator-default.{namespace}.svc.cluster.local"
+    host_worker_0 = f"http://trino-worker-default-0.trino-worker-default.{namespace}.svc.cluster.local"
 
     hosts = [host_coordinator_0, host_worker_0]
 
