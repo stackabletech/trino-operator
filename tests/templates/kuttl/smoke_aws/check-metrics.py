@@ -13,7 +13,7 @@ def try_get(url):
     retries = 3
     for i in range(retries):
         try:
-            r = requests.get(url, timeout=5, auth=("trino", ""))
+            r = requests.get(url, timeout=5, auth=("admin", "admin"))
             r.raise_for_status()
             return r
         except requests.exceptions.HTTPError as errh:
@@ -65,16 +65,8 @@ if __name__ == "__main__":
     args = vars(all_args.parse_args())
     namespace = args["namespace"]
 
-    host_coordinator_0 = (
-        "http://trino-coordinator-default-0.trino-coordinator-default."
-        + namespace
-        + ".svc.cluster.local"
-    )
-    host_worker_0 = (
-        "http://trino-worker-default-0.trino-worker-default."
-        + namespace
-        + ".svc.cluster.local"
-    )
+    host_coordinator_0 = f"https://trino-coordinator-default-0.trino-coordinator-default.{namespace}.svc.cluster.local"
+    host_worker_0 = f"https://trino-worker-default-0.trino-worker-default.{namespace}.svc.cluster.local"
 
     hosts = [host_coordinator_0, host_worker_0]
 
