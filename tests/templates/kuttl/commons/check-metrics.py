@@ -13,7 +13,18 @@ def try_get(url):
     retries = 3
     for i in range(retries):
         try:
-            r = requests.get(url, timeout=5, auth=("admin", "admin"))
+            if "coordinator" in url:
+                r = requests.get(
+                    url,
+                    timeout=5,
+                    headers={"x-trino-user": "admin"},
+                    auth=("admin", "admin"),
+                    verify=False,
+                )
+            else:
+                r = requests.get(
+                    url, timeout=5, headers={"x-trino-user": "admin"}, verify=False
+                )
             r.raise_for_status()
             return r
         except requests.exceptions.HTTPError as errh:
@@ -31,17 +42,15 @@ def try_get(url):
 def check_monitoring(hosts):
     for host in hosts:
         # test for the jmx exporter metrics
-        url = host + ":8081"
+        url = "http://" + host + ":8081/metrics"
         response = try_get(url)
 
-        if response.ok:
-            continue
-        else:
+        if not response.ok:
             print("Error for [" + url + "]: could not access monitoring")
             exit(-1)
 
         # test for the native metrics
-        url = host + ":8443/metrics"
+        url = "https://" + host + ":8443/metrics"
         response = try_get(url)
 
         if response.ok:
@@ -51,7 +60,6 @@ def check_monitoring(hosts):
             else:
                 print("Error for [" + url + "]: missing metrics")
                 exit(-1)
-            continue
         else:
             print("Error for [" + url + "]: could not access monitoring")
             exit(-1)
@@ -65,8 +73,10 @@ if __name__ == "__main__":
     args = vars(all_args.parse_args())
     namespace = args["namespace"]
 
-    host_coordinator_0 = f"https://trino-coordinator-default-0.trino-coordinator-default.{namespace}.svc.cluster.local"
-    host_worker_0 = f"https://trino-worker-default-0.trino-worker-default.{namespace}.svc.cluster.local"
+    host_coordinator_0 = f"trino-coordinator-default-0.trino-coordinator-default.{namespace}.svc.cluster.local"
+    host_worker_0 = (
+        f"trino-worker-default-0.trino-worker-default.{namespace}.svc.cluster.local"
+    )
 
     hosts = [host_coordinator_0, host_worker_0]
 
