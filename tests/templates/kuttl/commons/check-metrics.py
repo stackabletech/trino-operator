@@ -68,17 +68,16 @@ def check_monitoring(hosts):
 if __name__ == "__main__":
     all_args = argparse.ArgumentParser(description="Test Trino metrics.")
     all_args.add_argument(
-        "-n", "--namespace", help="The namespace to run in", required=True
+        "-c", "--coordinator", help="The coordinator service name", required=True
+    )
+    all_args.add_argument(
+        "-w", "--worker", help="The worker service name", required=True
     )
     args = vars(all_args.parse_args())
-    namespace = args["namespace"]
+    service_coordinator = args["coordinator"]
+    service_worker = args["worker"]
 
-    host_coordinator_0 = f"trino-coordinator-default-0.trino-coordinator-default.{namespace}.svc.cluster.local"
-    host_worker_0 = (
-        f"trino-worker-default-0.trino-worker-default.{namespace}.svc.cluster.local"
-    )
-
-    hosts = [host_coordinator_0, host_worker_0]
+    hosts = [service_coordinator, service_worker]
 
     check_monitoring(hosts)
 
