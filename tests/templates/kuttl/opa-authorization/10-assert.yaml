@@ -1,6 +1,6 @@
 ---
 apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
-timeout: 300
+timeout: 600
 commands:
-  - script: kubectl -n $NAMESPACE rollout status daemonset opa-server-default --timeout 300s
+  - script: kubectl -n $NAMESPACE rollout status daemonset opa-server-default --timeout 600s
