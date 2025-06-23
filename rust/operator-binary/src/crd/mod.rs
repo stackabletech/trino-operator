@@ -840,7 +840,7 @@ impl v1alpha1::TrinoCluster {
                     role_group_service_name: Self::rolegroup_metrics_service_name(
                         &role_group_ref.object_name(),
                     ),
-                    pod_name: format!("{}-{}", role_group_ref.object_name(), i),
+                    pod_name: format!("{role_group}-{i}", role_group = role_group_ref.object_name()),
                 })
             }))
     }
