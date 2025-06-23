@@ -847,7 +847,7 @@ impl v1alpha1::TrinoCluster {
 
     /// Returns the metrics rolegroup service name `simple-trino-coordinator-default-<METRICS_SERVICE_SUFFIX>`.
     pub fn rolegroup_metrics_service_name(role_group_ref_object_name: &str) -> String {
-        format!("{}-{}", role_group_ref_object_name, METRICS_SERVICE_SUFFIX)
+        format!("{role_group_ref_object_name}-{METRICS_SERVICE_SUFFIX}")
     }
 
     /// Returns user provided authentication settings
