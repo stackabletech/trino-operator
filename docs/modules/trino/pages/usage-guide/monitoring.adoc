@@ -3,3 +3,38 @@
 
 The managed Trino instances are automatically configured to export Prometheus metrics.
 See xref:operators:monitoring.adoc[] for more details.
+
+== Metrics
+
+Trino automatically exposes built-in Prometheus metrics on coordinators and workers. The metrics are available on the `http` (`8080/metrics`) or
+`https` (`8443/metrics`) port, depending on the TLS settings.
+
+The following `ServiceMonitor` example, demonstrates how the metrics could be scraped using the https://prometheus-operator.dev/[Prometheus Operator].
+
+[source,yaml]
+----
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: scrape-label
+spec:
+  endpoints:
+  - port: https # or http
+    scheme: https # or http
+    path: /metrics
+    basicAuth: # <1>
+      username:
+        name: trino-user-secret
+        key: username
+      password:
+        name: trino-user-secret
+        key: password
+  jobLabel: app.kubernetes.io/instance
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      prometheus.io/scrape: "true"
+----
+
+<1> Add user information if Trino is configuration to use authentication
