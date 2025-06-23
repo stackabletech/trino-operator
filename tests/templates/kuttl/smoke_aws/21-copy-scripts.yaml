@@ -5,3 +5,4 @@ commands:
   - script: kubectl cp -n $NAMESPACE ../../../../templates/kuttl/commons/check-active-workers.py  trino-test-helper-0:/tmp || true
   - script: kubectl cp -n $NAMESPACE ../../../../templates/kuttl/commons/check-opa.py trino-test-helper-0:/tmp || true
   - script: kubectl cp -n $NAMESPACE ../../../../templates/kuttl/commons/check-s3.py trino-test-helper-0:/tmp || true
+  - script: kubectl cp -n $NAMESPACE ../../../../templates/kuttl/commons/check-metrics.py  trino-test-helper-0:/tmp || true
