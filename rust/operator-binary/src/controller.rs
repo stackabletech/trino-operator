@@ -549,7 +549,12 @@ pub async fn reconcile_trino(
             if let Some(listener_group_name) = group_listener_name(trino, &trino_role) {
                 let role_group_listener = build_group_listener(
                     trino,
-                    build_recommended_labels(trino, CONTROLLER_NAME, &trino_role_str, "none"),
+                    build_recommended_labels(
+                        trino,
+                        &resolved_product_image.app_version_label,
+                        &trino_role_str,
+                        "none",
+                    ),
                     listener_class.to_string(),
                     listener_group_name,
                 )
@@ -1001,7 +1006,7 @@ fn build_rolegroup_statefulset(
             // A version value is required, and we do want to use the "recommended" format for the other desired labels
             "none",
             &role_group_ref.role,
-            "none",
+            &role_group_ref.role_group,
         ))
         .context(LabelBuildSnafu)?;
 
