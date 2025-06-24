@@ -837,7 +837,7 @@ impl v1alpha1::TrinoCluster {
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
-                    role_group_service_name: Self::rolegroup_metrics_service_name(
+                    role_group_service_name: rolegroup_metrics_service_name(
                         &role_group_ref.object_name(),
                     ),
                     pod_name: format!(
@@ -846,11 +846,6 @@ impl v1alpha1::TrinoCluster {
                     ),
                 })
             }))
-    }
-
-    /// Returns the metrics rolegroup service name `simple-trino-coordinator-default-<METRICS_SERVICE_SUFFIX>`.
-    pub fn rolegroup_metrics_service_name(role_group_ref_object_name: &str) -> String {
-        format!("{role_group_ref_object_name}-{METRICS_SERVICE_SUFFIX}")
     }
 
     /// Returns user provided authentication settings
@@ -943,6 +938,11 @@ impl v1alpha1::TrinoCluster {
         tracing::debug!("Merged config: {:?}", conf_rolegroup);
         fragment::validate(conf_rolegroup).context(FragmentValidationFailureSnafu)
     }
+}
+
+/// Returns the metrics rolegroup service name `<cluster>-<role->-<rolegroup>-<METRICS_SERVICE_SUFFIX>`.
+pub fn rolegroup_metrics_service_name(role_group_ref_object_name: &str) -> String {
+    format!("{role_group_ref_object_name}-{METRICS_SERVICE_SUFFIX}")
 }
 
 fn extract_role_from_coordinator_config(

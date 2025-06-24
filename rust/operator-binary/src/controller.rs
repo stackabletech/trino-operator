@@ -88,7 +88,7 @@ use crate::{
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        v1alpha1,
+        rolegroup_metrics_service_name, v1alpha1,
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
@@ -1193,7 +1193,7 @@ fn build_rolegroup_statefulset(
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(v1alpha1::TrinoCluster::rolegroup_metrics_service_name(
+            service_name: Some(rolegroup_metrics_service_name(
                 &role_group_ref.object_name(),
             )),
             template: pod_template,
@@ -1215,7 +1215,7 @@ fn build_rolegroup_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(v1alpha1::TrinoCluster::rolegroup_metrics_service_name(
+            .name(rolegroup_metrics_service_name(
                 &role_group_ref.object_name(),
             ))
             .ownerreference_from_resource(trino, None, Some(true))
