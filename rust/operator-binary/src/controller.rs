@@ -88,7 +88,11 @@ use crate::{
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        v1alpha1,
+        rolegroup_metrics_service_name, v1alpha1,
+    },
+    listener::{
+        LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
+        group_listener_name,
     },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
@@ -126,7 +130,10 @@ pub enum Error {
     ObjectHasNoNamespace,
 
     #[snafu(display("object defines no {role:?} role"))]
-    MissingTrinoRole { role: String },
+    MissingTrinoRole {
+        source: crate::crd::Error,
+        role: String,
+    },
 
     #[snafu(display("failed to create cluster resources"))]
     CreateClusterResources {
@@ -337,16 +344,19 @@ pub enum Error {
     #[snafu(display("failed to read role"))]
     ReadRole { source: crate::crd::Error },
 
-    #[snafu(display("failed to get merged jvmArgumentOverrides"))]
-    GetMergedJvmArgumentOverrides {
-        source: stackable_operator::role_utils::Error,
-    },
-
     #[snafu(display("unable to parse Trino version: {product_version:?}"))]
     ParseTrinoVersion {
         source: ParseIntError,
         product_version: String,
     },
+
+    #[snafu(display("failed to apply group listener"))]
+    ApplyGroupListener {
+        source: stackable_operator::cluster_resources::Error,
+    },
+
+    #[snafu(display("failed to configure listener"))]
+    ListenerConfiguration { source: crate::listener::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -458,35 +468,28 @@ pub async fn reconcile_trino(
         None => None,
     };
 
-    let coordinator_role_service = build_coordinator_role_service(trino, &resolved_product_image)?;
-
-    cluster_resources
-        .add(client, coordinator_role_service)
-        .await
-        .context(ApplyRoleServiceSnafu)?;
-
     create_shared_internal_secret(trino, client).await?;
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
     for (trino_role_str, role_config) in validated_config {
         let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
-        let role: &Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> =
-            trino.role(&trino_role).context(ReadRoleSnafu)?;
+        let role = trino.role(&trino_role).context(ReadRoleSnafu)?;
         for (role_group, config) in role_config {
-            let rolegroup = trino_role.rolegroup_ref(trino, &role_group);
+            let role_group_ref = trino_role.rolegroup_ref(trino, &role_group);
 
             let merged_config = trino
-                .merged_config(&trino_role, &rolegroup, &catalog_definitions)
+                .merged_config(&trino_role, &role_group_ref, &catalog_definitions)
                 .context(FailedToResolveConfigSnafu)?;
 
-            let rg_service = build_rolegroup_service(trino, &resolved_product_image, &rolegroup)?;
+            let rg_service =
+                build_rolegroup_service(trino, &resolved_product_image, &role_group_ref)?;
             let rg_configmap = build_rolegroup_config_map(
                 trino,
                 &resolved_product_image,
-                role,
+                &role,
                 &trino_role,
-                &rolegroup,
+                &role_group_ref,
                 &config,
                 &merged_config,
                 &trino_authentication_config,
@@ -496,14 +499,14 @@ pub async fn reconcile_trino(
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
                 &resolved_product_image,
-                &rolegroup,
+                &role_group_ref,
                 &catalogs,
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
                 &trino_role,
                 &resolved_product_image,
-                &rolegroup,
+                &role_group_ref,
                 &config,
                 &merged_config,
                 &trino_authentication_config,
@@ -515,21 +518,21 @@ pub async fn reconcile_trino(
                 .add(client, rg_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
-                    rolegroup: rolegroup.clone(),
+                    rolegroup: role_group_ref.clone(),
                 })?;
 
             cluster_resources
                 .add(client, rg_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
-                    rolegroup: rolegroup.clone(),
+                    rolegroup: role_group_ref.clone(),
                 })?;
 
             cluster_resources
                 .add(client, rg_catalog_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
-                    rolegroup: rolegroup.clone(),
+                    rolegroup: role_group_ref.clone(),
                 })?;
 
             sts_cond_builder.add(
@@ -537,12 +540,34 @@ pub async fn reconcile_trino(
                     .add(client, rg_stateful_set)
                     .await
                     .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
-                        rolegroup: rolegroup.clone(),
+                        rolegroup: role_group_ref.clone(),
                     })?,
             );
         }
 
-        let role_config = trino.role_config(&trino_role);
+        if let Some(listener_class) = trino_role.listener_class_name(trino) {
+            if let Some(listener_group_name) = group_listener_name(trino, &trino_role) {
+                let role_group_listener = build_group_listener(
+                    trino,
+                    build_recommended_labels(
+                        trino,
+                        &resolved_product_image.app_version_label,
+                        &trino_role_str,
+                        "none",
+                    ),
+                    listener_class.to_string(),
+                    listener_group_name,
+                )
+                .context(ListenerConfigurationSnafu)?;
+
+                cluster_resources
+                    .add(client, role_group_listener)
+                    .await
+                    .context(ApplyGroupListenerSnafu)?;
+            }
+        }
+
+        let role_config = trino.generic_role_config(&trino_role);
         if let Some(GenericRoleConfig {
             pod_disruption_budget: pdb,
         }) = role_config
@@ -573,45 +598,6 @@ pub async fn reconcile_trino(
         .context(ApplyStatusSnafu)?;
 
     Ok(Action::await_change())
-}
-
-/// The coordinator-role service is the primary endpoint that should be used by clients that do not
-/// perform internal load balancing, including targets outside of the cluster.
-pub fn build_coordinator_role_service(
-    trino: &v1alpha1::TrinoCluster,
-    resolved_product_image: &ResolvedProductImage,
-) -> Result<Service> {
-    let role = TrinoRole::Coordinator;
-    let role_name = role.to_string();
-    let role_svc_name = trino
-        .role_service_name(&role)
-        .context(InternalOperatorFailureSnafu)?;
-    Ok(Service {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
-            .name(&role_svc_name)
-            .ownerreference_from_resource(trino, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(build_recommended_labels(
-                trino,
-                &resolved_product_image.app_version_label,
-                &role_name,
-                "global",
-            ))
-            .context(MetadataBuildSnafu)?
-            .build(),
-        spec: Some(ServiceSpec {
-            ports: Some(service_ports(trino)),
-            selector: Some(
-                Labels::role_selector(trino, APP_NAME, &role_name)
-                    .context(LabelBuildSnafu)?
-                    .into(),
-            ),
-            type_: Some(trino.spec.cluster_config.listener_class.k8s_service_type()),
-            ..ServiceSpec::default()
-        }),
-        status: None,
-    })
 }
 
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
@@ -854,7 +840,7 @@ fn build_rolegroup_statefulset(
     trino: &v1alpha1::TrinoCluster,
     trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
     merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
@@ -865,7 +851,7 @@ fn build_rolegroup_statefulset(
         .role(trino_role)
         .context(InternalOperatorFailureSnafu)?;
     let rolegroup = trino
-        .rolegroup(rolegroup_ref)
+        .rolegroup(role_group_ref)
         .context(InternalOperatorFailureSnafu)?;
 
     let mut pod_builder = PodBuilder::new();
@@ -940,6 +926,7 @@ fn build_rolegroup_statefulset(
     let requested_secret_lifetime = merged_config
         .requested_secret_lifetime
         .context(MissingSecretLifetimeSnafu)?;
+
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
     tls_volume_mounts(
         trino,
@@ -998,6 +985,36 @@ fn build_rolegroup_statefulset(
                 .build(),
         )
         .build();
+
+    // for rw config
+    let mut persistent_volume_claims = vec![
+        merged_config
+            .resources
+            .storage
+            .data
+            .build_pvc("data", Some(vec!["ReadWriteOnce"])),
+    ];
+    // Add listener
+    if let Some(group_listener_name) = group_listener_name(trino, trino_role) {
+        cb_trino
+            .add_volume_mount(LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
+            .context(AddVolumeMountSnafu)?;
+
+        // Used for PVC templates that cannot be modified once they are deployed
+        let unversioned_recommended_labels = Labels::recommended(build_recommended_labels(
+            trino,
+            // A version value is required, and we do want to use the "recommended" format for the other desired labels
+            "none",
+            &role_group_ref.role,
+            &role_group_ref.role_group,
+        ))
+        .context(LabelBuildSnafu)?;
+
+        persistent_volume_claims.push(
+            build_group_listener_pvc(&group_listener_name, &unversioned_recommended_labels)
+                .context(ListenerConfigurationSnafu)?,
+        );
+    }
 
     let container_trino = cb_trino
         .image_from_product_image(resolved_product_image)
@@ -1058,7 +1075,7 @@ fn build_rolegroup_statefulset(
             .add_volume(Volume {
                 name: "log-config".to_string(),
                 config_map: Some(ConfigMapVolumeSource {
-                    name: rolegroup_ref.object_name(),
+                    name: role_group_ref.object_name(),
                     ..ConfigMapVolumeSource::default()
                 }),
                 ..Volume::default()
@@ -1096,8 +1113,8 @@ fn build_rolegroup_statefulset(
         .with_recommended_labels(build_recommended_labels(
             trino,
             &resolved_product_image.app_version_label,
-            &rolegroup_ref.role,
-            &rolegroup_ref.role_group,
+            &role_group_ref.role,
+            &role_group_ref.role_group,
         ))
         .context(MetadataBuildSnafu)?
         .with_annotation(
@@ -1115,7 +1132,7 @@ fn build_rolegroup_statefulset(
         .add_volume(Volume {
             name: "config".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: rolegroup_ref.object_name(),
+                name: role_group_ref.object_name(),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -1126,7 +1143,7 @@ fn build_rolegroup_statefulset(
         .add_volume(Volume {
             name: "catalog".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: format!("{}-catalog", rolegroup_ref.object_name()),
+                name: format!("{}-catalog", role_group_ref.object_name()),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -1149,14 +1166,14 @@ fn build_rolegroup_statefulset(
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(rolegroup_ref.object_name())
+            .name(role_group_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
                 trino,
                 &resolved_product_image.app_version_label,
-                &rolegroup_ref.role,
-                &rolegroup_ref.role_group,
+                &role_group_ref.role,
+                &role_group_ref.role_group,
             ))
             .context(MetadataBuildSnafu)?
             .build(),
@@ -1168,23 +1185,19 @@ fn build_rolegroup_statefulset(
                     Labels::role_group_selector(
                         trino,
                         APP_NAME,
-                        &rolegroup_ref.role,
-                        &rolegroup_ref.role_group,
+                        &role_group_ref.role,
+                        &role_group_ref.role_group,
                     )
                     .context(LabelBuildSnafu)?
                     .into(),
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(rolegroup_ref.object_name()),
+            service_name: Some(rolegroup_metrics_service_name(
+                &role_group_ref.object_name(),
+            )),
             template: pod_template,
-            volume_claim_templates: Some(vec![
-                merged_config
-                    .resources
-                    .storage
-                    .data
-                    .build_pvc("data", Some(vec!["ReadWriteOnce"])),
-            ]),
+            volume_claim_templates: Some(persistent_volume_claims),
             ..StatefulSetSpec::default()
         }),
         status: None,
@@ -1197,19 +1210,21 @@ fn build_rolegroup_statefulset(
 fn build_rolegroup_service(
     trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
 ) -> Result<Service> {
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(rolegroup_ref.object_name())
+            .name(rolegroup_metrics_service_name(
+                &role_group_ref.object_name(),
+            ))
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
                 trino,
                 &resolved_product_image.app_version_label,
-                &rolegroup_ref.role,
-                &rolegroup_ref.role_group,
+                &role_group_ref.role,
+                &role_group_ref.role_group,
             ))
             .context(MetadataBuildSnafu)?
             .with_label(Label::try_from(("prometheus.io/scrape", "true")).context(LabelBuildSnafu)?)
@@ -1218,13 +1233,13 @@ fn build_rolegroup_service(
             // Internal communication does not need to be exposed
             type_: Some("ClusterIP".to_string()),
             cluster_ip: Some("None".to_string()),
-            ports: Some(service_ports(trino)),
+            ports: Some(service_ports()),
             selector: Some(
                 Labels::role_group_selector(
                     trino,
                     APP_NAME,
-                    &rolegroup_ref.role,
-                    &rolegroup_ref.role_group,
+                    &role_group_ref.role,
+                    &role_group_ref.role_group,
                 )
                 .context(LabelBuildSnafu)?
                 .into(),
@@ -1291,30 +1306,28 @@ fn validated_product_config(
         PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
     ];
 
+    let coordinator_role = TrinoRole::Coordinator;
     roles.insert(
-        TrinoRole::Coordinator.to_string(),
+        coordinator_role.to_string(),
         (
             config_files.clone(),
             trino
-                .spec
-                .coordinators
-                .clone()
-                .with_context(|| MissingTrinoRoleSnafu {
-                    role: TrinoRole::Coordinator.to_string(),
+                .role(&coordinator_role)
+                .with_context(|_| MissingTrinoRoleSnafu {
+                    role: coordinator_role.to_string(),
                 })?,
         ),
     );
 
+    let worker_role = TrinoRole::Worker;
     roles.insert(
-        TrinoRole::Worker.to_string(),
+        worker_role.to_string(),
         (
             config_files,
             trino
-                .spec
-                .workers
-                .clone()
-                .with_context(|| MissingTrinoRoleSnafu {
-                    role: TrinoRole::Worker.to_string(),
+                .role(&worker_role)
+                .with_context(|_| MissingTrinoRoleSnafu {
+                    role: worker_role.to_string(),
                 })?,
         ),
     );
@@ -1396,33 +1409,13 @@ fn get_random_base64() -> String {
     openssl::base64::encode_block(&buf)
 }
 
-fn service_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ServicePort> {
-    let mut ports = vec![ServicePort {
+fn service_ports() -> Vec<ServicePort> {
+    vec![ServicePort {
         name: Some(METRICS_PORT_NAME.to_string()),
         port: METRICS_PORT.into(),
         protocol: Some("TCP".to_string()),
         ..ServicePort::default()
-    }];
-
-    if trino.expose_http_port() {
-        ports.push(ServicePort {
-            name: Some(HTTP_PORT_NAME.to_string()),
-            port: HTTP_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ServicePort::default()
-        });
-    }
-
-    if trino.expose_https_port() {
-        ports.push(ServicePort {
-            name: Some(HTTPS_PORT_NAME.to_string()),
-            port: HTTPS_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ServicePort::default()
-        });
-    }
-
-    ports
+    }]
 }
 
 fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
@@ -1734,12 +1727,12 @@ mod tests {
                         TrinoRole::Coordinator.to_string(),
                         (
                             config_files.clone(),
-                            trino.spec.coordinators.clone().unwrap(),
+                            trino.role(&TrinoRole::Coordinator).unwrap(),
                         ),
                     ),
                     (
                         TrinoRole::Worker.to_string(),
-                        (config_files, trino.spec.workers.clone().unwrap()),
+                        (config_files, trino.role(&TrinoRole::Worker).unwrap()),
                     ),
                 ]
                 .into(),
@@ -1791,7 +1784,7 @@ mod tests {
         build_rolegroup_config_map(
             &trino,
             &resolved_product_image,
-            role,
+            &role,
             &trino_role,
             &rolegroup_ref,
             validated_config

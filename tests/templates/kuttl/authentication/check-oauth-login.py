@@ -5,6 +5,7 @@ Keycloak login page. It extracts the login action from the HTML content
 of the Keycloak page and posts the credentials of a test user to it.
 Finally it tests that Keycloak redirects back to the original page.
 """
+
 import logging
 import requests
 import sys
@@ -19,17 +20,15 @@ def test_login_flow(login_url):
 
     result.raise_for_status()
 
-    html = BeautifulSoup(result.text, 'html.parser')
-    authenticate_url = html.form['action']
-    result = session.post(authenticate_url, data={
-        'username': "test",
-        'password': "test"
-    })
+    html = BeautifulSoup(result.text, "html.parser")
+    authenticate_url = html.form["action"]
+    result = session.post(
+        authenticate_url, data={"username": "test", "password": "test"}
+    )
 
     result.raise_for_status()
 
-    assert result.url == login_url, \
-        "Redirection to the Trino UI expected"
+    assert result.url == login_url, "Redirection to the Trino UI expected"
 
 
 def main():

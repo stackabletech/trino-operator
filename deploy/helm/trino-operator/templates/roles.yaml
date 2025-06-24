@@ -97,11 +97,16 @@ rules:
     verbs:
       - get
   - apiGroups:
-      - apiextensions.k8s.io
+      - listeners.stackable.tech
     resources:
-      - customresourcedefinitions
+      - listeners
     verbs:
       - get
+      - list
+      - watch
+      - patch
+      - create
+      - delete
   - apiGroups:
       - events.k8s.io
     resources:

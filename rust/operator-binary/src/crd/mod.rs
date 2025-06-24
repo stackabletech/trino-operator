@@ -29,7 +29,9 @@ use stackable_operator::{
     memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{Configuration, Error as ConfigError},
     product_logging::{self, spec::Logging},
-    role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef},
+    role_utils::{
+        CommonConfiguration, GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef,
+    },
     schemars::{self, JsonSchema},
     status::condition::{ClusterCondition, HasStatusCondition},
     time::Duration,
@@ -37,8 +39,9 @@ use stackable_operator::{
     versioned::versioned,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+use v1alpha1::TrinoConfigFragment;
 
-use crate::crd::discovery::TrinoPodRef;
+use crate::crd::{discovery::TrinoPodRef, v1alpha1::TrinoCoordinatorRoleConfig};
 
 pub const APP_NAME: &str = "trino";
 // ports
@@ -115,6 +118,8 @@ pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
+pub const METRICS_SERVICE_SUFFIX: &str = "metrics";
+
 pub const JVM_HEAP_FACTOR: f32 = 0.8;
 
 pub const DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT: Duration =
@@ -189,11 +194,24 @@ pub mod versioned {
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub coordinators: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
+        pub coordinators:
+            Option<Role<TrinoConfigFragment, TrinoCoordinatorRoleConfig, JavaCommonConfig>>,
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub workers: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
+    }
+
+    // TODO: move generic version to op-rs?
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoCoordinatorRoleConfig {
+        #[serde(flatten)]
+        pub common: GenericRoleConfig,
+
+        /// This field controls which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html) is used to expose the coordinator.
+        #[serde(default = "coordinator_default_listener_class")]
+        pub listener_class: String,
     }
 
     #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
@@ -261,20 +279,6 @@ pub mod versioned {
         /// to learn how to configure log aggregation with Vector.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub vector_aggregator_config_map_name: Option<String>,
-
-        /// This field controls which type of Service the Operator creates for this TrinoCluster:
-        ///
-        /// * cluster-internal: Use a ClusterIP service
-        ///
-        /// * external-unstable: Use a NodePort service
-        ///
-        /// * external-stable: Use a LoadBalancer service
-        ///
-        /// This is a temporary solution with the goal to keep yaml manifests forward compatible.
-        /// In the future, this setting will control which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html)
-        /// will be used to expose the service, and ListenerClass names will stay the same, allowing for a non-breaking change.
-        #[serde(default)]
-        pub listener_class: CurrentlySupportedListenerClasses,
     }
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -335,27 +339,17 @@ pub mod versioned {
     }
 }
 
-// TODO: Temporary solution until listener-operator is finished
-#[derive(Clone, Debug, Default, Display, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum CurrentlySupportedListenerClasses {
-    #[default]
-    #[serde(rename = "cluster-internal")]
-    ClusterInternal,
-    #[serde(rename = "external-unstable")]
-    ExternalUnstable,
-    #[serde(rename = "external-stable")]
-    ExternalStable,
-}
-
-impl CurrentlySupportedListenerClasses {
-    pub fn k8s_service_type(&self) -> String {
-        match self {
-            CurrentlySupportedListenerClasses::ClusterInternal => "ClusterIP".to_string(),
-            CurrentlySupportedListenerClasses::ExternalUnstable => "NodePort".to_string(),
-            CurrentlySupportedListenerClasses::ExternalStable => "LoadBalancer".to_string(),
+impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
+    fn default() -> Self {
+        v1alpha1::TrinoCoordinatorRoleConfig {
+            listener_class: coordinator_default_listener_class(),
+            common: Default::default(),
         }
     }
+}
+
+fn coordinator_default_listener_class() -> String {
+    "cluster-internal".to_string()
 }
 
 impl Default for v1alpha1::TrinoTls {
@@ -420,6 +414,17 @@ impl TrinoRole {
             roles.push(role.to_string())
         }
         roles
+    }
+
+    pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<String> {
+        match self {
+            Self::Coordinator => trino
+                .spec
+                .coordinators
+                .to_owned()
+                .map(|coordinator| coordinator.role_config.listener_class),
+            Self::Worker => None,
+        }
     }
 }
 
@@ -733,11 +738,15 @@ impl v1alpha1::TrinoCluster {
     pub fn role(
         &self,
         role_variant: &TrinoRole,
-    ) -> Result<&Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>, Error>
+    ) -> Result<Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>, Error>
     {
         match role_variant {
-            TrinoRole::Coordinator => self.spec.coordinators.as_ref(),
-            TrinoRole::Worker => self.spec.workers.as_ref(),
+            TrinoRole::Coordinator => self
+                .spec
+                .coordinators
+                .to_owned()
+                .map(extract_role_from_coordinator_config),
+            TrinoRole::Worker => self.spec.workers.to_owned(),
         }
         .with_context(|| CannotRetrieveTrinoRoleSnafu {
             role: role_variant.to_string(),
@@ -748,23 +757,31 @@ impl v1alpha1::TrinoCluster {
     pub fn rolegroup(
         &self,
         rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    ) -> Result<&RoleGroup<v1alpha1::TrinoConfigFragment, JavaCommonConfig>, Error> {
-        let role_variant =
+    ) -> Result<RoleGroup<v1alpha1::TrinoConfigFragment, JavaCommonConfig>, Error> {
+        let trino_role =
             TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
                 role: rolegroup_ref.role.to_owned(),
                 roles: TrinoRole::roles(),
             })?;
-        let role = self.role(&role_variant)?;
-        role.role_groups
+
+        let role_variant = self.role(&trino_role)?;
+
+        role_variant
+            .role_groups
             .get(&rolegroup_ref.role_group)
+            .cloned()
             .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
                 role_group: rolegroup_ref.role_group.to_owned(),
             })
     }
 
-    pub fn role_config(&self, role: &TrinoRole) -> Option<&GenericRoleConfig> {
+    pub fn generic_role_config(&self, role: &TrinoRole) -> Option<&GenericRoleConfig> {
         match role {
-            TrinoRole::Coordinator => self.spec.coordinators.as_ref().map(|c| &c.role_config),
+            TrinoRole::Coordinator => self
+                .spec
+                .coordinators
+                .as_ref()
+                .map(|c| &c.role_config.common),
             TrinoRole::Worker => self.spec.workers.as_ref().map(|w| &w.role_config),
         }
     }
@@ -816,12 +833,17 @@ impl v1alpha1::TrinoCluster {
             .collect::<BTreeMap<_, _>>()
             .into_iter()
             .flat_map(move |(rolegroup_name, rolegroup)| {
-                let rolegroup_ref = TrinoRole::Coordinator.rolegroup_ref(self, rolegroup_name);
+                let role_group_ref = TrinoRole::Coordinator.rolegroup_ref(self, rolegroup_name);
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
-                    role_group_service_name: rolegroup_ref.object_name(),
-                    pod_name: format!("{}-{}", rolegroup_ref.object_name(), i),
+                    role_group_service_name: rolegroup_metrics_service_name(
+                        &role_group_ref.object_name(),
+                    ),
+                    pod_name: format!(
+                        "{role_group}-{i}",
+                        role_group = role_group_ref.object_name()
+                    ),
                 })
             }))
     }
@@ -915,6 +937,47 @@ impl v1alpha1::TrinoCluster {
 
         tracing::debug!("Merged config: {:?}", conf_rolegroup);
         fragment::validate(conf_rolegroup).context(FragmentValidationFailureSnafu)
+    }
+}
+
+/// Returns the metrics rolegroup service name `<cluster>-<role>-<rolegroup>-<METRICS_SERVICE_SUFFIX>`.
+pub fn rolegroup_metrics_service_name(role_group_ref_object_name: &str) -> String {
+    format!("{role_group_ref_object_name}-{METRICS_SERVICE_SUFFIX}")
+}
+
+fn extract_role_from_coordinator_config(
+    fragment: Role<TrinoConfigFragment, TrinoCoordinatorRoleConfig, JavaCommonConfig>,
+) -> Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> {
+    Role {
+        config: CommonConfiguration {
+            config: fragment.config.config,
+            config_overrides: fragment.config.config_overrides,
+            env_overrides: fragment.config.env_overrides,
+            cli_overrides: fragment.config.cli_overrides,
+            pod_overrides: fragment.config.pod_overrides,
+            product_specific_common_config: fragment.config.product_specific_common_config,
+        },
+        role_config: fragment.role_config.common,
+        role_groups: fragment
+            .role_groups
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    k,
+                    RoleGroup {
+                        config: CommonConfiguration {
+                            config: v.config.config,
+                            config_overrides: v.config.config_overrides,
+                            env_overrides: v.config.env_overrides,
+                            cli_overrides: v.config.cli_overrides,
+                            pod_overrides: v.config.pod_overrides,
+                            product_specific_common_config: v.config.product_specific_common_config,
+                        },
+                        replicas: v.replicas,
+                    },
+                )
+            })
+            .collect(),
     }
 }
 

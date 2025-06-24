@@ -1,0 +1,52 @@
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: password
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: test-users
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-users
+stringData:
+  admin: admin
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: test-trino
+spec:
+  image:
+{% if test_scenario['values']['trino'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
+{% else %}
+    productVersion: "{{ test_scenario['values']['trino'] }}"
+{% endif %}
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    authentication:
+      - authenticationClass: password
+    catalogLabelSelector: {}
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  coordinators:
+    roleConfig:
+      listenerClass: external-unstable
+    config:
+      gracefulShutdownTimeout: 5s # Let the test run faster
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    config:
+      gracefulShutdownTimeout: 5s # Let the test run faster
+    roleGroups:
+      default:
+        replicas: 1

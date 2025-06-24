@@ -1,17 +1,18 @@
 = Service exposition with ListenerClasses
+:description: Configure Trino service exposure with ListenerClasses: cluster-internal, external-unstable, or external-stable.
 
-Trino offers a web UI and an API, both are exposed by the `connector` xref:concepts:roles-and-role-groups.adoc[role].
-The Operator deploys a service called `<name>-connector` (where `<name>` is the name of the TrinoCluster) through which Trino can be reached.
-
-This service can have three different types: `cluster-internal`, `external-unstable` and `external-stable`.
-Read more about the types in the xref:concepts:service-exposition.adoc[service exposition] documentation at platform level.
-
-This is how the ListenerClass is configured:
+The operator deploys a xref:listener-operator:listener.adoc[Listener] for the coodinator pod.
+The listener defaults to only being accessible from within the Kubernetes cluster, but this can be changed by setting `.spec.coordinators.roleConfig.listenerClass`:
 
 [source,yaml]
 ----
 spec:
-  clusterConfig:
-    listenerClass: cluster-internal  # <1>
+  coordinators:
+    roleConfig:
+      listenerClass: external-unstable  # <1>
+    ...
+  workers:
+    ...
 ----
-<1> The default `cluster-internal` setting.
+<1> Specify a ListenerClass, such as `external-stable`, `external-unstable`, or `cluster-internal` (the default setting is `cluster-internal`).
+This can be set only for the coordinator role.
