@@ -12,7 +12,7 @@ aws s3api create-bucket --bucket ${BUCKET_NAME} --region eu-central-1 --create-b
 aws s3 cp yellow_tripdata_2021-07.csv s3://${BUCKET_NAME}/taxi-data/
 ```
 
-You will need to update the bucket name in [check-s3.py](check-s3.py).
+You will need to update the bucket name in the assert call for [check-s3.py](../commons/check-s3.py).
 
 ## Add AWS credentials
 
