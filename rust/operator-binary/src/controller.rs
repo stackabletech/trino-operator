@@ -87,7 +87,7 @@ use crate::{
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        rolegroup_metrics_service_name, v1alpha1,
+        rolegroup_headless_service_name, v1alpha1,
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
@@ -871,7 +871,7 @@ fn build_rolegroup_catalog_config_map(
 /// The rolegroup [`StatefulSet`] runs the rolegroup, as configured by the administrator.
 ///
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the
-/// corresponding [`Service`] (from [`build_rolegroup_service`]).
+/// corresponding [`Service`] (from [`build_rolegroup_headless_service`]).
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &v1alpha1::TrinoCluster,
@@ -964,6 +964,9 @@ fn build_rolegroup_statefulset(
         .requested_secret_lifetime
         .context(MissingSecretLifetimeSnafu)?;
 
+    let extra_service_scopes = group_listener_name(trino, trino_role)
+        .map(|listener_service_name| vec![listener_service_name]);
+
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
     tls_volume_mounts(
         trino,
@@ -972,6 +975,7 @@ fn build_rolegroup_statefulset(
         &mut cb_trino,
         catalogs,
         &requested_secret_lifetime,
+        extra_service_scopes,
     )?;
 
     let mut prepare_args = vec![];
@@ -1230,7 +1234,7 @@ fn build_rolegroup_statefulset(
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(rolegroup_metrics_service_name(
+            service_name: Some(rolegroup_headless_service_name(
                 &role_group_ref.object_name(),
             )),
             template: pod_template,
@@ -1511,14 +1515,25 @@ fn create_tls_volume(
     volume_name: &str,
     tls_secret_class: &str,
     requested_secret_lifetime: &Duration,
+    service_scopes: Option<Vec<String>>,
 ) -> Result<Volume> {
+    let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(tls_secret_class);
+
+    secret_volume_source_builder
+        .with_pod_scope()
+        .with_node_scope()
+        .with_format(SecretFormat::TlsPkcs12)
+        .with_auto_tls_cert_lifetime(*requested_secret_lifetime);
+
+    if let Some(scopes) = &service_scopes {
+        for scope in scopes {
+            secret_volume_source_builder.with_service_scope(scope);
+        }
+    }
+
     Ok(VolumeBuilder::new(volume_name)
         .ephemeral(
-            SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
-                .with_pod_scope()
-                .with_node_scope()
-                .with_format(SecretFormat::TlsPkcs12)
-                .with_auto_tls_cert_lifetime(*requested_secret_lifetime)
+            secret_volume_source_builder
                 .build()
                 .context(TlsCertSecretClassVolumeBuildSnafu)?,
         )
@@ -1532,6 +1547,7 @@ fn tls_volume_mounts(
     cb_trino: &mut ContainerBuilder,
     catalogs: &[CatalogConfig],
     requested_secret_lifetime: &Duration,
+    extra_service_scopes: Option<Vec<String>>,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare
@@ -1545,6 +1561,8 @@ fn tls_volume_mounts(
                 "server-tls-mount",
                 server_tls,
                 requested_secret_lifetime,
+                // add listener
+                extra_service_scopes,
             )?)
             .context(AddVolumeSnafu)?;
     }
@@ -1581,6 +1599,7 @@ fn tls_volume_mounts(
                 "internal-tls-mount",
                 internal_tls,
                 requested_secret_lifetime,
+                None,
             )?)
             .context(AddVolumeSnafu)?;
 

@@ -63,7 +63,7 @@ kind: Service
 metadata:
   name: test-trino-worker-default-headless
 spec:
-  type: ClusterIP # cluster-internal - by trino op  
+  type: ClusterIP # cluster-internal - by trino op
 ---
 apiVersion: v1
 kind: Service
