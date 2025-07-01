@@ -871,7 +871,7 @@ fn build_rolegroup_catalog_config_map(
 /// The rolegroup [`StatefulSet`] runs the rolegroup, as configured by the administrator.
 ///
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the
-/// corresponding [`Service`] (from [`build_rolegroup_headless_service`]).
+/// corresponding [`stackable_operator::k8s_openapi::api::core::v1::Service`] (from [`build_rolegroup_headless_service`]).
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &v1alpha1::TrinoCluster,
