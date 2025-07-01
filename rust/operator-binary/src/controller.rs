@@ -91,7 +91,7 @@ use crate::{
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
-        group_listener_name,
+        group_listener_name, secret_volume_listener_scope,
     },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
@@ -964,18 +964,15 @@ fn build_rolegroup_statefulset(
         .requested_secret_lifetime
         .context(MissingSecretLifetimeSnafu)?;
 
-    let extra_service_scopes = group_listener_name(trino, trino_role)
-        .map(|listener_service_name| vec![listener_service_name]);
-
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
     tls_volume_mounts(
         trino,
+        trino_role,
         &mut pod_builder,
         &mut cb_prepare,
         &mut cb_trino,
         catalogs,
         &requested_secret_lifetime,
-        extra_service_scopes,
     )?;
 
     let mut prepare_args = vec![];
@@ -1515,20 +1512,17 @@ fn create_tls_volume(
     volume_name: &str,
     tls_secret_class: &str,
     requested_secret_lifetime: &Duration,
-    service_scopes: Option<Vec<String>>,
+    listener_scope: Option<String>,
 ) -> Result<Volume> {
     let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(tls_secret_class);
 
     secret_volume_source_builder
         .with_pod_scope()
-        .with_node_scope()
         .with_format(SecretFormat::TlsPkcs12)
         .with_auto_tls_cert_lifetime(*requested_secret_lifetime);
 
-    if let Some(scopes) = &service_scopes {
-        for scope in scopes {
-            secret_volume_source_builder.with_service_scope(scope);
-        }
+    if let Some(listener_scope) = &listener_scope {
+        secret_volume_source_builder.with_listener_volume_scope(listener_scope);
     }
 
     Ok(VolumeBuilder::new(volume_name)
@@ -1542,12 +1536,12 @@ fn create_tls_volume(
 
 fn tls_volume_mounts(
     trino: &v1alpha1::TrinoCluster,
+    trino_role: &TrinoRole,
     pod_builder: &mut PodBuilder,
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
     catalogs: &[CatalogConfig],
     requested_secret_lifetime: &Duration,
-    extra_service_scopes: Option<Vec<String>>,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare
@@ -1562,7 +1556,7 @@ fn tls_volume_mounts(
                 server_tls,
                 requested_secret_lifetime,
                 // add listener
-                extra_service_scopes,
+                secret_volume_listener_scope(trino_role),
             )?)
             .context(AddVolumeSnafu)?;
     }
