@@ -838,7 +838,7 @@ impl v1alpha1::TrinoCluster {
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
-                    role_group_service_name: rolegroup_metrics_service_name(
+                    role_group_service_name: rolegroup_headless_service_name(
                         &role_group_ref.object_name(),
                     ),
                     pod_name: format!(

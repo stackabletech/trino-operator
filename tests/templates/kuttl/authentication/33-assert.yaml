@@ -5,4 +5,4 @@ timeout: 600
 commands:
   # We use the check-active-workers script for the login. Since we do want to wait until we cannot log in anymore
   # we flip the return value in the end.
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u hot_reloaded -p hot_reloaded -c trino-coordinator-default-metrics.$NAMESPACE.svc.cluster.local -w 1; if [ $? -eq 0 ]; then exit 1; fi
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u hot_reloaded -p hot_reloaded -c trino-coordinator-default-headless.$NAMESPACE.svc.cluster.local -w 1; if [ $? -eq 0 ]; then exit 1; fi
