@@ -42,32 +42,32 @@ kind: Service
 metadata:
   name: test-trino-coordinator
 spec:
-  type: NodePort # external-unstable - by listener op
+  type: NodePort # by listener op
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: test-trino-coordinator-default-headless
 spec:
-  type: ClusterIP # cluster-internal - by trino op
+  type: ClusterIP # by trino op
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: test-trino-coordinator-default-metrics
 spec:
-  type: ClusterIP # cluster-internal - by trino op
+  type: ClusterIP # by trino op
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: test-trino-worker-default-headless
 spec:
-  type: ClusterIP # cluster-internal - by trino op
+  type: ClusterIP # by trino op
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: test-trino-worker-default-metrics
 spec:
-  type: ClusterIP # cluster-internal - by trino op
+  type: ClusterIP #  by trino op
