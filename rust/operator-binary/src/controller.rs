@@ -500,13 +500,20 @@ pub async fn reconcile_trino(
             )
             .context(LabelBuildSnafu)?;
 
-            let rg_headless_service = build_rolegroup_headless_service(
-                trino,
-                &role_group_ref,
-                role_group_service_recommended_labels.clone(),
-                role_group_service_selector.clone().into(),
-            )
-            .context(ServiceConfigurationSnafu)?;
+            let rg_headless_service = if trino_role.requires_headless_service() {
+                Some(
+                    build_rolegroup_headless_service(
+                        trino,
+                        &role_group_ref,
+                        role_group_service_recommended_labels.clone(),
+                        role_group_service_selector.clone().into(),
+                    )
+                    .context(ServiceConfigurationSnafu)?,
+                )
+            } else {
+                None
+            };
+
             let rg_metrics_service = build_rolegroup_metrics_service(
                 trino,
                 &role_group_ref,
@@ -545,12 +552,14 @@ pub async fn reconcile_trino(
                 &rbac_sa.name_any(),
             )?;
 
-            cluster_resources
-                .add(client, rg_headless_service)
-                .await
-                .with_context(|_| ApplyRoleGroupServiceSnafu {
-                    rolegroup: role_group_ref.clone(),
-                })?;
+            if let Some(rg_headless_service) = rg_headless_service {
+                cluster_resources
+                    .add(client, rg_headless_service)
+                    .await
+                    .with_context(|_| ApplyRoleGroupServiceSnafu {
+                        rolegroup: role_group_ref.clone(),
+                    })?;
+            }
             cluster_resources
                 .add(client, rg_metrics_service)
                 .await
@@ -1197,6 +1206,13 @@ fn build_rolegroup_statefulset(
         .service_account_name(sa_name)
         .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
 
+    let service_name = if trino_role.requires_headless_service() {
+        Some(rolegroup_headless_service_name(
+            &role_group_ref.object_name(),
+        ))
+    } else {
+        None
+    };
     let mut pod_template = pod_builder.build_template();
     pod_template.merge_from(role.config.pod_overrides.clone());
     pod_template.merge_from(rolegroup.config.pod_overrides.clone());
@@ -1231,9 +1247,7 @@ fn build_rolegroup_statefulset(
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(rolegroup_headless_service_name(
-                &role_group_ref.object_name(),
-            )),
+            service_name,
             template: pod_template,
             volume_claim_templates: Some(persistent_volume_claims),
             ..StatefulSetSpec::default()

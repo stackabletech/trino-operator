@@ -61,13 +61,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-trino-worker-default-headless
-spec:
-  type: ClusterIP # by trino op
----
-apiVersion: v1
-kind: Service
-metadata:
   name: test-trino-worker-default-metrics
 spec:
-  type: ClusterIP #  by trino op
+  type: ClusterIP # by trino op

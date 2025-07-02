@@ -427,6 +427,10 @@ impl TrinoRole {
             Self::Worker => None,
         }
     }
+
+    pub fn requires_headless_service(&self) -> bool {
+        self == &Self::Coordinator
+    }
 }
 
 #[derive(
