@@ -16,7 +16,7 @@ use stackable_operator::{
         product_image_selection::ProductImage,
         resources::{
             CpuLimitsFragment, MemoryLimitsFragment, NoRuntimeLimits, NoRuntimeLimitsFragment,
-            PvcConfig, PvcConfigFragment, Resources, ResourcesFragment,
+            Resources, ResourcesFragment,
         },
     },
     config::{
@@ -91,7 +91,6 @@ pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
-pub const DATA_DIR_NAME: &str = "/stackable/data";
 pub const STACKABLE_SERVER_TLS_DIR: &str = "/stackable/server_tls";
 pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
 pub const STACKABLE_INTERNAL_TLS_DIR: &str = "/stackable/internal_tls";
@@ -326,10 +325,7 @@ pub mod versioned {
         ),
         serde(rename_all = "camelCase")
     )]
-    pub struct TrinoStorageConfig {
-        #[fragment_attrs(serde(default))]
-        pub data: PvcConfig,
-    }
+    pub struct TrinoStorageConfig {}
 
     #[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -489,13 +485,7 @@ impl v1alpha1::TrinoConfig {
                     limit: Some(Quantity(memory.to_string())),
                     runtime_limits: NoRuntimeLimitsFragment {},
                 },
-                storage: v1alpha1::TrinoStorageConfigFragment {
-                    data: PvcConfigFragment {
-                        capacity: Some(Quantity("1Gi".to_owned())),
-                        storage_class: None,
-                        selectors: None,
-                    },
-                },
+                storage: v1alpha1::TrinoStorageConfigFragment {},
             },
             query_max_memory: None,
             query_max_memory_per_node: None,

@@ -38,6 +38,16 @@ All notable changes to this project will be documented in this file.
 
 - Use `json` file extension for log files ([#733]).
 - Fix a bug where changes to ConfigMaps that are referenced in the TrinoCluster spec didn't trigger a reconciliation ([#734]).
+- BREAKING: The PersistentVolumeClaims for coordinator and workers have been removed ([#XXX])
+  - They caused problems, as Trino kept it's process ID in `/stackable/data/var/run/launcher.pid`.
+    A forceful stop (e.g. OOMKilled) could result in a leftover PID in this file.
+    In this case Trino would refuse startup with `trino ERROR: already running as 21`.
+    As the PersistentVolumeClaims didn't store any actual data, they have been removed.
+  - Upgrading will result in the error message `Failed to reconcile object [...]: Forbidden: updates to   statefulset spec for fields other than [...] are forbidden`
+    as Kubernetes currently does not allow changing the `volumeClaimTemplates` field. Simply delete the mentioned StatefulSet, the operator will re-create it.
+  - You might want to clean up now useless PVCs.
+    Tip: You can list all Trino-related PVCs using `kubectl get pvc -l app.kubernetes.io/name=trino`.
+  - The `.spec.(coordinators|workers).config.resources.storage.data` field has been removed, as it's not needed anymore.
 
 ### Removed
 
@@ -56,6 +66,7 @@ All notable changes to this project will be documented in this file.
 [#753]: https://github.com/stackabletech/trino-operator/pull/753
 [#755]: https://github.com/stackabletech/trino-operator/pull/755
 [#760]: https://github.com/stackabletech/trino-operator/pull/760
+[#XXX]: https://github.com/stackabletech/trino-operator/pull/XXX
 
 ## [25.3.0] - 2025-03-21
 
