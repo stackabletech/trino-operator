@@ -983,7 +983,6 @@ fn build_rolegroup_statefulset(
         )
         .build();
 
-    // for rw config
     let mut persistent_volume_claims = vec![];
     // Add listener
     if let Some(group_listener_name) = group_listener_name(trino, trino_role) {
