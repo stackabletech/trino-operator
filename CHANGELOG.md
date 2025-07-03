@@ -38,7 +38,7 @@ All notable changes to this project will be documented in this file.
 
 - Use `json` file extension for log files ([#733]).
 - Fix a bug where changes to ConfigMaps that are referenced in the TrinoCluster spec didn't trigger a reconciliation ([#734]).
-- BREAKING: The PersistentVolumeClaims for coordinator and workers have been removed ([#XXX])
+- BREAKING: The PersistentVolumeClaims for coordinator and workers have been removed ([#769])
   - They caused problems, as Trino kept it's process ID in `/stackable/data/var/run/launcher.pid`.
     A forceful stop (e.g. OOMKilled) could result in a leftover PID in this file.
     In this case Trino would refuse startup with `trino ERROR: already running as 21`.
@@ -66,7 +66,7 @@ All notable changes to this project will be documented in this file.
 [#753]: https://github.com/stackabletech/trino-operator/pull/753
 [#755]: https://github.com/stackabletech/trino-operator/pull/755
 [#760]: https://github.com/stackabletech/trino-operator/pull/760
-[#XXX]: https://github.com/stackabletech/trino-operator/pull/XXX
+[#769]: https://github.com/stackabletech/trino-operator/pull/769
 
 ## [25.3.0] - 2025-03-21
 
