@@ -230,11 +230,17 @@ pub mod versioned {
     pub struct TrinoConfig {
         // config.properties
         pub query_max_memory: Option<String>,
+
         pub query_max_memory_per_node: Option<String>,
+
         #[fragment_attrs(serde(default))]
         pub logging: Logging<Container>,
+
+        // We need to provide *something* that implements `Fragment`, so we pick an empty struct here.
+        // Note that a unit "()" would not work, as we need something that implements `Fragment`.
         #[fragment_attrs(serde(default))]
         pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
+
         #[fragment_attrs(serde(default))]
         pub affinity: StackableAffinity,
 
