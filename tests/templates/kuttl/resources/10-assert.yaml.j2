@@ -26,17 +26,6 @@ status:
   readyReplicas: 1
   replicas: 1
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: data-trino-coordinator-resources-default-0
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -59,17 +48,6 @@ spec:
 status:
   readyReplicas: 1
   replicas: 1
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: data-trino-worker-resources-from-role-0
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 3Gi
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -94,17 +72,6 @@ status:
   readyReplicas: 1
   replicas: 1
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: data-trino-worker-resources-from-role-group-0
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 4Gi
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -127,14 +94,3 @@ spec:
 status:
   readyReplicas: 1
   replicas: 1
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: data-trino-worker-resources-from-pod-overrides-0
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 3Gi
