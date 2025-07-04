@@ -36,8 +36,7 @@ use stackable_operator::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, ExecAction,
-                HTTPGetAction, Probe, Secret, SecretKeySelector, Service, ServicePort, ServiceSpec,
-                Volume,
+                HTTPGetAction, Probe, Secret, SecretKeySelector, Volume,
             },
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
@@ -47,7 +46,7 @@ use stackable_operator::{
         core::{DeserializeGuard, error_boundary},
         runtime::{controller::Action, reflector::ObjectRef},
     },
-    kvp::{Annotation, Label, Labels, ObjectLabels},
+    kvp::{Annotation, Labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{
@@ -88,16 +87,17 @@ use crate::{
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        rolegroup_metrics_service_name, v1alpha1,
+        rolegroup_headless_service_name, v1alpha1,
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
-        group_listener_name,
+        group_listener_name, secret_volume_listener_scope,
     },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
     },
     product_logging::{get_log_properties, get_vector_toml},
+    service::{build_rolegroup_headless_service, build_rolegroup_metrics_service},
 };
 
 pub struct Ctx {
@@ -357,6 +357,9 @@ pub enum Error {
 
     #[snafu(display("failed to configure listener"))]
     ListenerConfiguration { source: crate::listener::Error },
+
+    #[snafu(display("failed to configure service"))]
+    ServiceConfiguration { source: crate::service::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -482,8 +485,37 @@ pub async fn reconcile_trino(
                 .merged_config(&trino_role, &role_group_ref, &catalog_definitions)
                 .context(FailedToResolveConfigSnafu)?;
 
-            let rg_service =
-                build_rolegroup_service(trino, &resolved_product_image, &role_group_ref)?;
+            let role_group_service_recommended_labels = build_recommended_labels(
+                trino,
+                &resolved_product_image.app_version_label,
+                &role_group_ref.role,
+                &role_group_ref.role_group,
+            );
+
+            let role_group_service_selector = Labels::role_group_selector(
+                trino,
+                APP_NAME,
+                &role_group_ref.role,
+                &role_group_ref.role_group,
+            )
+            .context(LabelBuildSnafu)?;
+
+            let rg_headless_service = build_rolegroup_headless_service(
+                trino,
+                &role_group_ref,
+                role_group_service_recommended_labels.clone(),
+                role_group_service_selector.clone().into(),
+            )
+            .context(ServiceConfigurationSnafu)?;
+
+            let rg_metrics_service = build_rolegroup_metrics_service(
+                trino,
+                &role_group_ref,
+                role_group_service_recommended_labels,
+                role_group_service_selector.into(),
+            )
+            .context(ServiceConfigurationSnafu)?;
+
             let rg_configmap = build_rolegroup_config_map(
                 trino,
                 &resolved_product_image,
@@ -515,7 +547,14 @@ pub async fn reconcile_trino(
             )?;
 
             cluster_resources
-                .add(client, rg_service)
+                .add(client, rg_headless_service)
+                .await
+                .with_context(|_| ApplyRoleGroupServiceSnafu {
+                    rolegroup: role_group_ref.clone(),
+                })?;
+
+            cluster_resources
+                .add(client, rg_metrics_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
                     rolegroup: role_group_ref.clone(),
@@ -834,7 +873,7 @@ fn build_rolegroup_catalog_config_map(
 /// The rolegroup [`StatefulSet`] runs the rolegroup, as configured by the administrator.
 ///
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the
-/// corresponding [`Service`] (from [`build_rolegroup_service`]).
+/// corresponding [`stackable_operator::k8s_openapi::api::core::v1::Service`] (from [`build_rolegroup_headless_service`]).
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &v1alpha1::TrinoCluster,
@@ -930,6 +969,7 @@ fn build_rolegroup_statefulset(
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
     tls_volume_mounts(
         trino,
+        trino_role,
         &mut pod_builder,
         &mut cb_prepare,
         &mut cb_trino,
@@ -1193,59 +1233,12 @@ fn build_rolegroup_statefulset(
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(rolegroup_metrics_service_name(
+            service_name: Some(rolegroup_headless_service_name(
                 &role_group_ref.object_name(),
             )),
             template: pod_template,
             volume_claim_templates: Some(persistent_volume_claims),
             ..StatefulSetSpec::default()
-        }),
-        status: None,
-    })
-}
-
-/// The rolegroup [`Service`] is a headless service that allows direct access to the instances of a certain rolegroup
-///
-/// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
-fn build_rolegroup_service(
-    trino: &v1alpha1::TrinoCluster,
-    resolved_product_image: &ResolvedProductImage,
-    role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-) -> Result<Service> {
-    Ok(Service {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
-            .name(rolegroup_metrics_service_name(
-                &role_group_ref.object_name(),
-            ))
-            .ownerreference_from_resource(trino, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(build_recommended_labels(
-                trino,
-                &resolved_product_image.app_version_label,
-                &role_group_ref.role,
-                &role_group_ref.role_group,
-            ))
-            .context(MetadataBuildSnafu)?
-            .with_label(Label::try_from(("prometheus.io/scrape", "true")).context(LabelBuildSnafu)?)
-            .build(),
-        spec: Some(ServiceSpec {
-            // Internal communication does not need to be exposed
-            type_: Some("ClusterIP".to_string()),
-            cluster_ip: Some("None".to_string()),
-            ports: Some(service_ports()),
-            selector: Some(
-                Labels::role_group_selector(
-                    trino,
-                    APP_NAME,
-                    &role_group_ref.role,
-                    &role_group_ref.role_group,
-                )
-                .context(LabelBuildSnafu)?
-                .into(),
-            ),
-            publish_not_ready_addresses: Some(true),
-            ..ServiceSpec::default()
         }),
         status: None,
     })
@@ -1409,15 +1402,6 @@ fn get_random_base64() -> String {
     openssl::base64::encode_block(&buf)
 }
 
-fn service_ports() -> Vec<ServicePort> {
-    vec![ServicePort {
-        name: Some(METRICS_PORT_NAME.to_string()),
-        port: METRICS_PORT.into(),
-        protocol: Some("TCP".to_string()),
-        ..ServicePort::default()
-    }]
-}
-
 fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
     let mut ports = vec![ContainerPort {
         name: Some(METRICS_PORT_NAME.to_string()),
@@ -1530,14 +1514,22 @@ fn create_tls_volume(
     volume_name: &str,
     tls_secret_class: &str,
     requested_secret_lifetime: &Duration,
+    listener_scope: Option<String>,
 ) -> Result<Volume> {
+    let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(tls_secret_class);
+
+    secret_volume_source_builder
+        .with_pod_scope()
+        .with_format(SecretFormat::TlsPkcs12)
+        .with_auto_tls_cert_lifetime(*requested_secret_lifetime);
+
+    if let Some(listener_scope) = &listener_scope {
+        secret_volume_source_builder.with_listener_volume_scope(listener_scope);
+    }
+
     Ok(VolumeBuilder::new(volume_name)
         .ephemeral(
-            SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
-                .with_pod_scope()
-                .with_node_scope()
-                .with_format(SecretFormat::TlsPkcs12)
-                .with_auto_tls_cert_lifetime(*requested_secret_lifetime)
+            secret_volume_source_builder
                 .build()
                 .context(TlsCertSecretClassVolumeBuildSnafu)?,
         )
@@ -1546,6 +1538,7 @@ fn create_tls_volume(
 
 fn tls_volume_mounts(
     trino: &v1alpha1::TrinoCluster,
+    trino_role: &TrinoRole,
     pod_builder: &mut PodBuilder,
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
@@ -1564,6 +1557,8 @@ fn tls_volume_mounts(
                 "server-tls-mount",
                 server_tls,
                 requested_secret_lifetime,
+                // add listener
+                secret_volume_listener_scope(trino_role),
             )?)
             .context(AddVolumeSnafu)?;
     }
@@ -1600,6 +1595,7 @@ fn tls_volume_mounts(
                 "internal-tls-mount",
                 internal_tls,
                 requested_secret_lifetime,
+                None,
             )?)
             .context(AddVolumeSnafu)?;
 

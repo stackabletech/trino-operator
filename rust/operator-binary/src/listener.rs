@@ -83,6 +83,14 @@ pub fn group_listener_name(trino: &v1alpha1::TrinoCluster, role: &TrinoRole) -> 
     }
 }
 
+/// The listener volume name depending on the role
+pub fn secret_volume_listener_scope(role: &TrinoRole) -> Option<String> {
+    match role {
+        TrinoRole::Coordinator => Some(LISTENER_VOLUME_NAME.to_string()),
+        TrinoRole::Worker => None,
+    }
+}
+
 /// We only use the http/https port here and intentionally omit the metrics one.
 fn listener_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ListenerPort> {
     let name = trino.exposed_protocol().to_string();
