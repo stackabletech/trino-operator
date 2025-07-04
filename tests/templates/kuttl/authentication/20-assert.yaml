@@ -4,10 +4,10 @@ kind: TestAssert
 timeout: 300
 commands:
   # file
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u test_user_1 -p test_user_1 -c trino-coordinator-default-metrics.$NAMESPACE.svc.cluster.local -w 1
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u test_user_2_other -p test_user_2_other -c trino-coordinator-default-metrics.$NAMESPACE.svc.cluster.local -w 1
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u test_user_1 -p test_user_1 -c trino-coordinator-default-headless.$NAMESPACE.svc.cluster.local -w 1
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u test_user_2_other -p test_user_2_other -c trino-coordinator-default-headless.$NAMESPACE.svc.cluster.local -w 1
   # ldap
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u integrationtest -p integrationtest -c trino-coordinator-default-metrics.$NAMESPACE.svc.cluster.local -w 1
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u integrationtest-other -p integrationtest-other -c trino-coordinator-default-metrics.$NAMESPACE.svc.cluster.local -w 1
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u integrationtest -p integrationtest -c trino-coordinator-default-headless.$NAMESPACE.svc.cluster.local -w 1
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u integrationtest-other -p integrationtest-other -c trino-coordinator-default-headless.$NAMESPACE.svc.cluster.local -w 1
   # oidc/oauth2
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-oauth-login.py https://trino-coordinator-default-metrics.$NAMESPACE.svc.cluster.local:8443/ui/
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-oauth-login.py https://trino-coordinator-default-headless.$NAMESPACE.svc.cluster.local:8443/ui/

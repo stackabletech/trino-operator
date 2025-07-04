@@ -8,6 +8,7 @@ mod crd;
 mod listener;
 mod operations;
 mod product_logging;
+mod service;
 
 use std::sync::Arc;
 

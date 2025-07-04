@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
   - Use `--console-log-format` (or `CONSOLE_LOG_FORMAT`) to set the format to `plain` (default) or `json`.
 - Add Listener integration for Trino ([#753]).
 - Add support for Trino 476 ([#755]).
+- Add internal headless service in addition to the metrics service ([#766]).
 
 ### Changed
 
@@ -66,6 +67,7 @@ All notable changes to this project will be documented in this file.
 [#753]: https://github.com/stackabletech/trino-operator/pull/753
 [#755]: https://github.com/stackabletech/trino-operator/pull/755
 [#760]: https://github.com/stackabletech/trino-operator/pull/760
+[#766]: https://github.com/stackabletech/trino-operator/pull/766
 [#769]: https://github.com/stackabletech/trino-operator/pull/769
 
 ## [25.3.0] - 2025-03-21

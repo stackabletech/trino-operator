@@ -65,7 +65,7 @@ if __name__ == "__main__":
         "/tmp/test-config.json"
     )  # config file to indicate our test script if auth / tls is used or not
     coordinator_host = (
-        "trino-coordinator-default-metrics." + namespace + ".svc.cluster.local"
+        f"trino-coordinator-default-headless.{namespace}.svc.cluster.local"
     )
     trusted_ca = "/stackable/trusted/ca.crt"  # will be mounted from secret op
     untrusted_ca = "/stackable/untrusted-cert.crt"  # some random CA
