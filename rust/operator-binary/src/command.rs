@@ -11,8 +11,8 @@ use crate::{
     catalog::config::CatalogConfig,
     controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
     crd::{
-        CONFIG_DIR_NAME, Container, DATA_DIR_NAME, LOG_PROPERTIES, RW_CONFIG_DIR_NAME,
-        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        CONFIG_DIR_NAME, Container, LOG_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+        STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
         SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole, v1alpha1,
     },
@@ -119,7 +119,7 @@ pub fn container_trino_args(
 {remove_vector_shutdown_file_command}
 prepare_signal_handlers
 containerdebug --output={STACKABLE_LOG_DIR}/containerdebug-state.json --loop &
-bin/launcher run --etc-dir={RW_CONFIG_DIR_NAME} --data-dir={DATA_DIR_NAME} &
+bin/launcher run --etc-dir={RW_CONFIG_DIR_NAME} &
 wait_for_termination $!
 {create_vector_shutdown_file_command}
 ",

@@ -78,12 +78,11 @@ use crate::{
     command, config,
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
-        DATA_DIR_NAME, DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT,
-        HTTPS_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES,
-        MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-        TrinoRole,
+        DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME,
+        JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE,
+        METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
+        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, TrinoRole,
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
@@ -1008,8 +1007,6 @@ fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![prepare_args.join("\n")])
-        .add_volume_mount("data", DATA_DIR_NAME)
-        .context(AddVolumeMountSnafu)?
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
         .context(AddVolumeMountSnafu)?
         .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
@@ -1026,14 +1023,7 @@ fn build_rolegroup_statefulset(
         )
         .build();
 
-    // for rw config
-    let mut persistent_volume_claims = vec![
-        merged_config
-            .resources
-            .storage
-            .data
-            .build_pvc("data", Some(vec!["ReadWriteOnce"])),
-    ];
+    let mut persistent_volume_claims = vec![];
     // Add listener
     if let Some(group_listener_name) = group_listener_name(trino, trino_role) {
         cb_trino
@@ -1069,8 +1059,6 @@ fn build_rolegroup_statefulset(
             command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
         ])
         .add_env_vars(env)
-        .add_volume_mount("data", DATA_DIR_NAME)
-        .context(AddVolumeMountSnafu)?
         .add_volume_mount("config", CONFIG_DIR_NAME)
         .context(AddVolumeMountSnafu)?
         .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
