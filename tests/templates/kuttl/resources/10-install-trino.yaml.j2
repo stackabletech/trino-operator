@@ -30,9 +30,6 @@ spec:
       logging:
         enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
       resources:
-        storage:
-          data:
-            capacity: 3Gi
         cpu:
           min: 300m
           max: 600m
@@ -45,9 +42,6 @@ spec:
         replicas: 1
         config:
           resources:
-            storage:
-              data:
-                capacity: 4Gi
             cpu:
               min: 400m
               max: 800m
