@@ -26,23 +26,23 @@ use tpch::TpchConnector;
 
 use self::delta_lake::DeltaLakeConnector;
 
-#[versioned(version(name = "v1alpha1"), options(skip(from)))]
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "stackable_operator::kube::core",
+        kube_client = "stackable_operator::kube::client",
+        k8s_openapi = "stackable_operator::k8s_openapi",
+        schemars = "stackable_operator::schemars",
+        versioned = "stackable_operator::versioned",
+    ),
+    skip(from)
+)]
 pub mod versioned {
     /// The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
     /// Read more about it in the [Trino operator concept docs](DOCS_BASE_URL_PLACEHOLDER/trino/concepts)
     /// and the [Trino operator usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/).
     /// The documentation also contains a list of all the supported backends.
-    #[versioned(k8s(
-        group = "trino.stackable.tech",
-        kind = "TrinoCatalog",
-        plural = "trinocatalogs",
-        namespaced,
-        crates(
-            kube_core = "stackable_operator::kube::core",
-            k8s_openapi = "stackable_operator::k8s_openapi",
-            schemars = "stackable_operator::schemars"
-        )
-    ))]
+    #[versioned(crd(group = "trino.stackable.tech", plural = "trinocatalogs", namespaced,))]
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoCatalogSpec {
@@ -95,9 +95,9 @@ pub enum TrinoCatalogConnector {
 
 #[cfg(test)]
 mod tests {
-    use crate::crd::catalog::TrinoCatalog;
+    use crate::crd::catalog::{TrinoCatalog, TrinoCatalogVersion};
     #[test]
     fn test_crd_generation() {
-        TrinoCatalog::merged_crd(TrinoCatalog::V1Alpha1).unwrap();
+        TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1).unwrap();
     }
 }

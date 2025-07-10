@@ -153,10 +153,8 @@ pub fn add_cert_to_truststore(
 /// into a new keystore with password in a writeable empty dir
 ///
 /// # Arguments
-/// - `source_directory`      - The directory of the source keystore.
-///                             Should usually be a secret operator volume mount.
-/// - `destination_directory` - The directory of the destination keystore.
-///                             Should usually be an empty dir.
+/// - `source_directory`: The directory of the source keystore. Should usually be a secret operator volume mount.
+/// - `destination_directory`: The directory of the destination keystore. Should usually be an empty dir.
 fn import_keystore(source_directory: &str, destination_directory: &str) -> Vec<String> {
     vec![
         // The source directory is a secret-op mount and we do not want to write / add anything in there
@@ -177,10 +175,8 @@ fn import_keystore(source_directory: &str, destination_directory: &str) -> Vec<S
 /// into a new truststore with password in a writeable empty dir
 ///
 /// # Arguments
-/// - `source_directory`      - The directory of the source truststore.
-///                             Should usually be a secret operator volume mount.
-/// - `destination_directory` - The directory of the destination truststore.
-///                             Should usually be an empty dir.
+/// - `source_directory`: The directory of the source truststore. Should usually be a secret operator volume mount.
+/// - `destination_directory`: The directory of the destination truststore. Should usually be an empty dir.
 fn import_truststore(source_directory: &str, destination_directory: &str) -> Vec<String> {
     vec![
         // The source directory is a secret-op mount and we do not want to write / add anything in there

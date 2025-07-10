@@ -65,7 +65,6 @@ pub fn build_group_listener_pvc(
         &ListenerReference::ListenerName(group_listener_name.to_string()),
         unversioned_recommended_labels,
     )
-    .context(BuildListenerPersistentVolumeSnafu)?
     .build_pvc(LISTENER_VOLUME_NAME.to_string())
     .context(BuildListenerPersistentVolumeSnafu)
 }

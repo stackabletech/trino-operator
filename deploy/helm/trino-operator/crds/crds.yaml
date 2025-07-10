@@ -45,7 +45,7 @@ spec:
                                 type: string
                               extraScopes:
                                 default: []
-                                description: An optional list of extra scopes which get merged with the scopes defined in the `AuthenticationClass`.
+                                description: An optional list of extra scopes which get merged with the scopes defined in the AuthenticationClass
                                 items:
                                   type: string
                                 type: array
@@ -1196,11 +1196,6 @@ spec:
                     properties:
                       lastTransitionTime:
                         description: Last time the condition transitioned from one status to another.
-                        format: date-time
-                        nullable: true
-                        type: string
-                      lastUpdateTime:
-                        description: The last time this condition was updated.
                         format: date-time
                         nullable: true
                         type: string
