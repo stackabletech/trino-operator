@@ -160,23 +160,27 @@ pub enum Error {
     FragmentValidationFailure { source: ValidationError },
 }
 
-#[versioned(version(name = "v1alpha1"), options(skip(from)))]
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "stackable_operator::kube::core",
+        kube_client = "stackable_operator::kube::client",
+        k8s_openapi = "stackable_operator::k8s_openapi",
+        schemars = "stackable_operator::schemars",
+        versioned = "stackable_operator::versioned",
+    ),
+    skip(from)
+)]
 pub mod versioned {
     /// A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
     /// Find more information on how to use it and the resources that the operator generates in the
     /// [operator documentation](DOCS_BASE_URL_PLACEHOLDER/trino/).
-    #[versioned(k8s(
+    #[versioned(crd(
         group = "trino.stackable.tech",
-        kind = "TrinoCluster",
         plural = "trinoclusters",
         shortname = "trino",
         status = "TrinoClusterStatus",
         namespaced,
-        crates(
-            kube_core = "stackable_operator::kube::core",
-            k8s_openapi = "stackable_operator::k8s_openapi",
-            schemars = "stackable_operator::schemars"
-        )
     ))]
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]

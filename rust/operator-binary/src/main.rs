@@ -1,3 +1,6 @@
+// TODO: Look into how to properly resolve `clippy::result_large_err`.
+// This will need changes in our and upstream error types.
+#![allow(clippy::result_large_err)]
 mod authentication;
 mod authorization;
 mod catalog;
@@ -39,7 +42,11 @@ use stackable_operator::{
 
 use crate::{
     controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
-    crd::{TrinoCluster, catalog::TrinoCatalog, v1alpha1},
+    crd::{
+        TrinoCluster, TrinoClusterVersion,
+        catalog::{TrinoCatalog, TrinoCatalogVersion},
+        v1alpha1,
+    },
 };
 
 mod built_info {
@@ -58,9 +65,9 @@ async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
     match opts.cmd {
         Command::Crd => {
-            TrinoCluster::merged_crd(TrinoCluster::V1Alpha1)?
+            TrinoCluster::merged_crd(TrinoClusterVersion::V1Alpha1)?
                 .print_yaml_schema(built_info::PKG_VERSION, SerializeOptions::default())?;
-            TrinoCatalog::merged_crd(TrinoCatalog::V1Alpha1)?
+            TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1)?
                 .print_yaml_schema(built_info::PKG_VERSION, SerializeOptions::default())?;
         }
         Command::Run(ProductOperatorRun {
