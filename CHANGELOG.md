@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Add Listener integration for Trino ([#753]).
 - Add support for Trino 476 ([#755]).
 - Add internal headless service in addition to the metrics service ([#766]).
+- Add RBAC rule to helm template for automatic cluster domain detection ([#771]).
 
 ### Changed
 
@@ -34,6 +35,10 @@ All notable changes to this project will be documented in this file.
   - This is marked as breaking because tools and policies might exist, which require these fields to be set
 - Deprecate Trino 470 ([#755]).
 - test: support custom versions ([#760]).
+- BREAKING: Bump stackable-operator to 0.94.0 and update other dependencies ([#771]).
+  - The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured.
+  - This requires operators to have the RBAC permission to get nodes/proxy in the apiGroup "". The helm-chart takes care of this.
+  - The CLI argument `--kubernetes-node-name` or env variable `KUBERNETES_NODE_NAME` needs to be set. The helm-chart takes care of this.
 
 ### Fixed
 
@@ -49,10 +54,13 @@ All notable changes to this project will be documented in this file.
   - You might want to clean up now useless PVCs.
     Tip: You can list all Trino-related PVCs using `kubectl get pvc -l app.kubernetes.io/name=trino`.
   - The `.spec.(coordinators|workers).config.resources.storage.data` field has been removed, as it's not needed anymore.
+- Allow uppercase characters in domain names ([#771]).
 
 ### Removed
 
 - Remove support for Trino 455 ([#755]).
+- Remove the `lastUpdateTime` field from the stacklet status ([#771]).
+- Remove role binding to legacy service accounts ([#771]).
 
 [#728]: https://github.com/stackabletech/trino-operator/pull/728
 [#734]: https://github.com/stackabletech/trino-operator/pull/734
@@ -69,6 +77,7 @@ All notable changes to this project will be documented in this file.
 [#760]: https://github.com/stackabletech/trino-operator/pull/760
 [#766]: https://github.com/stackabletech/trino-operator/pull/766
 [#769]: https://github.com/stackabletech/trino-operator/pull/769
+[#771]: https://github.com/stackabletech/trino-operator/pull/771
 
 ## [25.3.0] - 2025-03-21
 
