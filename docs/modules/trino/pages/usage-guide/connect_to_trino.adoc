@@ -42,7 +42,7 @@ image::connect-with-superset-2.png[]
 
 === Set `ROOT CERTIFICATE`
 
-Additionally, you may want to set a CA Bundle for e.g. self-signed certificates.
+Additionally, in the `Advanced` tab under `Security` in the `ROOT CERTIFICATE`, you may want to set a CA Bundle for e.g. self-signed certificates.
 
 === Skip TLS verification
 
