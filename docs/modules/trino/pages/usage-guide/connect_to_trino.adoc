@@ -20,6 +20,41 @@ It is typically secured via HTTPS with a certificated provided by a xref:secret-
 As most setups use a self-signed certificate, that cannot be verified without the CA certificate, the easiest way is to disable the Trino cert validation as the following guide does, however this is not secure!
 To use certificate validation instead, you need to extract the `ca.crt` file from the the SecretClass and provide it to the Trino client.
 
+== Connect with Superset
+
+In Superset, a `Database Connection` to Trino can be configured via the API or UI.
+Set the `SQLALCHEMY URI` in the `Basic` tab.
+
+image::connect-with-superset-1.png[]
+
+Stackable Trino clusters use HTTPS per default. Therefore additional settings must be configured.
+
+=== Set `http_scheme`
+
+In the `Advanced` tab under `Other` in the `ENGINE PARAMETERS` settings, set the `http_scheme` explicitly to `https`.
+
+[source,json]
+----
+{"connect_args":{"http_scheme":"https"}}
+----
+
+image::connect-with-superset-2.png[]
+
+=== Set `ROOT CERTIFICATE`
+
+Additionally, you may want to set a CA Bundle for e.g. self-signed certificates.
+
+=== Skip TLS verification
+
+WARNING: This deactivates TLS validation and should only be used for testing purposes and never in production!
+
+In the `Advanced` tab under `Other` in the `ENGINE PARAMETERS`, set `verify` to `false`.
+
+[source,json]
+----
+{"connect_args":{"verify":false,"http_scheme":"https"}}
+----
+
 == Connect with trino-cli
 
 Consult the  {trino-cli}[official trino-cli docs] for details on how to connect to a running Trino cluster.
