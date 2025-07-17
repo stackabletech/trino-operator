@@ -46,7 +46,7 @@ Additionally, you may want to set a CA Bundle for e.g. self-signed certificates.
 
 === Skip TLS verification
 
-WARNING: This deactivates TLS validation and should only be used for testing purposes and never in production!
+WARNING: This deactivates TLS verification and should only be used for testing purposes and never in production!
 
 In the `Advanced` tab under `Other` in the `ENGINE PARAMETERS`, set `verify` to `false`.
 
