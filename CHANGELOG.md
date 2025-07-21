@@ -39,6 +39,8 @@ All notable changes to this project will be documented in this file.
   - The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured.
   - This requires operators to have the RBAC permission to get nodes/proxy in the apiGroup "". The helm-chart takes care of this.
   - The CLI argument `--kubernetes-node-name` or env variable `KUBERNETES_NODE_NAME` needs to be set. The helm-chart takes care of this.
+- The operator helm-chart now grants RBAC `patch` permissions on `events.k8s.io/events`,
+  so events can be aggregated (e.g. "error happened 10 times over the last 5 minutes") ([#774]).
 
 ### Fixed
 
@@ -78,6 +80,7 @@ All notable changes to this project will be documented in this file.
 [#766]: https://github.com/stackabletech/trino-operator/pull/766
 [#769]: https://github.com/stackabletech/trino-operator/pull/769
 [#771]: https://github.com/stackabletech/trino-operator/pull/771
+[#774]: https://github.com/stackabletech/trino-operator/pull/774
 
 ## [25.3.0] - 2025-03-21
 

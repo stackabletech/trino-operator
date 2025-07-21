@@ -190,6 +190,7 @@ rules:
       - events
     verbs:
       - create
+      - patch
 {{ if .Capabilities.APIVersions.Has "security.openshift.io/v1" }}
   - apiGroups:
       - security.openshift.io
