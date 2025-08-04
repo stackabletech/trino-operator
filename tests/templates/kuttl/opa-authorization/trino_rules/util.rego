@@ -12,6 +12,12 @@ package util
 #   Returns:
 #     result (boolean)
 match_entire(pattern, value) if {
+	pattern == `.*`
+}
+
+match_entire(pattern, value) if {
+	pattern != `.*`
+
 	# Add the anchors ^ and $
 	pattern_with_anchors := concat("", ["^", pattern, "$"])
 

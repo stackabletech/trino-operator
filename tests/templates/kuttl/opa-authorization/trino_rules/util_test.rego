@@ -3,6 +3,7 @@ package util_test
 import data.util
 
 test_match_entire if {
+	util.match_entire(`.*`, "a")
 	util.match_entire(`a`, "a")
 	util.match_entire(`^a`, "a")
 	util.match_entire(`a$`, "a")
