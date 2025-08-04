@@ -1,0 +1,20 @@
+= OpenTelemetry
+:description: Ship Trino traces and logs to OpenTelemetry
+:trino-docs: https://trino.io/docs/470/admin/opentelemetry.html
+
+Trino supports sending OpenTelemetry traces as stated in {trino-docs}[the documentation].
+
+To enable traces you need to add the following configOverrides.
+Please check the {trino-docs}[Trino documentation] on how other settings you can configure.
+
+[source,yaml]
+----
+spec:
+  coordinators:
+    configOverrides: &configOverrides
+      config.properties:
+        tracing.enabled: "true"
+        tracing.exporter.endpoint: http://jaeger-collector.default.svc.cluster.local:4317
+  workers:
+    configOverrides: *configOverrides
+----
