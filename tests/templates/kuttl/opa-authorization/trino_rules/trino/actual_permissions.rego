@@ -47,9 +47,9 @@ default match_user_group(_) := false
 
 match_user_group(rule) if {
 	user_pattern := object.get(rule, "user", ".*")
-	group_pattern := object.get(rule, "group", ".*")
-
 	match_entire(user_pattern, identity.user)
+
+	group_pattern := object.get(rule, "group", ".*")
 	match_any_group(group_pattern)
 }
 
@@ -57,9 +57,9 @@ default match_original_user_group(_) := false
 
 match_original_user_group(rule) if {
 	user_pattern := object.get(rule, "original_user", ".*")
-	group_pattern := object.get(rule, "original_group", ".*")
-
 	match_entire(user_pattern, identity.user)
+
+	group_pattern := object.get(rule, "original_group", ".*")
 	match_any_group(group_pattern)
 }
 
@@ -394,9 +394,9 @@ schema_visibility(catalog_name, schema_name) if {
 	match_user_group(rule)
 
 	catalog_pattern := object.get(rule, "catalog", ".*")
-	schema_pattern := object.get(rule, "schema", ".*")
-
 	match_entire(catalog_pattern, catalog_name)
+
+	schema_pattern := object.get(rule, "schema", ".*")
 	match_entire(schema_pattern, schema_name)
 
 	count(rule.privileges) != 0
