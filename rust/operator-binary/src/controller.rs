@@ -1582,6 +1582,7 @@ fn create_tls_volume(
         .build())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn tls_volume_mounts(
     trino: &v1alpha1::TrinoCluster,
     trino_role: &TrinoRole,
