@@ -1,6 +1,4 @@
-# METADATA
-# description: Utility package which extends the built-in functions
-package util
+package trino
 
 # METADATA
 # description: |
@@ -11,6 +9,7 @@ package util
 #
 #   Returns:
 #     result (boolean)
+# scope: document
 match_entire(pattern, value) if {
 	pattern == `.*`
 }

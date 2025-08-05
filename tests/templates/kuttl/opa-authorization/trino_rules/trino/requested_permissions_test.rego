@@ -1,4 +1,4 @@
-package requested_permissions_test
+package trino_test
 
 import data.trino
 
