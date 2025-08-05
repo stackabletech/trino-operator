@@ -146,6 +146,10 @@ spec:
                                   description: Azure blob endpoint URL (optional, used instead of connection string).
                                   nullable: true
                                   type: string
+                                key:
+                                  description: Key name in the Secret that contains the connection string.
+                                  nullable: true
+                                  type: string
                                 maxErrorRetries:
                                   description: Maximum number of times the Azure client should retry a request.
                                   format: uint32
@@ -153,7 +157,7 @@ spec:
                                   nullable: true
                                   type: integer
                                 secretClass:
-                                  description: Secret class containing the Azure `connectionString`.
+                                  description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the Azure connection string.'
                                   type: string
                               required:
                                 - baseDirectories
@@ -338,11 +342,11 @@ spec:
                                   nullable: true
                                   properties:
                                     key:
-                                      description: Key name in the secret that contains the JSON service account key.
+                                      description: Key name in the Secret that contains the JSON service account key.
                                       nullable: true
                                       type: string
                                     secretClass:
-                                      description: Secret class containing the GCS service account key. The secret should contain a key with the JSON service account key data.
+                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the GCS service account key.'
                                       type: string
                                   required:
                                     - secretClass

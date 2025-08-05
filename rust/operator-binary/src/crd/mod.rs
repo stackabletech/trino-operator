@@ -2,6 +2,7 @@ pub mod affinity;
 pub mod authentication;
 pub mod catalog;
 pub mod discovery;
+pub mod fault_tolerant_execution;
 
 use std::{collections::BTreeMap, ops::Div, str::FromStr};
 
@@ -59,6 +60,7 @@ pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 pub const JVM_SECURITY_PROPERTIES: &str = "security.properties";
+pub const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 // config.properties
@@ -282,6 +284,12 @@ pub mod versioned {
         /// TLS configuration options for server and internal communication.
         #[serde(default)]
         pub tls: TrinoTls,
+
+        /// Fault tolerant execution configuration.
+        /// When enabled, Trino can automatically retry queries or tasks in case of failures.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fault_tolerant_execution:
+            Option<fault_tolerant_execution::FaultTolerantExecutionConfig>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
