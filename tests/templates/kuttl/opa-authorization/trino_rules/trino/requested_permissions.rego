@@ -8,12 +8,8 @@ package trino
 # for the file-based access control
 # (https://trino.io/docs/current/security/file-system-access-control.html).
 
-action := input.action
-
-operation := action.operation
-
-requested_permissions := permissions if {
-	operation == "AccessCatalog"
+requested_permissions(action) := permissions if {
+	action.operation == "AccessCatalog"
 	permissions := {{
 		"resource": "catalog",
 		"catalogName": action.resource.catalog.name,
@@ -21,8 +17,8 @@ requested_permissions := permissions if {
 	}}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"CreateSchema",
 		"DropSchema",
 		"ShowCreateSchema",
@@ -42,8 +38,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"AddColumn",
 		"AlterColumn",
 		"CreateMaterializedView",
@@ -78,8 +74,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"RefreshMaterializedView",
 		"UpdateTableColumns",
 	}
@@ -99,8 +95,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"DeleteFromTable",
 		"TruncateTable",
 	}
@@ -120,23 +116,23 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "ExecuteQuery"
+requested_permissions(action) := permissions if {
+	action.operation == "ExecuteQuery"
 	permissions := {{
 		"resource": "query",
 		"allow": {"execute"},
 	}}
 }
 
-requested_permissions := permissions if {
-	operation == "ExecuteTableProcedure"
+requested_permissions(action) := permissions if {
+	action.operation == "ExecuteTableProcedure"
 
 	# Executing table procedures is always allowed
 	permissions := set()
 }
 
-requested_permissions := permissions if {
-	operation == "FilterColumns"
+requested_permissions(action) := permissions if {
+	action.operation == "FilterColumns"
 	permissions := {
 		{
 			"resource": "table",
@@ -163,8 +159,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "KillQueryOwnedBy"
+requested_permissions(action) := permissions if {
+	action.operation == "KillQueryOwnedBy"
 	permissions := {{
 		"resource": "query_owned_by",
 		"user": action.resource.user.user,
@@ -173,8 +169,8 @@ requested_permissions := permissions if {
 	}}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"FilterViewQueryOwnedBy",
 		"ViewQueryOwnedBy",
 	}
@@ -186,8 +182,8 @@ requested_permissions := permissions if {
 	}}
 }
 
-requested_permissions := permissions if {
-	operation == "FilterTables"
+requested_permissions(action) := permissions if {
+	action.operation == "FilterTables"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -211,8 +207,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"CreateFunction",
 		"DropFunction",
 	}
@@ -232,8 +228,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"ExecuteFunction",
 		"FilterFunctions",
 	}
@@ -253,8 +249,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "ExecuteProcedure"
+requested_permissions(action) := permissions if {
+	action.operation == "ExecuteProcedure"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -271,8 +267,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "CreateViewWithExecuteFunction"
+requested_permissions(action) := permissions if {
+	action.operation == "CreateViewWithExecuteFunction"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -289,8 +285,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "ImpersonateUser"
+requested_permissions(action) := permissions if {
+	action.operation == "ImpersonateUser"
 	permissions := {{
 		"resource": "impersonation",
 		"user": action.resource.user.user,
@@ -298,8 +294,8 @@ requested_permissions := permissions if {
 	}}
 }
 
-requested_permissions := permissions if {
-	operation == "InsertIntoTable"
+requested_permissions(action) := permissions if {
+	action.operation == "InsertIntoTable"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -316,16 +312,16 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "ReadSystemInformation"
+requested_permissions(action) := permissions if {
+	action.operation == "ReadSystemInformation"
 	permissions := {{
 		"resource": "system_information",
 		"allow": {"read"},
 	}}
 }
 
-requested_permissions := permissions if {
-	operation == "RenameSchema"
+requested_permissions(action) := permissions if {
+	action.operation == "RenameSchema"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -352,8 +348,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"RenameMaterializedView",
 		"RenameTable",
 		"RenameView",
@@ -386,8 +382,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "SelectFromColumns"
+requested_permissions(action) := permissions if {
+	action.operation == "SelectFromColumns"
 	column_permissions := {
 	{
 		"resource": "column",
@@ -415,8 +411,8 @@ requested_permissions := permissions if {
 	} | column_permissions
 }
 
-requested_permissions := permissions if {
-	operation == "SetSchemaAuthorization"
+requested_permissions(action) := permissions if {
+	action.operation == "SetSchemaAuthorization"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -438,8 +434,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"SetTableAuthorization",
 		"SetViewAuthorization",
 	}
@@ -465,8 +461,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "ShowColumns"
+requested_permissions(action) := permissions if {
+	action.operation == "ShowColumns"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -490,8 +486,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"FilterCatalogs",
 		"ShowSchemas",
 	}
@@ -508,8 +504,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation in {
+requested_permissions(action) := permissions if {
+	action.operation in {
 		"FilterSchemas",
 		"ShowFunctions",
 		"ShowTables",
@@ -528,8 +524,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "SetCatalogSessionProperty"
+requested_permissions(action) := permissions if {
+	action.operation == "SetCatalogSessionProperty"
 	permissions := {
 		{
 			"resource": "catalog",
@@ -545,8 +541,8 @@ requested_permissions := permissions if {
 	}
 }
 
-requested_permissions := permissions if {
-	operation == "SetSystemSessionProperty"
+requested_permissions(action) := permissions if {
+	action.operation == "SetSystemSessionProperty"
 	permissions := {{
 		"resource": "system_session_properties",
 		"propertyName": action.resource.systemSessionProperty.name,
@@ -554,91 +550,91 @@ requested_permissions := permissions if {
 	}}
 }
 
-requested_permissions := permissions if {
-	operation == "WriteSystemInformation"
+requested_permissions(action) := permissions if {
+	action.operation == "WriteSystemInformation"
 	permissions := {{
 		"resource": "system_information",
 		"allow": {"write"},
 	}}
 }
 
-requested_authorization_permissions contains permission if {
-	some permission in requested_permissions
+requested_authorization_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "authorization"
-}
+]
 
-requested_catalog_permissions contains permission if {
-	some permission in requested_permissions
+requested_catalog_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "catalog"
-}
+]
 
-requested_catalog_session_properties_permissions contains permission if {
-	some permission in requested_permissions
+requested_catalog_session_properties_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "catalog_session_properties"
-}
+]
 
-requested_catalog_visibility_permissions contains permission if {
-	some permission in requested_permissions
+requested_catalog_visibility_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "catalog_visibility"
-}
+]
 
-requested_column_permissions contains permission if {
-	some permission in requested_permissions
+requested_column_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "column"
-}
+]
 
-requested_function_permissions contains permission if {
-	some permission in requested_permissions
+requested_function_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "function"
-}
+]
 
-requested_impersonation_permissions contains permission if {
-	some permission in requested_permissions
+requested_impersonation_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "impersonation"
-}
+]
 
-requested_procedure_permissions contains permission if {
-	some permission in requested_permissions
+requested_procedure_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "procedure"
-}
+]
 
-requested_query_permissions contains permission if {
-	some permission in requested_permissions
+requested_query_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "query"
-}
+]
 
-requested_query_owned_by_permissions contains permission if {
-	some permission in requested_permissions
+requested_query_owned_by_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "query_owned_by"
-}
+]
 
-requested_schema_permissions contains permission if {
-	some permission in requested_permissions
+requested_schema_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "schema"
-}
+]
 
-requested_schema_visibility_permissions contains permission if {
-	some permission in requested_permissions
+requested_schema_visibility_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "schema_visibility"
-}
+]
 
-requested_table_permissions contains permission if {
-	some permission in requested_permissions
+requested_table_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "table"
-}
+]
 
-requested_system_information_permissions contains permission if {
-	some permission in requested_permissions
+requested_system_information_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "system_information"
-}
+]
 
-requested_system_session_properties_permissions contains permission if {
-	some permission in requested_permissions
+requested_system_session_properties_permissions(action) := [permission |
+	some permission in requested_permissions(action)
 	permission.resource == "system_session_properties"
-}
+]
 
-requested_column_mask := request if {
-	operation == "GetColumnMask"
+requested_column_mask(action) := request if {
+	action.operation == "GetColumnMask"
 	request := {
 		"catalogName": action.resource.column.catalogName,
 		"schemaName": action.resource.column.schemaName,
@@ -647,8 +643,8 @@ requested_column_mask := request if {
 	}
 }
 
-requested_row_filters := request if {
-	operation == "GetRowFilters"
+requested_row_filters(action) := request if {
+	action.operation == "GetRowFilters"
 	request := {
 		"catalogName": action.resource.table.catalogName,
 		"schemaName": action.resource.table.schemaName,
