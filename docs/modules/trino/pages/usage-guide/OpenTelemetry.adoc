@@ -5,7 +5,7 @@
 Trino supports sending OpenTelemetry traces as stated in {trino-docs}[the documentation].
 
 To enable traces you need to add the following configOverrides.
-Please check the {trino-docs}[Trino documentation] on how other settings you can configure.
+Please check the {trino-docs}[Trino documentation] on other settings you can configure.
 
 [source,yaml]
 ----
