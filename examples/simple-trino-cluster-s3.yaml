@@ -1,5 +1,5 @@
-# stackablectl operator install commons secret hive zookeeper
-# helm install minio minio --repo https://charts.bitnami.com/bitnami --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key
+# stackablectl operator install commons secret listener hive zookeeper trino
+# helm install minio oci://registry-1.docker.io/bitnamicharts/minio --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key --set global.security.allowInsecureImages=true --set image.repository=bitnamilegacy/minio --set clientImage.repository=bitnamilegacy/minio-client --set defaultInitContainers.volumePermissions.image.repository=bitnamilegacy/os-shell --set console.image.repository=bitnamilegacy/minio-object-browser
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster

@@ -1,6 +1,6 @@
-# stackablectl operator install commons secret hive trino
-# helm install minio minio --repo https://charts.bitnami.com/bitnami --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key
-# helm upgrade hive --install --version=12.1.5 --set postgresqlUsername=hive --set postgresqlPassword=hive --set postgresqlDatabase=hive --repo https://charts.bitnami.com/bitnami postgresql
+# stackablectl operator install commons secret listener hive trino
+# helm install minio oci://registry-1.docker.io/bitnamicharts/minio --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key --set global.security.allowInsecureImages=true --set image.repository=bitnamilegacy/minio --set clientImage.repository=bitnamilegacy/minio-client --set defaultInitContainers.volumePermissions.image.repository=bitnamilegacy/os-shell --set console.image.repository=bitnamilegacy/minio-object-browser
+# helm upgrade hive --install --version=12.1.5 --set auth.username=hive --set auth.password=hive --set auth.database=hive --set image.repository=bitnamilegacy/postgresql --set volumePermissions.image.repository=bitnamilegacy/os-shell --set metrics.image.repository=bitnamilegacy/postgres-exporter --set global.security.allowInsecureImages=true --repo https://charts.bitnami.com/bitnami postgresql
 # PostgreSQL is required for Hive HA to work! Does not work with Derby.
 ---
 apiVersion: trino.stackable.tech/v1alpha1
@@ -33,14 +33,14 @@ spec:
   connector:
     hive:
       metastore:
-        configMap: simple-hive-derby
+        configMap: simple-hive
       s3:
         reference: minio
 ---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
 metadata:
-  name: simple-hive-derby
+  name: simple-hive
 spec:
   image:
     productVersion: 4.0.0
