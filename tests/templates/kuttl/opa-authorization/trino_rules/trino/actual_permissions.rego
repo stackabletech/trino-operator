@@ -24,6 +24,7 @@ identity := input.context.identity
 #   Example:
 #     package trino_policies
 #     extra_groups := data.stackable.opa.userinfo.v1.userInfoByUsername(input.context.identity.user).groups
+# scope: document
 default extra_groups := []
 
 extra_groups := data.trino_policies.extra_groups
