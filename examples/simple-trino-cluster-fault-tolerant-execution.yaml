@@ -1,6 +1,6 @@
 # stackablectl operator install commons secret listener trino
 # helm install minio minio --repo https://charts.bitnami.com/bitnami --version 15.0.7 --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key --set tls.enabled=true --set tls.existingSecret=minio-tls-certificates --set provisioning.enabled=true --set provisioning.buckets[0].name=trino-exchange-bucket
-
+---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
 metadata:

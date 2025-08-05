@@ -2,6 +2,7 @@
 import trino
 import argparse
 
+
 def get_connection(coordinator):
     """Create anonymous connection for basic cluster health check"""
     conn = trino.dbapi.connect(
@@ -13,6 +14,7 @@ def get_connection(coordinator):
         session_properties={"query_max_execution_time": "60s"},
     )
     return conn
+
 
 if __name__ == "__main__":
     # Construct an argument parser
@@ -89,5 +91,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         exit(-1)
