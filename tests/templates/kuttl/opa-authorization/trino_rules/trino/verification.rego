@@ -62,34 +62,36 @@ package trino
 # entrypoint: true
 default allow := false
 
-allow if {
+allow := allowWith(input.action)
+
+allowWith(action) if {
 	# Fail if the requested permissions for the given operation are not
 	# implemented yet
 	#
 	# The following operations are intentionally not supported:
 	# - CreateCatalog
 	# - DropCatalog
-	requested_permissions
+	requested_permissions(action)
 
-	every requested_permission in requested_authorization_permissions {
+	every requested_permission in requested_authorization_permissions(action) {
 		permission := authorization_permission(requested_permission.granteeName)
 		requested_permission.allow == permission
 	}
-	every requested_permission in requested_catalog_permissions {
+	every requested_permission in requested_catalog_permissions(action) {
 		access := catalog_access(requested_permission.catalogName)
 		requested_permission.allow in access
 	}
-	every requested_permission in requested_catalog_session_properties_permissions {
+	every requested_permission in requested_catalog_session_properties_permissions(action) {
 		access := catalog_session_properties_access(
 			requested_permission.catalogName,
 			requested_permission.propertyName,
 		)
 		requested_permission.allow == access
 	}
-	every requested_permission in requested_catalog_visibility_permissions {
+	every requested_permission in requested_catalog_visibility_permissions(action) {
 		catalog_visibility(requested_permission.catalogName)
 	}
-	every requested_permission in requested_column_permissions {
+	every requested_permission in requested_column_permissions(action) {
 		access := column_access(
 			requested_permission.catalogName,
 			requested_permission.schemaName,
@@ -98,7 +100,7 @@ allow if {
 		)
 		requested_permission.allow == access
 	}
-	every requested_permission in requested_function_permissions {
+	every requested_permission in requested_function_permissions(action) {
 		privileges := function_privileges(
 			requested_permission.catalogName,
 			requested_permission.schemaName,
@@ -106,11 +108,11 @@ allow if {
 		)
 		object.subset(privileges, requested_permission.privileges)
 	}
-	every requested_permission in requested_impersonation_permissions {
+	every requested_permission in requested_impersonation_permissions(action) {
 		access := impersonation_access(requested_permission.user)
 		requested_permission.allow == access
 	}
-	every requested_permission in requested_procedure_permissions {
+	every requested_permission in requested_procedure_permissions(action) {
 		privileges := procedure_privileges(
 			requested_permission.catalogName,
 			requested_permission.schemaName,
@@ -118,28 +120,28 @@ allow if {
 		)
 		object.subset(privileges, requested_permission.privileges)
 	}
-	every requested_permission in requested_query_permissions {
+	every requested_permission in requested_query_permissions(action) {
 		object.subset(query_access, requested_permission.allow)
 	}
-	every requested_permission in requested_query_owned_by_permissions {
+	every requested_permission in requested_query_owned_by_permissions(action) {
 		object.subset(
 			query_owned_by_access(requested_permission.user),
 			requested_permission.allow,
 		)
 	}
-	every requested_permission in requested_schema_permissions {
+	every requested_permission in requested_schema_permissions(action) {
 		schema_owner(
 			requested_permission.catalogName,
 			requested_permission.schemaName,
 		) == requested_permission.owner
 	}
-	every requested_permission in requested_schema_visibility_permissions {
+	every requested_permission in requested_schema_visibility_permissions(action) {
 		schema_visibility(
 			requested_permission.catalogName,
 			requested_permission.schemaName,
 		)
 	}
-	every requested_permission in requested_table_permissions {
+	every requested_permission in requested_table_permissions(action) {
 		privileges := table_privileges(
 			requested_permission.catalogName,
 			requested_permission.schemaName,
@@ -158,13 +160,13 @@ allow if {
 		object.subset(privileges, all_of_requested)
 		privileges & any_of_requested != set()
 	}
-	every requested_permission in requested_system_information_permissions {
+	every requested_permission in requested_system_information_permissions(action) {
 		object.subset(
 			system_information_access,
 			requested_permission.allow,
 		)
 	}
-	every requested_permission in requested_system_session_properties_permissions {
+	every requested_permission in requested_system_session_properties_permissions(action) {
 		access := system_session_properties_access(requested_permission.propertyName)
 		requested_permission.allow == access
 	}
@@ -209,8 +211,9 @@ batch contains index if {
 
 	some index, resource in input.action.filterResources
 
-	# regal ignore:with-outside-test-context
-	allow with input.action.resource as resource
+	action := object.union(object.remove(input.action, {"filterResources"}), {"resource": resource})
+
+	allowWith(action)
 }
 
 batch contains index if {
@@ -219,13 +222,14 @@ batch contains index if {
 	table := input.action.filterResources[0].table
 	some index, column_name in table.columns
 
-	# regal ignore:with-outside-test-context
-	allow with input.action.resource as {"table": {
+	action := object.union(object.remove(input.action, {"filterResources"}), {"resource": {"table": {
 		"catalogName": table.catalogName,
 		"schemaName": table.schemaName,
 		"tableName": table.tableName,
 		"columnName": column_name,
-	}}
+	}}})
+
+	allowWith(action)
 }
 
 # METADATA
@@ -264,11 +268,13 @@ batch contains index if {
 #   is an SQL expression, e.g. "'XXX-XX-' + substring(credit_card, -4)".
 # entrypoint: true
 columnMask := column_mask if {
+	request := requested_column_mask(input.action)
+
 	column := column_constraints(
-		requested_column_mask.catalogName,
-		requested_column_mask.schemaName,
-		requested_column_mask.tableName,
-		requested_column_mask.columnName,
+		request.catalogName,
+		request.schemaName,
+		request.tableName,
+		request.columnName,
 	)
 
 	is_string(column.mask)
@@ -281,11 +287,13 @@ columnMask := column_mask if {
 }
 
 columnMask := column_mask if {
+	request := requested_column_mask(input.action)
+
 	column := column_constraints(
-		requested_column_mask.catalogName,
-		requested_column_mask.schemaName,
-		requested_column_mask.tableName,
-		requested_column_mask.columnName,
+		request.catalogName,
+		request.schemaName,
+		request.tableName,
+		request.columnName,
 	)
 
 	is_string(column.mask)
@@ -329,10 +337,12 @@ columnMask := column_mask if {
 #   an SQL condition, e.g. "user = current_user".
 # entrypoint: true
 rowFilters contains row_filter if {
+	request := requested_row_filters(input.action)
+
 	rule := first_matching_table_rule(
-		requested_row_filters.catalogName,
-		requested_row_filters.schemaName,
-		requested_row_filters.tableName,
+		request.catalogName,
+		request.schemaName,
+		request.tableName,
 	)
 
 	is_string(rule.filter)
@@ -345,10 +355,12 @@ rowFilters contains row_filter if {
 }
 
 rowFilters contains row_filter if {
+	request := requested_row_filters(input.action)
+
 	rule := first_matching_table_rule(
-		requested_row_filters.catalogName,
-		requested_row_filters.schemaName,
-		requested_row_filters.tableName,
+		request.catalogName,
+		request.schemaName,
+		request.tableName,
 	)
 
 	is_string(rule.filter)

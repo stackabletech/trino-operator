@@ -1,7 +1,5 @@
 package trino
 
-import data.util
-
 # This file contains functions to determine the actual permissions
 # defined in the Trino policies for the given user and requested
 # resource.
@@ -26,6 +24,7 @@ identity := input.context.identity
 #   Example:
 #     package trino_policies
 #     extra_groups := data.stackable.opa.userinfo.v1.userInfoByUsername(input.context.identity.user).groups
+# scope: document
 default extra_groups := []
 
 extra_groups := data.trino_policies.extra_groups
@@ -37,20 +36,75 @@ groups := array.concat(
 	[""],
 )
 
+original_user_group_authorization_policies := [rule |
+	some rule in policies.authorization
+	match_original_user_group(rule)
+]
+
+original_user_group_impersonation_policies := [rule |
+	some rule in policies.impersonation
+	match_original_user_group(rule)
+]
+
+user_group_catalog_policies := [rule |
+	some rule in policies.catalogs
+	match_user_group(rule)
+]
+
+user_group_catalog_session_property_policies := [rule |
+	some rule in policies.catalog_session_properties
+	match_user_group(rule)
+]
+
+user_group_function_policies := [rule |
+	some rule in policies.functions
+	match_user_group(rule)
+]
+
+user_group_procedure_policies := [rule |
+	some rule in policies.procedures
+	match_user_group(rule)
+]
+
+user_group_query_policies := [rule |
+	some rule in policies.queries
+	match_user_group(rule)
+]
+
+user_group_schema_policies := [rule |
+	some rule in policies.schemas
+	match_user_group(rule)
+]
+
+user_group_system_information_policies := [rule |
+	some rule in policies.system_information
+	match_user_group(rule)
+]
+
+user_group_system_session_property_policies := [rule |
+	some rule in policies.system_session_properties
+	match_user_group(rule)
+]
+
+user_group_table_policies := [rule |
+	some rule in policies.tables
+	match_user_group(rule)
+]
+
 default match_any_group(_) := false
 
 match_any_group(group_pattern) if {
 	some group in groups
-	util.match_entire(group_pattern, group)
+	match_entire(group_pattern, group)
 }
 
 default match_user_group(_) := false
 
 match_user_group(rule) if {
 	user_pattern := object.get(rule, "user", ".*")
-	group_pattern := object.get(rule, "group", ".*")
+	match_entire(user_pattern, identity.user)
 
-	util.match_entire(user_pattern, identity.user)
+	group_pattern := object.get(rule, "group", ".*")
 	match_any_group(group_pattern)
 }
 
@@ -58,21 +112,19 @@ default match_original_user_group(_) := false
 
 match_original_user_group(rule) if {
 	user_pattern := object.get(rule, "original_user", ".*")
-	group_pattern := object.get(rule, "original_group", ".*")
+	match_entire(user_pattern, identity.user)
 
-	util.match_entire(user_pattern, identity.user)
+	group_pattern := object.get(rule, "original_group", ".*")
 	match_any_group(group_pattern)
 }
 
 first_matching_authorization_rule(grantee_name) := rule if {
 	rules := [rule |
-		some rule in policies.authorization
-
-		match_original_user_group(rule)
+		some rule in original_user_group_authorization_policies
 
 		new_user_pattern := object.get(rule, "new_user", ".*")
 
-		util.match_entire(new_user_pattern, grantee_name)
+		match_entire(new_user_pattern, grantee_name)
 	]
 	rule := object.union(
 		{"allow": true},
@@ -86,13 +138,11 @@ authorization_permission(grantee_name) := first_matching_authorization_rule(gran
 
 first_matching_catalog_rule(catalog_name) := rule if {
 	rules := [rule |
-		some rule in policies.catalogs
-
-		match_user_group(rule)
+		some rule in user_group_catalog_policies
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 
-		util.match_entire(catalog_pattern, catalog_name)
+		match_entire(catalog_pattern, catalog_name)
 	]
 	rule := rules[0]
 }
@@ -112,15 +162,13 @@ first_matching_catalog_session_properties_rule(
 	property_name,
 ) := rule if {
 	rules := [rule |
-		some rule in policies.catalog_session_properties
-
-		match_user_group(rule)
+		some rule in user_group_catalog_session_property_policies
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		property_pattern := object.get(rule, "property", ".*")
 
-		util.match_entire(catalog_pattern, catalog_name)
-		util.match_entire(property_pattern, property_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(property_pattern, property_name)
 	]
 	rule := rules[0]
 }
@@ -144,13 +192,11 @@ catalog_visibility(catalog_name) if {
 catalog_visibility(catalog_name) if {
 	catalog_access(catalog_name) == {"read-only"}
 
-	some rule in policies.schemas
-
-	match_user_group(rule)
+	some rule in user_group_schema_policies
 
 	catalog_pattern := object.get(rule, "catalog", ".*")
 
-	util.match_entire(catalog_pattern, catalog_name)
+	match_entire(catalog_pattern, catalog_name)
 
 	rule.owner == true
 }
@@ -160,19 +206,17 @@ catalog_visibility(catalog_name) if {
 
 	rules := array.concat(
 		array.concat(
-			policies.tables,
-			policies.functions,
+			user_group_table_policies,
+			user_group_function_policies,
 		),
-		policies.procedures,
+		user_group_procedure_policies,
 	)
 
 	some rule in rules
 
-	match_user_group(rule)
-
 	catalog_pattern := object.get(rule, "catalog", ".*")
 
-	util.match_entire(catalog_pattern, catalog_name)
+	match_entire(catalog_pattern, catalog_name)
 
 	count(rule.privileges) != 0
 }
@@ -180,13 +224,11 @@ catalog_visibility(catalog_name) if {
 catalog_visibility(catalog_name) if {
 	catalog_access(catalog_name) == {"read-only"}
 
-	some rule in policies.catalog_session_properties
-
-	match_user_group(rule)
+	some rule in user_group_catalog_session_property_policies
 
 	catalog_pattern := object.get(rule, "catalog", ".*")
 
-	util.match_entire(catalog_pattern, catalog_name)
+	match_entire(catalog_pattern, catalog_name)
 
 	rule.allow == true
 }
@@ -197,17 +239,15 @@ first_matching_function_rule(
 	function_name,
 ) := rule if {
 	rules := [rule |
-		some rule in policies.functions
-
-		match_user_group(rule)
+		some rule in user_group_function_policies
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
 		function_pattern := object.get(rule, "function", ".*")
 
-		util.match_entire(catalog_pattern, catalog_name)
-		util.match_entire(schema_pattern, schema_name)
-		util.match_entire(function_pattern, function_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
+		match_entire(function_pattern, function_name)
 	]
 	rule := rules[0]
 }
@@ -228,9 +268,7 @@ function_privileges(
 
 first_matching_impersonation_rule(user) := rule if {
 	rules := [rule |
-		some rule in policies.impersonation
-
-		match_original_user_group(rule)
+		some rule in original_user_group_impersonation_policies
 
 		original_user_pattern := object.get(rule, "original_user", ".*")
 		unsubstituted_new_user_pattern := object.get(rule, "new_user", ".*")
@@ -251,7 +289,7 @@ first_matching_impersonation_rule(user) := rule if {
 			unsubstituted_new_user_pattern,
 		)
 
-		util.match_entire(new_user_pattern, user)
+		match_entire(new_user_pattern, user)
 	]
 	rule := object.union(
 		{"allow": true},
@@ -281,17 +319,15 @@ first_matching_procedure_rule(
 	function_name,
 ) := rule if {
 	rules := [rule |
-		some rule in policies.procedures
-
-		match_user_group(rule)
+		some rule in user_group_procedure_policies
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
 		procedure_pattern := object.get(rule, "procedure", ".*")
 
-		util.match_entire(catalog_pattern, catalog_name)
-		util.match_entire(schema_pattern, schema_name)
-		util.match_entire(procedure_pattern, function_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
+		match_entire(procedure_pattern, function_name)
 	]
 	rule := rules[0]
 }
@@ -310,14 +346,7 @@ procedure_privileges(
 	).privileges
 }
 
-first_matching_query_rule := rule if {
-	rules := [rule |
-		some rule in policies.queries
-
-		match_user_group(rule)
-	]
-	rule := rules[0]
-}
+first_matching_query_rule := user_group_query_policies[0]
 
 default query_access := set()
 
@@ -325,13 +354,11 @@ query_access := {access | some access in first_matching_query_rule.allow}
 
 first_matching_query_owned_by_rule(user) := rule if {
 	rules := [rule |
-		some rule in policies.queries
-
-		match_user_group(rule)
+		some rule in user_group_query_policies
 
 		query_owner_pattern := object.get(rule, "queryOwner", ".*")
 
-		util.match_entire(query_owner_pattern, user)
+		match_entire(query_owner_pattern, user)
 	]
 	rule := rules[0]
 }
@@ -351,15 +378,13 @@ query_owned_by_access(user) := access if {
 
 first_matching_schema_rule(catalog_name, schema_name) := rule if {
 	rules := [rule |
-		some rule in policies.schemas
-
-		match_user_group(rule)
+		some rule in user_group_schema_policies
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
 
-		util.match_entire(catalog_pattern, catalog_name)
-		util.match_entire(schema_pattern, schema_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
 	]
 	rule := rules[0]
 }
@@ -384,21 +409,19 @@ schema_visibility(catalog_name, schema_name) if {
 
 	rules := array.concat(
 		array.concat(
-			policies.tables,
-			policies.functions,
+			user_group_table_policies,
+			user_group_function_policies,
 		),
-		policies.procedures,
+		user_group_procedure_policies,
 	)
 
 	some rule in rules
 
-	match_user_group(rule)
-
 	catalog_pattern := object.get(rule, "catalog", ".*")
-	schema_pattern := object.get(rule, "schema", ".*")
+	match_entire(catalog_pattern, catalog_name)
 
-	util.match_entire(catalog_pattern, catalog_name)
-	util.match_entire(schema_pattern, schema_name)
+	schema_pattern := object.get(rule, "schema", ".*")
+	match_entire(schema_pattern, schema_name)
 
 	count(rule.privileges) != 0
 }
@@ -424,17 +447,15 @@ first_matching_table_rule(
 ) := rule if {
 	schema_name != "information_schema"
 	rules := [rule |
-		some rule in policies.tables
-
-		match_user_group(rule)
+		some rule in user_group_table_policies
 
 		catalog_pattern := object.get(rule, "catalog", ".*")
 		schema_pattern := object.get(rule, "schema", ".*")
 		table_pattern := object.get(rule, "table", ".*")
 
-		util.match_entire(catalog_pattern, catalog_name)
-		util.match_entire(schema_pattern, schema_name)
-		util.match_entire(table_pattern, table_name)
+		match_entire(catalog_pattern, catalog_name)
+		match_entire(schema_pattern, schema_name)
+		match_entire(table_pattern, table_name)
 	]
 	rule := object.union(
 		{
@@ -522,14 +543,7 @@ column_access(
 	access := column.allow
 }
 
-first_matching_system_information_rule := rule if {
-	rules := [rule |
-		some rule in policies.system_information
-
-		match_user_group(rule)
-	]
-	rule := rules[0]
-}
+first_matching_system_information_rule := user_group_system_information_policies[0]
 
 default system_information_access := set()
 
@@ -539,13 +553,11 @@ system_information_access := {access |
 
 first_matching_system_session_properties_rule(property_name) := rule if {
 	rules := [rule |
-		some rule in policies.system_session_properties
-
-		match_user_group(rule)
+		some rule in user_group_system_session_property_policies
 
 		property_name_pattern := object.get(rule, "property", ".*")
 
-		util.match_entire(property_name_pattern, property_name)
+		match_entire(property_name_pattern, property_name)
 	]
 	rule := rules[0]
 }

@@ -1,4 +1,4 @@
-package requested_permissions_test
+package trino_test
 
 import data.trino
 
@@ -279,61 +279,44 @@ permission_valid(permission) if {
 	)
 }
 
-testcontext := {
-	"identity": {
-		"groups": ["testgroup1", "testgroup2"],
-		"user": "testuser",
-	},
-	"softwareStack": {"trinoVersion": "455"},
-}
-
 test_access_filter_catalog if {
 	operations := {
 		"AccessCatalog",
 		"FilterCatalogs",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"catalog": {"name": "testcatalog"}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"catalog": {"name": "testcatalog"}},
+		})
 
 		permissions_valid(permissions)
 	}
 }
 
 test_create_schema if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "CreateSchema",
-			"resource": {"schema": {
-				"catalogName": "testcatalog",
-				"schemaName": "testschema",
-				"properties": {},
-			}},
-		},
-		"context": testcontext,
-	}
+	permissions := trino.requested_permissions({
+		"operation": "CreateSchema",
+		"resource": {"schema": {
+			"catalogName": "testcatalog",
+			"schemaName": "testschema",
+			"properties": {},
+		}},
+	})
 
 	permissions_valid(permissions)
 }
 
 test_filter_columns if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "FilterColumns",
-			"resource": {"table": {
-				"catalogName": "testcatalog",
-				"schemaName": "testschema",
-				"tableName": "testtable",
-				"columnName": "testcolumn",
-			}},
-		},
-		"context": testcontext,
-	}
+	permissions := trino.requested_permissions({
+		"operation": "FilterColumns",
+		"resource": {"table": {
+			"catalogName": "testcatalog",
+			"schemaName": "testschema",
+			"tableName": "testtable",
+			"columnName": "testcolumn",
+		}},
+	})
 
 	permissions_valid(permissions)
 }
@@ -348,17 +331,14 @@ test_function_resource_actions if {
 		"FilterFunctions",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"function": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"functionName": "testfunction",
-				}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"function": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"functionName": "testfunction",
+			}},
+		})
 
 		permissions_valid(permissions)
 	}
@@ -371,30 +351,24 @@ test_no_resource_action if {
 		"WriteSystemInformation",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {"operation": operation},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({"operation": operation})
 
 		permissions_valid(permissions)
 	}
 }
 
 test_execute_table_procedure if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "ExecuteTableProcedure",
-			"resource": {
-				"table": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"tableName": "testtable",
-				},
-				"function": {"functionName": "testprocedure"},
+	permissions := trino.requested_permissions({
+		"operation": "ExecuteTableProcedure",
+		"resource": {
+			"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
 			},
+			"function": {"functionName": "testprocedure"},
 		},
-		"context": testcontext,
-	}
+	})
 
 	permissions_valid(permissions)
 }
@@ -406,31 +380,25 @@ test_column_operations_on_table_like_objects if {
 		"UpdateTableColumns",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"table": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"tableName": "testtable",
-					"columns": ["testcolumn1", "testcolumn2"],
-				}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"columns": ["testcolumn1", "testcolumn2"],
+			}},
+		})
 
 		permissions_valid(permissions)
 	}
 }
 
 test_show_schemas if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "ShowSchemas",
-			"resource": {"catalog": {"name": "testcatalog"}},
-		},
-		"context": testcontext,
-	}
+	permissions := trino.requested_permissions({
+		"operation": "ShowSchemas",
+		"resource": {"catalog": {"name": "testcatalog"}},
+	})
 
 	permissions_valid(permissions)
 }
@@ -457,17 +425,14 @@ test_table_resource_actions if {
 		"TruncateTable",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"table": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"tableName": "testtable",
-				}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+			}},
+		})
 
 		permissions_valid(permissions)
 	}
@@ -481,22 +446,19 @@ test_table_with_properties_actions if {
 		"SetTableProperties",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"table": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"tableName": "testtable",
-					"properties": {
-						"string_item": "string_value",
-						"empty_item": null,
-						"boxed_number_item": 32,
-					},
-				}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+				"properties": {
+					"string_item": "string_value",
+					"empty_item": null,
+					"boxed_number_item": 32,
+				},
+			}},
+		})
 
 		permissions_valid(permissions)
 	}
@@ -509,16 +471,13 @@ test_identity_resource_actions if {
 		"ViewQueryOwnedBy",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"user": {
-					"user": "testuser",
-					"groups": ["testgroup1", "testgroup2"],
-				}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"user": {
+				"user": "testuser",
+				"groups": ["testgroup1", "testgroup2"],
+			}},
+		})
 
 		permissions_valid(permissions)
 	}
@@ -533,16 +492,13 @@ test_schema_resource_actions if {
 		"ShowTables",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"schema": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-				}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"schema": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+			}},
+		})
 
 		permissions_valid(permissions)
 	}
@@ -555,88 +511,73 @@ test_rename_table_like_object if {
 		"RenameView",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"table": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"tableName": "testtable",
-				}},
-				"targetResource": {"table": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"tableName": "newtesttable",
-				}},
-			},
-			"context": testcontext,
-		}
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+			}},
+			"targetResource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "newtesttable",
+			}},
+		})
 
 		permissions_valid(permissions)
 	}
 }
 
 test_rename_schema if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "RenameSchema",
-			"resource": {"schema": {
-				"catalogName": "testcatalog",
-				"schemaName": "testschema",
-			}},
-			"targetResource": {"schema": {
-				"catalogName": "testcatalog",
-				"schemaName": "newtestschema",
-			}},
-		},
-		"context": testcontext,
-	}
+	permissions := trino.requested_permissions({
+		"operation": "RenameSchema",
+		"resource": {"schema": {
+			"catalogName": "testcatalog",
+			"schemaName": "testschema",
+		}},
+		"targetResource": {"schema": {
+			"catalogName": "testcatalog",
+			"schemaName": "newtestschema",
+		}},
+	})
 
 	permissions_valid(permissions)
 }
 
 test_set_catalog_session_properties if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "SetCatalogSessionProperty",
-			"resource": {"catalogSessionProperty": {
-				"catalogName": "testcatalog",
-				"propertyName": "testproperty",
-			}},
-		},
-		"context": testcontext,
-	}
+	permissions := trino.requested_permissions({
+		"operation": "SetCatalogSessionProperty",
+		"resource": {"catalogSessionProperty": {
+			"catalogName": "testcatalog",
+			"propertyName": "testproperty",
+		}},
+	})
 
 	permissions_valid(permissions)
 }
 
 test_set_system_session_properties if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "SetSystemSessionProperty",
-			"resource": {"systemSessionProperty": {"name": "testproperty"}},
-		},
-		"context": testcontext,
-	}
+	permissions := trino.requested_permissions({
+		"operation": "SetSystemSessionProperty",
+		"resource": {"systemSessionProperty": {"name": "testproperty"}},
+	})
 
 	permissions_valid(permissions)
 }
 
 test_set_schema_authorization if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "SetSchemaAuthorization",
-			"resource": {"schema": {
-				"catalogName": "testcatalog",
-				"schemaName": "testschema",
-			}},
-			"grantee": {
-				"name": "testuser",
-				"type": "testusertype",
-			},
+	permissions := trino.requested_permissions({
+		"operation": "SetSchemaAuthorization",
+		"resource": {"schema": {
+			"catalogName": "testcatalog",
+			"schemaName": "testschema",
+		}},
+		"grantee": {
+			"name": "testuser",
+			"type": "testusertype",
 		},
-		"context": testcontext,
-	}
+	})
 
 	permissions_valid(permissions)
 }
@@ -647,51 +588,42 @@ test_set_authorization_on_table_like_object if {
 		"SetViewAuthorization",
 	}
 	every operation in operations {
-		permissions := trino.requested_permissions with input as {
-			"action": {
-				"operation": operation,
-				"resource": {"table": {
-					"catalogName": "testcatalog",
-					"schemaName": "testschema",
-					"tableName": "testtable",
-				}},
-				"grantee": {
-					"name": "testuser",
-					"type": "testusertype",
-				},
+		permissions := trino.requested_permissions({
+			"operation": operation,
+			"resource": {"table": {
+				"catalogName": "testcatalog",
+				"schemaName": "testschema",
+				"tableName": "testtable",
+			}},
+			"grantee": {
+				"name": "testuser",
+				"type": "testusertype",
 			},
-			"context": testcontext,
-		}
+		})
 
 		permissions_valid(permissions)
 	}
 }
 
 test_impersonate_user if {
-	permissions := trino.requested_permissions with input as {
-		"action": {
-			"operation": "ImpersonateUser",
-			"resource": {"user": {"user": "testuser"}},
-		},
-		"context": testcontext,
-	}
+	permissions := trino.requested_permissions({
+		"operation": "ImpersonateUser",
+		"resource": {"user": {"user": "testuser"}},
+	})
 
 	permissions_valid(permissions)
 }
 
 test_get_column_mask if {
-	request := trino.requested_column_mask with input as {
-		"action": {
-			"operation": "GetColumnMask",
-			"resource": {"column": {
-				"catalogName": "testcatalog",
-				"schemaName": "testschema",
-				"tableName": "testtable",
-				"columnName": "testcolumn",
-			}},
-		},
-		"context": testcontext,
-	}
+	request := trino.requested_column_mask({
+		"operation": "GetColumnMask",
+		"resource": {"column": {
+			"catalogName": "testcatalog",
+			"schemaName": "testschema",
+			"tableName": "testtable",
+			"columnName": "testcolumn",
+		}},
+	})
 
 	request.catalogName == "testcatalog"
 	request.schemaName == "testschema"
@@ -700,17 +632,14 @@ test_get_column_mask if {
 }
 
 test_get_row_filters if {
-	request := trino.requested_row_filters with input as {
-		"action": {
-			"operation": "GetRowFilters",
-			"resource": {"table": {
-				"catalogName": "testcatalog",
-				"schemaName": "testschema",
-				"tableName": "testtable",
-			}},
-		},
-		"context": testcontext,
-	}
+	request := trino.requested_row_filters({
+		"operation": "GetRowFilters",
+		"resource": {"table": {
+			"catalogName": "testcatalog",
+			"schemaName": "testschema",
+			"tableName": "testtable",
+		}},
+	})
 
 	request.catalogName == "testcatalog"
 	request.schemaName == "testschema"

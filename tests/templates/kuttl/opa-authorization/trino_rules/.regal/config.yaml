@@ -1,17 +1,13 @@
 ---
 rules:
+  imports:
+    unresolved-reference:
+      # `data.trino_policies` is provided by the user and not included
+      # in the general trino rules.
+      except-paths:
+        - data.trino_policies.policies
+        - data.trino_policies.extra_groups
   style:
-    external-reference:
-      ignore:
-        files:
-          # The policy rules are used in the first_matching_rule
-          # functions. To avoid these external references to the policy
-          # rules, it would be necessary to add them as a parameter to
-          # all functions, and call these functions even from
-          # verification.rego with this parameter. Therefore, this
-          # linter warning is ignored because the policy rules are
-          # seen as the context for the actual_permissions.rego.
-          - actual_permissions.rego
     file-length:
       ignore:
         files:

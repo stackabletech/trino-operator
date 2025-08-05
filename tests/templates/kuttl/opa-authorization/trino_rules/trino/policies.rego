@@ -1,7 +1,5 @@
 package trino
 
-import data.util
-
 # The final policies are a combination of policies offered by Stackable,
 # policies provided externally, and default policies.
 # Stackable's policies form the beginnings of the rule lists, i.e. they
