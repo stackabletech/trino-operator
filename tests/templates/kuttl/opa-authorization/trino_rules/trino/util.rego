@@ -10,9 +10,7 @@ package trino
 #   Returns:
 #     result (boolean)
 # scope: document
-match_entire(pattern, value) if {
-	pattern == `.*`
-}
+match_entire(`.*`, value)
 
 match_entire(pattern, value) if {
 	pattern != `.*`
