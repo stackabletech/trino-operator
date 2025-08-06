@@ -61,6 +61,7 @@ This policy is recommended when executing large batch queries, as the cluster ca
 
 IMPORTANT: A `TASK` retry policy is best suited for long-running queries, but this policy can result in higher latency for short-running queries executed in high volume.
 As a best practice, it is recommended to run a dedicated cluster with a `TASK` retry policy for large batch queries, separate from another cluster that handles short queries.
+There are tools that can help you achieve this by automatically routing queries based on certain criteria (such as query estimates or user) to different Trino clusters. Notable mentions are link:https://github.com/stackabletech/trino-lb[trino-lb {external-link-icon}^] and link:https://github.com/trinodb/trino-gateway[trino-gateway {external-link-icon}^].
 
 [source,yaml]
 ----
@@ -273,7 +274,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
+      storage: 50Gi
 ----
 
 == Connector support
@@ -283,6 +284,17 @@ Take a look at the link:https://trino.io/docs/current/admin/fault-tolerant-execu
 
 When using connectors that do not explicitly support fault-tolerant execution, you may encounter a "This connector does not support query retries" error message.
 
-== Examples
+== Example
 
-* link:https://github.com/stackabletech/trino-operator/blob/main/examples/simple-trino-cluster-fault-tolerant-execution.yaml[TrinoCluster with TASK retry policy and S3 exchange manager {external-link-icon}^]
+Here's an example of a Trino cluster with fault-tolerant execution enabled using the `TASK` retry policy and MinIO backed S3 as the exchange manager:
+
+[source,bash]
+----
+stackablectl operator install commons secret listener trino
+helm install minio minio --repo https://charts.bitnami.com/bitnami --version 15.0.7 --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key --set tls.enabled=true --set tls.existingSecret=minio-tls-certificates --set provisioning.enabled=true --set provisioning.buckets[0].name=trino-exchange-bucket
+----
+
+[source,yaml]
+----
+include::example$usage-guide/fault-tolerant-execution.yaml[]
+----

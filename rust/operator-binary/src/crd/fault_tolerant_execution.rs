@@ -25,7 +25,7 @@ use crate::{
     crd::{CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR},
 };
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FaultTolerantExecutionConfig {
     /// The retry policy for fault tolerant execution.
@@ -58,7 +58,7 @@ pub struct FaultTolerantExecutionConfig {
 
     /// Factor by which retry delay is increased on each query or task failure.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub retry_delay_scale_factor: Option<String>,
+    pub retry_delay_scale_factor: Option<f32>,
 
     /// Data size of the coordinator's in-memory buffer used to store output of query stages.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -70,7 +70,7 @@ pub struct FaultTolerantExecutionConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "camelCase")]
 pub enum RetryPolicy {
     /// Retry entire queries on failure
     Query,
@@ -117,16 +117,12 @@ pub struct ExchangeManagerGeneralConfig {
 #[serde(rename_all = "camelCase")]
 pub enum ExchangeManagerBackend {
     /// S3-compatible storage configuration (includes AWS S3, MinIO, GCS).
-    #[serde(rename = "s3")]
     S3(S3ExchangeConfig),
     /// Azure Blob Storage configuration.
-    #[serde(rename = "azure")]
     Azure(AzureExchangeConfig),
     /// HDFS-based exchange manager.
-    #[serde(rename = "hdfs")]
     Hdfs(HdfsExchangeConfig),
     /// Local filesystem storage (not recommended for production).
-    #[serde(rename = "local")]
     Local(LocalExchangeConfig),
 }
 
@@ -646,7 +642,7 @@ mod tests {
             task_retry_attempts_per_task: None,
             retry_initial_delay: Some(Duration::from_secs(15)),
             retry_max_delay: Some(Duration::from_secs(90)),
-            retry_delay_scale_factor: Some("3.0".to_string()),
+            retry_delay_scale_factor: Some(3.0),
             exchange_deduplication_buffer_size: Some("64MB".to_string()),
             exchange_encryption_enabled: Some(false),
         };
@@ -674,7 +670,7 @@ mod tests {
         );
         assert_eq!(
             fte_config.config_properties.get("retry-delay-scale-factor"),
-            Some(&"3.0".to_string())
+            Some(&"3".to_string())
         );
         assert_eq!(
             fte_config
