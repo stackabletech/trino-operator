@@ -5,7 +5,7 @@
 //!
 //! Based on the Trino documentation: <https://trino.io/docs/current/admin/fault-tolerant-execution.html>
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
@@ -29,22 +29,22 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 pub struct FaultTolerantExecutionConfig {
     /// The retry policy for fault tolerant execution.
-    /// `QUERY` retries entire queries, `TASK` retries individual tasks.
-    /// When set to `TASK`, an exchange manager must be configured.
+    /// `Query` retries entire queries, `Task` retries individual tasks.
+    /// When set to `Task`, an exchange manager must be configured.
     pub retry_policy: RetryPolicy,
 
     /// Exchange manager configuration for spooling intermediate data during fault tolerant execution.
-    /// Required when using `TASK` retry policy, optional for `QUERY` retry policy.
+    /// Required when using `Task` retry policy, optional for `Query` retry policy.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exchange_manager: Option<ExchangeManagerConfig>,
 
     /// Maximum number of times Trino may attempt to retry a query before declaring it failed.
-    /// Only applies to `QUERY` retry policy.
+    /// Only applies to `Query` retry policy.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub query_retry_attempts: Option<u32>,
 
     /// Maximum number of times Trino may attempt to retry a single task before declaring the query failed.
-    /// Only applies to `TASK` retry policy.
+    /// Only applies to `Task` retry policy.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub task_retry_attempts_per_task: Option<u32>,
 
@@ -70,7 +70,7 @@ pub struct FaultTolerantExecutionConfig {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum RetryPolicy {
     /// Retry entire queries on failure
     Query,
@@ -88,6 +88,10 @@ pub struct ExchangeManagerConfig {
     /// Backend-specific configuration.
     #[serde(flatten)]
     pub backend: ExchangeManagerBackend,
+
+    /// The `configOverrides` allow overriding arbitrary exchange manager properties.
+    #[serde(default)]
+    pub config_overrides: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -170,7 +174,7 @@ pub struct LocalExchangeConfig {
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Exchange manager is required when using TASK retry policy"))]
+    #[snafu(display("Exchange manager is required when using Task retry policy"))]
     ExchangeManagerRequiredForTaskPolicy,
 
     #[snafu(display("Failed to resolve S3 connection"))]
@@ -224,8 +228,8 @@ impl ResolvedFaultTolerantExecutionConfig {
         let mut config_properties = BTreeMap::new();
 
         let retry_policy = match config.retry_policy {
-            RetryPolicy::Query => "QUERY",
-            RetryPolicy::Task => "TASK",
+            RetryPolicy::Query => "Query",
+            RetryPolicy::Task => "Task",
         };
         config_properties.insert("retry-policy".to_string(), retry_policy.to_string());
 
@@ -358,6 +362,8 @@ impl ResolvedFaultTolerantExecutionConfig {
                     );
                 }
             }
+
+            exchange_manager_properties.extend(exchange_config.config_overrides.clone());
         }
 
         let mut resolved_config = Self {
@@ -512,7 +518,7 @@ mod tests {
 
         assert_eq!(
             fte_config.config_properties.get("retry-policy"),
-            Some(&"QUERY".to_string())
+            Some(&"Query".to_string())
         );
         assert_eq!(
             fte_config.config_properties.get("query-retry-attempts"),
@@ -588,6 +594,7 @@ mod tests {
                     max_error_retries: Some(5),
                     upload_part_size: Some("10MB".to_string()),
                 }),
+                config_overrides: std::collections::HashMap::new(),
             }),
             query_retry_attempts: None,
             task_retry_attempts_per_task: Some(2),
@@ -605,7 +612,7 @@ mod tests {
 
         assert_eq!(
             fte_config.config_properties.get("retry-policy"),
-            Some(&"TASK".to_string())
+            Some(&"Task".to_string())
         );
         assert_eq!(
             fte_config
@@ -674,6 +681,62 @@ mod tests {
                 .exchange_manager_properties
                 .get("exchange.source-concurrent-readers"),
             Some(&"8".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn test_exchange_manager_config_overrides() {
+        let mut config_overrides = HashMap::new();
+        config_overrides.insert("custom.property".to_string(), "custom-value".to_string());
+        config_overrides.insert("exchange.s3.upload.part-size".to_string(), "overridden-value".to_string());
+
+        let config = FaultTolerantExecutionConfig {
+            retry_policy: RetryPolicy::Task,
+            exchange_manager: Some(ExchangeManagerConfig {
+                general: ExchangeManagerGeneralConfig {
+                    sink_buffer_pool_min_size: None,
+                    sink_buffers_per_partition: None,
+                    sink_max_file_size: None,
+                    source_concurrent_readers: None,
+                },
+                backend: ExchangeManagerBackend::S3(S3ExchangeConfig {
+                    base_directories: vec!["s3://my-bucket/exchange".to_string()],
+                    connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
+                        "test-s3-connection".to_string()
+                    ),
+                    iam_role: None,
+                    external_id: None,
+                    max_error_retries: None,
+                    upload_part_size: Some("original-value".to_string()),
+                }),
+                config_overrides,
+            }),
+            query_retry_attempts: None,
+            task_retry_attempts_per_task: Some(2),
+            retry_initial_delay: None,
+            retry_max_delay: None,
+            retry_delay_scale_factor: None,
+            exchange_deduplication_buffer_size: None,
+            exchange_encryption_enabled: None,
+        };
+
+        let fte_config =
+            ResolvedFaultTolerantExecutionConfig::from_config(&config, None, "default")
+                .await
+                .unwrap();
+
+        assert_eq!(
+            fte_config
+                .exchange_manager_properties
+                .get("custom.property"),
+            Some(&"custom-value".to_string())
+        );
+
+        assert_eq!(
+            fte_config
+                .exchange_manager_properties
+                .get("exchange.s3.upload.part-size"),
+            Some(&"overridden-value".to_string())
         );
     }
 }
