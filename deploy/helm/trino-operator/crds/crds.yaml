@@ -124,45 +124,10 @@ spec:
                             - required:
                                 - s3
                             - required:
-                                - azure
-                            - required:
                                 - hdfs
                             - required:
                                 - local
                           properties:
-                            azure:
-                              description: Azure Blob Storage configuration.
-                              properties:
-                                baseDirectories:
-                                  description: Azure Blob Storage container URIs for spooling data.
-                                  items:
-                                    type: string
-                                  type: array
-                                blockSize:
-                                  description: Block data size for Azure block blob parallel upload.
-                                  nullable: true
-                                  type: string
-                                endpoint:
-                                  description: Azure blob endpoint URL (optional, used instead of connection string).
-                                  nullable: true
-                                  type: string
-                                key:
-                                  description: Key name in the Secret that contains the connection string.
-                                  nullable: true
-                                  type: string
-                                maxErrorRetries:
-                                  description: Maximum number of times the Azure client should retry a request.
-                                  format: uint32
-                                  minimum: 0.0
-                                  nullable: true
-                                  type: integer
-                                secretClass:
-                                  description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the Azure connection string.'
-                                  type: string
-                              required:
-                                - baseDirectories
-                                - secretClass
-                              type: object
                             hdfs:
                               description: HDFS-based exchange manager.
                               properties:
@@ -204,10 +169,10 @@ spec:
                                 - baseDirectories
                               type: object
                             s3:
-                              description: S3-compatible storage configuration (includes AWS S3, MinIO, GCS).
+                              description: S3-compatible storage configuration.
                               properties:
                                 baseDirectories:
-                                  description: S3 bucket URIs for spooling data (e.g., s3://bucket1,s3://bucket2). For GCS, use gs:// URIs (e.g., gs://bucket1,gs://bucket2).
+                                  description: S3 bucket URIs for spooling data (e.g., s3://bucket1,s3://bucket2).
                                   items:
                                     type: string
                                   type: array
@@ -337,20 +302,6 @@ spec:
                                   description: External ID for the IAM role trust policy.
                                   nullable: true
                                   type: string
-                                gcsServiceAccountKey:
-                                  description: Google Cloud Storage service account key in JSON format. Required when using GCS (gs:// URIs). Should contain the JSON service account key. The operator will mount this as a file and configure `exchange.gcs.json-key-file-path`.
-                                  nullable: true
-                                  properties:
-                                    key:
-                                      description: Key name in the Secret that contains the JSON service account key.
-                                      nullable: true
-                                      type: string
-                                    secretClass:
-                                      description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the GCS service account key.'
-                                      type: string
-                                  required:
-                                    - secretClass
-                                  type: object
                                 iamRole:
                                   description: IAM role to assume for S3 access.
                                   nullable: true
@@ -400,8 +351,9 @@ spec:
                           type: integer
                         retryDelayScaleFactor:
                           description: Factor by which retry delay is increased on each query or task failure.
+                          format: float
                           nullable: true
-                          type: string
+                          type: number
                         retryInitialDelay:
                           description: Minimum time that a failed query or task must wait before it is retried.
                           nullable: true
@@ -413,8 +365,8 @@ spec:
                         retryPolicy:
                           description: The retry policy for fault tolerant execution. `QUERY` retries entire queries, `TASK` retries individual tasks. When set to `TASK`, an exchange manager must be configured.
                           enum:
-                            - QUERY
-                            - TASK
+                            - query
+                            - task
                           type: string
                         taskRetryAttemptsPerTask:
                           description: Maximum number of times Trino may attempt to retry a single task before declaring the query failed. Only applies to `TASK` retry policy.

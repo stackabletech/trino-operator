@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 use stackable_operator::{
-    builder::pod::volume::{SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder},
+    builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
     commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     crd::s3,
@@ -116,10 +116,8 @@ pub struct ExchangeManagerGeneralConfig {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ExchangeManagerBackend {
-    /// S3-compatible storage configuration (includes AWS S3, MinIO, GCS).
+    /// S3-compatible storage configuration.
     S3(S3ExchangeConfig),
-    /// Azure Blob Storage configuration.
-    Azure(AzureExchangeConfig),
     /// HDFS-based exchange manager.
     Hdfs(HdfsExchangeConfig),
     /// Local filesystem storage (not recommended for production).
@@ -130,7 +128,6 @@ pub enum ExchangeManagerBackend {
 #[serde(rename_all = "camelCase")]
 pub struct S3ExchangeConfig {
     /// S3 bucket URIs for spooling data (e.g., s3://bucket1,s3://bucket2).
-    /// For GCS, use gs:// URIs (e.g., gs://bucket1,gs://bucket2).
     pub base_directories: Vec<String>,
     /// S3 connection configuration.
     /// Learn more about S3 configuration in the [S3 concept docs](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
@@ -147,42 +144,6 @@ pub struct S3ExchangeConfig {
     /// Part data size for S3 multi-part upload.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upload_part_size: Option<String>,
-    /// Google Cloud Storage service account key in JSON format.
-    /// Required when using GCS (gs:// URIs). Should contain the JSON service account key.
-    /// The operator will mount this as a file and configure `exchange.gcs.json-key-file-path`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gcs_service_account_key: Option<GcsServiceAccountKey>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GcsServiceAccountKey {
-    /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) providing the GCS service account key.
-    pub secret_class: String,
-    /// Key name in the Secret that contains the JSON service account key.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub key: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AzureExchangeConfig {
-    /// Azure Blob Storage container URIs for spooling data.
-    pub base_directories: Vec<String>,
-    /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) providing the Azure connection string.
-    pub secret_class: String,
-    /// Key name in the Secret that contains the connection string.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub key: Option<String>,
-    /// Azure blob endpoint URL (optional, used instead of connection string).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub endpoint: Option<String>,
-    /// Block data size for Azure block blob parallel upload.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub block_size: Option<String>,
-    /// Maximum number of times the Azure client should retry a request.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_error_retries: Option<u32>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -219,11 +180,6 @@ pub enum Error {
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
-
-    #[snafu(display("Failed to build Azure SecretClass volume"))]
-    AzureSecretClassVolumeBuild {
-        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
-    },
 }
 
 /// Fault tolerant execution configuration with external resources resolved
@@ -366,32 +322,6 @@ impl ResolvedFaultTolerantExecutionConfig {
                         s3_config.upload_part_size.as_ref(),
                     );
                 }
-                ExchangeManagerBackend::Azure(azure_config) => {
-                    exchange_manager_properties.insert(
-                        "exchange-manager.name".to_string(),
-                        "filesystem".to_string(),
-                    );
-                    exchange_manager_properties.insert(
-                        "exchange.base-directories".to_string(),
-                        azure_config.base_directories.join(","),
-                    );
-
-                    Self::insert_if_present(
-                        &mut exchange_manager_properties,
-                        "exchange.azure.endpoint",
-                        azure_config.endpoint.as_ref(),
-                    );
-                    Self::insert_if_present(
-                        &mut exchange_manager_properties,
-                        "exchange.azure.block-size",
-                        azure_config.block_size.as_ref(),
-                    );
-                    Self::insert_if_present(
-                        &mut exchange_manager_properties,
-                        "exchange.azure.max-error-retries",
-                        azure_config.max_error_retries,
-                    );
-                }
                 ExchangeManagerBackend::Hdfs(hdfs_config) => {
                     exchange_manager_properties
                         .insert("exchange-manager.name".to_string(), "hdfs".to_string());
@@ -447,9 +377,6 @@ impl ResolvedFaultTolerantExecutionConfig {
                     resolved_config
                         .resolve_s3_backend(s3_config, client, namespace)
                         .await?;
-                }
-                ExchangeManagerBackend::Azure(azure_config) => {
-                    resolved_config.resolve_azure_backend(azure_config).await?;
                 }
                 ExchangeManagerBackend::Hdfs(hdfs_config) => {
                     resolved_config.resolve_hdfs_backend(hdfs_config);
@@ -540,75 +467,6 @@ impl ResolvedFaultTolerantExecutionConfig {
                 }
             }
         }
-
-        if let Some(gcs_key_config) = &s3_config.gcs_service_account_key {
-            let gcs_secret_mount_dir = format!("{CONFIG_DIR_NAME}/exchange-gcs-key");
-            let volume_name = "exchange-gcs-key".to_string();
-            let default_key_name = "key.json".to_string();
-            let key_name = gcs_key_config.key.as_ref().unwrap_or(&default_key_name);
-
-            let secret_volume_source =
-                SecretOperatorVolumeSourceBuilder::new(&gcs_key_config.secret_class)
-                    .build()
-                    .context(AzureSecretClassVolumeBuildSnafu)?;
-
-            self.volumes.push(
-                VolumeBuilder::new(&volume_name)
-                    .ephemeral(secret_volume_source)
-                    .build(),
-            );
-            self.volume_mounts.push(
-                VolumeMountBuilder::new(&volume_name, &gcs_secret_mount_dir)
-                    .read_only(true)
-                    .build(),
-            );
-
-            let json_key_file_path = format!("{gcs_secret_mount_dir}/{key_name}");
-            self.exchange_manager_properties.insert(
-                "exchange.gcs.json-key-file-path".to_string(),
-                json_key_file_path,
-            );
-        }
-
-        Ok(())
-    }
-
-    async fn resolve_azure_backend(
-        &mut self,
-        azure_config: &AzureExchangeConfig,
-    ) -> Result<(), Error> {
-        use snafu::ResultExt;
-
-        let azure_secret_mount_dir = format!("{CONFIG_DIR_NAME}/exchange-azure-secret");
-        let volume_name = "exchange-azure-secret".to_string();
-        let default_key_name = "connectionString".to_string();
-        let key_name = azure_config.key.as_ref().unwrap_or(&default_key_name);
-
-        let secret_volume_source =
-            SecretOperatorVolumeSourceBuilder::new(&azure_config.secret_class)
-                .build()
-                .context(AzureSecretClassVolumeBuildSnafu)?;
-
-        self.volumes.push(
-            VolumeBuilder::new(&volume_name)
-                .ephemeral(secret_volume_source)
-                .build(),
-        );
-        self.volume_mounts.push(
-            VolumeMountBuilder::new(&volume_name, &azure_secret_mount_dir)
-                .read_only(true)
-                .build(),
-        );
-
-        let connection_string_env = "EXCHANGE_AZURE_CONNECTION_STRING".to_string();
-        self.exchange_manager_properties.insert(
-            "exchange.azure.connection-string".to_string(),
-            format!("${{ENV:{connection_string_env}}}"),
-        );
-
-        let connection_string_path = format!("{azure_secret_mount_dir}/{key_name}");
-        self.load_env_from_files
-            .insert(connection_string_env, connection_string_path);
 
         Ok(())
     }
@@ -729,7 +587,6 @@ mod tests {
                     external_id: Some("external-id-123".to_string()),
                     max_error_retries: Some(5),
                     upload_part_size: Some("10MB".to_string()),
-                    gcs_service_account_key: None,
                 }),
             }),
             query_retry_attempts: None,
