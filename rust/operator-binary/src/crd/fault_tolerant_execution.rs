@@ -246,12 +246,18 @@ impl ResolvedFaultTolerantExecutionConfig {
         Self::insert_if_present(
             &mut config_properties,
             "retry-initial-delay",
-            config.retry_initial_delay.as_ref(),
+            config
+                .retry_initial_delay
+                .as_ref()
+                .map(|d| format!("{}s", d.as_secs())),
         );
         Self::insert_if_present(
             &mut config_properties,
             "retry-max-delay",
-            config.retry_max_delay.as_ref(),
+            config
+                .retry_max_delay
+                .as_ref()
+                .map(|d| format!("{}s", d.as_secs())),
         );
         Self::insert_if_present(
             &mut config_properties,
@@ -530,7 +536,7 @@ mod tests {
         );
         assert_eq!(
             fte_config.config_properties.get("retry-max-delay"),
-            Some(&"1m30s".to_string())
+            Some(&"90s".to_string())
         );
         assert_eq!(
             fte_config.config_properties.get("retry-delay-scale-factor"),
@@ -688,7 +694,10 @@ mod tests {
     async fn test_exchange_manager_config_overrides() {
         let mut config_overrides = HashMap::new();
         config_overrides.insert("custom.property".to_string(), "custom-value".to_string());
-        config_overrides.insert("exchange.s3.upload.part-size".to_string(), "overridden-value".to_string());
+        config_overrides.insert(
+            "exchange.s3.upload.part-size".to_string(),
+            "overridden-value".to_string(),
+        );
 
         let config = FaultTolerantExecutionConfig {
             retry_policy: RetryPolicy::Task,
