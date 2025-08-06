@@ -15,7 +15,7 @@ Take a look at the link:https://trino.io/docs/current/admin/fault-tolerant-execu
 
 == Configuration
 
-Fault-tolerant execution is turned off by default.
+Fault-tolerant execution is not enabled by default.
 To enable the feature, you need to configure it in your `TrinoCluster` resource by adding a `faultTolerantExecution` section to the cluster configuration:
 
 [source,yaml]
