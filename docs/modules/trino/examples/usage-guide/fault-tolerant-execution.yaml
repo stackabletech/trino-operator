@@ -11,7 +11,7 @@ spec:
       matchLabels:
         trino: trino-fault-tolerant
     faultTolerantExecution:
-      retryPolicy: TASK
+      retryPolicy: Task
       taskRetryAttemptsPerTask: 4
       retryInitialDelay: 10s
       retryMaxDelay: 60s
