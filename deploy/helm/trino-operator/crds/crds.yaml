@@ -118,7 +118,7 @@ spec:
                           nullable: true
                           type: boolean
                         exchangeManager:
-                          description: Exchange manager configuration for spooling intermediate data during fault tolerant execution. Required when using `TASK` retry policy, optional for `QUERY` retry policy.
+                          description: Exchange manager configuration for spooling intermediate data during fault tolerant execution. Required when using `Task` retry policy, optional for `Query` retry policy.
                           nullable: true
                           oneOf:
                             - required:
@@ -128,6 +128,12 @@ spec:
                             - required:
                                 - local
                           properties:
+                            configOverrides:
+                              additionalProperties:
+                                type: string
+                              default: {}
+                              description: The `configOverrides` allow overriding arbitrary exchange manager properties.
+                              type: object
                             hdfs:
                               description: HDFS-based exchange manager.
                               properties:
@@ -344,7 +350,7 @@ spec:
                               type: integer
                           type: object
                         queryRetryAttempts:
-                          description: Maximum number of times Trino may attempt to retry a query before declaring it failed. Only applies to `QUERY` retry policy.
+                          description: Maximum number of times Trino may attempt to retry a query before declaring it failed. Only applies to `Query` retry policy.
                           format: uint32
                           minimum: 0.0
                           nullable: true
@@ -363,13 +369,13 @@ spec:
                           nullable: true
                           type: string
                         retryPolicy:
-                          description: The retry policy for fault tolerant execution. `QUERY` retries entire queries, `TASK` retries individual tasks. When set to `TASK`, an exchange manager must be configured.
+                          description: The retry policy for fault tolerant execution. `Query` retries entire queries, `Task` retries individual tasks. When set to `Task`, an exchange manager must be configured.
                           enum:
-                            - query
-                            - task
+                            - Query
+                            - Task
                           type: string
                         taskRetryAttemptsPerTask:
-                          description: Maximum number of times Trino may attempt to retry a single task before declaring the query failed. Only applies to `TASK` retry policy.
+                          description: Maximum number of times Trino may attempt to retry a single task before declaring the query failed. Only applies to `Task` retry policy.
                           format: uint32
                           minimum: 0.0
                           nullable: true
