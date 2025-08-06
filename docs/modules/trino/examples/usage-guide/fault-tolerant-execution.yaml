@@ -1,5 +1,3 @@
-# stackablectl operator install commons secret listener trino
-# helm install minio minio --repo https://charts.bitnami.com/bitnami --version 15.0.7 --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key --set tls.enabled=true --set tls.existingSecret=minio-tls-certificates --set provisioning.enabled=true --set provisioning.buckets[0].name=trino-exchange-bucket
 ---
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster
@@ -17,7 +15,7 @@ spec:
       taskRetryAttemptsPerTask: 4
       retryInitialDelay: 10s
       retryMaxDelay: 60s
-      retryDelayScaleFactor: "2.0"
+      retryDelayScaleFactor: 2.0
       exchangeDeduplicationBufferSize: 64MB
       exchangeEncryptionEnabled: true
       exchangeManager:
@@ -107,3 +105,4 @@ metadata:
 spec:
   connector:
     tpch: {}
+
