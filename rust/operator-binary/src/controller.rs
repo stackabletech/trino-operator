@@ -82,7 +82,8 @@ use crate::{
         JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE,
         METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
         STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, TrinoRole,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+        TrinoRole,
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
@@ -1509,6 +1510,7 @@ fn create_tls_volume(
     secret_volume_source_builder
         .with_pod_scope()
         .with_format(SecretFormat::TlsPkcs12)
+        .with_tls_pkcs12_password(STACKABLE_TLS_STORE_PASSWORD)
         .with_auto_tls_cert_lifetime(*requested_secret_lifetime);
 
     if let Some(listener_scope) = &listener_scope {
