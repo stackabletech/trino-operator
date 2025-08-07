@@ -105,6 +105,543 @@ spec:
                           description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                           type: object
                       type: object
+                    faultTolerantExecution:
+                      description: Fault tolerant execution configuration. When enabled, Trino can automatically retry queries or tasks in case of failures.
+                      nullable: true
+                      oneOf:
+                        - required:
+                            - query
+                        - required:
+                            - task
+                      properties:
+                        query:
+                          description: Query-level fault tolerant execution. Retries entire queries on failure.
+                          properties:
+                            exchangeDeduplicationBufferSize:
+                              description: Data size of the coordinator's in-memory buffer used to store output of query stages.
+                              nullable: true
+                              type: string
+                            exchangeManager:
+                              description: Exchange manager configuration for spooling intermediate data during fault tolerant execution. Optional for Query retry policy, recommended for large result sets.
+                              nullable: true
+                              oneOf:
+                                - required:
+                                    - s3
+                                - required:
+                                    - hdfs
+                                - required:
+                                    - local
+                              properties:
+                                configOverrides:
+                                  additionalProperties:
+                                    type: string
+                                  default: {}
+                                  description: The `configOverrides` allow overriding arbitrary exchange manager properties.
+                                  type: object
+                                encryptionEnabled:
+                                  description: Whether to enable encryption of spooling data.
+                                  nullable: true
+                                  type: boolean
+                                hdfs:
+                                  description: HDFS-based exchange manager.
+                                  properties:
+                                    baseDirectories:
+                                      description: HDFS URIs for spooling data.
+                                      items:
+                                        type: string
+                                      type: array
+                                    blockSize:
+                                      description: Block data size for HDFS storage.
+                                      nullable: true
+                                      type: string
+                                    hdfs:
+                                      description: HDFS connection configuration.
+                                      properties:
+                                        configMap:
+                                          description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                                          type: string
+                                      required:
+                                        - configMap
+                                      type: object
+                                    skipDirectorySchemeValidation:
+                                      description: Skip directory scheme validation to support Hadoop-compatible file systems.
+                                      nullable: true
+                                      type: boolean
+                                  required:
+                                    - baseDirectories
+                                    - hdfs
+                                  type: object
+                                local:
+                                  description: Local filesystem storage (not recommended for production).
+                                  properties:
+                                    baseDirectories:
+                                      description: Local filesystem paths for exchange storage.
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                    - baseDirectories
+                                  type: object
+                                s3:
+                                  description: S3-compatible storage configuration.
+                                  properties:
+                                    baseDirectories:
+                                      description: S3 bucket URIs for spooling data (e.g., s3://bucket1,s3://bucket2).
+                                      items:
+                                        type: string
+                                      type: array
+                                    connection:
+                                      description: S3 connection configuration. Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                      oneOf:
+                                        - required:
+                                            - inline
+                                        - required:
+                                            - reference
+                                      properties:
+                                        inline:
+                                          description: S3 connection definition as a resource. Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                          properties:
+                                            accessStyle:
+                                              default: VirtualHosted
+                                              description: Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+                                              enum:
+                                                - Path
+                                                - VirtualHosted
+                                              type: string
+                                            credentials:
+                                              description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing `accessKey` and `secretKey` is sufficient.
+                                              nullable: true
+                                              properties:
+                                                scope:
+                                                  description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                                                  nullable: true
+                                                  properties:
+                                                    listenerVolumes:
+                                                      default: []
+                                                      description: The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners. This must correspond to Volume names in the Pod that mount Listeners.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                    node:
+                                                      default: false
+                                                      description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
+                                                      type: boolean
+                                                    pod:
+                                                      default: false
+                                                      description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
+                                                      type: boolean
+                                                    services:
+                                                      default: []
+                                                      description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                  type: object
+                                                secretClass:
+                                                  description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                  type: string
+                                              required:
+                                                - secretClass
+                                              type: object
+                                            host:
+                                              description: 'Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
+                                              type: string
+                                            port:
+                                              description: Port the S3 server listens on. If not specified the product will determine the port to use.
+                                              format: uint16
+                                              minimum: 0.0
+                                              nullable: true
+                                              type: integer
+                                            region:
+                                              default:
+                                                name: us-east-1
+                                              description: |-
+                                                Bucket region used for signing headers (sigv4).
+
+                                                This defaults to `us-east-1` which is compatible with other implementations such as Minio.
+
+                                                WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
+                                              properties:
+                                                name:
+                                                  default: us-east-1
+                                                  type: string
+                                              type: object
+                                            tls:
+                                              description: Use a TLS connection. If not specified no TLS will be used.
+                                              nullable: true
+                                              properties:
+                                                verification:
+                                                  description: The verification method used to verify the certificates of the server and/or the client.
+                                                  oneOf:
+                                                    - required:
+                                                        - none
+                                                    - required:
+                                                        - server
+                                                  properties:
+                                                    none:
+                                                      description: Use TLS but don't verify certificates.
+                                                      type: object
+                                                    server:
+                                                      description: Use TLS and a CA certificate to verify the server.
+                                                      properties:
+                                                        caCert:
+                                                          description: CA cert to verify the server.
+                                                          oneOf:
+                                                            - required:
+                                                                - webPki
+                                                            - required:
+                                                                - secretClass
+                                                          properties:
+                                                            secretClass:
+                                                              description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                                              type: string
+                                                            webPki:
+                                                              description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                                              type: object
+                                                          type: object
+                                                      required:
+                                                        - caCert
+                                                      type: object
+                                                  type: object
+                                              required:
+                                                - verification
+                                              type: object
+                                          required:
+                                            - host
+                                          type: object
+                                        reference:
+                                          type: string
+                                      type: object
+                                    externalId:
+                                      description: External ID for the IAM role trust policy.
+                                      nullable: true
+                                      type: string
+                                    iamRole:
+                                      description: IAM role to assume for S3 access.
+                                      nullable: true
+                                      type: string
+                                    maxErrorRetries:
+                                      description: Maximum number of times the S3 client should retry a request.
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    uploadPartSize:
+                                      description: Part data size for S3 multi-part upload.
+                                      nullable: true
+                                      type: string
+                                  required:
+                                    - baseDirectories
+                                    - connection
+                                  type: object
+                                sinkBufferPoolMinSize:
+                                  description: The minimum buffer pool size for an exchange sink. The larger the buffer pool size, the larger the write parallelism and memory usage.
+                                  format: uint32
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                                sinkBuffersPerPartition:
+                                  description: The number of buffers per partition in the buffer pool. The larger the buffer pool size, the larger the write parallelism and memory usage.
+                                  format: uint32
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                                sinkMaxFileSize:
+                                  description: Max data size of files written by exchange sinks.
+                                  nullable: true
+                                  type: string
+                                sourceConcurrentReaders:
+                                  description: Number of concurrent readers to read from spooling storage. The larger the number of concurrent readers, the larger the read parallelism and memory usage.
+                                  format: uint32
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                              type: object
+                            retryAttempts:
+                              description: Maximum number of times Trino may attempt to retry a query before declaring it failed.
+                              format: uint32
+                              minimum: 0.0
+                              nullable: true
+                              type: integer
+                            retryDelayScaleFactor:
+                              description: Factor by which retry delay is increased on each query failure.
+                              format: float
+                              nullable: true
+                              type: number
+                            retryInitialDelay:
+                              description: Minimum time that a failed query must wait before it is retried.
+                              nullable: true
+                              type: string
+                            retryMaxDelay:
+                              description: Maximum time that a failed query must wait before it is retried.
+                              nullable: true
+                              type: string
+                          type: object
+                        task:
+                          description: Task-level fault tolerant execution. Retries individual tasks on failure (requires exchange manager).
+                          properties:
+                            exchangeDeduplicationBufferSize:
+                              description: Data size of the coordinator's in-memory buffer used to store output of query stages.
+                              nullable: true
+                              type: string
+                            exchangeManager:
+                              description: Exchange manager configuration for spooling intermediate data during fault tolerant execution. Required for Task retry policy.
+                              oneOf:
+                                - required:
+                                    - s3
+                                - required:
+                                    - hdfs
+                                - required:
+                                    - local
+                              properties:
+                                configOverrides:
+                                  additionalProperties:
+                                    type: string
+                                  default: {}
+                                  description: The `configOverrides` allow overriding arbitrary exchange manager properties.
+                                  type: object
+                                encryptionEnabled:
+                                  description: Whether to enable encryption of spooling data.
+                                  nullable: true
+                                  type: boolean
+                                hdfs:
+                                  description: HDFS-based exchange manager.
+                                  properties:
+                                    baseDirectories:
+                                      description: HDFS URIs for spooling data.
+                                      items:
+                                        type: string
+                                      type: array
+                                    blockSize:
+                                      description: Block data size for HDFS storage.
+                                      nullable: true
+                                      type: string
+                                    hdfs:
+                                      description: HDFS connection configuration.
+                                      properties:
+                                        configMap:
+                                          description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                                          type: string
+                                      required:
+                                        - configMap
+                                      type: object
+                                    skipDirectorySchemeValidation:
+                                      description: Skip directory scheme validation to support Hadoop-compatible file systems.
+                                      nullable: true
+                                      type: boolean
+                                  required:
+                                    - baseDirectories
+                                    - hdfs
+                                  type: object
+                                local:
+                                  description: Local filesystem storage (not recommended for production).
+                                  properties:
+                                    baseDirectories:
+                                      description: Local filesystem paths for exchange storage.
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                    - baseDirectories
+                                  type: object
+                                s3:
+                                  description: S3-compatible storage configuration.
+                                  properties:
+                                    baseDirectories:
+                                      description: S3 bucket URIs for spooling data (e.g., s3://bucket1,s3://bucket2).
+                                      items:
+                                        type: string
+                                      type: array
+                                    connection:
+                                      description: S3 connection configuration. Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                      oneOf:
+                                        - required:
+                                            - inline
+                                        - required:
+                                            - reference
+                                      properties:
+                                        inline:
+                                          description: S3 connection definition as a resource. Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                          properties:
+                                            accessStyle:
+                                              default: VirtualHosted
+                                              description: Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+                                              enum:
+                                                - Path
+                                                - VirtualHosted
+                                              type: string
+                                            credentials:
+                                              description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing `accessKey` and `secretKey` is sufficient.
+                                              nullable: true
+                                              properties:
+                                                scope:
+                                                  description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                                                  nullable: true
+                                                  properties:
+                                                    listenerVolumes:
+                                                      default: []
+                                                      description: The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners. This must correspond to Volume names in the Pod that mount Listeners.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                    node:
+                                                      default: false
+                                                      description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
+                                                      type: boolean
+                                                    pod:
+                                                      default: false
+                                                      description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
+                                                      type: boolean
+                                                    services:
+                                                      default: []
+                                                      description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
+                                                      items:
+                                                        type: string
+                                                      type: array
+                                                  type: object
+                                                secretClass:
+                                                  description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                  type: string
+                                              required:
+                                                - secretClass
+                                              type: object
+                                            host:
+                                              description: 'Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
+                                              type: string
+                                            port:
+                                              description: Port the S3 server listens on. If not specified the product will determine the port to use.
+                                              format: uint16
+                                              minimum: 0.0
+                                              nullable: true
+                                              type: integer
+                                            region:
+                                              default:
+                                                name: us-east-1
+                                              description: |-
+                                                Bucket region used for signing headers (sigv4).
+
+                                                This defaults to `us-east-1` which is compatible with other implementations such as Minio.
+
+                                                WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
+                                              properties:
+                                                name:
+                                                  default: us-east-1
+                                                  type: string
+                                              type: object
+                                            tls:
+                                              description: Use a TLS connection. If not specified no TLS will be used.
+                                              nullable: true
+                                              properties:
+                                                verification:
+                                                  description: The verification method used to verify the certificates of the server and/or the client.
+                                                  oneOf:
+                                                    - required:
+                                                        - none
+                                                    - required:
+                                                        - server
+                                                  properties:
+                                                    none:
+                                                      description: Use TLS but don't verify certificates.
+                                                      type: object
+                                                    server:
+                                                      description: Use TLS and a CA certificate to verify the server.
+                                                      properties:
+                                                        caCert:
+                                                          description: CA cert to verify the server.
+                                                          oneOf:
+                                                            - required:
+                                                                - webPki
+                                                            - required:
+                                                                - secretClass
+                                                          properties:
+                                                            secretClass:
+                                                              description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                                              type: string
+                                                            webPki:
+                                                              description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                                              type: object
+                                                          type: object
+                                                      required:
+                                                        - caCert
+                                                      type: object
+                                                  type: object
+                                              required:
+                                                - verification
+                                              type: object
+                                          required:
+                                            - host
+                                          type: object
+                                        reference:
+                                          type: string
+                                      type: object
+                                    externalId:
+                                      description: External ID for the IAM role trust policy.
+                                      nullable: true
+                                      type: string
+                                    iamRole:
+                                      description: IAM role to assume for S3 access.
+                                      nullable: true
+                                      type: string
+                                    maxErrorRetries:
+                                      description: Maximum number of times the S3 client should retry a request.
+                                      format: uint32
+                                      minimum: 0.0
+                                      nullable: true
+                                      type: integer
+                                    uploadPartSize:
+                                      description: Part data size for S3 multi-part upload.
+                                      nullable: true
+                                      type: string
+                                  required:
+                                    - baseDirectories
+                                    - connection
+                                  type: object
+                                sinkBufferPoolMinSize:
+                                  description: The minimum buffer pool size for an exchange sink. The larger the buffer pool size, the larger the write parallelism and memory usage.
+                                  format: uint32
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                                sinkBuffersPerPartition:
+                                  description: The number of buffers per partition in the buffer pool. The larger the buffer pool size, the larger the write parallelism and memory usage.
+                                  format: uint32
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                                sinkMaxFileSize:
+                                  description: Max data size of files written by exchange sinks.
+                                  nullable: true
+                                  type: string
+                                sourceConcurrentReaders:
+                                  description: Number of concurrent readers to read from spooling storage. The larger the number of concurrent readers, the larger the read parallelism and memory usage.
+                                  format: uint32
+                                  minimum: 0.0
+                                  nullable: true
+                                  type: integer
+                              type: object
+                            retryAttemptsPerTask:
+                              description: Maximum number of times Trino may attempt to retry a single task before declaring the query failed.
+                              format: uint32
+                              minimum: 0.0
+                              nullable: true
+                              type: integer
+                            retryDelayScaleFactor:
+                              description: Factor by which retry delay is increased on each task failure.
+                              format: float
+                              nullable: true
+                              type: number
+                            retryInitialDelay:
+                              description: Minimum time that a failed task must wait before it is retried.
+                              nullable: true
+                              type: string
+                            retryMaxDelay:
+                              description: Maximum time that a failed task must wait before it is retried.
+                              nullable: true
+                              type: string
+                          required:
+                            - exchangeManager
+                          type: object
+                      type: object
                     tls:
                       default:
                         internalSecretClass: tls

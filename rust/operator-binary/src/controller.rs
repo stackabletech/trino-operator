@@ -78,14 +78,16 @@ use crate::{
     command, config,
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
-        DISCOVERY_URI, ENV_INTERNAL_SECRET, HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME,
-        JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE,
-        METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME,
-        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, TrinoRole,
+        DISCOVERY_URI, ENV_INTERNAL_SECRET, EXCHANGE_MANAGER_PROPERTIES, HTTP_PORT, HTTP_PORT_NAME,
+        HTTPS_PORT, HTTPS_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES,
+        MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
+        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+        TrinoRole,
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
+        fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         rolegroup_headless_service_name, v1alpha1,
     },
     listener::{
@@ -298,6 +300,11 @@ pub enum Error {
         source: crate::operations::graceful_shutdown::Error,
     },
 
+    #[snafu(display("failed to configure fault tolerant execution"))]
+    FaultTolerantExecution {
+        source: crate::crd::fault_tolerant_execution::Error,
+    },
+
     #[snafu(display("failed to get required Labels"))]
     GetRequiredLabels {
         source:
@@ -424,6 +431,20 @@ pub async fn reconcile_trino(
         catalogs.push(catalog_config);
     }
 
+    // Resolve fault tolerant execution configuration with S3 connections if needed
+    let resolved_fte_config = match trino.spec.cluster_config.fault_tolerant_execution.as_ref() {
+        Some(fte_config) => Some(
+            ResolvedFaultTolerantExecutionConfig::from_config(
+                fte_config,
+                Some(client),
+                &trino.namespace_r().context(ReadRoleSnafu)?,
+            )
+            .await
+            .context(FaultTolerantExecutionSnafu)?,
+        ),
+        None => None,
+    };
+
     let validated_config = validated_product_config(
         trino,
         // The Trino version is a single number like 396.
@@ -526,6 +547,7 @@ pub async fn reconcile_trino(
                 &trino_authentication_config,
                 &trino_opa_config,
                 &client.kubernetes_cluster_info,
+                &resolved_fte_config,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
@@ -543,6 +565,7 @@ pub async fn reconcile_trino(
                 &trino_authentication_config,
                 &catalogs,
                 &rbac_sa.name_any(),
+                &resolved_fte_config,
             )?;
 
             cluster_resources
@@ -651,6 +674,7 @@ fn build_rolegroup_config_map(
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
     cluster_info: &KubernetesClusterInfo,
+    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -711,6 +735,16 @@ fn build_rolegroup_config_map(
 
                 dynamic_resolved_config
                     .extend(graceful_shutdown_config_properties(trino, trino_role));
+
+                // Add fault tolerant execution properties from resolved configuration
+                if let Some(resolved_fte) = resolved_fte_config {
+                    dynamic_resolved_config.extend(
+                        resolved_fte
+                            .config_properties
+                            .iter()
+                            .map(|(k, v)| (k.clone(), Some(v.clone()))),
+                    );
+                }
 
                 // Add static properties and overrides
                 dynamic_resolved_config.extend(transformed_config);
@@ -775,6 +809,22 @@ fn build_rolegroup_config_map(
     }
 
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
+
+    // Add exchange manager properties from resolved fault tolerant execution configuration
+    if let Some(resolved_fte) = resolved_fte_config {
+        if !resolved_fte.exchange_manager_properties.is_empty() {
+            let exchange_props_with_options: BTreeMap<String, Option<String>> = resolved_fte
+                .exchange_manager_properties
+                .iter()
+                .map(|(k, v)| (k.clone(), Some(v.clone())))
+                .collect();
+            cm_conf_data.insert(
+                EXCHANGE_MANAGER_PROPERTIES.to_string(),
+                to_java_properties_string(exchange_props_with_options.iter())
+                    .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
+            );
+        }
+    }
 
     let jvm_sec_props: BTreeMap<String, Option<String>> = config
         .get(&PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()))
@@ -884,6 +934,7 @@ fn build_rolegroup_statefulset(
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     sa_name: &str,
+    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
 ) -> Result<StatefulSet> {
     let role = trino
         .role(trino_role)
@@ -974,6 +1025,7 @@ fn build_rolegroup_statefulset(
         &mut cb_trino,
         catalogs,
         &requested_secret_lifetime,
+        resolved_fte_config,
     )?;
 
     let mut prepare_args = vec![];
@@ -992,6 +1044,7 @@ fn build_rolegroup_statefulset(
         trino,
         catalogs,
         merged_config,
+        resolved_fte_config,
     ));
 
     prepare_args
@@ -1056,7 +1109,12 @@ fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![
-            command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
+            command::container_trino_args(
+                trino_authentication_config,
+                catalogs,
+                resolved_fte_config,
+            )
+            .join("\n"),
         ])
         .add_env_vars(env)
         .add_volume_mount("config", CONFIG_DIR_NAME)
@@ -1524,6 +1582,7 @@ fn create_tls_volume(
         .build())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn tls_volume_mounts(
     trino: &v1alpha1::TrinoCluster,
     trino_role: &TrinoRole,
@@ -1532,6 +1591,7 @@ fn tls_volume_mounts(
     cb_trino: &mut ContainerBuilder,
     catalogs: &[CatalogConfig],
     requested_secret_lifetime: &Duration,
+    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare
@@ -1608,6 +1668,19 @@ fn tls_volume_mounts(
             .context(AddVolumeMountSnafu)?;
         pod_builder
             .add_volumes(catalog.volumes.clone())
+            .context(AddVolumeSnafu)?;
+    }
+
+    // fault tolerant execution S3 credentials and other resources
+    if let Some(resolved_fte) = resolved_fte_config {
+        cb_prepare
+            .add_volume_mounts(resolved_fte.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        cb_trino
+            .add_volume_mounts(resolved_fte.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        pod_builder
+            .add_volumes(resolved_fte.volumes.clone())
             .context(AddVolumeSnafu)?;
     }
 
@@ -1780,6 +1853,7 @@ mod tests {
             &trino_authentication_config,
             &trino_opa_config,
             &cluster_info,
+            &None,
         )
         .unwrap()
     }

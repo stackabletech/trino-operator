@@ -18,6 +18,9 @@ For a role or role group, at the same level of `config`, you can specify `config
 
 For a list of possible configuration properties consult the https://trino.io/docs/current/admin/properties.html[Trino Properties Reference].
 
+TIP: For fault-tolerant execution configuration, use the dedicated `faultTolerantExecution` section in the cluster configuration instead of `configOverrides`.
+See xref:usage-guide/fault-tolerant-execution.adoc[] for detailed instructions.
+
 [source,yaml]
 ----
 workers:
