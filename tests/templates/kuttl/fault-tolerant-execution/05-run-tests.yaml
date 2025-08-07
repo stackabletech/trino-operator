@@ -2,10 +2,11 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-fte.py -c trino-fte-coordinator -w 2
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/04_check-fte.py -c trino-fte-coordinator -w 2
     timeout: 120
   # Verify that the exchange bucket contains data
   - script: |
+      sleep 10
       count=$(kubectl exec -n $NAMESPACE deployment/minio -- mc stat local/exchange-bucket | awk '/Objects count:/ {print $3}')
       if [ "$count" -gt 0 ]; then
         echo "Objects count is $count (> 0)"
@@ -13,4 +14,4 @@ commands:
         echo "Objects count is $count (not > 0)"
         exit 1
       fi
-    timeout: 20
+    timeout: 30

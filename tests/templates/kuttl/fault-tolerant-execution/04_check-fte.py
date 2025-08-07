@@ -88,6 +88,8 @@ if __name__ == "__main__":
             print("Complex query returned no results")
             exit(-1)
 
+        print("Complex query test passed")
+
     except Exception as e:
         print(f"Test failed with error: {e}")
         import traceback

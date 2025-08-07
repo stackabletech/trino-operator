@@ -18,13 +18,13 @@ spec:
         trino: trino-fte
     # Fault tolerant execution with S3/MinIO exchange manager
     faultTolerantExecution:
-      retryPolicy: Task
-      exchangeManager:
-        s3:
-          baseDirectories:
-            - "s3://exchange-bucket/"
-          connection:
-            reference: "minio"
+      task:
+        exchangeManager:
+          s3:
+            baseDirectories:
+              - "s3://exchange-bucket/"
+            connection:
+              reference: "minio"
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
