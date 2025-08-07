@@ -6,6 +6,6 @@ commands:
       helm install minio
       --namespace $NAMESPACE
       --version 15.0.7
-      -f helm-bitnami-minio-values.yaml
+      -f 01_helm-bitnami-minio-values.yaml
       oci://registry-1.docker.io/bitnamicharts/minio
     timeout: 240
