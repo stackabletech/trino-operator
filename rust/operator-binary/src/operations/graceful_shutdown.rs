@@ -27,16 +27,23 @@ pub fn graceful_shutdown_config_properties(
 ) -> BTreeMap<String, Option<String>> {
     match role {
         TrinoRole::Coordinator => {
-            let min_worker_graceful_shutdown_timeout = trino.min_worker_graceful_shutdown_timeout();
-            // We know that queries taking longer than the minimum gracefulShutdownTimeout are subject to failure.
-            // Read operator docs for reasoning.
-            BTreeMap::from([(
-                "query.max-execution-time".to_string(),
-                Some(format!(
-                    "{}s",
-                    min_worker_graceful_shutdown_timeout.as_secs()
-                )),
-            )])
+            // Only set query.max-execution-time if fault tolerant execution is not configured.
+            // With fault tolerant execution enabled, queries can be retried and run indefinitely.
+            if trino.spec.cluster_config.fault_tolerant_execution.is_none() {
+                let min_worker_graceful_shutdown_timeout =
+                    trino.min_worker_graceful_shutdown_timeout();
+                // We know that queries taking longer than the minimum gracefulShutdownTimeout are subject to failure.
+                // Read operator docs for reasoning.
+                BTreeMap::from([(
+                    "query.max-execution-time".to_string(),
+                    Some(format!(
+                        "{}s",
+                        min_worker_graceful_shutdown_timeout.as_secs()
+                    )),
+                )])
+            } else {
+                BTreeMap::new()
+            }
         }
         TrinoRole::Worker => BTreeMap::from([(
             "shutdown.grace-period".to_string(),
