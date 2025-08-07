@@ -11,25 +11,25 @@ spec:
       matchLabels:
         trino: trino-fault-tolerant
     faultTolerantExecution:
-      retryPolicy: Task
-      taskRetryAttemptsPerTask: 4
-      retryInitialDelay: 10s
-      retryMaxDelay: 60s
-      retryDelayScaleFactor: 2.0
-      exchangeDeduplicationBufferSize: 64MB
-      exchangeEncryptionEnabled: true
-      exchangeManager:
-        sinkBufferPoolMinSize: 20
-        sinkBuffersPerPartition: 4
-        sinkMaxFileSize: 2GB
-        sourceConcurrentReaders: 8
-        s3:
-          baseDirectories:
-            - "s3://trino-exchange-bucket/spooling"
-          connection:
-            reference: minio-connection
-          maxErrorRetries: 10
-          uploadPartSize: 10MB
+      task:
+        retryAttemptsPerTask: 4
+        retryInitialDelay: 10s
+        retryMaxDelay: 60s
+        retryDelayScaleFactor: 2.0
+        exchangeDeduplicationBufferSize: 64MB
+        exchangeManager:
+          encryptionEnabled: true
+          sinkBufferPoolMinSize: 20
+          sinkBuffersPerPartition: 4
+          sinkMaxFileSize: 2GB
+          sourceConcurrentReaders: 8
+          s3:
+            baseDirectories:
+              - "s3://trino-exchange-bucket/spooling"
+            connection:
+              reference: minio-connection
+            maxErrorRetries: 10
+            uploadPartSize: 10MB
   coordinators:
     roleGroups:
       default:
