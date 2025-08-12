@@ -30,6 +30,7 @@ use crate::{
 pub enum FaultTolerantExecutionConfig {
     /// Query-level fault tolerant execution. Retries entire queries on failure.
     Query(QueryRetryConfig),
+
     /// Task-level fault tolerant execution. Retries individual tasks on failure (requires exchange manager).
     Task(TaskRetryConfig),
 }
@@ -131,8 +132,10 @@ pub struct ExchangeManagerConfig {
 pub enum ExchangeManagerBackend {
     /// S3-compatible storage configuration.
     S3(S3ExchangeConfig),
+
     /// HDFS-based exchange manager.
     Hdfs(HdfsExchangeConfig),
+
     /// Local filesystem storage (not recommended for production).
     Local(LocalExchangeConfig),
 }
@@ -142,18 +145,23 @@ pub enum ExchangeManagerBackend {
 pub struct S3ExchangeConfig {
     /// S3 bucket URIs for spooling data (e.g., s3://bucket1,s3://bucket2).
     pub base_directories: Vec<String>,
+
     /// S3 connection configuration.
     /// Learn more about S3 configuration in the [S3 concept docs](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
     pub connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference,
+
     /// IAM role to assume for S3 access.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub iam_role: Option<String>,
+
     /// External ID for the IAM role trust policy.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_id: Option<String>,
+
     /// Maximum number of times the S3 client should retry a request.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_error_retries: Option<u32>,
+
     /// Part data size for S3 multi-part upload.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub upload_part_size: Option<String>,
@@ -164,11 +172,14 @@ pub struct S3ExchangeConfig {
 pub struct HdfsExchangeConfig {
     /// HDFS URIs for spooling data.
     pub base_directories: Vec<String>,
+
     /// HDFS connection configuration.
     pub hdfs: HdfsConnection,
+
     /// Block data size for HDFS storage.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub block_size: Option<String>,
+
     /// Skip directory scheme validation to support Hadoop-compatible file systems.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skip_directory_scheme_validation: Option<bool>,
@@ -196,15 +207,20 @@ pub enum Error {
 pub struct ResolvedFaultTolerantExecutionConfig {
     /// Properties to add to config.properties
     pub config_properties: BTreeMap<String, String>,
+
     /// Properties to add to exchange-manager.properties (if needed)
     pub exchange_manager_properties: BTreeMap<String, String>,
+
     /// Volumes required for the configuration (e.g., for S3 credentials)
     pub volumes: Vec<Volume>,
+
     /// Volume mounts required for the configuration
     pub volume_mounts: Vec<VolumeMount>,
+
     /// Env-Vars that should be exported from files.
     /// You can think of it like `export <key>="$(cat <value>)"`
     pub load_env_from_files: BTreeMap<String, String>,
+
     /// Additional commands that need to be executed before starting Trino
     pub init_container_extra_start_commands: Vec<String>,
 }
