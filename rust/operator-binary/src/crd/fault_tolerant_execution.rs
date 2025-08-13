@@ -15,6 +15,7 @@ use stackable_operator::{
     commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     crd::s3,
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
+    k8s_openapi::apimachinery::pkg::api::resource::Quantity,
     schemars::{self, JsonSchema},
     time::Duration,
 };
@@ -56,7 +57,7 @@ pub struct QueryRetryConfig {
 
     /// Data size of the coordinator's in-memory buffer used to store output of query stages.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub exchange_deduplication_buffer_size: Option<String>,
+    pub exchange_deduplication_buffer_size: Option<Quantity>,
 
     /// Exchange manager configuration for spooling intermediate data during fault tolerant execution.
     /// Optional for Query retry policy, recommended for large result sets.
@@ -85,7 +86,7 @@ pub struct TaskRetryConfig {
 
     /// Data size of the coordinator's in-memory buffer used to store output of query stages.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub exchange_deduplication_buffer_size: Option<String>,
+    pub exchange_deduplication_buffer_size: Option<Quantity>,
 
     /// Exchange manager configuration for spooling intermediate data during fault tolerant execution.
     /// Required for Task retry policy.
@@ -111,7 +112,7 @@ pub struct ExchangeManagerConfig {
 
     /// Max data size of files written by exchange sinks.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sink_max_file_size: Option<String>,
+    pub sink_max_file_size: Option<Quantity>,
 
     /// Number of concurrent readers to read from spooling storage. The larger the number of
     /// concurrent readers, the larger the read parallelism and memory usage.
@@ -140,7 +141,7 @@ pub enum ExchangeManagerBackend {
     Local(LocalExchangeConfig),
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct S3ExchangeConfig {
     /// S3 bucket URIs for spooling data (e.g., s3://bucket1,s3://bucket2).
@@ -164,10 +165,10 @@ pub struct S3ExchangeConfig {
 
     /// Part data size for S3 multi-part upload.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub upload_part_size: Option<String>,
+    pub upload_part_size: Option<Quantity>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HdfsExchangeConfig {
     /// HDFS URIs for spooling data.
@@ -178,7 +179,7 @@ pub struct HdfsExchangeConfig {
 
     /// Block data size for HDFS storage.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub block_size: Option<String>,
+    pub block_size: Option<Quantity>,
 
     /// Skip directory scheme validation to support Hadoop-compatible file systems.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -201,6 +202,12 @@ pub enum Error {
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
+
+    #[snafu(display("failed to convert data size for [{field}] to bytes"))]
+    QuantityConversion {
+        source: stackable_operator::memory::Error,
+        field: &'static str,
+    },
 }
 
 /// Fault tolerant execution configuration with external resources resolved
@@ -235,6 +242,21 @@ impl ResolvedFaultTolerantExecutionConfig {
         if let Some(v) = value {
             properties.insert(key.to_string(), v.to_string());
         }
+    }
+
+    /// Helper function to insert optional Quantity values after converting to Trino bytes string
+    fn insert_quantity_if_present(
+        properties: &mut BTreeMap<String, String>,
+        key: &'static str,
+        quantity: Option<&Quantity>,
+    ) -> Result<(), Error> {
+        if let Some(q) = quantity {
+            use snafu::ResultExt;
+            let v = crate::crd::quantity_to_trino_bytes(q)
+                .context(QuantityConversionSnafu { field: key })?;
+            properties.insert(key.to_string(), v);
+        }
+        Ok(())
     }
 
     /// Create a resolved fault tolerant execution configuration from the cluster config
@@ -275,11 +297,11 @@ impl ResolvedFaultTolerantExecutionConfig {
                     "retry-delay-scale-factor",
                     query_config.retry_delay_scale_factor.as_ref(),
                 );
-                Self::insert_if_present(
+                Self::insert_quantity_if_present(
                     &mut config_properties,
                     "exchange.deduplication-buffer-size",
                     query_config.exchange_deduplication_buffer_size.as_ref(),
-                );
+                )?;
 
                 ("QUERY", query_config.exchange_manager.as_ref())
             }
@@ -311,11 +333,11 @@ impl ResolvedFaultTolerantExecutionConfig {
                     "retry-delay-scale-factor",
                     task_config.retry_delay_scale_factor.as_ref(),
                 );
-                Self::insert_if_present(
+                Self::insert_quantity_if_present(
                     &mut config_properties,
                     "exchange.deduplication-buffer-size",
                     task_config.exchange_deduplication_buffer_size.as_ref(),
-                );
+                )?;
 
                 ("TASK", Some(&task_config.exchange_manager))
             }
@@ -340,11 +362,11 @@ impl ResolvedFaultTolerantExecutionConfig {
                 "exchange.sink-buffers-per-partition",
                 exchange_config.sink_buffers_per_partition,
             );
-            Self::insert_if_present(
+            Self::insert_quantity_if_present(
                 &mut exchange_manager_properties,
                 "exchange.sink-max-file-size",
                 exchange_config.sink_max_file_size.as_ref(),
-            );
+            )?;
             Self::insert_if_present(
                 &mut exchange_manager_properties,
                 "exchange.source-concurrent-readers",
@@ -378,11 +400,11 @@ impl ResolvedFaultTolerantExecutionConfig {
                         "exchange.s3.max-error-retries",
                         s3_config.max_error_retries,
                     );
-                    Self::insert_if_present(
+                    Self::insert_quantity_if_present(
                         &mut exchange_manager_properties,
                         "exchange.s3.upload.part-size",
                         s3_config.upload_part_size.as_ref(),
-                    );
+                    )?;
                 }
                 ExchangeManagerBackend::Hdfs(hdfs_config) => {
                     exchange_manager_properties
@@ -392,11 +414,11 @@ impl ResolvedFaultTolerantExecutionConfig {
                         hdfs_config.base_directories.join(","),
                     );
 
-                    Self::insert_if_present(
+                    Self::insert_quantity_if_present(
                         &mut exchange_manager_properties,
                         "exchange.hdfs.block-size",
                         hdfs_config.block_size.as_ref(),
-                    );
+                    )?;
                     Self::insert_if_present(
                         &mut exchange_manager_properties,
                         "exchange.hdfs.skip-directory-scheme-validation",
@@ -562,7 +584,7 @@ mod tests {
             retry_initial_delay: Some(Duration::from_secs(15)),
             retry_max_delay: Some(Duration::from_secs(90)),
             retry_delay_scale_factor: Some(3.0),
-            exchange_deduplication_buffer_size: Some("64MB".to_string()),
+            exchange_deduplication_buffer_size: Some(Quantity("64Mi".to_string())),
             exchange_manager: None,
         });
 
@@ -595,7 +617,7 @@ mod tests {
             fte_config
                 .config_properties
                 .get("exchange.deduplication-buffer-size"),
-            Some(&"64MB".to_string())
+            Some(&"67108864B".to_string())
         );
     }
 
@@ -606,12 +628,12 @@ mod tests {
             retry_initial_delay: Some(Duration::from_secs(10)),
             retry_max_delay: Some(Duration::from_secs(60)),
             retry_delay_scale_factor: Some(2.0),
-            exchange_deduplication_buffer_size: Some("100MB".to_string()),
+            exchange_deduplication_buffer_size: Some(Quantity("100Mi".to_string())),
             exchange_manager: Some(ExchangeManagerConfig {
                 encryption_enabled: Some(true),
                 sink_buffer_pool_min_size: Some(10),
                 sink_buffers_per_partition: Some(2),
-                sink_max_file_size: Some("1GB".to_string()),
+                sink_max_file_size: Some(Quantity("1Gi".to_string())),
                 source_concurrent_readers: Some(4),
                 backend: ExchangeManagerBackend::Local(LocalExchangeConfig {
                     base_directories: vec!["/tmp/exchange".to_string()],
@@ -662,7 +684,7 @@ mod tests {
             fte_config
                 .config_properties
                 .get("exchange.deduplication-buffer-size"),
-            Some(&"100MB".to_string())
+            Some(&"104857600B".to_string())
         );
         assert_eq!(
             fte_config
@@ -684,7 +706,7 @@ mod tests {
                 encryption_enabled: None,
                 sink_buffer_pool_min_size: Some(20),
                 sink_buffers_per_partition: Some(4),
-                sink_max_file_size: Some("2GB".to_string()),
+                sink_max_file_size: Some(Quantity("2Gi".to_string())),
                 source_concurrent_readers: Some(8),
                 backend: ExchangeManagerBackend::S3(S3ExchangeConfig {
                     base_directories: vec!["s3://my-bucket/exchange".to_string()],
@@ -694,7 +716,7 @@ mod tests {
                     iam_role: Some("arn:aws:iam::123456789012:role/TrinoRole".to_string()),
                     external_id: Some("external-id-123".to_string()),
                     max_error_retries: Some(5),
-                    upload_part_size: Some("10MB".to_string()),
+                    upload_part_size: Some(Quantity("10Mi".to_string())),
                 }),
                 config_overrides: std::collections::HashMap::new(),
             },
@@ -751,7 +773,7 @@ mod tests {
             fte_config
                 .exchange_manager_properties
                 .get("exchange.s3.upload.part-size"),
-            Some(&"10MB".to_string())
+            Some(&"10485760B".to_string())
         );
         assert_eq!(
             fte_config
@@ -769,7 +791,7 @@ mod tests {
             fte_config
                 .exchange_manager_properties
                 .get("exchange.sink-max-file-size"),
-            Some(&"2GB".to_string())
+            Some(&"2147483648B".to_string())
         );
         assert_eq!(
             fte_config
@@ -808,7 +830,7 @@ mod tests {
                     iam_role: None,
                     external_id: None,
                     max_error_retries: None,
-                    upload_part_size: Some("original-value".to_string()),
+                    upload_part_size: Some(Quantity("10Mi".to_string())),
                 }),
                 config_overrides,
             },

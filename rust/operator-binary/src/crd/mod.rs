@@ -137,6 +137,15 @@ pub const WORKER_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(30);
 /// Safety puffer to guarantee the graceful shutdown works every time.
 pub const WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_secs(10);
 
+/// Convert a Kubernetes `Quantity` to a Trino property string in bytes, e.g. `"65536B"`.
+pub(crate) fn quantity_to_trino_bytes(
+    q: &Quantity,
+) -> Result<String, stackable_operator::memory::Error> {
+    let in_mebi = MemoryQuantity::try_from(q)?.scale_to(BinaryMultiple::Mebi);
+    let bytes = (in_mebi.value * 1024.0 * 1024.0).round() as u64;
+    Ok(format!("{bytes}B"))
+}
+
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("object has no namespace associated"))]
