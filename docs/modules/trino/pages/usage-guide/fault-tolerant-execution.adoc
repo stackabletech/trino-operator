@@ -24,8 +24,8 @@ The configuration uses a structured approach where you choose either `query` or 
 A `query` retry policy instructs Trino to automatically retry a query in the event of an error occurring on a worker node.
 This policy is recommended when the majority of the Trino cluster's workload consists of many small queries.
 
-By default, Trino does not implement fault tolerance for queries whose result set exceeds 32MB in size.
-This limit can be increased by modifying the `exchangeDeduplicationBufferSize` configuration property to be greater than the default value of `32MB`, but this results in higher memory usage on the coordinator.
+By default, Trino does not implement fault tolerance for queries whose result set exceeds 32Mi in size.
+This limit can be increased by modifying the `exchangeDeduplicationBufferSize` configuration property to be greater than the default value of `32Mi`, but this results in higher memory usage on the coordinator.
 
 [source,yaml]
 ----
@@ -34,7 +34,7 @@ spec:
     faultTolerantExecution:
       query:
         retryAttempts: 3
-        exchangeDeduplicationBufferSize: 64MB  # Increased from default 32MB
+        exchangeDeduplicationBufferSize: 64Mi  # Increased from default 32Mi
 ----
 
 === Task retry policy
