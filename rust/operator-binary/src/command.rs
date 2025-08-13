@@ -173,17 +173,18 @@ pub fn add_cert_to_truststore(
 
 fn import_pkcs12_into_another_pkcs12_commands(src: impl Display, dst: impl Display) -> Vec<String> {
     vec![
+        "temp_dir=$(mktemp -d)".to_owned(),
         format!("echo Importing {src} into {dst}"),
         format!(
-            "openssl pkcs12 -in {src} -out /tmp/ca-certs1.pem -password pass:{STACKABLE_TLS_STORE_PASSWORD} -legacy"
+            "openssl pkcs12 -in {src} -out ${{temp_dir}}/ca-certs1.pem -password pass:{STACKABLE_TLS_STORE_PASSWORD} -legacy"
         ),
         format!(
-            "openssl pkcs12 -in {dst} -out /tmp/ca-certs2.pem -password pass:{STACKABLE_TLS_STORE_PASSWORD} -legacy"
+            "openssl pkcs12 -in {dst} -out ${{temp_dir}}/ca-certs2.pem -password pass:{STACKABLE_TLS_STORE_PASSWORD} -legacy"
         ),
-        "cat /tmp/ca-certs1.pem /tmp/ca-certs2.pem > /tmp/ca-certs.pem".to_owned(),
-        // "cat /tmp/ca-certs1.pem > /tmp/ca-certs.pem".to_owned(),
+        "cat ${temp_dir}/ca-certs1.pem ${temp_dir}/ca-certs2.pem > ${temp_dir}/ca-certs.pem"
+            .to_owned(),
         format!(
-            "openssl pkcs12 -export -nokeys -in /tmp/ca-certs.pem -password pass:{STACKABLE_TLS_STORE_PASSWORD} -out {dst}"
+            "openssl pkcs12 -export -nokeys -in ${{temp_dir}}/ca-certs.pem -password pass:{STACKABLE_TLS_STORE_PASSWORD} -out {dst}"
         ),
     ]
 }
@@ -199,17 +200,30 @@ fn import_pkcs12_into_another_pkcs12_commands(src: impl Display, dst: impl Displ
 
 fn javafy_pkcs12_truststore_commands(truststore: impl Display) -> Vec<String> {
     vec![
-        "cd /tmp".to_owned(),
+        format!("keytool -list -storepass changeit -keystore {truststore}"), // DEBUG
+        "temp_dir=$(mktemp -d)".to_owned(),
+        "cd ${temp_dir}".to_owned(),
         format!(
             "openssl pkcs12 -in {truststore} -nokeys -out ca-certs.pem -legacy -password pass:{STACKABLE_TLS_STORE_PASSWORD}"
         ),
-        "csplit -z ca-certs.pem '/-----BEGIN CERTIFICATE-----/' '{*}'".to_owned(),
+        // "csplit -z ca-certs.pem '/-----BEGIN CERTIFICATE-----/' '{*}'".to_owned(),
+        // "csplit -z ca-certs.pem '/Bag Attributes: .*/' '{*}'".to_owned(),
+        "csplit -sz -f cert- -b '%04d.pem' ca-certs.pem '/^-----END CERTIFICATE-----$/+1' '{*}'"
+            .to_owned(),
         "i=1".to_owned(),
-        "for file in xx*; do".to_owned(),
-        "  echo -e \"Bag Attributes\\n    friendlyName: $i\" >> named-certs.pem && cat $file >> named-certs.pem".to_owned(),
+        "for file in cert-*.pem; do".to_owned(),
+        // "  echo -e \"Bag Attributes\\n    friendlyName: $i\" >> named-certs.pem && cat $file >> named-certs.pem".to_owned(),
+        "  sed 's/^Bag Attributes: <No Attributes>$/Bag Attributes\\n    friendlyName: '$i'/' $file >> named-certs.pem"
+            .to_owned(),
         "  ((i++))".to_owned(),
         "done".to_owned(),
-        format!("openssl pkcs12 -export -nokeys -in named-certs.pem -out {truststore} -password pass:{STACKABLE_TLS_STORE_PASSWORD}"),
+        "cat ca-certs.pem".to_owned(),    // DEBUG
+        "cat named-certs.pem".to_owned(), // DEBUG
+        format!(
+            "openssl pkcs12 -export -nokeys -in named-certs.pem -out {truststore} -password pass:{STACKABLE_TLS_STORE_PASSWORD}"
+        ),
+        "ls -la ${temp_dir}".to_owned(), // DEBUG
+        format!("keytool -list -storepass changeit -keystore {truststore}"), // DEBUG
     ]
 }
 
