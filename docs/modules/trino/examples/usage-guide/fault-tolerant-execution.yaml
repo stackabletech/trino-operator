@@ -16,12 +16,12 @@ spec:
         retryInitialDelay: 10s
         retryMaxDelay: 60s
         retryDelayScaleFactor: 2.0
-        exchangeDeduplicationBufferSize: 64MB
+        exchangeDeduplicationBufferSize: 64Mi
         exchangeManager:
           encryptionEnabled: true
           sinkBufferPoolMinSize: 20
           sinkBuffersPerPartition: 4
-          sinkMaxFileSize: 2GB
+          sinkMaxFileSize: 2Gi
           sourceConcurrentReaders: 8
           s3:
             baseDirectories:
@@ -29,7 +29,7 @@ spec:
             connection:
               reference: minio-connection
             maxErrorRetries: 10
-            uploadPartSize: 10MB
+            uploadPartSize: 10Mi
   coordinators:
     roleGroups:
       default:
