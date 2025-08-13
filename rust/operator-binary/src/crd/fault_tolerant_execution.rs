@@ -14,8 +14,10 @@ use stackable_operator::{
     client::Client,
     commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     crd::s3,
-    k8s_openapi::api::core::v1::{Volume, VolumeMount},
-    k8s_openapi::apimachinery::pkg::api::resource::Quantity,
+    k8s_openapi::{
+        api::core::v1::{Volume, VolumeMount},
+        apimachinery::pkg::api::resource::Quantity,
+    },
     schemars::{self, JsonSchema},
     time::Duration,
 };
