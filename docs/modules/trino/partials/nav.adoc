@@ -10,6 +10,7 @@
 ** xref:trino:usage-guide/security.adoc[]
 ** xref:trino:usage-guide/monitoring.adoc[]
 ** xref:trino:usage-guide/log_aggregation.adoc[]
+** xref:trino:usage-guide/OpenTelemetry.adoc[]
 ** xref:trino:usage-guide/query.adoc[]
 ** xref:trino:usage-guide/overrides.adoc[]
 ** xref:trino:usage-guide/catalogs/index.adoc[]
