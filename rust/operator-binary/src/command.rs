@@ -14,7 +14,8 @@ use crate::{
         CONFIG_DIR_NAME, Container, LOG_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole, v1alpha1,
+        SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole,
+        fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig, v1alpha1,
     },
 };
 
@@ -22,6 +23,7 @@ pub fn container_prepare_args(
     trino: &v1alpha1::TrinoCluster,
     catalogs: &[CatalogConfig],
     merged_config: &v1alpha1::TrinoConfig,
+    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
 ) -> Vec<String> {
     let mut args = vec![];
 
@@ -78,12 +80,18 @@ pub fn container_prepare_args(
         args.extend_from_slice(&catalog.init_container_extra_start_commands);
     });
 
+    // Add the commands that are needed for fault tolerant execution (e.g., TLS certificates for S3)
+    if let Some(resolved_fte) = resolved_fte_config {
+        args.extend_from_slice(&resolved_fte.init_container_extra_start_commands);
+    }
+
     args
 }
 
 pub fn container_trino_args(
     authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
+    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder
@@ -110,6 +118,14 @@ pub fn container_trino_args(
             args.push(format!("export {env_name}=\"$(cat {file})\""));
         }
     });
+
+    // Add fault tolerant execution environment variables from files
+    if let Some(resolved_fte) = resolved_fte_config {
+        for (env_name, file) in &resolved_fte.load_env_from_files {
+            args.push(format!("export {env_name}=\"$(cat {file})\""));
+        }
+    }
+
     args.push("set -x".to_string());
 
     // Start command
