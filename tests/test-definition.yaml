@@ -111,6 +111,10 @@ tests:
       - opa
       - keycloak
       - openshift
+  - name: fault-tolerant-execution
+    dimensions:
+      - trino
+      - openshift
   - name: listener
     dimensions:
       - trino

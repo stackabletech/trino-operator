@@ -2,6 +2,7 @@ pub mod affinity;
 pub mod authentication;
 pub mod catalog;
 pub mod discovery;
+pub mod fault_tolerant_execution;
 
 use std::{collections::BTreeMap, ops::Div, str::FromStr};
 
@@ -59,6 +60,7 @@ pub const NODE_PROPERTIES: &str = "node.properties";
 pub const LOG_PROPERTIES: &str = "log.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 pub const JVM_SECURITY_PROPERTIES: &str = "security.properties";
+pub const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 // config.properties
@@ -134,6 +136,15 @@ pub const WORKER_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(30);
 
 /// Safety puffer to guarantee the graceful shutdown works every time.
 pub const WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_secs(10);
+
+/// Convert a Kubernetes `Quantity` to a Trino property string in bytes, e.g. `"65536B"`.
+pub(crate) fn quantity_to_trino_bytes(
+    q: &Quantity,
+) -> Result<String, stackable_operator::memory::Error> {
+    let in_mebi = MemoryQuantity::try_from(q)?.scale_to(BinaryMultiple::Mebi);
+    let bytes = (in_mebi.value * 1024.0 * 1024.0).round() as u64;
+    Ok(format!("{bytes}B"))
+}
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -282,6 +293,12 @@ pub mod versioned {
         /// TLS configuration options for server and internal communication.
         #[serde(default)]
         pub tls: TrinoTls,
+
+        /// Fault tolerant execution configuration.
+        /// When enabled, Trino can automatically retry queries or tasks in case of failures.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub fault_tolerant_execution:
+            Option<fault_tolerant_execution::FaultTolerantExecutionConfig>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.

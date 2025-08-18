@@ -1,0 +1,213 @@
+= Fault-tolerant execution
+:description: Configure fault-tolerant execution in Trino clusters for improved query resilience and automatic retry capabilities.
+:keywords: fault-tolerant execution, retry policy, exchange manager, spooling, query resilience
+
+Fault-tolerant execution is a mechanism in Trino that enables a cluster to mitigate query failures by retrying queries or their component tasks in the event of failure.
+With fault-tolerant execution enabled, intermediate exchange data is spooled and can be re-used by another worker in the event of a worker outage or other failures during query execution.
+
+By default, if a Trino node lacks the resources to execute a task or otherwise fails during query execution, the query fails and must be run again manually.
+The longer the runtime of a query, the more likely it is to be susceptible to such failures.
+
+NOTE: Fault tolerance does not apply to broken queries or other user errors.
+For example, Trino does not spend resources retrying a query that fails because its SQL cannot be parsed.
+
+Take a look at the link:https://trino.io/docs/current/admin/fault-tolerant-execution.html[Trino documentation for fault-tolerant execution {external-link-icon}^] to learn more.
+
+== Configuration
+
+Fault-tolerant execution is not enabled by default.
+It can be enabled in the `TrinoCluster` resource by adding a `faultTolerantExecution` section to the cluster configuration.
+The configuration uses a structured approach where you choose either `query` or `task` retry policy, each with their specific configuration options.
+
+=== Query retry policy
+
+A `query` retry policy instructs Trino to automatically retry a query in the event of an error occurring on a worker node.
+This policy is recommended when the majority of the Trino cluster's workload consists of many small queries.
+
+By default, Trino does not implement fault tolerance for queries whose result set exceeds 32Mi in size.
+This limit can be increased by modifying the `exchangeDeduplicationBufferSize` configuration property to be greater than the default value of `32Mi`, but this results in higher memory usage on the coordinator.
+
+[source,yaml]
+----
+spec:
+  clusterConfig:
+    faultTolerantExecution:
+      query:
+        retryAttempts: 3
+        exchangeDeduplicationBufferSize: 64Mi  # Increased from default 32Mi
+----
+
+=== Task retry policy
+
+A `task` retry policy instructs Trino to retry individual query tasks in the event of failure.
+You **must** configure an exchange manager to use the task retry policy.
+This policy is recommended when executing large batch queries, as the cluster can more efficiently retry smaller tasks within the query, rather than retry the whole query.
+
+IMPORTANT: A `task` retry policy is best suited for long-running queries, but this policy can result in higher latency for short-running queries executed in high volume.
+As a best practice, it is recommended to run a dedicated cluster with a `task` retry policy for large batch queries, separate from another cluster that handles short queries.
+There are tools that can help you achieve this by automatically routing queries based on certain criteria (such as query estimates or user) to different Trino clusters. Notable mentions are link:https://github.com/stackabletech/trino-lb[trino-lb {external-link-icon}^] and link:https://github.com/trinodb/trino-gateway[trino-gateway {external-link-icon}^].
+
+[source,yaml]
+----
+spec:
+  clusterConfig:
+    faultTolerantExecution:
+      task:
+        retryAttemptsPerTask: 4
+        exchangeManager:  # Mandatory for Task retry policy
+          encryptionEnabled: true
+          s3:
+            baseDirectories:
+              - "s3://trino-exchange-bucket/spooling"
+            connection:
+              reference: my-s3-connection  # <1>
+----
+<1> Reference to an xref:concepts:s3.adoc[S3Connection] resource
+
+== Exchange manager
+
+Exchange spooling is responsible for storing and managing spooled data for fault-tolerant execution.
+You can configure a filesystem-based exchange manager that stores spooled data in a specified location, such as AWS S3 and S3-compatible systems, HDFS, or local filesystem.
+
+NOTE: An exchange manager is required when using the `task` retry policy and optional for the `query` retry policy.
+
+=== S3-compatible storage
+
+You can use S3-compatible storage systems for exchange spooling, including AWS S3 and MinIO.
+
+[source,yaml]
+----
+spec:
+  clusterConfig:
+    faultTolerantExecution:
+      task:
+        retryAttemptsPerTask: 4
+        exchangeManager:
+          s3:
+            baseDirectories:  # <1>
+              - "s3://exchange-bucket-1/trino-spooling"
+            connection:
+              reference: minio-s3-connection  # <2>
+---
+apiVersion: s3.stackable.tech/v1alpha1
+kind: S3Connection
+metadata:
+  name: minio-s3-connection
+spec:
+  host: minio.default.svc.cluster.local
+  port: 9000
+  accessStyle: Path
+  credentials:
+    secretClass: minio-secret-class
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: tls
+----
+<1> Multiple S3 buckets can be specified to distribute I/O load
+<2> S3 connection defined as a reference to an xref:concepts:s3.adoc[S3Connection] resource
+
+For storage systems like Google Cloud Storage or Azure Blob Storage, you can use the S3-compatible configuration with `configOverrides` to provide the necessary exchange manager properties.
+
+=== HDFS storage
+
+You can configure HDFS as the exchange spooling destination:
+
+[source,yaml]
+----
+spec:
+  clusterConfig:
+    faultTolerantExecution:
+      task:
+        retryAttemptsPerTask: 4
+        exchangeManager:
+          hdfs:
+            baseDirectories:
+              - "hdfs://simple-hdfs/exchange-spooling"
+            hdfs:
+              configMap: simple-hdfs  # <1>
+----
+<1> ConfigMap containing HDFS configuration files (created by the HDFS operator)
+
+=== Local filesystem storage
+
+Local filesystem storage is supported but only recommended for development or single-node deployments:
+
+WARNING: It is only recommended to use a local filesystem for exchange in standalone, non-production clusters.
+A local directory can only be used for exchange in a distributed cluster if the exchange directory is shared and accessible from all nodes.
+
+[source,yaml]
+----
+spec:
+  clusterConfig:
+    faultTolerantExecution:
+      task:
+        exchangeManager:
+          local:
+            baseDirectories:
+              - "/trino-exchange"
+  coordinators:
+    roleGroups:
+      default:
+        replicas: 1
+        podOverrides:
+          spec:
+            volumes:
+              - name: trino-exchange
+                persistentVolumeClaim:
+                  claimName: trino-exchange-pvc
+            containers:
+              - name: trino
+                volumeMounts:
+                  - name: trino-exchange
+                    mountPath: /trino-exchange
+  workers:
+    roleGroups:
+      default:
+        replicas: 1
+        podOverrides:
+          spec:
+            volumes:
+              - name: trino-exchange
+                persistentVolumeClaim:
+                  claimName: trino-exchange-pvc
+            containers:
+              - name: trino
+                volumeMounts:
+                  - name: trino-exchange
+                    mountPath: /trino-exchange
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: trino-exchange-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+----
+
+== Connector support
+
+Support for fault-tolerant execution of SQL statements varies on a per-connector basis.
+Take a look at the link:https://trino.io/docs/current/admin/fault-tolerant-execution.html#configuration[Trino documentation {external-link-icon}^] to see which connectors support fault-tolerant execution.
+
+When using connectors that do not explicitly support fault-tolerant execution, you may encounter a "This connector does not support query retries" error message.
+
+== Example
+
+Here's an example of a Trino cluster with fault-tolerant execution enabled using the `task` retry policy and MinIO backed S3 as the exchange manager:
+
+[source,bash]
+----
+stackablectl operator install commons secret listener trino
+helm install minio oci://registry-1.docker.io/bitnamicharts/minio --version 17.0.19 --set auth.rootUser=minio-access-key --set auth.rootPassword=minio-secret-key --set tls.enabled=true --set tls.server.existingSecret=minio-tls-certificates --set tls.existingSecret=minio-tls-certificates --set tls.existingCASecret=minio-tls-certificates --set tls.autoGenerated.enabled=false --set provisioning.enabled=true --set provisioning.buckets[0].name=trino-exchange-bucket --set global.security.allowInsecureImages=true --set image.repository=bitnamilegacy/minio --set clientImage.repository=bitnamilegacy/minio-client --set defaultInitContainers.volumePermissions.image.repository=bitnamilegacy/os-shell --set console.image.repository=bitnamilegacy/minio-object-browser
+----
+
+[source,yaml]
+----
+include::example$usage-guide/fault-tolerant-execution.yaml[]
+----

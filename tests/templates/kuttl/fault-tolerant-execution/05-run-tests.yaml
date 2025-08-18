@@ -1,0 +1,6 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/04_check-fte.py -c trino-fte-coordinator
+    timeout: 120
