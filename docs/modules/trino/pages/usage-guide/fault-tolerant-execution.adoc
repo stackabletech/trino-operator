@@ -3,7 +3,7 @@
 :keywords: fault-tolerant execution, retry policy, exchange manager, spooling, query resilience
 
 Fault-tolerant execution is a mechanism in Trino that enables a cluster to mitigate query failures by retrying queries or their component tasks in the event of failure.
-With fault-tolerant execution enabled, intermediate exchange data is spooled and can be re-used by another worker in the event of a worker outage or other fault during query execution.
+With fault-tolerant execution enabled, intermediate exchange data is spooled and can be re-used by another worker in the event of a worker outage or other failures during query execution.
 
 By default, if a Trino node lacks the resources to execute a task or otherwise fails during query execution, the query fails and must be run again manually.
 The longer the runtime of a query, the more likely it is to be susceptible to such failures.
