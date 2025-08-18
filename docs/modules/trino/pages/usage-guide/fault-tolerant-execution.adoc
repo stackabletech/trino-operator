@@ -16,7 +16,7 @@ Take a look at the link:https://trino.io/docs/current/admin/fault-tolerant-execu
 == Configuration
 
 Fault-tolerant execution is not enabled by default.
-To enable the feature, you need to configure it in your `TrinoCluster` resource by adding a `faultTolerantExecution` section to the cluster configuration.
+It can be enabled in the `TrinoCluster` resource by adding a `faultTolerantExecution` section to the cluster configuration.
 The configuration uses a structured approach where you choose either `query` or `task` retry policy, each with their specific configuration options.
 
 === Query retry policy
