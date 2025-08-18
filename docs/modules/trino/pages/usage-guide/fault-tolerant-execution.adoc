@@ -8,7 +8,7 @@ With fault-tolerant execution enabled, intermediate exchange data is spooled and
 By default, if a Trino node lacks the resources to execute a task or otherwise fails during query execution, the query fails and must be run again manually.
 The longer the runtime of a query, the more likely it is to be susceptible to such failures.
 
-NOTE: Fault tolerance does not apply to broken queries or other user error.
+NOTE: Fault tolerance does not apply to broken queries or other user errors.
 For example, Trino does not spend resources retrying a query that fails because its SQL cannot be parsed.
 
 Take a look at the link:https://trino.io/docs/current/admin/fault-tolerant-execution.html[Trino documentation for fault-tolerant execution {external-link-icon}^] to learn more.
