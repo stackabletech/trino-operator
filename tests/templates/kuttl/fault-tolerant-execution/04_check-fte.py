@@ -27,38 +27,13 @@ if __name__ == "__main__":
         required=True,
         help="Trino Coordinator Host to connect to",
     )
-    all_args.add_argument(
-        "-w",
-        "--workers",
-        required=True,
-        help="Expected amount of workers to be present",
-    )
 
     args = vars(all_args.parse_args())
 
-    expected_workers = args["workers"]
     conn = get_connection(args["coordinator"])
 
     try:
         cursor = conn.cursor()
-
-        # Check that workers are active
-        cursor.execute(
-            "SELECT COUNT(*) as nodes FROM system.runtime.nodes WHERE coordinator=false AND state='active'"
-        )
-        (active_workers,) = cursor.fetchone()
-
-        if int(active_workers) != int(expected_workers):
-            print(
-                "Mismatch: [expected/active] workers ["
-                + str(expected_workers)
-                + "/"
-                + str(active_workers)
-                + "]"
-            )
-            exit(-1)
-
-        print(f"Active workers check passed: {active_workers}/{expected_workers}")
 
         # Test that TPCH connector is working
         cursor.execute("SELECT COUNT(*) FROM tpch.tiny.nation")
@@ -89,6 +64,9 @@ if __name__ == "__main__":
             exit(-1)
 
         print("Complex query test passed")
+
+        cursor.close()
+        conn.close()
 
     except Exception as e:
         print(f"Test failed with error: {e}")

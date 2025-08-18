@@ -2,11 +2,11 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/04_check-fte.py -c trino-fte-coordinator -w 2
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/check-active-workers.py -u admin -p "" -c trino-fte-coordinator -w 2
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/04_check-fte.py -c trino-fte-coordinator
     timeout: 120
   # Verify that the exchange bucket contains data
   - script: |
-      sleep 10
       kubectl exec -n $NAMESPACE deployment/minio -- mc alias set local https://localhost:9000 minioAccessKey minioSecretKey --api S3v4
       count=$(kubectl exec -n $NAMESPACE deployment/minio -- mc stat --insecure local/exchange-bucket | awk '/Objects count:/ {print $3}')
       if [ "$count" -gt 0 ]; then
