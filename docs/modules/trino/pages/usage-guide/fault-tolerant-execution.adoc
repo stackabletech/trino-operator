@@ -41,7 +41,7 @@ spec:
 
 A `task` retry policy instructs Trino to retry individual query tasks in the event of failure.
 You **must** configure an exchange manager to use the task retry policy.
-This policy is recommended when executing large batch queries, as the cluster can more efficiently retry smaller tasks within the query rather than retry the whole query.
+This policy is recommended when executing large batch queries, as the cluster can more efficiently retry smaller tasks within the query, rather than retry the whole query.
 
 IMPORTANT: A `task` retry policy is best suited for long-running queries, but this policy can result in higher latency for short-running queries executed in high volume.
 As a best practice, it is recommended to run a dedicated cluster with a `task` retry policy for large batch queries, separate from another cluster that handles short queries.
