@@ -12,12 +12,12 @@ body:
       label: Affected Stackable version
       description: Which version of the Stackable Operator do you see this bug in?
 
-# 
+#
   - type: input
     attributes:
       label: Affected Trino version
       description: Which version of Trino do you see this bug in?
-# 
+#
   - type: textarea
     attributes:
       label: Current and expected behavior
