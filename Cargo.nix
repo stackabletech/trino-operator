@@ -4611,9 +4611,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "e5d6dc124f1451c036b75474c3eb2bd721d18e4f";
-          sha256 = "123w1c6021iqgp9aa80g42v8kifyik4gkk9hsnhbc1g8yq5ns6h0";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "20659fe864c643fe48c7ff70ed417f0ed05ccf45";
+          sha256 = "0db745j2nz5kz5mp8sh8af26gh9wx3cdad7ggl9f9jki1ms534z0";
         };
         libName = "k8s_version";
         authors = [
@@ -4631,7 +4631,7 @@ rec {
           }
           {
             name = "snafu";
-            packageId = "snafu 0.8.6";
+            packageId = "snafu 0.8.7";
           }
         ];
         features = {
@@ -6689,7 +6689,7 @@ rec {
           }
           {
             name = "snafu";
-            packageId = "snafu 0.8.6";
+            packageId = "snafu 0.8.7";
           }
           {
             name = "xml-rs";
@@ -8486,18 +8486,18 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "guide" "std" ];
       };
-      "snafu 0.8.6" = rec {
+      "snafu 0.8.7" = rec {
         crateName = "snafu";
-        version = "0.8.6";
+        version = "0.8.7";
         edition = "2018";
-        sha256 = "09znwwss9xi7i28kpj29b29nh28nv5kfjjsa99x5v3dz27h022rj";
+        sha256 = "0jp7rspj1f4m6rdj6bxf8zyi89bkdm0s76fhan8nwjkcn9ra6qh0";
         authors = [
           "Jake Goulding <jake.goulding@gmail.com>"
         ];
         dependencies = [
           {
             name = "snafu-derive";
-            packageId = "snafu-derive 0.8.6";
+            packageId = "snafu-derive 0.8.7";
           }
         ];
         features = {
@@ -8545,11 +8545,11 @@ rec {
         features = {
         };
       };
-      "snafu-derive 0.8.6" = rec {
+      "snafu-derive 0.8.7" = rec {
         crateName = "snafu-derive";
-        version = "0.8.6";
+        version = "0.8.7";
         edition = "2018";
-        sha256 = "1xs7w5hg9sw45lw34mzza1nnpx9lz5snjp9s9lh2852c8bpy4q8r";
+        sha256 = "1f1262smvvilsga1aard454pkqs39nyps46mmdrrvh9z4vixjpvy";
         procMacro = true;
         libName = "snafu_derive";
         authors = [
@@ -8621,13 +8621,13 @@ rec {
       };
       "stackable-operator" = rec {
         crateName = "stackable-operator";
-        version = "0.94.0";
+        version = "0.95.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "e5d6dc124f1451c036b75474c3eb2bd721d18e4f";
-          sha256 = "123w1c6021iqgp9aa80g42v8kifyik4gkk9hsnhbc1g8yq5ns6h0";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "20659fe864c643fe48c7ff70ed417f0ed05ccf45";
+          sha256 = "0db745j2nz5kz5mp8sh8af26gh9wx3cdad7ggl9f9jki1ms534z0";
         };
         libName = "stackable_operator";
         authors = [
@@ -8726,7 +8726,7 @@ rec {
           }
           {
             name = "snafu";
-            packageId = "snafu 0.8.6";
+            packageId = "snafu 0.8.7";
           }
           {
             name = "stackable-operator-derive";
@@ -8739,11 +8739,13 @@ rec {
           {
             name = "stackable-telemetry";
             packageId = "stackable-telemetry";
+            optional = true;
             features = [ "clap" ];
           }
           {
             name = "stackable-versioned";
             packageId = "stackable-versioned";
+            optional = true;
           }
           {
             name = "strum";
@@ -8775,9 +8777,13 @@ rec {
           }
         ];
         features = {
+          "certs" = [ "dep:stackable-certs" ];
           "default" = [ "telemetry" "versioned" ];
-          "full" = [ "time" "telemetry" "versioned" ];
-          "time" = [ "dep:time" ];
+          "full" = [ "certs" "telemetry" "versioned" "time" "webhook" ];
+          "telemetry" = [ "dep:stackable-telemetry" ];
+          "time" = [ "stackable-shared/time" ];
+          "versioned" = [ "dep:stackable-versioned" ];
+          "webhook" = [ "dep:stackable-webhook" ];
         };
         resolvedDefaultFeatures = [ "default" "telemetry" "versioned" ];
       };
@@ -8787,9 +8793,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "e5d6dc124f1451c036b75474c3eb2bd721d18e4f";
-          sha256 = "123w1c6021iqgp9aa80g42v8kifyik4gkk9hsnhbc1g8yq5ns6h0";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "20659fe864c643fe48c7ff70ed417f0ed05ccf45";
+          sha256 = "0db745j2nz5kz5mp8sh8af26gh9wx3cdad7ggl9f9jki1ms534z0";
         };
         procMacro = true;
         libName = "stackable_operator_derive";
@@ -8818,13 +8824,13 @@ rec {
       };
       "stackable-shared" = rec {
         crateName = "stackable-shared";
-        version = "0.0.1";
+        version = "0.0.2";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "e5d6dc124f1451c036b75474c3eb2bd721d18e4f";
-          sha256 = "123w1c6021iqgp9aa80g42v8kifyik4gkk9hsnhbc1g8yq5ns6h0";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "20659fe864c643fe48c7ff70ed417f0ed05ccf45";
+          sha256 = "0db745j2nz5kz5mp8sh8af26gh9wx3cdad7ggl9f9jki1ms534z0";
         };
         libName = "stackable_shared";
         authors = [
@@ -8832,10 +8838,21 @@ rec {
         ];
         dependencies = [
           {
+            name = "k8s-openapi";
+            packageId = "k8s-openapi";
+            usesDefaultFeatures = false;
+            features = [ "schemars" "v1_33" ];
+          }
+          {
             name = "kube";
             packageId = "kube";
             usesDefaultFeatures = false;
             features = [ "client" "jsonpatch" "runtime" "derive" "rustls-tls" "ring" ];
+          }
+          {
+            name = "schemars";
+            packageId = "schemars";
+            features = [ "url" ];
           }
           {
             name = "semver";
@@ -8852,10 +8869,33 @@ rec {
           }
           {
             name = "snafu";
-            packageId = "snafu 0.8.6";
+            packageId = "snafu 0.8.7";
+          }
+          {
+            name = "strum";
+            packageId = "strum";
+            features = [ "derive" ];
+          }
+          {
+            name = "time";
+            packageId = "time";
+            optional = true;
           }
         ];
-
+        devDependencies = [
+          {
+            name = "k8s-openapi";
+            packageId = "k8s-openapi";
+            usesDefaultFeatures = false;
+            features = [ "schemars" "v1_33" ];
+          }
+        ];
+        features = {
+          "default" = [ "time" ];
+          "full" = [ "time" ];
+          "time" = [ "dep:time" ];
+        };
+        resolvedDefaultFeatures = [ "default" "time" ];
       };
       "stackable-telemetry" = rec {
         crateName = "stackable-telemetry";
@@ -8863,9 +8903,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "e5d6dc124f1451c036b75474c3eb2bd721d18e4f";
-          sha256 = "123w1c6021iqgp9aa80g42v8kifyik4gkk9hsnhbc1g8yq5ns6h0";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "20659fe864c643fe48c7ff70ed417f0ed05ccf45";
+          sha256 = "0db745j2nz5kz5mp8sh8af26gh9wx3cdad7ggl9f9jki1ms534z0";
         };
         libName = "stackable_telemetry";
         authors = [
@@ -8916,7 +8956,7 @@ rec {
           }
           {
             name = "snafu";
-            packageId = "snafu 0.8.6";
+            packageId = "snafu 0.8.7";
           }
           {
             name = "strum";
@@ -9031,7 +9071,7 @@ rec {
           }
           {
             name = "snafu";
-            packageId = "snafu 0.8.6";
+            packageId = "snafu 0.8.7";
           }
           {
             name = "stackable-operator";
@@ -9074,13 +9114,13 @@ rec {
       };
       "stackable-versioned" = rec {
         crateName = "stackable-versioned";
-        version = "0.8.0";
+        version = "0.8.1";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "e5d6dc124f1451c036b75474c3eb2bd721d18e4f";
-          sha256 = "123w1c6021iqgp9aa80g42v8kifyik4gkk9hsnhbc1g8yq5ns6h0";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "20659fe864c643fe48c7ff70ed417f0ed05ccf45";
+          sha256 = "0db745j2nz5kz5mp8sh8af26gh9wx3cdad7ggl9f9jki1ms534z0";
         };
         libName = "stackable_versioned";
         authors = [
@@ -9107,7 +9147,7 @@ rec {
           }
           {
             name = "snafu";
-            packageId = "snafu 0.8.6";
+            packageId = "snafu 0.8.7";
           }
           {
             name = "stackable-versioned-macros";
@@ -9118,13 +9158,13 @@ rec {
       };
       "stackable-versioned-macros" = rec {
         crateName = "stackable-versioned-macros";
-        version = "0.8.0";
+        version = "0.8.1";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "e5d6dc124f1451c036b75474c3eb2bd721d18e4f";
-          sha256 = "123w1c6021iqgp9aa80g42v8kifyik4gkk9hsnhbc1g8yq5ns6h0";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "20659fe864c643fe48c7ff70ed417f0ed05ccf45";
+          sha256 = "0db745j2nz5kz5mp8sh8af26gh9wx3cdad7ggl9f9jki1ms534z0";
         };
         procMacro = true;
         libName = "stackable_versioned_macros";
@@ -9560,7 +9600,7 @@ rec {
           "std" = [ "alloc" "deranged/std" ];
           "wasm-bindgen" = [ "dep:js-sys" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "formatting" "parsing" "std" ];
+        resolvedDefaultFeatures = [ "alloc" "default" "formatting" "parsing" "std" ];
       };
       "time-core" = rec {
         crateName = "time-core";

@@ -34,8 +34,8 @@ use stackable_operator::{
         CommonConfiguration, GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef,
     },
     schemars::{self, JsonSchema},
+    shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
-    time::Duration,
     utils::cluster_info::KubernetesClusterInfo,
     versioned::versioned,
 };

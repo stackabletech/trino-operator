@@ -65,11 +65,11 @@ use stackable_operator::{
         },
     },
     role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroupRef},
+    shared::time::Duration,
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
-    time::Duration,
     utils::cluster_info::KubernetesClusterInfo,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};

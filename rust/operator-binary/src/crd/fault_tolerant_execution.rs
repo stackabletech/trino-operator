@@ -19,7 +19,7 @@ use stackable_operator::{
         apimachinery::pkg::api::resource::Quantity,
     },
     schemars::{self, JsonSchema},
-    time::Duration,
+    shared::time::Duration,
 };
 
 use super::catalog::commons::HdfsConnection;
@@ -575,8 +575,6 @@ impl ResolvedFaultTolerantExecutionConfig {
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::time::Duration;
-
     use super::*;
 
     #[tokio::test]
