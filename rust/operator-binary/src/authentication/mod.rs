@@ -670,7 +670,7 @@ mod tests {
     fn resolved_product_image() -> ResolvedProductImage {
         ResolvedProductImage {
             product_version: "".to_string(),
-            app_version_label: "".to_string(),
+            app_version_label_value: "470".parse().expect("static label value is always valid"),
             image: "".to_string(),
             image_pull_policy: "".to_string(),
             pull_secrets: None,

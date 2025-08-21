@@ -29,7 +29,10 @@ use stackable_operator::{
     },
     client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
-    commons::{product_image_selection::ResolvedProductImage, rbac::build_rbac_resources},
+    commons::{
+        product_image_selection::{self, ResolvedProductImage},
+        rbac::build_rbac_resources,
+    },
     k8s_openapi::{
         DeepMerge,
         api::{
@@ -62,11 +65,11 @@ use stackable_operator::{
         },
     },
     role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroupRef},
+    shared::time::Duration,
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
-    time::Duration,
     utils::cluster_info::KubernetesClusterInfo,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
@@ -366,6 +369,11 @@ pub enum Error {
 
     #[snafu(display("failed to configure service"))]
     ServiceConfiguration { source: crate::service::Error },
+
+    #[snafu(display("failed to resolve product image"))]
+    ResolveProductImage {
+        source: product_image_selection::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -389,10 +397,11 @@ pub async fn reconcile_trino(
         .context(InvalidTrinoClusterSnafu)?;
     let client = &ctx.client;
 
-    let resolved_product_image: ResolvedProductImage = trino
+    let resolved_product_image = trino
         .spec
         .image
-        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::PKG_VERSION);
+        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::PKG_VERSION)
+        .context(ResolveProductImageSnafu)?;
 
     let resolved_authentication_classes =
         resolve_authentication_classes(client, trino.get_authentication())
@@ -507,7 +516,7 @@ pub async fn reconcile_trino(
 
             let role_group_service_recommended_labels = build_recommended_labels(
                 trino,
-                &resolved_product_image.app_version_label,
+                &resolved_product_image.app_version_label_value,
                 &role_group_ref.role,
                 &role_group_ref.role_group,
             );
@@ -612,7 +621,7 @@ pub async fn reconcile_trino(
                     trino,
                     build_recommended_labels(
                         trino,
-                        &resolved_product_image.app_version_label,
+                        &resolved_product_image.app_version_label_value,
                         &trino_role_str,
                         "none",
                     ),
@@ -852,7 +861,7 @@ fn build_rolegroup_config_map(
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
                 .with_recommended_labels(build_recommended_labels(
                     trino,
-                    &resolved_product_image.app_version_label,
+                    &resolved_product_image.app_version_label_value,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 ))
@@ -883,7 +892,7 @@ fn build_rolegroup_catalog_config_map(
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
                 .with_recommended_labels(build_recommended_labels(
                     trino,
-                    &resolved_product_image.app_version_label,
+                    &resolved_product_image.app_version_label_value,
                     &rolegroup_ref.role,
                     &rolegroup_ref.role_group,
                 ))
@@ -1198,7 +1207,7 @@ fn build_rolegroup_statefulset(
     let metadata = ObjectMetaBuilder::new()
         .with_recommended_labels(build_recommended_labels(
             trino,
-            &resolved_product_image.app_version_label,
+            &resolved_product_image.app_version_label_value,
             &role_group_ref.role,
             &role_group_ref.role_group,
         ))
@@ -1257,7 +1266,7 @@ fn build_rolegroup_statefulset(
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(build_recommended_labels(
                 trino,
-                &resolved_product_image.app_version_label,
+                &resolved_product_image.app_version_label_value,
                 &role_group_ref.role,
                 &role_group_ref.role_group,
             ))
@@ -1762,7 +1771,8 @@ mod tests {
         let resolved_product_image = trino
             .spec
             .image
-            .resolve(DOCKER_IMAGE_BASE_NAME, "0.0.0-dev");
+            .resolve(DOCKER_IMAGE_BASE_NAME, "0.0.0-dev")
+            .expect("test resolved product image is always valid");
 
         let config_files = vec![
             PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
