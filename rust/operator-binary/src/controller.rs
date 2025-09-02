@@ -84,11 +84,11 @@ use crate::{
         DISCOVERY_URI, ENV_INTERNAL_SECRET, EXCHANGE_MANAGER_PROPERTIES, HTTP_PORT, HTTP_PORT_NAME,
         HTTPS_PORT, HTTPS_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES,
         MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-        TrinoRole,
+        RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES, STACKABLE_CLIENT_TLS_DIR,
+        STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, TrinoRole,
         authentication::resolve_authentication_classes,
-        catalog,
+        catalog, client_protocol,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         rolegroup_headless_service_name, v1alpha1,
@@ -132,6 +132,12 @@ pub enum Error {
 
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
+
+    #[snafu(display("Trino cluster {} has no namespace", name))]
+    MissingTrinoNamespace {
+        source: crate::crd::Error,
+        name: String,
+    },
 
     #[snafu(display("object defines no {role:?} role"))]
     MissingTrinoRole {
@@ -374,6 +380,9 @@ pub enum Error {
     ResolveProductImage {
         source: product_image_selection::Error,
     },
+
+    #[snafu(display("failed to resolve client protocol configuration"))]
+    ClientProtocolConfiguration { source: client_protocol::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -396,6 +405,10 @@ pub async fn reconcile_trino(
         .map_err(error_boundary::InvalidObject::clone)
         .context(InvalidTrinoClusterSnafu)?;
     let client = &ctx.client;
+
+    let namespace = trino.namespace_r().context(MissingTrinoNamespaceSnafu {
+        name: trino.name_any(),
+    })?;
 
     let resolved_product_image = trino
         .spec
@@ -443,13 +456,23 @@ pub async fn reconcile_trino(
     // Resolve fault tolerant execution configuration with S3 connections if needed
     let resolved_fte_config = match trino.spec.cluster_config.fault_tolerant_execution.as_ref() {
         Some(fte_config) => Some(
-            ResolvedFaultTolerantExecutionConfig::from_config(
-                fte_config,
+            ResolvedFaultTolerantExecutionConfig::from_config(fte_config, Some(client), &namespace)
+                .await
+                .context(FaultTolerantExecutionSnafu)?,
+        ),
+        None => None,
+    };
+
+    // Resolve client spooling protocol configuration with S3 connections if needed
+    let resolved_spooling_config = match trino.spec.cluster_config.client_protocol.as_ref() {
+        Some(client_protocol_config) => Some(
+            client_protocol::ResolvedSpoolingProtocolConfig::from_config(
+                &client_protocol_config.spooling,
                 Some(client),
-                &trino.namespace_r().context(ReadRoleSnafu)?,
+                &namespace,
             )
             .await
-            .context(FaultTolerantExecutionSnafu)?,
+            .context(ClientProtocolConfigurationSnafu)?,
         ),
         None => None,
     };
@@ -557,6 +580,7 @@ pub async fn reconcile_trino(
                 &trino_opa_config,
                 &client.kubernetes_cluster_info,
                 &resolved_fte_config,
+                &resolved_spooling_config,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
@@ -684,6 +708,7 @@ fn build_rolegroup_config_map(
     trino_opa_config: &Option<TrinoOpaConfig>,
     cluster_info: &KubernetesClusterInfo,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_spooling_protocol_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -830,6 +855,23 @@ fn build_rolegroup_config_map(
             cm_conf_data.insert(
                 EXCHANGE_MANAGER_PROPERTIES.to_string(),
                 to_java_properties_string(exchange_props_with_options.iter())
+                    .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
+            );
+        }
+    }
+
+    // Add client protocol properties (especially spooling properties)
+    if let Some(resolved_client_protocol) = resolved_spooling_protocol_config {
+        if resolved_client_protocol.is_enabled() {
+            let spooling_props_with_options: BTreeMap<String, Option<String>> =
+                resolved_client_protocol
+                    .spooling_manager_properties
+                    .iter()
+                    .map(|(k, v)| (k.clone(), Some(v.clone())))
+                    .collect();
+            cm_conf_data.insert(
+                SPOOLING_MANAGER_PROPERTIES.to_string(),
+                to_java_properties_string(spooling_props_with_options.iter())
                     .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
             );
         }
@@ -1863,6 +1905,7 @@ mod tests {
             &trino_authentication_config,
             &trino_opa_config,
             &cluster_info,
+            &None,
             &None,
         )
         .unwrap()

@@ -1,0 +1,271 @@
+use std::collections::{BTreeMap, HashMap};
+
+/// This module manages the client protocol properties, especially the for spooling.
+/// Trino documentation is available here: https://trino.io/docs/current/client/client-protocol.html
+use serde::{Deserialize, Serialize};
+use snafu::Snafu;
+use stackable_operator::{
+    client::Client,
+    commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
+    crd::s3,
+    k8s_openapi::{
+        api::core::v1::{Volume, VolumeMount},
+        apimachinery::pkg::api::resource::Quantity,
+    },
+    schemars::{self, JsonSchema},
+    shared::time::Duration,
+};
+use strum::Display;
+
+use crate::{command, crd::STACKABLE_CLIENT_TLS_DIR};
+
+const SPOOLING_S3_AWS_ACCESS_KEY: &str = "SPOOLING_S3_AWS_ACCESS_KEY";
+const SPOOLING_S3_AWS_SECRET_KEY: &str = "SPOOLING_S3_AWS_SECRET_KEY";
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientProtocolConfig {
+    #[serde(flatten)]
+    pub spooling: SpoolingProtocolConfig,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpoolingProtocolConfig {
+    // Spooling protocol properties
+    /// Enable spooling protocol.
+    pub enabled: bool,
+
+    // Name of the Kubernetes Secret with one entry ("key")
+    // to use as protocol.spooling.shared-secret-key property
+    pub shared_secret: String,
+
+    // Segment retrieval mode used by clients.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retrieval_mode: Option<SpoolingRetrievalMode>,
+
+    // Spooled segment size. Is translated to both initial and max segment size.
+    // Use overrides for set those explicitly to distinct values.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub segment_size: Option<Quantity>,
+
+    // Spooling filesystem properties
+
+    // Spool segment location. Each Trino cluster must have its own
+    // location independent of any other clusters.
+    pub location: String,
+
+    // Spool segment TTL. Is translated to both fs.segment.ttl as well as
+    // fs.segment.direct.ttl.
+    // Use overrides for set those explicitly to distinct values.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub segment_ttl: Option<Duration>,
+
+    // Spool segment encryption.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub segment_encryption: Option<bool>,
+
+    // Spooling filesystem properties. Only S3 is supported.
+    #[serde(flatten)]
+    pub filesystem: SpoolingFileSystemConfig,
+
+    /// The `configOverrides` allow overriding arbitrary client protocol properties.
+    #[serde(default)]
+    pub config_overrides: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize, Display)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum SpoolingRetrievalMode {
+    Storage,
+    CoordinatorStorageRedirect,
+    CoordinatorProxy,
+    WorkerProxy,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+pub enum SpoolingFileSystemConfig {
+    S3(S3SpoolingConfig),
+}
+// TODO: this is exactly the same as fault_tolerant_execution::S3ExchangeConfig
+// but without the base_directory property.
+// Consolidate Trino S3 properties in a single reusable struct.
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct S3SpoolingConfig {
+    /// S3 connection configuration.
+    /// Learn more about S3 configuration in the [S3 concept docs](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
+    pub connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference,
+
+    /// IAM role to assume for S3 access.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iam_role: Option<String>,
+
+    /// External ID for the IAM role trust policy.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_id: Option<String>,
+
+    /// Maximum number of times the S3 client should retry a request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_error_retries: Option<u32>,
+
+    /// Part data size for S3 multi-part upload.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upload_part_size: Option<Quantity>,
+}
+
+pub struct ResolvedSpoolingProtocolConfig {
+    /// Enable spooling protocol.
+    pub enabled: bool,
+
+    // Properties for spooling-manager.properties
+    pub spooling_manager_properties: BTreeMap<String, String>,
+
+    /// Volumes required for the configuration (e.g., for S3 credentials)
+    pub volumes: Vec<Volume>,
+
+    /// Volume mounts required for the configuration
+    pub volume_mounts: Vec<VolumeMount>,
+
+    /// Env-Vars that should be exported from files.
+    /// You can think of it like `export <key>="$(cat <value>)"`
+    pub load_env_from_files: BTreeMap<String, String>,
+
+    /// Additional commands that need to be executed before starting Trino
+    /// Used to add TLS certificates to the client's trust store.
+    pub init_container_extra_start_commands: Vec<String>,
+}
+
+impl ResolvedSpoolingProtocolConfig {
+    /// Resolve S3 connection properties from Kubernetes resources
+    /// and prepare spooling filesystem configuration.
+    pub async fn from_config(
+        config: &SpoolingProtocolConfig,
+        client: Option<&Client>,
+        namespace: &str,
+    ) -> Result<Self, Error> {
+        let spooling_manager_properties = BTreeMap::new();
+
+        let mut resolved_config = Self {
+            enabled: config.enabled,
+            spooling_manager_properties,
+            volumes: Vec::new(),
+            volume_mounts: Vec::new(),
+            load_env_from_files: BTreeMap::new(),
+            init_container_extra_start_commands: Vec::new(),
+        };
+
+        // Resolve external resources if Kubernetes client is available
+        // This should always be the case, except for when this function is called during unit tests
+        if let Some(client) = client {
+            match &config.filesystem {
+                SpoolingFileSystemConfig::S3(s3_config) => {
+                    resolved_config
+                        .resolve_s3_backend(s3_config, client, namespace)
+                        .await?;
+                }
+            }
+        }
+
+        Ok(resolved_config)
+    }
+
+    async fn resolve_s3_backend(
+        &mut self,
+        s3_config: &S3SpoolingConfig,
+        client: &Client,
+        namespace: &str,
+    ) -> Result<(), Error> {
+        use snafu::ResultExt;
+
+        let s3_connection = s3_config
+            .connection
+            .clone()
+            .resolve(client, namespace)
+            .await
+            .context(S3ConnectionSnafu)?;
+
+        let (volumes, mounts) = s3_connection
+            .volumes_and_mounts()
+            .context(S3ConnectionSnafu)?;
+        self.volumes.extend(volumes);
+        self.volume_mounts.extend(mounts);
+
+        self.spooling_manager_properties
+            .insert("s3.region".to_string(), s3_connection.region.name.clone());
+        self.spooling_manager_properties.insert(
+            "s3.endpoint".to_string(),
+            s3_connection
+                .endpoint()
+                .context(S3ConnectionSnafu)?
+                .to_string(),
+        );
+        self.spooling_manager_properties.insert(
+            "s3.path-style-access".to_string(),
+            (s3_connection.access_style == s3::v1alpha1::S3AccessStyle::Path).to_string(),
+        );
+
+        if let Some((access_key_path, secret_key_path)) = s3_connection.credentials_mount_paths() {
+            self.spooling_manager_properties.extend([
+                (
+                    "s3.aws-access-key".to_string(),
+                    format!("${{ENV:{SPOOLING_S3_AWS_ACCESS_KEY}}}"),
+                ),
+                (
+                    "s3.aws-secret-key".to_string(),
+                    format!("${{ENV:{SPOOLING_S3_AWS_SECRET_KEY}}}"),
+                ),
+            ]);
+
+            self.load_env_from_files.extend([
+                (String::from(SPOOLING_S3_AWS_ACCESS_KEY), access_key_path),
+                (String::from(SPOOLING_S3_AWS_SECRET_KEY), secret_key_path),
+            ]);
+        }
+
+        if let Some(tls) = s3_connection.tls.tls.as_ref() {
+            match &tls.verification {
+                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
+                TlsVerification::Server(TlsServerVerification {
+                    ca_cert: CaCert::WebPki {},
+                }) => {}
+                TlsVerification::Server(TlsServerVerification {
+                    ca_cert: CaCert::SecretClass(_),
+                }) => {
+                    if let Some(ca_cert) = s3_connection.tls.tls_ca_cert_mount_path() {
+                        self.init_container_extra_start_commands.extend(
+                            command::add_cert_to_truststore(
+                                &ca_cert,
+                                STACKABLE_CLIENT_TLS_DIR,
+                                "spooling-s3-ca-cert",
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn is_enabled(&self) -> bool {
+        return self.enabled;
+    }
+}
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("Failed to resolve S3 connection"))]
+    S3Connection {
+        source: s3::v1alpha1::ConnectionError,
+    },
+
+    #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
+    S3TlsNoVerificationNotSupported,
+
+    #[snafu(display("failed to convert data size for [{field}] to bytes"))]
+    QuantityConversion {
+        source: stackable_operator::memory::Error,
+        field: &'static str,
+    },
+}

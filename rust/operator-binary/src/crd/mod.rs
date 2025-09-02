@@ -1,6 +1,7 @@
 pub mod affinity;
 pub mod authentication;
 pub mod catalog;
+pub mod client_protocol;
 pub mod discovery;
 pub mod fault_tolerant_execution;
 
@@ -61,6 +62,7 @@ pub const LOG_PROPERTIES: &str = "log.properties";
 pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
 pub const JVM_SECURITY_PROPERTIES: &str = "security.properties";
 pub const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
+pub const SPOOLING_MANAGER_PROPERTIES: &str = "spooling-manager.properties";
 // node.properties
 pub const NODE_ENVIRONMENT: &str = "node.environment";
 // config.properties
@@ -299,6 +301,10 @@ pub mod versioned {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub fault_tolerant_execution:
             Option<fault_tolerant_execution::FaultTolerantExecutionConfig>,
+
+        /// Client spooling protocol configuration.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub client_protocol: Option<client_protocol::ClientProtocolConfig>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
