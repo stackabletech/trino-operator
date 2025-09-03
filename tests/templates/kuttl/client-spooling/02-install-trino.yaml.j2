@@ -1,0 +1,55 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  image:
+{% if test_scenario['values']['trino'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
+{% else %}
+    productVersion: "{{ test_scenario['values']['trino'] }}"
+{% endif %}
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: trino
+    clientSpoolingProtocol:
+      enabled: true
+      location: "s3://spooling-bucket/trino/"
+      filesystem:
+        s3:
+          connection:
+            reference: "minio"
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+  workers:
+    config:
+      gracefulShutdownTimeout: 5s # Let the test run faster
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 2
+        config: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: tpch
+  labels:
+    trino: trino
+spec:
+  connector:
+    tpch: {}

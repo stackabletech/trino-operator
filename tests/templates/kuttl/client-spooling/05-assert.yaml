@@ -1,0 +1,32 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+commands:
+  - script: kubectl exec -n $NAMESPACE trino-test-helper -- python /tmp/check-active-workers.py -u admin -p "" -c trino-coordinator -w 2
+  # Verify that the spooling bucket contains data
+  - script: |
+      kubectl exec -n $NAMESPACE deployment/minio -- mc alias set local https://localhost:9000 minioAccessKey minioSecretKey --api S3v4
+      count=$(kubectl exec -n $NAMESPACE deployment/minio -- mc stat --insecure local/spooling-bucket | awk '/Objects count:/ {print $3}')
+      if [ "$count" -gt 0 ]; then
+        echo "Objects count is $count (> 0)"
+      else
+        echo "Objects count is $count (not > 0)"
+        exit 1
+      fi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-coordinator-default
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-default
+status:
+  readyReplicas: 2
+  replicas: 2

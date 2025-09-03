@@ -35,7 +35,6 @@ pub struct ClientSpoolingProtocolConfig {
     pub location: String,
 
     // Spooling filesystem properties. Only S3 is supported.
-    #[serde(flatten)]
     pub filesystem: SpoolingFileSystemConfig,
 
     /// The `configOverrides` allow overriding arbitrary client protocol properties.
