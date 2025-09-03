@@ -304,7 +304,7 @@ pub mod versioned {
 
         /// Client spooling protocol configuration.
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub client_protocol: Option<client_protocol::ClientProtocolConfig>,
+        pub client_spooling_protocol: Option<client_protocol::ClientSpoolingProtocolConfig>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.

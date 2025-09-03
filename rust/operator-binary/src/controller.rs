@@ -464,10 +464,11 @@ pub async fn reconcile_trino(
     };
 
     // Resolve client spooling protocol configuration with S3 connections if needed
-    let resolved_spooling_config = match trino.spec.cluster_config.client_protocol.as_ref() {
+    let resolved_spooling_config = match trino.spec.cluster_config.client_spooling_protocol.as_ref()
+    {
         Some(client_protocol_config) => Some(
             client_protocol::ResolvedSpoolingProtocolConfig::from_config(
-                &client_protocol_config.spooling,
+                client_protocol_config,
                 Some(client),
                 &namespace,
             )

@@ -13,7 +13,6 @@ use stackable_operator::{
         apimachinery::pkg::api::resource::Quantity,
     },
     schemars::{self, JsonSchema},
-    shared::time::Duration,
 };
 use strum::Display;
 
@@ -24,46 +23,13 @@ const SPOOLING_S3_AWS_SECRET_KEY: &str = "SPOOLING_S3_AWS_SECRET_KEY";
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ClientProtocolConfig {
-    #[serde(flatten)]
-    pub spooling: SpoolingProtocolConfig,
-}
-
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpoolingProtocolConfig {
-    // Spooling protocol properties
+pub struct ClientSpoolingProtocolConfig {
     /// Enable spooling protocol.
     pub enabled: bool,
-
-    // Name of the Kubernetes Secret with one entry ("key")
-    // to use as protocol.spooling.shared-secret-key property
-    pub shared_secret: String,
-
-    // Segment retrieval mode used by clients.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub retrieval_mode: Option<SpoolingRetrievalMode>,
-
-    // Spooled segment size. Is translated to both initial and max segment size.
-    // Use overrides for set those explicitly to distinct values.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub segment_size: Option<Quantity>,
-
-    // Spooling filesystem properties
 
     // Spool segment location. Each Trino cluster must have its own
     // location independent of any other clusters.
     pub location: String,
-
-    // Spool segment TTL. Is translated to both fs.segment.ttl as well as
-    // fs.segment.direct.ttl.
-    // Use overrides for set those explicitly to distinct values.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub segment_ttl: Option<Duration>,
-
-    // Spool segment encryption.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub segment_encryption: Option<bool>,
 
     // Spooling filesystem properties. Only S3 is supported.
     #[serde(flatten)]
@@ -84,6 +50,7 @@ pub enum SpoolingRetrievalMode {
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum SpoolingFileSystemConfig {
     S3(S3SpoolingConfig),
 }
@@ -140,7 +107,7 @@ impl ResolvedSpoolingProtocolConfig {
     /// Resolve S3 connection properties from Kubernetes resources
     /// and prepare spooling filesystem configuration.
     pub async fn from_config(
-        config: &SpoolingProtocolConfig,
+        config: &ClientSpoolingProtocolConfig,
         client: Option<&Client>,
         namespace: &str,
     ) -> Result<Self, Error> {
@@ -249,7 +216,7 @@ impl ResolvedSpoolingProtocolConfig {
     }
 
     pub(crate) fn is_enabled(&self) -> bool {
-        return self.enabled;
+        self.enabled
     }
 }
 
