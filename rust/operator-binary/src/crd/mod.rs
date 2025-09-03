@@ -107,6 +107,7 @@ pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
 pub const SYSTEM_TRUST_STORE_PASSWORD: &str = "changeit";
 // secret vars
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
+pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
 // TLS
 pub const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
 // Logging

@@ -14,7 +14,7 @@ use crate::{
         CONFIG_DIR_NAME, Container, LOG_PROPERTIES, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole,
+        SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole, client_protocol,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig, v1alpha1,
     },
 };
@@ -24,6 +24,7 @@ pub fn container_prepare_args(
     catalogs: &[CatalogConfig],
     merged_config: &v1alpha1::TrinoConfig,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
 ) -> Vec<String> {
     let mut args = vec![];
 
@@ -85,6 +86,11 @@ pub fn container_prepare_args(
         args.extend_from_slice(&resolved_fte.init_container_extra_start_commands);
     }
 
+    // Add the commands that are needed for the client spooling protocol (e.g., TLS certificates for S3)
+    if let Some(resolved_spooling) = resolved_spooling_config {
+        args.extend_from_slice(&resolved_spooling.init_container_extra_start_commands);
+    }
+
     args
 }
 
@@ -92,6 +98,7 @@ pub fn container_trino_args(
     authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder
@@ -122,6 +129,13 @@ pub fn container_trino_args(
     // Add fault tolerant execution environment variables from files
     if let Some(resolved_fte) = resolved_fte_config {
         for (env_name, file) in &resolved_fte.load_env_from_files {
+            args.push(format!("export {env_name}=\"$(cat {file})\""));
+        }
+    }
+
+    // Add client spooling environment variables from files
+    if let Some(resolved_spooling) = resolved_spooling_config {
+        for (env_name, file) in &resolved_spooling.load_env_from_files {
             args.push(format!("export {env_name}=\"$(cat {file})\""));
         }
     }

@@ -16,7 +16,10 @@ use stackable_operator::{
 };
 use strum::Display;
 
-use crate::{command, crd::STACKABLE_CLIENT_TLS_DIR};
+use crate::{
+    command,
+    crd::{ENV_SPOOLING_SECRET, STACKABLE_CLIENT_TLS_DIR},
+};
 
 const SPOOLING_S3_AWS_ACCESS_KEY: &str = "SPOOLING_S3_AWS_ACCESS_KEY";
 const SPOOLING_S3_AWS_SECRET_KEY: &str = "SPOOLING_S3_AWS_SECRET_KEY";
@@ -37,7 +40,7 @@ pub struct ClientSpoolingProtocolConfig {
 
     /// The `configOverrides` allow overriding arbitrary client protocol properties.
     #[serde(default)]
-    pub config_overrides: HashMap<String, String>,
+    pub config_overrides: Option<HashMap<String, String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize, Display)]
@@ -82,9 +85,6 @@ pub struct S3SpoolingConfig {
 }
 
 pub struct ResolvedSpoolingProtocolConfig {
-    /// Enable spooling protocol.
-    pub enabled: bool,
-
     // Properties for spooling-manager.properties
     pub spooling_manager_properties: BTreeMap<String, String>,
 
@@ -111,10 +111,21 @@ impl ResolvedSpoolingProtocolConfig {
         client: Option<&Client>,
         namespace: &str,
     ) -> Result<Self, Error> {
-        let spooling_manager_properties = BTreeMap::new();
+        let mut spooling_manager_properties = BTreeMap::new();
+
+        spooling_manager_properties.insert(
+            "protocol.spooling.enabled".to_string(),
+            config.enabled.to_string(),
+        );
+
+        spooling_manager_properties.insert(
+            "protocol.spooling.shared-secret-key".to_string(),
+            format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
+        );
+
+        spooling_manager_properties.insert("fs.location".to_string(), config.location.clone());
 
         let mut resolved_config = Self {
-            enabled: config.enabled,
             spooling_manager_properties,
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
@@ -132,6 +143,13 @@ impl ResolvedSpoolingProtocolConfig {
                         .await?;
                 }
             }
+        }
+
+        // Finally, extend the spooling manager properties with any user configuration
+        if let Some(user_config) = config.config_overrides.as_ref() {
+            resolved_config
+                .spooling_manager_properties
+                .extend(user_config.clone());
         }
 
         Ok(resolved_config)
@@ -212,11 +230,11 @@ impl ResolvedSpoolingProtocolConfig {
             }
         }
 
-        Ok(())
-    }
+        // Enable S3 filesystem after successful resolution
+        self.spooling_manager_properties
+            .insert("fs.s3.enabled".to_string(), "true".to_string());
 
-    pub(crate) fn is_enabled(&self) -> bool {
-        self.enabled
+        Ok(())
     }
 }
 
@@ -235,4 +253,102 @@ pub enum Error {
         source: stackable_operator::memory::Error,
         field: &'static str,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_spooling_config() {
+        let config = ClientSpoolingProtocolConfig {
+            enabled: true,
+            location: "s3://my-bucket/spooling".to_string(),
+            filesystem: SpoolingFileSystemConfig::S3(S3SpoolingConfig {
+                connection:
+                    stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
+                        "test-s3-connection".to_string(),
+                    ),
+                iam_role: None,
+                external_id: None,
+                max_error_retries: None,
+                upload_part_size: None,
+            }),
+            config_overrides: None,
+        };
+
+        let resolved_spooling_config = ResolvedSpoolingProtocolConfig::from_config(
+            &config, None, // No client, so no external resolution
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let expected_props = BTreeMap::from([
+            ("protocol.spooling.enabled".to_string(), "true".to_string()),
+            (
+                "protocol.spooling.shared-secret-key".to_string(),
+                format!("${{ENV:{}}}", ENV_SPOOLING_SECRET),
+            ),
+            (
+                "fs.location".to_string(),
+                "s3://my-bucket/spooling".to_string(),
+            ),
+        ]);
+
+        assert_eq!(
+            expected_props,
+            resolved_spooling_config.spooling_manager_properties
+        );
+    }
+
+    #[tokio::test]
+    async fn test_spooling_config_overrides() {
+        let config = ClientSpoolingProtocolConfig {
+            enabled: true,
+            location: "s3://my-bucket/spooling".to_string(),
+            filesystem: SpoolingFileSystemConfig::S3(S3SpoolingConfig {
+                connection:
+                    stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
+                        "test-s3-connection".to_string(),
+                    ),
+                iam_role: None,
+                external_id: None,
+                max_error_retries: None,
+                upload_part_size: None,
+            }),
+            config_overrides: Some(HashMap::from([(
+                "protocol.spooling.retrieval-mode".to_string(),
+                "STORAGE".to_string(),
+            )])),
+        };
+
+        let resolved_spooling_config = ResolvedSpoolingProtocolConfig::from_config(
+            &config, None, // No client, so no external resolution
+            "default",
+        )
+        .await
+        .unwrap();
+
+        let expected_props = BTreeMap::from([
+            ("protocol.spooling.enabled".to_string(), "true".to_string()),
+            (
+                "protocol.spooling.shared-secret-key".to_string(),
+                format!("${{ENV:{}}}", ENV_SPOOLING_SECRET),
+            ),
+            (
+                "fs.location".to_string(),
+                "s3://my-bucket/spooling".to_string(),
+            ),
+            (
+                "protocol.spooling.retrieval-mode".to_string(),
+                "STORAGE".to_string(),
+            ),
+        ]);
+
+        assert_eq!(
+            expected_props,
+            resolved_spooling_config.spooling_manager_properties
+        );
+    }
 }
