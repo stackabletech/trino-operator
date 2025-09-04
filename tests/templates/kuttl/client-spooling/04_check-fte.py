@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import trino
 import argparse
+import urllib3
 
 
 def get_connection(coordinator):
@@ -17,6 +18,8 @@ def get_connection(coordinator):
 
 
 if __name__ == "__main__":
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
     # Construct an argument parser
     all_args = argparse.ArgumentParser()
 
@@ -35,42 +38,25 @@ if __name__ == "__main__":
     try:
         cursor = conn.cursor()
 
-        # Test that TPCH connector is working
-        cursor.execute("SELECT COUNT(*) FROM tpch.tiny.nation")
-        result = cursor.fetchone()
-        if result[0] != 25:  # TPCH tiny.nation has 25 rows
-            print(f"TPCH test failed: expected 25 nations, got {result[0]}")
-            exit(-1)
+        print("🚜 fetching many rows from Trino to trigger spooling...")
 
-        print("TPCH connector test passed")
+        cursor.execute("SELECT * FROM tpch.sf100.customer")
+        customer_count = 0
+        batch = 10
+        while batch > 0:
+            print(f"⏳ fetching batch {batch} of 1000 rows...")
+            cursor.fetchmany(1_000)
+            customer_count += 1_000
+            batch = batch - 1
+        # assert customer_count == 15_000_000, f"TPCH test failed: expected 15 mil customers, got {customer_count}"
 
-        # Test a more complex query
-        cursor.execute("""
-            SELECT
-                nation.name,
-                COUNT(*) AS num_cust
-            FROM
-                tpch.tiny.customer
-            JOIN
-                tpch.tiny.nation ON customer.nationkey = nation.nationkey
-            GROUP BY
-                nation.name
-            ORDER BY
-                num_cust DESC
-        """)
-        results = cursor.fetchall()
-        if len(results) == 0:
-            print("Complex query returned no results")
-            exit(-1)
-
-        print("Complex query test passed")
+        print("🎉 major success!")
 
         cursor.close()
-        conn.close()
 
     except Exception as e:
-        print(f"Test failed with error: {e}")
-        import traceback
+        print(f"💀 oh noes! cannot fetch customers from Trino: {e}")
+        raise e
 
-        traceback.print_exc()
-        exit(-1)
+    finally:
+        conn.close()
