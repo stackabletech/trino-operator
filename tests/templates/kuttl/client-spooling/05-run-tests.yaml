@@ -3,5 +3,5 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - script: kubectl exec -n $NAMESPACE trino-test-helper -- pip install --no-cache-dir trino==0.336.0
-  - script: kubectl exec -n $NAMESPACE trino-test-helper -- python /tmp/04_check-fte.py -c trino-coordinator
+  - script: kubectl exec -n $NAMESPACE trino-test-helper -- python /tmp/04_query.py -c trino-coordinator
     timeout: 120

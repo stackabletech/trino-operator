@@ -3,4 +3,4 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - script: kubectl cp -n $NAMESPACE ../../../../templates/kuttl/commons/check-active-workers.py trino-test-helper:/tmp || true
-  - script: kubectl cp -n $NAMESPACE 04_check-fte.py trino-test-helper:/tmp/
+  - script: kubectl cp -n $NAMESPACE 04_query.py trino-test-helper:/tmp/
