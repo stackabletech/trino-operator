@@ -84,6 +84,9 @@ pub struct S3SpoolingConfig {
 }
 
 pub struct ResolvedSpoolingProtocolConfig {
+    /// Properties to add to config.properties
+    pub config_properties: BTreeMap<String, String>,
+
     // Properties for spooling-manager.properties
     pub spooling_manager_properties: BTreeMap<String, String>,
 
@@ -110,22 +113,9 @@ impl ResolvedSpoolingProtocolConfig {
         client: Option<&Client>,
         namespace: &str,
     ) -> Result<Self, Error> {
-        let mut spooling_manager_properties = BTreeMap::new();
-
-        spooling_manager_properties.insert(
-            "protocol.spooling.enabled".to_string(),
-            config.enabled.to_string(),
-        );
-
-        spooling_manager_properties.insert(
-            "protocol.spooling.shared-secret-key".to_string(),
-            format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
-        );
-
-        spooling_manager_properties.insert("fs.location".to_string(), config.location.clone());
-
         let mut resolved_config = Self {
-            spooling_manager_properties,
+            config_properties: BTreeMap::new(),
+            spooling_manager_properties: BTreeMap::new(),
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
             load_env_from_files: BTreeMap::new(),
@@ -143,6 +133,26 @@ impl ResolvedSpoolingProtocolConfig {
                 }
             }
         }
+
+        resolved_config.spooling_manager_properties.extend([
+            ("fs.location".to_string(), config.location.clone()),
+            (
+                "spooling-manager.name".to_string(),
+                "filesystem".to_string(),
+            ),
+        ]);
+
+        // Enable spooling protocol
+        resolved_config.config_properties.extend([
+            (
+                "protocol.spooling.enabled".to_string(),
+                config.enabled.to_string(),
+            ),
+            (
+                "protocol.spooling.shared-secret-key".to_string(),
+                format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
+            ),
+        ]);
 
         // Finally, extend the spooling manager properties with any user configuration
         if let Some(user_config) = config.config_overrides.as_ref() {
@@ -284,17 +294,15 @@ mod tests {
         .unwrap();
 
         let expected_props = BTreeMap::from([
-            ("protocol.spooling.enabled".to_string(), "true".to_string()),
-            (
-                "protocol.spooling.shared-secret-key".to_string(),
-                format!("${{ENV:{}}}", ENV_SPOOLING_SECRET),
-            ),
             (
                 "fs.location".to_string(),
                 "s3://my-bucket/spooling".to_string(),
             ),
+            (
+                "spooling-manager.name".to_string(),
+                "filesystem".to_string(),
+            ),
         ]);
-
         assert_eq!(
             expected_props,
             resolved_spooling_config.spooling_manager_properties
@@ -330,11 +338,6 @@ mod tests {
         .unwrap();
 
         let expected_props = BTreeMap::from([
-            ("protocol.spooling.enabled".to_string(), "true".to_string()),
-            (
-                "protocol.spooling.shared-secret-key".to_string(),
-                format!("${{ENV:{}}}", ENV_SPOOLING_SECRET),
-            ),
             (
                 "fs.location".to_string(),
                 "s3://my-bucket/spooling".to_string(),
@@ -342,6 +345,10 @@ mod tests {
             (
                 "protocol.spooling.retrieval-mode".to_string(),
                 "STORAGE".to_string(),
+            ),
+            (
+                "spooling-manager.name".to_string(),
+                "filesystem".to_string(),
             ),
         ]);
 

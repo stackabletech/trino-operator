@@ -527,14 +527,18 @@ pub async fn reconcile_trino(
     create_random_secret(
         &shared_internal_secret_name(trino),
         ENV_INTERNAL_SECRET,
+        512,
         trino,
         client,
     )
     .await?;
 
+    // This secret is created even if spooling is not configured.
+    // Trino currently requires the secret to be exactly 256 bits long.
     create_random_secret(
         &shared_spooling_secret_name(trino),
         ENV_SPOOLING_SECRET,
+        32,
         trino,
         client,
     )
@@ -796,6 +800,16 @@ fn build_rolegroup_config_map(
                     );
                 }
 
+                // Add spooling properties from resolved configuration
+                if let Some(resolved_spooling) = resolved_spooling_config {
+                    dynamic_resolved_config.extend(
+                        resolved_spooling
+                            .config_properties
+                            .iter()
+                            .map(|(k, v)| (k.clone(), Some(v.clone()))),
+                    );
+                }
+
                 // Add static properties and overrides
                 dynamic_resolved_config.extend(transformed_config);
 
@@ -1027,8 +1041,19 @@ fn build_rolegroup_statefulset(
     // additional authentication env vars
     let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
 
-    let secret_name = shared_internal_secret_name(trino);
-    env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
+    let internal_secret_name = shared_internal_secret_name(trino);
+    env.push(env_var_from_secret(
+        &internal_secret_name,
+        None,
+        ENV_INTERNAL_SECRET,
+    ));
+
+    let spooling_secret_name = shared_spooling_secret_name(trino);
+    env.push(env_var_from_secret(
+        &spooling_secret_name,
+        None,
+        ENV_SPOOLING_SECRET,
+    ));
 
     trino_authentication_config
         .add_authentication_pod_and_volume_config(
@@ -1466,11 +1491,12 @@ fn build_recommended_labels<'a>(
 async fn create_random_secret(
     secret_name: &str,
     secret_key: &str,
+    secret_byte_size: usize,
     trino: &v1alpha1::TrinoCluster,
     client: &Client,
 ) -> Result<()> {
     let mut internal_secret = BTreeMap::new();
-    internal_secret.insert(secret_key.to_string(), get_random_base64());
+    internal_secret.insert(secret_key.to_string(), get_random_base64(secret_byte_size));
 
     let secret = Secret {
         immutable: Some(true),
@@ -1513,8 +1539,8 @@ fn shared_spooling_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
     format!("{}-spooling-secret", trino.name_any())
 }
 
-fn get_random_base64() -> String {
-    let mut buf = [0; 512];
+fn get_random_base64(byte_size: usize) -> String {
+    let mut buf: Vec<u8> = vec![0; byte_size];
     openssl::rand::rand_bytes(&mut buf).unwrap();
     openssl::base64::encode_block(&buf)
 }
