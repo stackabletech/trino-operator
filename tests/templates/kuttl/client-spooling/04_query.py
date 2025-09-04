@@ -40,23 +40,26 @@ if __name__ == "__main__":
 
         # The table tpch.sf100.customer has 15 million rows but Python consumes
         # too much memory to retrieve all of them at once.
-        # Fetching them one by one is too slow, so we fetch only 10k rows which seems to be enough
+        # Fetching them one by one is too slow, so we fetch enough rows
         # for Trino to use the spooling protocol.
-        # Fetching less rows is too risky IMO as Trino might decide to not use spooling.
+        # Fetching too few rows is risky as Trino might decide to not use spooling.
 
         print("🚜 fetching many rows from Trino to trigger spooling...")
 
-        cursor.execute("SELECT * FROM tpch.sf100.customer")
         customer_count = 0
-        batch = 10
-        while batch > 0:
-            print(f"⏳ fetching batch {batch} of 1000 rows...")
-            cursor.fetchmany(1_000)
-            customer_count += 1_000
-            batch = batch - 1
+        batch_count = 50
+        batch_size = 1_000
+        expected_customers = batch_count * 1_000
 
-        assert customer_count == 10_000, (
-            f"💀 crap! expected 10_000 customers, got {customer_count}"
+        cursor.execute("SELECT * FROM tpch.sf100.customer")
+        while batch_count > 0:
+            print(f"⏳ fetching batch {batch_count} of {batch_size} rows...")
+            _ = cursor.fetchmany(batch_size)
+            customer_count += batch_size
+            batch_count = batch_count - 1
+
+        assert customer_count == expected_customers, (
+            f"💀 crap! expected {expected_customers} customers, got {customer_count}"
         )
 
         print("🎉 major success!")

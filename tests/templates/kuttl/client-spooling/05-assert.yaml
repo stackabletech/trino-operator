@@ -7,11 +7,9 @@ commands:
   - script: kubectl exec -n $NAMESPACE deployment/minio -- mc alias set local https://localhost:9000 minioAccessKey minioSecretKey --api S3v4
   # Verify that the spooling bucket contains data
   - script: |
-      count=$(kubectl exec -n $NAMESPACE deployment/minio -- mc stat --insecure local/spooling-bucket | awk '/Objects count:/ {print $3}')
-      if [ "$count" -gt 0 ]; then
-        echo "Objects count is $count (> 0)"
-      else
-        echo "Objects count is $count (not > 0)"
+      count=$(kubectl exec -n $NAMESPACE deployment/minio -- mc ls --insecure local/spooling-bucket/trino | wc -l)
+      echo "Number of spool segments is [$count] (should be > 0)"
+      if [ "$count" -eq 0 ]; then
         exit 1
       fi
 ---
