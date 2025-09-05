@@ -112,8 +112,8 @@ spec:
                         configOverrides:
                           additionalProperties:
                             type: string
+                          default: {}
                           description: The `configOverrides` allow overriding arbitrary client protocol properties.
-                          nullable: true
                           type: object
                         enabled:
                           description: Enable spooling protocol.

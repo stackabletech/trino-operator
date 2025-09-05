@@ -38,7 +38,7 @@ pub struct ClientSpoolingProtocolConfig {
 
     /// The `configOverrides` allow overriding arbitrary client protocol properties.
     #[serde(default)]
-    pub config_overrides: Option<HashMap<String, String>>,
+    pub config_overrides: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -145,11 +145,9 @@ impl ResolvedSpoolingProtocolConfig {
         ]);
 
         // Finally, extend the spooling manager properties with any user configuration
-        if let Some(user_config) = config.config_overrides.as_ref() {
-            resolved_config
-                .spooling_manager_properties
-                .extend(user_config.clone());
-        }
+        resolved_config
+            .spooling_manager_properties
+            .extend(config.config_overrides.clone());
 
         Ok(resolved_config)
     }
@@ -273,7 +271,7 @@ mod tests {
                 max_error_retries: None,
                 upload_part_size: None,
             }),
-            config_overrides: None,
+            config_overrides: HashMap::new(),
         };
 
         let resolved_spooling_config = ResolvedSpoolingProtocolConfig::from_config(
@@ -314,10 +312,10 @@ mod tests {
                 max_error_retries: None,
                 upload_part_size: None,
             }),
-            config_overrides: Some(HashMap::from([(
+            config_overrides: HashMap::from([(
                 "protocol.spooling.retrieval-mode".to_string(),
                 "STORAGE".to_string(),
-            )])),
+            )]),
         };
 
         let resolved_spooling_config = ResolvedSpoolingProtocolConfig::from_config(
