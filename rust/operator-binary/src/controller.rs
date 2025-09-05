@@ -896,17 +896,31 @@ fn build_rolegroup_config_map(
 
     // Add exchange manager properties from resolved fault tolerant execution configuration
     if let Some(resolved_fte) = resolved_fte_config {
-        cm_conf_data.insert(
-            EXCHANGE_MANAGER_PROPERTIES.to_string(),
-            unsafe_java_properties_string(&resolved_fte.exchange_manager_properties),
-        );
+        if !resolved_fte.exchange_manager_properties.is_empty() {
+            let exchange_props_with_options: BTreeMap<String, Option<String>> = resolved_fte
+                .exchange_manager_properties
+                .iter()
+                .map(|(k, v)| (k.clone(), Some(v.clone())))
+                .collect();
+            cm_conf_data.insert(
+                EXCHANGE_MANAGER_PROPERTIES.to_string(),
+                to_java_properties_string(exchange_props_with_options.iter())
+                    .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
+            );
+        }
     }
 
     // Add client protocol properties (especially spooling properties)
     if let Some(spooling_config) = resolved_spooling_config {
+        let spooling_props_with_options: BTreeMap<String, Option<String>> = spooling_config
+            .spooling_manager_properties
+            .iter()
+            .map(|(k, v)| (k.clone(), Some(v.clone())))
+            .collect();
         cm_conf_data.insert(
             SPOOLING_MANAGER_PROPERTIES.to_string(),
-            unsafe_java_properties_string(&spooling_config.spooling_manager_properties),
+            to_java_properties_string(spooling_props_with_options.iter())
+                .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
         );
     }
 
@@ -948,18 +962,6 @@ fn build_rolegroup_config_map(
         .with_context(|_| BuildRoleGroupConfigSnafu {
             rolegroup: rolegroup_ref.clone(),
         })
-}
-
-// This is unsafe because it does not do any escaping of keys or values.
-// It is needed because the `product_config::writer::to_java_properties_string`
-// function escapes `:` characters in values.
-// This breaks values like ${file:UTF-8:/path/to/file} which are used
-// for S3 credentials.
-fn unsafe_java_properties_string(map: &BTreeMap<String, String>) -> String {
-    map.iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
