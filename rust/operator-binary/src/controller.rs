@@ -929,6 +929,11 @@ fn build_rolegroup_config_map(
         })
 }
 
+// This is unsafe because it does not do any escaping of keys or values.
+// It is needed because the `product_config::writer::to_java_properties_string`
+// function escapes `:` characters in values.
+// This breaks values like ${file:UTF-8:/path/to/file} which are used
+// for S3 credentials.
 fn unsafe_java_properties_string(map: &BTreeMap<String, String>) -> String {
     map.iter()
         .map(|(k, v)| format!("{}={}", k, v))
