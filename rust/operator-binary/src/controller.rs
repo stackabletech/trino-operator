@@ -81,14 +81,14 @@ use crate::{
     command, config,
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
-        DISCOVERY_URI, ENV_INTERNAL_SECRET, EXCHANGE_MANAGER_PROPERTIES, HTTP_PORT, HTTP_PORT_NAME,
-        HTTPS_PORT, HTTPS_PORT_NAME, JVM_CONFIG, JVM_SECURITY_PROPERTIES, LOG_PROPERTIES,
-        MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, NODE_PROPERTIES,
-        RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-        TrinoRole,
+        DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, EXCHANGE_MANAGER_PROPERTIES,
+        HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, JVM_CONFIG,
+        JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
+        METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES,
+        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, TrinoRole,
         authentication::resolve_authentication_classes,
-        catalog,
+        catalog, client_protocol,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         rolegroup_headless_service_name, v1alpha1,
@@ -132,6 +132,12 @@ pub enum Error {
 
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
+
+    #[snafu(display("Trino cluster {} has no namespace", name))]
+    MissingTrinoNamespace {
+        source: crate::crd::Error,
+        name: String,
+    },
 
     #[snafu(display("object defines no {role:?} role"))]
     MissingTrinoRole {
@@ -374,6 +380,9 @@ pub enum Error {
     ResolveProductImage {
         source: product_image_selection::Error,
     },
+
+    #[snafu(display("failed to resolve client protocol configuration"))]
+    ClientProtocolConfiguration { source: client_protocol::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -396,6 +405,10 @@ pub async fn reconcile_trino(
         .map_err(error_boundary::InvalidObject::clone)
         .context(InvalidTrinoClusterSnafu)?;
     let client = &ctx.client;
+
+    let namespace = trino.namespace_r().context(MissingTrinoNamespaceSnafu {
+        name: trino.name_any(),
+    })?;
 
     let resolved_product_image = trino
         .spec
@@ -443,13 +456,23 @@ pub async fn reconcile_trino(
     // Resolve fault tolerant execution configuration with S3 connections if needed
     let resolved_fte_config = match trino.spec.cluster_config.fault_tolerant_execution.as_ref() {
         Some(fte_config) => Some(
-            ResolvedFaultTolerantExecutionConfig::from_config(
-                fte_config,
+            ResolvedFaultTolerantExecutionConfig::from_config(fte_config, Some(client), &namespace)
+                .await
+                .context(FaultTolerantExecutionSnafu)?,
+        ),
+        None => None,
+    };
+
+    // Resolve client spooling protocol configuration with S3 connections if needed
+    let resolved_client_protocol_config = match trino.spec.cluster_config.client_protocol.as_ref() {
+        Some(spooling_config) => Some(
+            client_protocol::ResolvedClientProtocolConfig::from_config(
+                spooling_config,
                 Some(client),
-                &trino.namespace_r().context(ReadRoleSnafu)?,
+                &namespace,
             )
             .await
-            .context(FaultTolerantExecutionSnafu)?,
+            .context(ClientProtocolConfigurationSnafu)?,
         ),
         None => None,
     };
@@ -500,7 +523,25 @@ pub async fn reconcile_trino(
         None => None,
     };
 
-    create_shared_internal_secret(trino, client).await?;
+    create_random_secret(
+        &shared_internal_secret_name(trino),
+        ENV_INTERNAL_SECRET,
+        512,
+        trino,
+        client,
+    )
+    .await?;
+
+    // This secret is created even if spooling is not configured.
+    // Trino currently requires the secret to be exactly 256 bits long.
+    create_random_secret(
+        &shared_spooling_secret_name(trino),
+        ENV_SPOOLING_SECRET,
+        32,
+        trino,
+        client,
+    )
+    .await?;
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
@@ -557,6 +598,7 @@ pub async fn reconcile_trino(
                 &trino_opa_config,
                 &client.kubernetes_cluster_info,
                 &resolved_fte_config,
+                &resolved_client_protocol_config,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
@@ -575,6 +617,7 @@ pub async fn reconcile_trino(
                 &catalogs,
                 &rbac_sa.name_any(),
                 &resolved_fte_config,
+                &resolved_client_protocol_config,
             )?;
 
             cluster_resources
@@ -684,6 +727,7 @@ fn build_rolegroup_config_map(
     trino_opa_config: &Option<TrinoOpaConfig>,
     cluster_info: &KubernetesClusterInfo,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -749,6 +793,16 @@ fn build_rolegroup_config_map(
                 if let Some(resolved_fte) = resolved_fte_config {
                     dynamic_resolved_config.extend(
                         resolved_fte
+                            .config_properties
+                            .iter()
+                            .map(|(k, v)| (k.clone(), Some(v.clone()))),
+                    );
+                }
+
+                // Add spooling properties from resolved configuration
+                if let Some(resolved_spooling) = resolved_spooling_config {
+                    dynamic_resolved_config.extend(
+                        resolved_spooling
                             .config_properties
                             .iter()
                             .map(|(k, v)| (k.clone(), Some(v.clone()))),
@@ -833,6 +887,20 @@ fn build_rolegroup_config_map(
                     .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
             );
         }
+    }
+
+    // Add client protocol properties (especially spooling properties)
+    if let Some(spooling_config) = resolved_spooling_config {
+        let spooling_props_with_options: BTreeMap<String, Option<String>> = spooling_config
+            .spooling_manager_properties
+            .iter()
+            .map(|(k, v)| (k.clone(), Some(v.clone())))
+            .collect();
+        cm_conf_data.insert(
+            SPOOLING_MANAGER_PROPERTIES.to_string(),
+            to_java_properties_string(spooling_props_with_options.iter())
+                .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
+        );
     }
 
     let jvm_sec_props: BTreeMap<String, Option<String>> = config
@@ -944,6 +1012,7 @@ fn build_rolegroup_statefulset(
     catalogs: &[CatalogConfig],
     sa_name: &str,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<StatefulSet> {
     let role = trino
         .role(trino_role)
@@ -971,8 +1040,19 @@ fn build_rolegroup_statefulset(
     // additional authentication env vars
     let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
 
-    let secret_name = build_shared_internal_secret_name(trino);
-    env.push(env_var_from_secret(&secret_name, None, ENV_INTERNAL_SECRET));
+    let internal_secret_name = shared_internal_secret_name(trino);
+    env.push(env_var_from_secret(
+        &internal_secret_name,
+        None,
+        ENV_INTERNAL_SECRET,
+    ));
+
+    let spooling_secret_name = shared_spooling_secret_name(trino);
+    env.push(env_var_from_secret(
+        &spooling_secret_name,
+        None,
+        ENV_SPOOLING_SECRET,
+    ));
 
     trino_authentication_config
         .add_authentication_pod_and_volume_config(
@@ -1035,6 +1115,7 @@ fn build_rolegroup_statefulset(
         catalogs,
         &requested_secret_lifetime,
         resolved_fte_config,
+        resolved_spooling_config,
     )?;
 
     let mut prepare_args = vec![];
@@ -1054,6 +1135,7 @@ fn build_rolegroup_statefulset(
         catalogs,
         merged_config,
         resolved_fte_config,
+        resolved_spooling_config,
     ));
 
     prepare_args
@@ -1122,6 +1204,7 @@ fn build_rolegroup_statefulset(
                 trino_authentication_config,
                 catalogs,
                 resolved_fte_config,
+                resolved_spooling_config,
             )
             .join("\n"),
         ])
@@ -1404,11 +1487,28 @@ fn build_recommended_labels<'a>(
     }
 }
 
-async fn create_shared_internal_secret(
+async fn create_random_secret(
+    secret_name: &str,
+    secret_key: &str,
+    secret_byte_size: usize,
     trino: &v1alpha1::TrinoCluster,
     client: &Client,
 ) -> Result<()> {
-    let secret = build_shared_internal_secret(trino)?;
+    let mut internal_secret = BTreeMap::new();
+    internal_secret.insert(secret_key.to_string(), get_random_base64(secret_byte_size));
+
+    let secret = Secret {
+        immutable: Some(true),
+        metadata: ObjectMetaBuilder::new()
+            .name(secret_name)
+            .namespace_opt(trino.namespace())
+            .ownerreference_from_resource(trino, None, Some(true))
+            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .build(),
+        string_data: Some(internal_secret),
+        ..Secret::default()
+    };
+
     if client
         .get_opt::<Secret>(
             &secret.name_any(),
@@ -1430,29 +1530,16 @@ async fn create_shared_internal_secret(
     Ok(())
 }
 
-fn build_shared_internal_secret(trino: &v1alpha1::TrinoCluster) -> Result<Secret> {
-    let mut internal_secret = BTreeMap::new();
-    internal_secret.insert(ENV_INTERNAL_SECRET.to_string(), get_random_base64());
-
-    Ok(Secret {
-        immutable: Some(true),
-        metadata: ObjectMetaBuilder::new()
-            .name(build_shared_internal_secret_name(trino))
-            .namespace_opt(trino.namespace())
-            .ownerreference_from_resource(trino, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .build(),
-        string_data: Some(internal_secret),
-        ..Secret::default()
-    })
-}
-
-fn build_shared_internal_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
+fn shared_internal_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
     format!("{}-internal-secret", trino.name_any())
 }
 
-fn get_random_base64() -> String {
-    let mut buf = [0; 512];
+fn shared_spooling_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
+    format!("{}-spooling-secret", trino.name_any())
+}
+
+fn get_random_base64(byte_size: usize) -> String {
+    let mut buf: Vec<u8> = vec![0; byte_size];
     openssl::rand::rand_bytes(&mut buf).unwrap();
     openssl::base64::encode_block(&buf)
 }
@@ -1601,6 +1688,7 @@ fn tls_volume_mounts(
     catalogs: &[CatalogConfig],
     requested_secret_lifetime: &Duration,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare
@@ -1690,6 +1778,19 @@ fn tls_volume_mounts(
             .context(AddVolumeMountSnafu)?;
         pod_builder
             .add_volumes(resolved_fte.volumes.clone())
+            .context(AddVolumeSnafu)?;
+    }
+
+    // client spooling S3 credentials and other resources
+    if let Some(resolved_spooling) = resolved_spooling_config {
+        cb_prepare
+            .add_volume_mounts(resolved_spooling.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        cb_trino
+            .add_volume_mounts(resolved_spooling.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        pod_builder
+            .add_volumes(resolved_spooling.volumes.clone())
             .context(AddVolumeSnafu)?;
     }
 
@@ -1863,6 +1964,7 @@ mod tests {
             &trino_authentication_config,
             &trino_opa_config,
             &cluster_info,
+            &None,
             &None,
         )
         .unwrap()

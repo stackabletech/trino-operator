@@ -7,6 +7,7 @@
 ** xref:trino:usage-guide/listenerclass.adoc[]
 ** xref:trino:usage-guide/configuration.adoc[]
 ** xref:trino:usage-guide/fault-tolerant-execution.adoc[]
+** xref:trino:usage-guide/client-spooling-protocol.adoc[]
 ** xref:trino:usage-guide/s3.adoc[]
 ** xref:trino:usage-guide/security.adoc[]
 ** xref:trino:usage-guide/monitoring.adoc[]
