@@ -26,9 +26,6 @@ const SPOOLING_S3_AWS_SECRET_KEY: &str = "SPOOLING_S3_AWS_SECRET_KEY";
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientSpoolingProtocolConfig {
-    /// Enable spooling protocol.
-    pub enabled: bool,
-
     // Spool segment location. Each Trino cluster must have its own
     // location independent of any other clusters.
     pub location: String,
@@ -134,10 +131,7 @@ impl ResolvedSpoolingProtocolConfig {
 
         // Enable spooling protocol
         resolved_config.config_properties.extend([
-            (
-                "protocol.spooling.enabled".to_string(),
-                config.enabled.to_string(),
-            ),
+            ("protocol.spooling.enabled".to_string(), "true".to_string()),
             (
                 "protocol.spooling.shared-secret-key".to_string(),
                 format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
@@ -259,7 +253,6 @@ mod tests {
     #[tokio::test]
     async fn test_spooling_config() {
         let config = ClientSpoolingProtocolConfig {
-            enabled: true,
             location: "s3://my-bucket/spooling".to_string(),
             filesystem: SpoolingFileSystemConfig::S3(S3SpoolingConfig {
                 connection:
@@ -300,7 +293,6 @@ mod tests {
     #[tokio::test]
     async fn test_spooling_config_overrides() {
         let config = ClientSpoolingProtocolConfig {
-            enabled: true,
             location: "s3://my-bucket/spooling".to_string(),
             filesystem: SpoolingFileSystemConfig::S3(S3SpoolingConfig {
                 connection:

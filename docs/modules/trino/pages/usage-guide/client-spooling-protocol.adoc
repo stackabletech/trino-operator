@@ -17,16 +17,14 @@ To enable it, you need to set the `spec.clusterConfig.clientSpoolingProtocol` co
 spec:
   clusterConfig:
     clientSpoolingProtocol:
-      enabled: true # <1>
-      location: "s3://spooling-bucket/trino/" # <2>
+      location: "s3://spooling-bucket/trino/" # <1>
       filesystem:
-        s3: # <3>
+        s3: # <2>
           connection:
             reference: "minio"
 ----
-<1> Enables the client spooling protocol
-<2> Specifies the location where spooled data will be stored. This example uses an S3 bucket.
-<3> Configures the filesystem type for spooling. Only S3 is supported currently via the custom resource definition.
+<1> Specifies the location where spooled data will be stored. This example uses an S3 bucket.
+<2> Configures the filesystem type for spooling. Only S3 is supported currently via the custom resource definition.
 
 The operator automatically fills in additional settings required by Trino, such as the `protocol.spooling.shared-secret-key`.
 Users can change the contents of the `spooling-manager.properties` file by adding entries to the optional `spec.clusterConfig.clientSpoolingProtocol.config_overrides` map.

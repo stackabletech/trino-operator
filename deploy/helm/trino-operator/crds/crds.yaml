@@ -115,9 +115,6 @@ spec:
                           default: {}
                           description: The `configOverrides` allow overriding arbitrary client protocol properties.
                           type: object
-                        enabled:
-                          description: Enable spooling protocol.
-                          type: boolean
                         filesystem:
                           oneOf:
                             - required:
@@ -272,7 +269,6 @@ spec:
                         location:
                           type: string
                       required:
-                        - enabled
                         - filesystem
                         - location
                       type: object
