@@ -20,9 +20,6 @@ use crate::{
     crd::{ENV_SPOOLING_SECRET, STACKABLE_CLIENT_TLS_DIR},
 };
 
-const SPOOLING_S3_AWS_ACCESS_KEY: &str = "SPOOLING_S3_AWS_ACCESS_KEY";
-const SPOOLING_S3_AWS_SECRET_KEY: &str = "SPOOLING_S3_AWS_SECRET_KEY";
-
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ClientProtocolConfig {
@@ -88,10 +85,6 @@ pub struct ResolvedClientProtocolConfig {
     /// Volume mounts required for the configuration
     pub volume_mounts: Vec<VolumeMount>,
 
-    /// Env-Vars that should be exported from files.
-    /// You can think of it like `export <key>="$(cat <value>)"`
-    pub load_env_from_files: BTreeMap<String, String>,
-
     /// Additional commands that need to be executed before starting Trino
     /// Used to add TLS certificates to the client's trust store.
     pub init_container_extra_start_commands: Vec<String>,
@@ -110,7 +103,6 @@ impl ResolvedClientProtocolConfig {
             spooling_manager_properties: BTreeMap::new(),
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
-            load_env_from_files: BTreeMap::new(),
             init_container_extra_start_commands: Vec::new(),
         };
 
@@ -194,17 +186,12 @@ impl ResolvedClientProtocolConfig {
             self.spooling_manager_properties.extend([
                 (
                     "s3.aws-access-key".to_string(),
-                    format!("${{ENV:{SPOOLING_S3_AWS_ACCESS_KEY}}}"),
+                    format!("${{file:UTF-8:{access_key_path}}}"),
                 ),
                 (
                     "s3.aws-secret-key".to_string(),
-                    format!("${{ENV:{SPOOLING_S3_AWS_SECRET_KEY}}}"),
+                    format!("${{file:UTF-8:{secret_key_path}}}"),
                 ),
-            ]);
-
-            self.load_env_from_files.extend([
-                (String::from(SPOOLING_S3_AWS_ACCESS_KEY), access_key_path),
-                (String::from(SPOOLING_S3_AWS_SECRET_KEY), secret_key_path),
             ]);
         }
 

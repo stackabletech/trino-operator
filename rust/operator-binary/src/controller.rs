@@ -875,31 +875,17 @@ fn build_rolegroup_config_map(
 
     // Add exchange manager properties from resolved fault tolerant execution configuration
     if let Some(resolved_fte) = resolved_fte_config {
-        if !resolved_fte.exchange_manager_properties.is_empty() {
-            let exchange_props_with_options: BTreeMap<String, Option<String>> = resolved_fte
-                .exchange_manager_properties
-                .iter()
-                .map(|(k, v)| (k.clone(), Some(v.clone())))
-                .collect();
-            cm_conf_data.insert(
-                EXCHANGE_MANAGER_PROPERTIES.to_string(),
-                to_java_properties_string(exchange_props_with_options.iter())
-                    .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-            );
-        }
+        cm_conf_data.insert(
+            EXCHANGE_MANAGER_PROPERTIES.to_string(),
+            unsafe_java_properties_string(&resolved_fte.exchange_manager_properties),
+        );
     }
 
     // Add client protocol properties (especially spooling properties)
     if let Some(spooling_config) = resolved_spooling_config {
-        let spooling_props_with_options: BTreeMap<String, Option<String>> = spooling_config
-            .spooling_manager_properties
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(v.clone())))
-            .collect();
         cm_conf_data.insert(
             SPOOLING_MANAGER_PROPERTIES.to_string(),
-            to_java_properties_string(spooling_props_with_options.iter())
-                .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
+            unsafe_java_properties_string(&spooling_config.spooling_manager_properties),
         );
     }
 
@@ -941,6 +927,13 @@ fn build_rolegroup_config_map(
         .with_context(|_| BuildRoleGroupConfigSnafu {
             rolegroup: rolegroup_ref.clone(),
         })
+}
+
+fn unsafe_java_properties_string(map: &BTreeMap<String, String>) -> String {
+    map.iter()
+        .map(|(k, v)| format!("{}={}", k, v))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
@@ -1200,13 +1193,7 @@ fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![
-            command::container_trino_args(
-                trino_authentication_config,
-                catalogs,
-                resolved_fte_config,
-                resolved_spooling_config,
-            )
-            .join("\n"),
+            command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
         ])
         .add_env_vars(env)
         .add_volume_mount("config", CONFIG_DIR_NAME)

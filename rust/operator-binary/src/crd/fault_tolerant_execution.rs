@@ -226,10 +226,6 @@ pub struct ResolvedFaultTolerantExecutionConfig {
     /// Volume mounts required for the configuration
     pub volume_mounts: Vec<VolumeMount>,
 
-    /// Env-Vars that should be exported from files.
-    /// You can think of it like `export <key>="$(cat <value>)"`
-    pub load_env_from_files: BTreeMap<String, String>,
-
     /// Additional commands that need to be executed before starting Trino
     pub init_container_extra_start_commands: Vec<String>,
 }
@@ -453,7 +449,6 @@ impl ResolvedFaultTolerantExecutionConfig {
             exchange_manager_properties,
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
-            load_env_from_files: BTreeMap::new(),
             init_container_extra_start_commands: Vec::new(),
         };
 
@@ -516,22 +511,14 @@ impl ResolvedFaultTolerantExecutionConfig {
         );
 
         if let Some((access_key_path, secret_key_path)) = s3_connection.credentials_mount_paths() {
-            let access_key_env = "EXCHANGE_S3_AWS_ACCESS_KEY".to_string();
-            let secret_key_env = "EXCHANGE_S3_AWS_SECRET_KEY".to_string();
-
             self.exchange_manager_properties.insert(
                 "exchange.s3.aws-access-key".to_string(),
-                format!("${{ENV:{access_key_env}}}"),
+                format!("${{file:UTF-8:{access_key_path}}}"),
             );
             self.exchange_manager_properties.insert(
                 "exchange.s3.aws-secret-key".to_string(),
-                format!("${{ENV:{secret_key_env}}}"),
+                format!("${{file:UTF-8:{secret_key_path}}}"),
             );
-
-            self.load_env_from_files
-                .insert(access_key_env, access_key_path);
-            self.load_env_from_files
-                .insert(secret_key_env, secret_key_path);
         }
 
         if let Some(tls) = s3_connection.tls.tls.as_ref() {
