@@ -1200,13 +1200,7 @@ fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![
-            command::container_trino_args(
-                trino_authentication_config,
-                catalogs,
-                resolved_fte_config,
-                resolved_spooling_config,
-            )
-            .join("\n"),
+            command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
         ])
         .add_env_vars(env)
         .add_volume_mount("config", CONFIG_DIR_NAME)
