@@ -14,7 +14,6 @@ use stackable_operator::{
     },
     schemars::{self, JsonSchema},
 };
-use strum::Display;
 
 use crate::{
     command,
@@ -40,15 +39,6 @@ pub struct ClientSpoolingProtocolConfig {
     /// The `configOverrides` allow overriding arbitrary client protocol properties.
     #[serde(default)]
     pub config_overrides: Option<HashMap<String, String>>,
-}
-
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize, Display)]
-#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-pub enum SpoolingRetrievalMode {
-    Storage,
-    CoordinatorStorageRedirect,
-    CoordinatorProxy,
-    WorkerProxy,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
