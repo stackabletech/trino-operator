@@ -25,6 +25,11 @@ const SPOOLING_S3_AWS_SECRET_KEY: &str = "SPOOLING_S3_AWS_SECRET_KEY";
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub enum ClientProtocolConfig {
+    Spooling(ClientSpoolingProtocolConfig),
+}
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClientSpoolingProtocolConfig {
     // Spool segment location. Each Trino cluster must have its own
     // location independent of any other clusters.
@@ -70,7 +75,7 @@ pub struct S3SpoolingConfig {
     pub upload_part_size: Option<Quantity>,
 }
 
-pub struct ResolvedSpoolingProtocolConfig {
+pub struct ResolvedClientProtocolConfig {
     /// Properties to add to config.properties
     pub config_properties: BTreeMap<String, String>,
 
@@ -92,11 +97,11 @@ pub struct ResolvedSpoolingProtocolConfig {
     pub init_container_extra_start_commands: Vec<String>,
 }
 
-impl ResolvedSpoolingProtocolConfig {
+impl ResolvedClientProtocolConfig {
     /// Resolve S3 connection properties from Kubernetes resources
     /// and prepare spooling filesystem configuration.
     pub async fn from_config(
-        config: &ClientSpoolingProtocolConfig,
+        config: &ClientProtocolConfig,
         client: Option<&Client>,
         namespace: &str,
     ) -> Result<Self, Error> {
@@ -109,39 +114,43 @@ impl ResolvedSpoolingProtocolConfig {
             init_container_extra_start_commands: Vec::new(),
         };
 
-        // Resolve external resources if Kubernetes client is available
-        // This should always be the case, except for when this function is called during unit tests
-        if let Some(client) = client {
-            match &config.filesystem {
-                SpoolingFileSystemConfig::S3(s3_config) => {
-                    resolved_config
-                        .resolve_s3_backend(s3_config, client, namespace)
-                        .await?;
+        match config {
+            ClientProtocolConfig::Spooling(spooling_config) => {
+                // Resolve external resources if Kubernetes client is available
+                // This should always be the case, except for when this function is called during unit tests
+                if let Some(client) = client {
+                    match &spooling_config.filesystem {
+                        SpoolingFileSystemConfig::S3(s3_config) => {
+                            resolved_config
+                                .resolve_s3_backend(s3_config, client, namespace)
+                                .await?;
+                        }
+                    }
                 }
+
+                resolved_config.spooling_manager_properties.extend([
+                    ("fs.location".to_string(), spooling_config.location.clone()),
+                    (
+                        "spooling-manager.name".to_string(),
+                        "filesystem".to_string(),
+                    ),
+                ]);
+
+                // Enable spooling protocol
+                resolved_config.config_properties.extend([
+                    ("protocol.spooling.enabled".to_string(), "true".to_string()),
+                    (
+                        "protocol.spooling.shared-secret-key".to_string(),
+                        format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
+                    ),
+                ]);
+
+                // Finally, extend the spooling manager properties with any user configuration
+                resolved_config
+                    .spooling_manager_properties
+                    .extend(spooling_config.config_overrides.clone());
             }
         }
-
-        resolved_config.spooling_manager_properties.extend([
-            ("fs.location".to_string(), config.location.clone()),
-            (
-                "spooling-manager.name".to_string(),
-                "filesystem".to_string(),
-            ),
-        ]);
-
-        // Enable spooling protocol
-        resolved_config.config_properties.extend([
-            ("protocol.spooling.enabled".to_string(), "true".to_string()),
-            (
-                "protocol.spooling.shared-secret-key".to_string(),
-                format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
-            ),
-        ]);
-
-        // Finally, extend the spooling manager properties with any user configuration
-        resolved_config
-            .spooling_manager_properties
-            .extend(config.config_overrides.clone());
 
         Ok(resolved_config)
     }
@@ -252,7 +261,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_spooling_config() {
-        let config = ClientSpoolingProtocolConfig {
+        let config = ClientProtocolConfig::Spooling(ClientSpoolingProtocolConfig {
             location: "s3://my-bucket/spooling".to_string(),
             filesystem: SpoolingFileSystemConfig::S3(S3SpoolingConfig {
                 connection:
@@ -265,9 +274,9 @@ mod tests {
                 upload_part_size: None,
             }),
             config_overrides: HashMap::new(),
-        };
+        });
 
-        let resolved_spooling_config = ResolvedSpoolingProtocolConfig::from_config(
+        let resolved_spooling_config = ResolvedClientProtocolConfig::from_config(
             &config, None, // No client, so no external resolution
             "default",
         )
@@ -292,7 +301,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_spooling_config_overrides() {
-        let config = ClientSpoolingProtocolConfig {
+        let config = ClientProtocolConfig::Spooling(ClientSpoolingProtocolConfig {
             location: "s3://my-bucket/spooling".to_string(),
             filesystem: SpoolingFileSystemConfig::S3(S3SpoolingConfig {
                 connection:
@@ -308,9 +317,9 @@ mod tests {
                 "protocol.spooling.retrieval-mode".to_string(),
                 "STORAGE".to_string(),
             )]),
-        };
+        });
 
-        let resolved_spooling_config = ResolvedSpoolingProtocolConfig::from_config(
+        let resolved_spooling_config = ResolvedClientProtocolConfig::from_config(
             &config, None, // No client, so no external resolution
             "default",
         )

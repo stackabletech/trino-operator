@@ -464,10 +464,9 @@ pub async fn reconcile_trino(
     };
 
     // Resolve client spooling protocol configuration with S3 connections if needed
-    let resolved_spooling_config = match trino.spec.cluster_config.client_spooling_protocol.as_ref()
-    {
+    let resolved_client_protocol_config = match trino.spec.cluster_config.client_protocol.as_ref() {
         Some(spooling_config) => Some(
-            client_protocol::ResolvedSpoolingProtocolConfig::from_config(
+            client_protocol::ResolvedClientProtocolConfig::from_config(
                 spooling_config,
                 Some(client),
                 &namespace,
@@ -599,7 +598,7 @@ pub async fn reconcile_trino(
                 &trino_opa_config,
                 &client.kubernetes_cluster_info,
                 &resolved_fte_config,
-                &resolved_spooling_config,
+                &resolved_client_protocol_config,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
@@ -618,7 +617,7 @@ pub async fn reconcile_trino(
                 &catalogs,
                 &rbac_sa.name_any(),
                 &resolved_fte_config,
-                &resolved_spooling_config,
+                &resolved_client_protocol_config,
             )?;
 
             cluster_resources
@@ -728,7 +727,7 @@ fn build_rolegroup_config_map(
     trino_opa_config: &Option<TrinoOpaConfig>,
     cluster_info: &KubernetesClusterInfo,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
 
@@ -1013,7 +1012,7 @@ fn build_rolegroup_statefulset(
     catalogs: &[CatalogConfig],
     sa_name: &str,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<StatefulSet> {
     let role = trino
         .role(trino_role)
@@ -1689,7 +1688,7 @@ fn tls_volume_mounts(
     catalogs: &[CatalogConfig],
     requested_secret_lifetime: &Duration,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare

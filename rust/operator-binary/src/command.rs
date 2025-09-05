@@ -24,7 +24,7 @@ pub fn container_prepare_args(
     catalogs: &[CatalogConfig],
     merged_config: &v1alpha1::TrinoConfig,
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Vec<String> {
     let mut args = vec![];
 
@@ -98,7 +98,7 @@ pub fn container_trino_args(
     authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedSpoolingProtocolConfig>,
+    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder

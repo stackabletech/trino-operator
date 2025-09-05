@@ -16,12 +16,13 @@ To enable it, you need to set the `spec.clusterConfig.clientSpoolingProtocol` co
 ----
 spec:
   clusterConfig:
-    clientSpoolingProtocol:
-      location: "s3://spooling-bucket/trino/" # <1>
-      filesystem:
-        s3: # <2>
-          connection:
-            reference: "minio"
+    clientProtocol:
+      spooling:
+        location: "s3://spooling-bucket/trino/" # <1>
+        filesystem:
+          s3: # <2>
+            connection:
+              reference: "minio"
 ----
 <1> Specifies the location where spooled data will be stored. This example uses an S3 bucket.
 <2> Configures the filesystem type for spooling. Only S3 is supported currently via the custom resource definition.
