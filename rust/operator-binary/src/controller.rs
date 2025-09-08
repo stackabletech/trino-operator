@@ -867,6 +867,27 @@ fn build_rolegroup_config_map(
                 }
             }
             PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
+            PropertyNameKind::File(file_name) if file_name == SPOOLING_MANAGER_PROPERTIES => {
+                // Add automatic properties for the spooling protocol
+                if let Some(spooling_config) = resolved_spooling_config {
+                    dynamic_resolved_config = spooling_config
+                        .spooling_manager_properties
+                        .iter()
+                        .map(|(k, v)| (k.clone(), Some(v.clone())))
+                        .collect();
+                }
+
+                // Override automatic properties with user provided configuration for the spooling protocol
+                dynamic_resolved_config.extend(transformed_config);
+
+                if !dynamic_resolved_config.is_empty() {
+                    cm_conf_data.insert(
+                        file_name.to_string(),
+                        to_java_properties_string(dynamic_resolved_config.iter())
+                            .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
+                    );
+                }
+            }
             _ => {}
         }
     }
@@ -887,20 +908,6 @@ fn build_rolegroup_config_map(
                     .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
             );
         }
-    }
-
-    // Add client protocol properties (especially spooling properties)
-    if let Some(spooling_config) = resolved_spooling_config {
-        let spooling_props_with_options: BTreeMap<String, Option<String>> = spooling_config
-            .spooling_manager_properties
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(v.clone())))
-            .collect();
-        cm_conf_data.insert(
-            SPOOLING_MANAGER_PROPERTIES.to_string(),
-            to_java_properties_string(spooling_props_with_options.iter())
-                .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-        );
     }
 
     let jvm_sec_props: BTreeMap<String, Option<String>> = config
@@ -1435,6 +1442,7 @@ fn validated_product_config(
         PropertyNameKind::File(LOG_PROPERTIES.to_string()),
         PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
         PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
+        PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
     ];
 
     let coordinator_role = TrinoRole::Coordinator;
@@ -1802,6 +1810,7 @@ mod tests {
     use stackable_operator::commons::networking::DomainName;
 
     use super::*;
+    use crate::crd::client_protocol::ResolvedClientProtocolConfig;
 
     #[test]
     fn test_config_overrides() {
@@ -1838,7 +1847,7 @@ mod tests {
               default:
                 replicas: 1
         "#;
-        let cm = build_config_map(trino_yaml).data.unwrap();
+        let cm = build_config_map(trino_yaml, &None, &None).data.unwrap();
         let config = cm.get("config.properties").unwrap();
         assert!(config.contains("foo=bar"));
         assert!(config.contains("level=role-group"));
@@ -1861,7 +1870,74 @@ mod tests {
         assert!(cm.contains_key("access-control.properties"));
     }
 
-    fn build_config_map(trino_yaml: &str) -> ConfigMap {
+    #[test]
+    fn test_client_protocol_config_overrides() {
+        let trino_yaml = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "470"
+          clusterConfig:
+            catalogLabelSelector:
+              matchLabels:
+                trino: simple-trino
+          coordinators:
+            configOverrides:
+              config.properties:
+                protocol.spooling.enabled: "false"
+              spooling-manager.properties:
+                fs.location: s3a://bucket/cluster/spooling
+            roleGroups:
+              default:
+                configOverrides:
+                  config.properties:
+                    protocol.spooling.enabled: "false"
+                  spooling-manager.properties:
+                    fs.location: s3a://bucket/cluster/spooling
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+        let resolved_spooling_config = Some(ResolvedClientProtocolConfig {
+            config_properties: BTreeMap::from([
+                ("protocol.spooling.enabled".to_string(), "true".to_string()),
+                (
+                    "protocol.spooling.shared-secret-key".to_string(),
+                    "test".to_string(),
+                ),
+            ]),
+            spooling_manager_properties: BTreeMap::from([(
+                "spooling-manager.name".to_string(),
+                "filesystem".to_string(),
+            )]),
+            volume_mounts: vec![],
+            volumes: vec![],
+            load_env_from_files: BTreeMap::new(),
+            init_container_extra_start_commands: vec![],
+        });
+
+        let cm = build_config_map(trino_yaml, &None, &resolved_spooling_config)
+            .data
+            .unwrap();
+        let config = cm.get("config.properties").unwrap();
+        assert!(config.contains("protocol.spooling.enabled=false"));
+        assert!(config.contains("protocol.spooling.shared-secret-key=test"));
+
+        let config = cm.get("spooling-manager.properties").unwrap();
+        assert!(config.contains("fs.location=s3a\\://bucket/cluster/spooling"));
+        assert!(config.contains("spooling-manager.name=filesystem"));
+    }
+
+    fn build_config_map(
+        trino_yaml: &str,
+        resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+        resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
+    ) -> ConfigMap {
         let mut trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(trino_yaml).expect("illegal test input");
         trino.metadata.namespace = Some("default".to_owned());
@@ -1882,6 +1958,7 @@ mod tests {
             PropertyNameKind::File(LOG_PROPERTIES.to_string()),
             PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
             PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
+            PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
         ];
         let validated_config = validate_all_roles_and_groups_config(
             // The Trino version is a single number like 396.
@@ -1964,8 +2041,8 @@ mod tests {
             &trino_authentication_config,
             &trino_opa_config,
             &cluster_info,
-            &None,
-            &None,
+            resolved_fte_config,
+            resolved_spooling_config,
         )
         .unwrap()
     }
@@ -2008,7 +2085,7 @@ mod tests {
                 replicas: 1
         "#;
 
-        let cm = build_config_map(trino_yaml).data.unwrap();
+        let cm = build_config_map(trino_yaml, &None, &None).data.unwrap();
         let access_control_config = cm.get("access-control.properties").unwrap();
 
         assert!(access_control_config.contains("access-control.name=opa"));
