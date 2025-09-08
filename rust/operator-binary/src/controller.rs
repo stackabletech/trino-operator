@@ -910,20 +910,6 @@ fn build_rolegroup_config_map(
         }
     }
 
-    // Add client protocol properties (especially spooling properties)
-    if let Some(spooling_config) = resolved_spooling_config {
-        let spooling_props_with_options: BTreeMap<String, Option<String>> = spooling_config
-            .spooling_manager_properties
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(v.clone())))
-            .collect();
-        cm_conf_data.insert(
-            SPOOLING_MANAGER_PROPERTIES.to_string(),
-            to_java_properties_string(spooling_props_with_options.iter())
-                .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-        );
-    }
-
     let jvm_sec_props: BTreeMap<String, Option<String>> = config
         .get(&PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()))
         .cloned()
@@ -1925,7 +1911,6 @@ mod tests {
             )]),
             volume_mounts: vec![],
             volumes: vec![],
-            load_env_from_files: BTreeMap::new(),
             init_container_extra_start_commands: vec![],
         });
 
@@ -1937,6 +1922,9 @@ mod tests {
         assert!(config.contains("protocol.spooling.shared-secret-key=test"));
 
         let config = cm.get("spooling-manager.properties").unwrap();
+        println!("------");
+        println!("{}", config);
+        println!("------");
         assert!(config.contains("fs.location=s3a\\://bucket/cluster/spooling"));
         assert!(config.contains("spooling-manager.name=filesystem"));
     }
