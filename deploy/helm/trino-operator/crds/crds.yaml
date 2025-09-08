@@ -114,12 +114,6 @@ spec:
                       properties:
                         spooling:
                           properties:
-                            configOverrides:
-                              additionalProperties:
-                                type: string
-                              default: {}
-                              description: The `configOverrides` allow overriding arbitrary client protocol properties.
-                              type: object
                             filesystem:
                               oneOf:
                                 - required:

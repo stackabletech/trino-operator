@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 /// This module manages the client protocol properties, especially the for spooling.
 /// Trino documentation is available here: https://trino.io/docs/current/client/client-protocol.html
@@ -37,10 +37,6 @@ pub struct ClientSpoolingProtocolConfig {
 
     // Spooling filesystem properties. Only S3 is supported.
     pub filesystem: SpoolingFileSystemConfig,
-
-    /// The `configOverrides` allow overriding arbitrary client protocol properties.
-    #[serde(default)]
-    pub config_overrides: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -144,11 +140,6 @@ impl ResolvedClientProtocolConfig {
                         format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
                     ),
                 ]);
-
-                // Finally, extend the spooling manager properties with any user configuration
-                resolved_config
-                    .spooling_manager_properties
-                    .extend(spooling_config.config_overrides.clone());
             }
         }
 
@@ -273,7 +264,6 @@ mod tests {
                 max_error_retries: None,
                 upload_part_size: None,
             }),
-            config_overrides: HashMap::new(),
         });
 
         let resolved_spooling_config = ResolvedClientProtocolConfig::from_config(
@@ -293,54 +283,6 @@ mod tests {
                 "filesystem".to_string(),
             ),
         ]);
-        assert_eq!(
-            expected_props,
-            resolved_spooling_config.spooling_manager_properties
-        );
-    }
-
-    #[tokio::test]
-    async fn test_spooling_config_overrides() {
-        let config = ClientProtocolConfig::Spooling(ClientSpoolingProtocolConfig {
-            location: "s3://my-bucket/spooling".to_string(),
-            filesystem: SpoolingFileSystemConfig::S3(S3SpoolingConfig {
-                connection:
-                    stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
-                        "test-s3-connection".to_string(),
-                    ),
-                iam_role: None,
-                external_id: None,
-                max_error_retries: None,
-                upload_part_size: None,
-            }),
-            config_overrides: HashMap::from([(
-                "protocol.spooling.retrieval-mode".to_string(),
-                "STORAGE".to_string(),
-            )]),
-        });
-
-        let resolved_spooling_config = ResolvedClientProtocolConfig::from_config(
-            &config, None, // No client, so no external resolution
-            "default",
-        )
-        .await
-        .unwrap();
-
-        let expected_props = BTreeMap::from([
-            (
-                "fs.location".to_string(),
-                "s3://my-bucket/spooling".to_string(),
-            ),
-            (
-                "protocol.spooling.retrieval-mode".to_string(),
-                "STORAGE".to_string(),
-            ),
-            (
-                "spooling-manager.name".to_string(),
-                "filesystem".to_string(),
-            ),
-        ]);
-
         assert_eq!(
             expected_props,
             resolved_spooling_config.spooling_manager_properties
