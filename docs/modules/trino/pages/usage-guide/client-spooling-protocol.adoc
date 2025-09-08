@@ -28,7 +28,7 @@ spec:
 <2> Configures the filesystem type for spooling. Only S3 is supported currently via the custom resource definition.
 
 The operator automatically fills in additional settings required by Trino, such as the `protocol.spooling.shared-secret-key`.
-Users can change the contents of the `spooling-manager.properties` file by adding entries to the optional `spec.clusterConfig.clientSpoolingProtocol.config_overrides` map.
+To add or replace properties in the generated `spooling-manager.properties` file, use the `configOverrides` property as describe here : xref:usage-guide/configuration.adoc[].
 
 [IMPORTANT]
 ====
