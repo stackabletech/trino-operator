@@ -117,7 +117,7 @@ tests:
       - openshift
   - name: client-spooling
     dimensions:
-      - trino
+      - trino-latest
       - openshift
   - name: listener
     dimensions:

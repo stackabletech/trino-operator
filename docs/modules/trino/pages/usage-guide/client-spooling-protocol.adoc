@@ -7,6 +7,11 @@ The Client Spooling Protocol in Trino is designed to efficiently handle large re
 
 For more details, refer to the link:{trino-docs-spooling-url}[Trino documentation on Client Spooling Protocol {external-link-icon}^].
 
+[IMPORTANT]
+====
+The client spooling protocol was introduced in Trino 466 but it only works reliably starting with Trino 476.
+====
+
 == Configuration
 
 The client spooling protocol is disabled by default.
