@@ -184,7 +184,7 @@ impl TrinoOidcAuthentication {
                 oauth2_authentication_config.add_commands(
                     TrinoRole::Coordinator,
                     crate::crd::Container::Prepare,
-                    command::add_cert_to_truststore(&path, STACKABLE_CLIENT_TLS_DIR, "oidc-idp"),
+                    command::add_cert_to_truststore(&path, STACKABLE_CLIENT_TLS_DIR),
                 );
             }
         }
