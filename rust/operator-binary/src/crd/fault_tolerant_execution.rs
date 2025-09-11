@@ -545,11 +545,7 @@ impl ResolvedFaultTolerantExecutionConfig {
                 }) => {
                     if let Some(ca_cert) = s3_connection.tls.tls_ca_cert_mount_path() {
                         self.init_container_extra_start_commands.extend(
-                            command::add_cert_to_truststore(
-                                &ca_cert,
-                                STACKABLE_CLIENT_TLS_DIR,
-                                "exchange-s3-ca-cert",
-                            ),
+                            command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR),
                         );
                     }
                 }
