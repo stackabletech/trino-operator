@@ -1922,9 +1922,7 @@ mod tests {
         assert!(config.contains("protocol.spooling.shared-secret-key=test"));
 
         let config = cm.get("spooling-manager.properties").unwrap();
-        println!("------");
-        println!("{}", config);
-        println!("------");
+
         assert!(config.contains("fs.location=s3a\\://bucket/cluster/spooling"));
         assert!(config.contains("spooling-manager.name=filesystem"));
     }
