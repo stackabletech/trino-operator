@@ -23,5 +23,5 @@ Congrats, your secret-op now did a certificate rotation and your Pod should star
 
 ```bash
 keytool -list -storepass "" -keystore /certs/pkcs12-1/truststore.p12
-openssl pkcs12 -password pass: -in /certs/pkcs12-1/truststore.p12 
+openssl pkcs12 -password pass: -in /certs/pkcs12-1/truststore.p12
 ```

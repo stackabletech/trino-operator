@@ -29,8 +29,8 @@ kind: SecretClass
 metadata:
   name: short-tls
 spec:
-  backend: 
-    autoTls: 
+  backend:
+    autoTls:
       ca:
         secret:
           name: secret-provisioner-short-tls-ca
