@@ -133,7 +133,7 @@ pub enum Error {
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
 
-    #[snafu(display("Trino cluster {} has no namespace", name))]
+    #[snafu(display("Trino cluster {name:?} has no namespace"))]
     MissingTrinoNamespace {
         source: crate::crd::Error,
         name: String,
