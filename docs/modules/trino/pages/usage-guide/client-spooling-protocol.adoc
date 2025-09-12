@@ -1,0 +1,43 @@
+= Client Spooling Protocol
+:description: Enable and configure the Client Spooling Protocol in Trino for efficient handling of large result sets.
+:keywords: client spooling protocol, Trino, large result sets, memory management
+:trino-docs-spooling-url: https://trino.io/docs/476/client/client-protocol.html
+
+The Client Spooling Protocol in Trino is designed to efficiently handle large result sets. When enabled, this protocol allows the Trino server to spool results to external storage systems, reducing memory consumption and improving performance for queries that return large datasets.
+
+For more details, refer to the link:{trino-docs-spooling-url}[Trino documentation on Client Spooling Protocol {external-link-icon}^].
+
+[IMPORTANT]
+====
+The client spooling protocol was introduced in Trino 466 but it only works reliably starting with Trino 476.
+====
+
+== Configuration
+
+The client spooling protocol is disabled by default.
+To enable it, you need to set the `spec.clusterConfig.clientSpoolingProtocol` configuration property as shown below.
+
+[source,yaml]
+----
+spec:
+  clusterConfig:
+    clientProtocol:
+      spooling:
+        location: "s3://spooling-bucket/trino/" # <1>
+        filesystem:
+          s3: # <2>
+            connection:
+              reference: "minio"
+----
+<1> Specifies the location where spooled data will be stored. This example uses an S3 bucket.
+<2> Configures the filesystem type for spooling. Only S3 is supported currently via the custom resource definition.
+
+The operator automatically fills in additional settings required by Trino, such as the `protocol.spooling.shared-secret-key`.
+To add or replace properties in the generated `spooling-manager.properties` file, use the `configOverrides` property as describe here : xref:usage-guide/configuration.adoc[].
+
+[IMPORTANT]
+====
+Even if enabled, Trino may decide to not use the client spooling protocol for certain queries. Clients cannot force Trino to use it.
+====
+
+The clients need to have access to the same storage location configured for spooling.

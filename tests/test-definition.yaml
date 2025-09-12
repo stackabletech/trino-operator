@@ -115,6 +115,12 @@ tests:
     dimensions:
       - trino
       - openshift
+  - name: client-spooling
+    dimensions:
+      # The client spooling protocol was introduced in Trino 466 but it only works reliably starting with Trino 476.
+      # Long term we should test all versions
+      - trino-latest
+      - openshift
   - name: listener
     dimensions:
       - trino

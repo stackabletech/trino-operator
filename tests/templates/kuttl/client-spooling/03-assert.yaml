@@ -1,0 +1,11 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: trino-test-helper
+status:
+  phase: Running
