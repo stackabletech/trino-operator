@@ -888,27 +888,32 @@ fn build_rolegroup_config_map(
                     );
                 }
             }
+            PropertyNameKind::File(file_name) if file_name == EXCHANGE_MANAGER_PROPERTIES => {
+                // Add exchange manager properties from resolved fault tolerant execution configuration
+                if let Some(resolved_fte) = resolved_fte_config {
+                    dynamic_resolved_config = resolved_fte
+                        .exchange_manager_properties
+                        .iter()
+                        .map(|(k, v)| (k.clone(), Some(v.clone())))
+                        .collect();
+                }
+
+                // Override automatic properties with user provided configuration for the spooling protocol
+                dynamic_resolved_config.extend(transformed_config);
+
+                if !dynamic_resolved_config.is_empty() {
+                    cm_conf_data.insert(
+                        file_name.to_string(),
+                        to_java_properties_string(dynamic_resolved_config.iter())
+                            .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
+                    );
+                }
+            }
             _ => {}
         }
     }
 
     cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
-
-    // Add exchange manager properties from resolved fault tolerant execution configuration
-    if let Some(resolved_fte) = resolved_fte_config {
-        if !resolved_fte.exchange_manager_properties.is_empty() {
-            let exchange_props_with_options: BTreeMap<String, Option<String>> = resolved_fte
-                .exchange_manager_properties
-                .iter()
-                .map(|(k, v)| (k.clone(), Some(v.clone())))
-                .collect();
-            cm_conf_data.insert(
-                EXCHANGE_MANAGER_PROPERTIES.to_string(),
-                to_java_properties_string(exchange_props_with_options.iter())
-                    .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-            );
-        }
-    }
 
     let jvm_sec_props: BTreeMap<String, Option<String>> = config
         .get(&PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()))
@@ -1437,6 +1442,7 @@ fn validated_product_config(
         PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
         PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
         PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
+        PropertyNameKind::File(EXCHANGE_MANAGER_PROPERTIES.to_string()),
     ];
 
     let coordinator_role = TrinoRole::Coordinator;
@@ -1953,6 +1959,7 @@ mod tests {
             PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
             PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
             PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
+            PropertyNameKind::File(EXCHANGE_MANAGER_PROPERTIES.to_string()),
         ];
         let validated_config = validate_all_roles_and_groups_config(
             // The Trino version is a single number like 396.

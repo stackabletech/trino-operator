@@ -299,12 +299,6 @@ spec:
                                 - required:
                                     - local
                               properties:
-                                configOverrides:
-                                  additionalProperties:
-                                    type: string
-                                  default: {}
-                                  description: The `configOverrides` allow overriding arbitrary exchange manager properties.
-                                  type: object
                                 encryptionEnabled:
                                   description: Whether to enable encryption of spooling data.
                                   nullable: true
@@ -561,12 +555,6 @@ spec:
                                 - required:
                                     - local
                               properties:
-                                configOverrides:
-                                  additionalProperties:
-                                    type: string
-                                  default: {}
-                                  description: The `configOverrides` allow overriding arbitrary exchange manager properties.
-                                  type: object
                                 encryptionEnabled:
                                   description: Whether to enable encryption of spooling data.
                                   nullable: true

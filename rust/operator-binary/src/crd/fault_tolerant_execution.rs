@@ -5,7 +5,7 @@
 //!
 //! Based on the Trino documentation: <https://trino.io/docs/current/admin/fault-tolerant-execution.html>
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
@@ -124,10 +124,6 @@ pub struct ExchangeManagerConfig {
     /// Backend-specific configuration.
     #[serde(flatten)]
     pub backend: ExchangeManagerBackend,
-
-    /// The `configOverrides` allow overriding arbitrary exchange manager properties.
-    #[serde(default)]
-    pub config_overrides: HashMap<String, String>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -440,8 +436,6 @@ impl ResolvedFaultTolerantExecutionConfig {
                     );
                 }
             }
-
-            exchange_manager_properties.extend(exchange_config.config_overrides.clone());
         }
 
         let mut resolved_config = Self {
@@ -562,6 +556,7 @@ impl ResolvedFaultTolerantExecutionConfig {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[tokio::test]
@@ -625,7 +620,6 @@ mod tests {
                 backend: ExchangeManagerBackend::Local(LocalExchangeConfig {
                     base_directories: vec!["/tmp/exchange".to_string()],
                 }),
-                config_overrides: HashMap::new(),
             }),
         });
 
@@ -705,7 +699,6 @@ mod tests {
                     max_error_retries: Some(5),
                     upload_part_size: Some(Quantity("10Mi".to_string())),
                 }),
-                config_overrides: std::collections::HashMap::new(),
             },
         });
 
@@ -785,61 +778,6 @@ mod tests {
                 .exchange_manager_properties
                 .get("exchange.source-concurrent-readers"),
             Some(&"8".to_string())
-        );
-    }
-
-    #[tokio::test]
-    async fn test_exchange_manager_config_overrides() {
-        let mut config_overrides = HashMap::new();
-        config_overrides.insert("custom.property".to_string(), "custom-value".to_string());
-        config_overrides.insert(
-            "exchange.s3.upload.part-size".to_string(),
-            "overridden-value".to_string(),
-        );
-
-        let config = FaultTolerantExecutionConfig::Task(TaskRetryConfig {
-            retry_attempts_per_task: Some(2),
-            retry_initial_delay: None,
-            retry_max_delay: None,
-            retry_delay_scale_factor: None,
-            exchange_deduplication_buffer_size: None,
-            exchange_manager: ExchangeManagerConfig {
-                encryption_enabled: None,
-                sink_buffer_pool_min_size: None,
-                sink_buffers_per_partition: None,
-                sink_max_file_size: None,
-                source_concurrent_readers: None,
-                backend: ExchangeManagerBackend::S3(S3ExchangeConfig {
-                    base_directories: vec!["s3://my-bucket/exchange".to_string()],
-                    connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
-                        "test-s3-connection".to_string()
-                    ),
-                    iam_role: None,
-                    external_id: None,
-                    max_error_retries: None,
-                    upload_part_size: Some(Quantity("10Mi".to_string())),
-                }),
-                config_overrides,
-            },
-        });
-
-        let fte_config =
-            ResolvedFaultTolerantExecutionConfig::from_config(&config, None, "default")
-                .await
-                .unwrap();
-
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("custom.property"),
-            Some(&"custom-value".to_string())
-        );
-
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("exchange.s3.upload.part-size"),
-            Some(&"overridden-value".to_string())
         );
     }
 }
