@@ -79,6 +79,7 @@ use crate::{
     authorization::opa::TrinoOpaConfig,
     catalog::{FromTrinoCatalogError, config::CatalogConfig},
     command, config,
+    config::client_protocol,
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
         DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, EXCHANGE_MANAGER_PROPERTIES,
@@ -88,7 +89,7 @@ use crate::{
         STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, TrinoRole,
         authentication::resolve_authentication_classes,
-        catalog, client_protocol,
+        catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         rolegroup_headless_service_name, v1alpha1,
@@ -1810,7 +1811,7 @@ mod tests {
     use stackable_operator::commons::networking::DomainName;
 
     use super::*;
-    use crate::crd::client_protocol::ResolvedClientProtocolConfig;
+    use crate::config::client_protocol::ResolvedClientProtocolConfig;
 
     #[test]
     fn test_config_overrides() {

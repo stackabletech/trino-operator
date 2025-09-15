@@ -9,13 +9,14 @@ use stackable_operator::{
 use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
+    config::client_protocol,
     controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
     crd::{
         CONFIG_DIR_NAME, Container, EXCHANGE_MANAGER_PROPERTIES, LOG_PROPERTIES,
         RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole, client_protocol,
+        SYSTEM_TRUST_STORE, SYSTEM_TRUST_STORE_PASSWORD, TrinoRole,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig, v1alpha1,
     },
 };

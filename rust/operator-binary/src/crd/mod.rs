@@ -4,6 +4,7 @@ pub mod catalog;
 pub mod client_protocol;
 pub mod discovery;
 pub mod fault_tolerant_execution;
+pub mod s3;
 
 use std::{collections::BTreeMap, ops::Div, str::FromStr};
 
