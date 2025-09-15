@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
-use stackable_operator::{
-    k8s_openapi::apimachinery::pkg::api::resource::Quantity,
-    schemars::{self, JsonSchema},
-};
+use stackable_operator::schemars::{self, JsonSchema};
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,12 +15,4 @@ pub struct S3Config {
     /// External ID for the IAM role trust policy.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_id: Option<String>,
-
-    /// Maximum number of times the S3 client should retry a request.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_error_retries: Option<u32>,
-
-    /// Part data size for S3 multi-part upload.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub upload_part_size: Option<Quantity>,
 }

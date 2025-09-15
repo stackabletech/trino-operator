@@ -251,16 +251,6 @@ spec:
                                       description: IAM role to assume for S3 access.
                                       nullable: true
                                       type: string
-                                    maxErrorRetries:
-                                      description: Maximum number of times the S3 client should retry a request.
-                                      format: uint32
-                                      minimum: 0.0
-                                      nullable: true
-                                      type: integer
-                                    uploadPartSize:
-                                      description: Part data size for S3 multi-part upload.
-                                      nullable: true
-                                      type: string
                                   required:
                                     - connection
                                   type: object

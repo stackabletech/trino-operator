@@ -79,7 +79,7 @@ use crate::{
     authorization::opa::TrinoOpaConfig,
     catalog::{FromTrinoCatalogError, config::CatalogConfig},
     command, config,
-    config::client_protocol,
+    config::{client_protocol, fault_tolerant_execution},
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
         DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, EXCHANGE_MANAGER_PROPERTIES,
@@ -91,7 +91,6 @@ use crate::{
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         rolegroup_headless_service_name, v1alpha1,
     },
     listener::{
@@ -312,7 +311,7 @@ pub enum Error {
 
     #[snafu(display("failed to configure fault tolerant execution"))]
     FaultTolerantExecution {
-        source: crate::crd::fault_tolerant_execution::Error,
+        source: fault_tolerant_execution::Error,
     },
 
     #[snafu(display("failed to get required Labels"))]
@@ -457,9 +456,13 @@ pub async fn reconcile_trino(
     // Resolve fault tolerant execution configuration with S3 connections if needed
     let resolved_fte_config = match trino.spec.cluster_config.fault_tolerant_execution.as_ref() {
         Some(fte_config) => Some(
-            ResolvedFaultTolerantExecutionConfig::from_config(fte_config, Some(client), &namespace)
-                .await
-                .context(FaultTolerantExecutionSnafu)?,
+            fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig::from_config(
+                fte_config,
+                Some(client),
+                &namespace,
+            )
+            .await
+            .context(FaultTolerantExecutionSnafu)?,
         ),
         None => None,
     };
@@ -727,7 +730,7 @@ fn build_rolegroup_config_map(
     trino_authentication_config: &TrinoAuthenticationConfig,
     trino_opa_config: &Option<TrinoOpaConfig>,
     cluster_info: &KubernetesClusterInfo,
-    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<ConfigMap> {
     let mut cm_conf_data = BTreeMap::new();
@@ -1024,7 +1027,7 @@ fn build_rolegroup_statefulset(
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     sa_name: &str,
-    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<StatefulSet> {
     let role = trino
@@ -1696,7 +1699,7 @@ fn tls_volume_mounts(
     cb_trino: &mut ContainerBuilder,
     catalogs: &[CatalogConfig],
     requested_secret_lifetime: &Duration,
-    resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+    resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
@@ -1936,7 +1939,9 @@ mod tests {
 
     fn build_config_map(
         trino_yaml: &str,
-        resolved_fte_config: &Option<ResolvedFaultTolerantExecutionConfig>,
+        resolved_fte_config: &Option<
+            fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
+        >,
         resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
     ) -> ConfigMap {
         let mut trino: v1alpha1::TrinoCluster =

@@ -137,8 +137,6 @@ mod tests {
                     ),
                 iam_role: None,
                 external_id: None,
-                max_error_retries: None,
-                upload_part_size: None,
             }),
         });
 
