@@ -7,11 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Support for fault-tolerant execution ([#779]).
+  Remove `spec.clusterConfig.faultTolerantExecution.configOverrides` and use "classic" role/group overrides ([#793]).
 - Support for the client spooling protocol ([#793]).
-
-### Removed
-
-- Cluster wide FTE specific `configOverrides` has been removed in favor of the "classic" role/group overrides ([#793]).
 
 [#779]: https://github.com/stackabletech/trino-operator/pull/779
 [#793]: https://github.com/stackabletech/trino-operator/pull/793
