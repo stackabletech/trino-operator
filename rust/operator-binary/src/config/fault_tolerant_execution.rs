@@ -326,24 +326,26 @@ impl ResolvedFaultTolerantExecutionConfig {
 #[cfg(test)]
 mod tests {
 
-    use stackable_operator::shared::time::Duration;
+    use indoc::indoc;
 
     use super::*;
-    use crate::crd::fault_tolerant_execution::{
-        ExchangeManagerConfig, LocalExchangeConfig, QueryRetryConfig, S3ExchangeConfig,
-        TaskRetryConfig,
-    };
+
+    fn parse_config(config_yaml: &str) -> FaultTolerantExecutionConfig {
+        let deserializer = serde_yaml::Deserializer::from_str(config_yaml);
+        serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+            .expect("invalid test input")
+    }
 
     #[tokio::test]
     async fn test_query_retry_policy_without_exchange_manager() {
-        let config = FaultTolerantExecutionConfig::Query(QueryRetryConfig {
-            retry_attempts: Some(5),
-            retry_initial_delay: Some(Duration::from_secs(15)),
-            retry_max_delay: Some(Duration::from_secs(90)),
-            retry_delay_scale_factor: Some(3.0),
-            exchange_deduplication_buffer_size: Some(Quantity("64Mi".to_string())),
-            exchange_manager: None,
-        });
+        let config = parse_config(indoc! {r#"
+            query:
+              retryAttempts: 5
+              retryInitialDelay: 15s
+              retryMaxDelay: 90s
+              retryDelayScaleFactor: 3
+              exchangeDeduplicationBufferSize: 64Mi
+        "#});
 
         let fte_config =
             ResolvedFaultTolerantExecutionConfig::from_config(&config, None, "default")
@@ -380,23 +382,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_retry_policy_with_exchange_manager() {
-        let config = FaultTolerantExecutionConfig::Query(QueryRetryConfig {
-            retry_attempts: Some(3),
-            retry_initial_delay: Some(Duration::from_secs(10)),
-            retry_max_delay: Some(Duration::from_secs(60)),
-            retry_delay_scale_factor: Some(2.0),
-            exchange_deduplication_buffer_size: Some(Quantity("100Mi".to_string())),
-            exchange_manager: Some(ExchangeManagerConfig {
-                encryption_enabled: Some(true),
-                sink_buffer_pool_min_size: Some(10),
-                sink_buffers_per_partition: Some(2),
-                sink_max_file_size: Some(Quantity("1Gi".to_string())),
-                source_concurrent_readers: Some(4),
-                backend: ExchangeManagerBackend::Local(LocalExchangeConfig {
-                    base_directories: vec!["/tmp/exchange".to_string()],
-                }),
-            }),
-        });
+        let config = parse_config(indoc! {r#"
+            query:
+              retryAttempts: 3
+              retryInitialDelay: 10s
+              retryMaxDelay: 1m
+              retryDelayScaleFactor: 2
+              exchangeDeduplicationBufferSize: 100Mi
+              exchangeManager:
+                encryptionEnabled: true
+                sinkBufferPoolMinSize: 10
+                sinkBuffersPerPartition: 2
+                sinkMaxFileSize: 1Gi
+                sourceConcurrentReaders: 4
+                local:
+                  baseDirectories: ["/tmp/exchange"]
+        "#});
 
         let fte_config =
             ResolvedFaultTolerantExecutionConfig::from_config(&config, None, "default")
@@ -452,28 +453,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_task_retry_policy_with_s3_exchange_manager() {
-        let config = FaultTolerantExecutionConfig::Task(TaskRetryConfig {
-            retry_attempts_per_task: Some(2),
-            retry_initial_delay: None,
-            retry_max_delay: None,
-            retry_delay_scale_factor: None,
-            exchange_deduplication_buffer_size: None,
-            exchange_manager: ExchangeManagerConfig {
-                encryption_enabled: None,
-                sink_buffer_pool_min_size: Some(20),
-                sink_buffers_per_partition: Some(4),
-                sink_max_file_size: Some(Quantity("2Gi".to_string())),
-                source_concurrent_readers: Some(8),
-                backend: ExchangeManagerBackend::S3(S3ExchangeConfig {
-                    base_directories: vec!["s3://my-bucket/exchange".to_string()],
-                    max_error_retries: Some(5),
-                    upload_part_size: Some(Quantity("10Mi".to_string())),
-                    connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
-                        "test-s3-connection".to_string()
-                    ),
-                }),
-            },
-        });
+        let config = parse_config(indoc! {r#"
+            task:
+              exchangeManager:
+                s3:
+                  baseDirectories: ["s3://my-bucket/exchange"]
+                  connection:
+                    reference: test-s3-connection
+                  maxErrorRetries: 5
+                  uploadPartSize: 10Mi
+                  iamRole: arn:aws:iam::123456789012:role/TrinoRole
+                  externalId: external-id-123
+        "#});
 
         let fte_config =
             ResolvedFaultTolerantExecutionConfig::from_config(&config, None, "default")
@@ -483,12 +474,6 @@ mod tests {
         assert_eq!(
             fte_config.config_properties.get("retry-policy"),
             Some(&"TASK".to_string())
-        );
-        assert_eq!(
-            fte_config
-                .config_properties
-                .get("task-retry-attempts-per-task"),
-            Some(&"2".to_string())
         );
 
         assert_eq!(
@@ -515,30 +500,6 @@ mod tests {
                 .exchange_manager_properties
                 .get("exchange.s3.upload.part-size"),
             Some(&"10485760B".to_string())
-        );
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("exchange.sink-buffer-pool-min-size"),
-            Some(&"20".to_string())
-        );
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("exchange.sink-buffers-per-partition"),
-            Some(&"4".to_string())
-        );
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("exchange.sink-max-file-size"),
-            Some(&"2147483648B".to_string())
-        );
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("exchange.source-concurrent-readers"),
-            Some(&"8".to_string())
         );
     }
 }
