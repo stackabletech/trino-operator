@@ -1814,10 +1814,16 @@ mod tests {
     use stackable_operator::commons::networking::DomainName;
 
     use super::*;
-    use crate::config::client_protocol::ResolvedClientProtocolConfig;
+    use crate::{
+        config::{
+            client_protocol::ResolvedClientProtocolConfig,
+            fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
+        },
+        crd::v1alpha1::TrinoCluster,
+    };
 
-    #[test]
-    fn test_config_overrides() {
+    #[tokio::test]
+    async fn test_config_overrides() {
         let trino_yaml = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -1851,7 +1857,7 @@ mod tests {
               default:
                 replicas: 1
         "#;
-        let cm = build_config_map(trino_yaml, &None, &None).data.unwrap();
+        let cm = build_config_map(trino_yaml).await.data.unwrap();
         let config = cm.get("config.properties").unwrap();
         assert!(config.contains("foo=bar"));
         assert!(config.contains("level=role-group"));
@@ -1874,8 +1880,8 @@ mod tests {
         assert!(cm.contains_key("access-control.properties"));
     }
 
-    #[test]
-    fn test_client_protocol_config_overrides() {
+    #[tokio::test]
+    async fn test_client_protocol_config_overrides() {
         let trino_yaml = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -1888,64 +1894,48 @@ mod tests {
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino
+            clientProtocol:
+              spooling:
+                location: s3://my-bucket/spooling
+                filesystem:
+                  s3:
+                    reference: test-s3-connection
           coordinators:
             configOverrides:
               config.properties:
-                protocol.spooling.enabled: "false"
+                foo: bar
               spooling-manager.properties:
-                fs.location: s3a://bucket/cluster/spooling
+                fs.location: s3a://role-level
             roleGroups:
               default:
-                configOverrides:
-                  config.properties:
-                    protocol.spooling.enabled: "false"
-                  spooling-manager.properties:
-                    fs.location: s3a://bucket/cluster/spooling
                 replicas: 1
+                configOverrides:
+                  spooling-manager.properties:
+                    fs.location: s3a://role-group-level
           workers:
             roleGroups:
               default:
                 replicas: 1
         "#;
-        let resolved_spooling_config = Some(ResolvedClientProtocolConfig {
-            config_properties: BTreeMap::from([
-                ("protocol.spooling.enabled".to_string(), "true".to_string()),
-                (
-                    "protocol.spooling.shared-secret-key".to_string(),
-                    "test".to_string(),
-                ),
-            ]),
-            spooling_manager_properties: BTreeMap::from([(
-                "spooling-manager.name".to_string(),
-                "filesystem".to_string(),
-            )]),
-            volume_mounts: vec![],
-            volumes: vec![],
-            init_container_extra_start_commands: vec![],
-        });
 
-        let cm = build_config_map(trino_yaml, &None, &resolved_spooling_config)
-            .data
-            .unwrap();
+        let cm = build_config_map(trino_yaml).await.data.unwrap();
         let config = cm.get("config.properties").unwrap();
-        assert!(config.contains("protocol.spooling.enabled=false"));
-        assert!(config.contains("protocol.spooling.shared-secret-key=test"));
+        assert!(config.contains("protocol.spooling.enabled=true"));
+        assert!(config.contains(&format!(
+            "protocol.spooling.shared-secret-key=${{ENV\\:{ENV_SPOOLING_SECRET}}}"
+        )));
+        assert!(config.contains("foo=bar"));
 
         let config = cm.get("spooling-manager.properties").unwrap();
-
-        assert!(config.contains("fs.location=s3a\\://bucket/cluster/spooling"));
+        assert!(config.contains("fs.location=s3a\\://role-group-level"));
         assert!(config.contains("spooling-manager.name=filesystem"));
     }
 
-    fn build_config_map(
-        trino_yaml: &str,
-        resolved_fte_config: &Option<
-            fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
-        >,
-        resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
-    ) -> ConfigMap {
-        let mut trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(trino_yaml).expect("illegal test input");
+    async fn build_config_map(trino_yaml: &str) -> ConfigMap {
+        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
+        let mut trino: TrinoCluster =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+                .expect("invalid test input");
         trino.metadata.namespace = Some("default".to_owned());
         trino.metadata.uid = Some("42".to_owned());
         let cluster_info = KubernetesClusterInfo {
@@ -2029,6 +2019,30 @@ mod tests {
             ),
             allow_permission_management_operations: true,
         });
+        let resolved_fte_config = match &trino.spec.cluster_config.fault_tolerant_execution {
+            Some(fault_tolerant_execution) => Some(
+                ResolvedFaultTolerantExecutionConfig::from_config(
+                    fault_tolerant_execution,
+                    None,
+                    &trino.namespace().unwrap(),
+                )
+                .await
+                .unwrap(),
+            ),
+            None => None,
+        };
+        let resolved_spooling_config = match &trino.spec.cluster_config.client_protocol {
+            Some(client_protocol) => Some(
+                ResolvedClientProtocolConfig::from_config(
+                    client_protocol,
+                    None,
+                    &trino.namespace().unwrap(),
+                )
+                .await
+                .unwrap(),
+            ),
+            None => None,
+        };
         let merged_config = trino
             .merged_config(&trino_role, &rolegroup_ref, &[])
             .unwrap();
@@ -2048,14 +2062,14 @@ mod tests {
             &trino_authentication_config,
             &trino_opa_config,
             &cluster_info,
-            resolved_fte_config,
-            resolved_spooling_config,
+            &resolved_fte_config,
+            &resolved_spooling_config,
         )
         .unwrap()
     }
 
-    #[test]
-    fn test_access_control_overrides() {
+    #[tokio::test]
+    async fn test_access_control_overrides() {
         let trino_yaml = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -2092,7 +2106,7 @@ mod tests {
                 replicas: 1
         "#;
 
-        let cm = build_config_map(trino_yaml, &None, &None).data.unwrap();
+        let cm = build_config_map(trino_yaml).await.data.unwrap();
         let access_control_config = cm.get("access-control.properties").unwrap();
 
         assert!(access_control_config.contains("access-control.name=opa"));
