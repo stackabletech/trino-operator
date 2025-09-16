@@ -8,10 +8,7 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 
-use crate::{
-    command,
-    crd::{STACKABLE_CLIENT_TLS_DIR, s3 as trino_s3},
-};
+use crate::{command, crd::STACKABLE_CLIENT_TLS_DIR};
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -49,7 +46,7 @@ impl ResolvedS3Config {
     /// Resolve S3 connection properties from Kubernetes resources
     /// and prepare spooling filesystem configuration.
     pub async fn from_config(
-        config: &trino_s3::S3Config,
+        connection: &stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference,
         client: &Client,
         namespace: &str,
     ) -> Result<Self, Error> {
@@ -60,8 +57,7 @@ impl ResolvedS3Config {
             init_container_extra_start_commands: Vec::new(),
         };
 
-        let s3_connection = config
-            .connection
+        let s3_connection = connection
             .clone()
             .resolve(client, namespace)
             .await

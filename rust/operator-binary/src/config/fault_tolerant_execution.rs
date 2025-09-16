@@ -214,16 +214,6 @@ impl ResolvedFaultTolerantExecutionConfig {
 
                     Self::insert_if_present(
                         &mut exchange_manager_properties,
-                        "exchange.s3.iam-role",
-                        s3_exchange_config.s3_config.iam_role.as_ref(),
-                    );
-                    Self::insert_if_present(
-                        &mut exchange_manager_properties,
-                        "exchange.s3.external-id",
-                        s3_exchange_config.s3_config.external_id.as_ref(),
-                    );
-                    Self::insert_if_present(
-                        &mut exchange_manager_properties,
                         "exchange.s3.max-error-retries",
                         s3_exchange_config.max_error_retries,
                     );
@@ -285,7 +275,7 @@ impl ResolvedFaultTolerantExecutionConfig {
             match &exchange_config.backend {
                 ExchangeManagerBackend::S3(s3_config) => {
                     let resolved_s3_config = config::s3::ResolvedS3Config::from_config(
-                        &s3_config.s3_config,
+                        &s3_config.connection,
                         client,
                         namespace,
                     )
@@ -339,12 +329,9 @@ mod tests {
     use stackable_operator::shared::time::Duration;
 
     use super::*;
-    use crate::crd::{
-        fault_tolerant_execution::{
-            ExchangeManagerConfig, LocalExchangeConfig, QueryRetryConfig, S3ExchangeConfig,
-            TaskRetryConfig,
-        },
-        s3::S3Config,
+    use crate::crd::fault_tolerant_execution::{
+        ExchangeManagerConfig, LocalExchangeConfig, QueryRetryConfig, S3ExchangeConfig,
+        TaskRetryConfig,
     };
 
     #[tokio::test]
@@ -481,12 +468,9 @@ mod tests {
                     base_directories: vec!["s3://my-bucket/exchange".to_string()],
                     max_error_retries: Some(5),
                     upload_part_size: Some(Quantity("10Mi".to_string())),
-                    s3_config: S3Config { connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
+                    connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
                         "test-s3-connection".to_string()
                     ),
-                    iam_role: Some("arn:aws:iam::123456789012:role/TrinoRole".to_string()),
-                    external_id: Some("external-id-123".to_string()),
-                    }
                 }),
             },
         });
@@ -520,18 +504,6 @@ mod tests {
             Some(&"s3://my-bucket/exchange".to_string())
         );
 
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("exchange.s3.iam-role"),
-            Some(&"arn:aws:iam::123456789012:role/TrinoRole".to_string())
-        );
-        assert_eq!(
-            fte_config
-                .exchange_manager_properties
-                .get("exchange.s3.external-id"),
-            Some(&"external-id-123".to_string())
-        );
         assert_eq!(
             fte_config
                 .exchange_manager_properties

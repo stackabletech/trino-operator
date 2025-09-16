@@ -13,7 +13,6 @@ use stackable_operator::{
 };
 
 use super::catalog::commons::HdfsConnection;
-use crate::crd::s3::S3Config;
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -142,8 +141,7 @@ pub struct S3ExchangeConfig {
 
     /// S3 connection configuration.
     /// Learn more about S3 configuration in the [S3 concept docs](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
-    #[serde(flatten)]
-    pub s3_config: S3Config,
+    pub connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]

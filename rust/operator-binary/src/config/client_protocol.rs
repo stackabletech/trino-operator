@@ -132,8 +132,7 @@ mod tests {
               location: s3://my-bucket/spooling
               filesystem:
                 s3:
-                  connection:
-                    reference: test-s3-connection
+                  reference: test-s3-connection
         "#};
 
         let deserializer = serde_yaml::Deserializer::from_str(config_yaml);

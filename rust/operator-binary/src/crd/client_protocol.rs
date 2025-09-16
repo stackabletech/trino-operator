@@ -3,8 +3,6 @@
 use serde::{Deserialize, Serialize};
 use stackable_operator::schemars::{self, JsonSchema};
 
-use crate::crd::s3::S3Config;
-
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ClientProtocolConfig {
@@ -24,5 +22,5 @@ pub struct ClientSpoolingProtocolConfig {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SpoolingFileSystemConfig {
-    S3(S3Config),
+    S3(stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference),
 }
