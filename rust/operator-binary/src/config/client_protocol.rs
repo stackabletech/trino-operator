@@ -124,7 +124,6 @@ impl ResolvedClientProtocolConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crd::{client_protocol::ClientSpoolingProtocolConfig, s3::S3Config};
 
     #[tokio::test]
     async fn test_spooling_config() {
@@ -140,7 +139,6 @@ mod tests {
         let deserializer = serde_yaml::Deserializer::from_str(config_yaml);
         let config = serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
             .expect("invalid test input");
-
 
         let resolved_spooling_config = ResolvedClientProtocolConfig::from_config(
             &config, None, // No client, so no external resolution
