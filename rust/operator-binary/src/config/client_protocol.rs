@@ -111,7 +111,7 @@ impl ResolvedClientProtocolConfig {
                     ("protocol.spooling.enabled".to_string(), "true".to_string()),
                     (
                         "protocol.spooling.shared-secret-key".to_string(),
-                        format!("${{ENV:{secret}}}", secret = ENV_SPOOLING_SECRET),
+                        format!("${{ENV:{ENV_SPOOLING_SECRET}}}"),
                     ),
                 ]);
             }
@@ -128,17 +128,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_spooling_config() {
-        let config = ClientProtocolConfig::Spooling(ClientSpoolingProtocolConfig {
-            location: "s3://my-bucket/spooling".to_string(),
-            filesystem: SpoolingFileSystemConfig::S3(S3Config {
-                connection:
-                    stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference::Reference(
-                        "test-s3-connection".to_string(),
-                    ),
-                iam_role: None,
-                external_id: None,
-            }),
-        });
+        let config_yaml = indoc::indoc! {r#"
+            spooling:
+              location: s3://my-bucket/spooling
+              filesystem:
+                s3:
+                  connection:
+                    reference: test-s3-connection
+        "#};
+
+        let deserializer = serde_yaml::Deserializer::from_str(config_yaml);
+        let config = serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+            .expect("invalid test input");
+
 
         let resolved_spooling_config = ResolvedClientProtocolConfig::from_config(
             &config, None, // No client, so no external resolution
