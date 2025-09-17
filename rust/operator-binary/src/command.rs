@@ -44,7 +44,7 @@ pub fn container_prepare_args(
 
     // Create truststore that will be used when talking to external tools like S3
     // It will be populated from the system truststore so that connections against public services like AWS S3 are still possible
-    args.push(format!("truststore-merger --pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem --out {STACKABLE_CLIENT_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
+    args.push(format!("cert-tools generate-pkcs12-truststore --pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem --out {STACKABLE_CLIENT_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
 
     if trino.tls_enabled() {
         args.push(format!("cp {STACKABLE_MOUNT_SERVER_TLS_DIR}/truststore.p12 {STACKABLE_SERVER_TLS_DIR}/truststore.p12"));
@@ -55,7 +55,7 @@ pub fn container_prepare_args(
         args.push(format!("cp {STACKABLE_MOUNT_INTERNAL_TLS_DIR}/truststore.p12 {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12"));
         args.push(format!("cp {STACKABLE_MOUNT_INTERNAL_TLS_DIR}/keystore.p12 {STACKABLE_INTERNAL_TLS_DIR}/keystore.p12"));
         if trino.tls_enabled() {
-            args.push(format!("truststore-merger --pkcs12 {STACKABLE_MOUNT_SERVER_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --pkcs12 {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --out {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
+            args.push(format!("cert-tools generate-pkcs12-truststore --pkcs12 {STACKABLE_MOUNT_SERVER_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --pkcs12 {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --out {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
         }
     }
 
@@ -137,6 +137,6 @@ wait_for_termination $!
 pub fn add_cert_to_truststore(cert_file: &str, destination_directory: &str) -> Vec<String> {
     let truststore = format!("{destination_directory}/truststore.p12");
     vec![format!(
-        "truststore-merger --pkcs12 {truststore}:{STACKABLE_TLS_STORE_PASSWORD} --pem {cert_file} --out {truststore} --out-password {STACKABLE_TLS_STORE_PASSWORD}"
+        "cert-tools generate-pkcs12-truststore --pkcs12 {truststore}:{STACKABLE_TLS_STORE_PASSWORD} --pem {cert_file} --out {truststore} --out-password {STACKABLE_TLS_STORE_PASSWORD}"
     )]
 }

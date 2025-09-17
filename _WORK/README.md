@@ -3,7 +3,7 @@
 
 ```bash
 stackablectl op in commons listener secret trino
-kind load docker-image oci.stackable.tech/sdp/trino:476-stackable0.0.0-dev-with-merger
+# kind load docker-image oci.stackable.tech/sdp/trino:476-stackable0.0.0-dev-with-merger
 kubectl apply -f _WORK/trino.yaml
 ```
 

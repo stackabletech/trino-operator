@@ -5,8 +5,8 @@ metadata:
 spec:
   image:
     productVersion: "476"
-    custom: oci.stackable.tech/sdp/trino:476-stackable0.0.0-dev-with-merger
-    pullPolicy: Never
+    # custom: oci.stackable.tech/sdp/trino:476-stackable0.0.0-dev-with-merger
+    # pullPolicy: Never
   clusterConfig:
     tls:
       serverSecretClass: short-tls
