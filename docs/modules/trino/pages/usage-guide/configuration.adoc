@@ -16,6 +16,7 @@ For a role or role group, at the same level of `config`, you can specify `config
 * `password-authenticator.properties`
 * `security.properties`
 * `exchange-manager.properties`
+* `spooling-manager.properties`
 
 For a list of possible configuration properties consult the https://trino.io/docs/current/admin/properties.html[Trino Properties Reference].
 

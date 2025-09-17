@@ -13,13 +13,13 @@ use crate::{
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Cannot create PodDisruptionBudget for role [{role}]"))]
+    #[snafu(display("cannot create PodDisruptionBudget for role [{role}]"))]
     CreatePdb {
         source: stackable_operator::builder::pdb::Error,
         role: String,
     },
 
-    #[snafu(display("Cannot apply PodDisruptionBudget [{name}]"))]
+    #[snafu(display("cannot apply PodDisruptionBudget [{name}]"))]
     ApplyPdb {
         source: stackable_operator::cluster_resources::Error,
         name: String,

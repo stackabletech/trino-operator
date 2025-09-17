@@ -7,12 +7,12 @@ use stackable_operator::{
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to retrieve AuthenticationClass"))]
+    #[snafu(display("failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
         source: stackable_operator::client::Error,
     },
 
-    #[snafu(display("Invalid OIDC configuration"))]
+    #[snafu(display("invalid OIDC configuration"))]
     InvalidOidcConfiguration {
         source: stackable_operator::crd::authentication::core::v1alpha1::Error,
     },
