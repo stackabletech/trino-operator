@@ -44,6 +44,8 @@ pub fn container_prepare_args(
 
     // Create truststore that will be used when talking to external tools like S3
     // It will be populated from the system truststore so that connections against public services like AWS S3 are still possible
+    // FIXME: *Technically* we should only add the system truststore in case any webPki usage is detected, wether that's in
+    // S3, LDAP, OIDC, FTE or whatnot.
     args.push(format!("cert-tools generate-pkcs12-truststore --pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem --out {STACKABLE_CLIENT_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
 
     if trino.tls_enabled() {
