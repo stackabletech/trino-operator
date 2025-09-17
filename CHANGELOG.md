@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Support for fault-tolerant execution ([#779]).
+- Helm: Allow Pod `priorityClassName` to be configured ([#798]).
 
 [#779]: https://github.com/stackabletech/trino-operator/pull/779
+[#798]: https://github.com/stackabletech/trino-operator/pull/798
 
 ## [25.7.0] - 2025-07-23
 
