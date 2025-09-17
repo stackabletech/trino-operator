@@ -57,7 +57,7 @@ pub enum FromTrinoCatalogError {
         data_key: String,
     },
 
-    #[snafu(display("Failed to create the Secret Volume for the S3 credentials"))]
+    #[snafu(display("failed to create the Secret Volume for the S3 credentials"))]
     CreateS3CredentialsSecretOperatorVolume {
         source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
     },

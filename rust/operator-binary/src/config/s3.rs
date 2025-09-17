@@ -12,7 +12,7 @@ use crate::{command, crd::STACKABLE_CLIENT_TLS_DIR};
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to resolve S3 connection"))]
+    #[snafu(display("failed to resolve S3 connection"))]
     S3Connection {
         source: s3::v1alpha1::ConnectionError,
     },

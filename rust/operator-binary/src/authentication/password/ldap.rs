@@ -22,15 +22,15 @@ const LDAP_PASSWORD_ENV: &str = "LDAP_PASSWORD";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Trino does not support unverified TLS connections to LDAP"))]
+    #[snafu(display("trino does not support unverified TLS connections to LDAP"))]
     UnverifiedLdapTlsConnectionNotSupported,
 
-    #[snafu(display("Failed to construct LDAP endpoint URL"))]
+    #[snafu(display("failed to construct LDAP endpoint URL"))]
     LdapEndpoint {
         source: stackable_operator::crd::authentication::ldap::v1alpha1::Error,
     },
 
-    #[snafu(display("Failed to construct LDAP Volumes and VolumeMounts"))]
+    #[snafu(display("failed to construct LDAP Volumes and VolumeMounts"))]
     LdapVolumeAndVolumeMounts {
         source: stackable_operator::crd::authentication::ldap::v1alpha1::Error,
     },

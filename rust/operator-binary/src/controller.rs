@@ -133,7 +133,7 @@ pub enum Error {
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
 
-    #[snafu(display("Trino cluster {name:?} has no namespace"))]
+    #[snafu(display("trino cluster {name:?} has no namespace"))]
     MissingTrinoNamespace {
         source: crate::crd::Error,
         name: String,
@@ -278,17 +278,17 @@ pub enum Error {
         source: stackable_operator::commons::rbac::Error,
     },
 
-    #[snafu(display("Failed to retrieve AuthenticationClass"))]
+    #[snafu(display("failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
         source: crate::crd::authentication::Error,
     },
 
-    #[snafu(display("Unsupported Trino authentication"))]
+    #[snafu(display("unsupported Trino authentication"))]
     UnsupportedAuthenticationConfig {
         source: crate::authentication::Error,
     },
 
-    #[snafu(display("Invalid Trino authentication"))]
+    #[snafu(display("invalid Trino authentication"))]
     InvalidAuthenticationConfig {
         source: crate::authentication::Error,
     },

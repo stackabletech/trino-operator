@@ -23,12 +23,12 @@ use crate::{
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("Failed to resolve S3 connection"))]
+    #[snafu(display("failed to resolve S3 connection"))]
     S3Connection {
         source: s3::v1alpha1::ConnectionError,
     },
 
-    #[snafu(display("Failed to resolve S3 connection"))]
+    #[snafu(display("failed to resolve S3 connection"))]
     ResolveS3Connection { source: config::s3::Error },
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
