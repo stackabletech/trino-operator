@@ -462,8 +462,6 @@ mod tests {
                     reference: test-s3-connection
                   maxErrorRetries: 5
                   uploadPartSize: 10Mi
-                  iamRole: arn:aws:iam::123456789012:role/TrinoRole
-                  externalId: external-id-123
         "#});
 
         let fte_config =

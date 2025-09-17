@@ -1550,6 +1550,8 @@ fn shared_spooling_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
     format!("{}-spooling-secret", trino.name_any())
 }
 
+// TODO: Maybe switch to something non-openssl.
+// See https://github.com/stackabletech/airflow-operator/pull/686#discussion_r2348354468 (which is currently under discussion)
 fn get_random_base64(byte_size: usize) -> String {
     let mut buf: Vec<u8> = vec![0; byte_size];
     openssl::rand::rand_bytes(&mut buf).unwrap();
