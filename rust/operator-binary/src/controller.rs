@@ -383,6 +383,11 @@ pub enum Error {
 
     #[snafu(display("failed to resolve client protocol configuration"))]
     ClientProtocolConfiguration { source: client_protocol::Error },
+
+    #[snafu(display(
+        "client spooling protocol is not supported for Trino version {product_version}"
+    ))]
+    ClientSpoolingProtocolTrinoVersion { product_version: String },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -480,6 +485,13 @@ pub async fn reconcile_trino(
         ),
         None => None,
     };
+    if resolved_client_protocol_config.is_some()
+        && resolved_product_image.product_version.starts_with("45")
+    {
+        return Err(Error::ClientSpoolingProtocolTrinoVersion {
+            product_version: resolved_product_image.product_version,
+        });
+    }
 
     let validated_config = validated_product_config(
         trino,
