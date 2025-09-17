@@ -28,12 +28,12 @@ const WEB_UI_AUTHENTICATION_TYPE: &str = "web-ui.authentication.type";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display(
-        "No OAuth2 AuthenticationClass provided. This is an internal operator failure and should not be happening."
+        "no OAuth2 AuthenticationClass provided. This is an internal operator failure and should not be happening."
     ))]
     NoOauth2AuthenticationClassProvided,
 
     #[snafu(display(
-        "Trino cannot configure OAuth2 with multiple Identity providers. \
+        "trino cannot configure OAuth2 with multiple Identity providers. \
          Received the following AuthenticationClasses {authentication_class_names:?}. \
          Please only provide one OAuth2 AuthenticationClass!"
     ))]
@@ -41,15 +41,15 @@ pub enum Error {
         authentication_class_names: Vec<String>,
     },
 
-    #[snafu(display("Failed to create OAuth2 issuer endpoint url."))]
+    #[snafu(display("failed to create OAuth2 issuer endpoint url."))]
     FailedToCreateIssuerEndpointUrl {
         source: stackable_operator::crd::authentication::oidc::v1alpha1::Error,
     },
 
-    #[snafu(display("Trino does not support unverified TLS connections to OIDC"))]
+    #[snafu(display("trino does not support unverified TLS connections to OIDC"))]
     UnverifiedOidcTlsConnectionNotSupported,
 
-    #[snafu(display("Failed to create OIDC Volumes and VolumeMounts"))]
+    #[snafu(display("failed to create OIDC Volumes and VolumeMounts"))]
     FailedToCreateOidcVolumeAndVolumeMounts { source: TlsClientDetailsError },
 }
 

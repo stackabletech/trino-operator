@@ -43,26 +43,26 @@ const HTTP_SERVER_AUTHENTICATION_TYPE: &str = "http-server.authentication.type";
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display(
-        "The Trino Operator does not support the AuthenticationClass provider [{authentication_class_provider}] from AuthenticationClass [{authentication_class}]."
+        "the Trino Operator does not support the AuthenticationClass provider [{authentication_class_provider}] from AuthenticationClass [{authentication_class}]."
     ))]
     AuthenticationClassProviderNotSupported {
         authentication_class_provider: String,
         authentication_class: ObjectRef<core::v1alpha1::AuthenticationClass>,
     },
 
-    #[snafu(display("Failed to format trino authentication java properties"))]
+    #[snafu(display("failed to format trino authentication java properties"))]
     FailedToWriteJavaProperties {
         source: product_config::writer::PropertiesWriterError,
     },
 
-    #[snafu(display("Failed to configure trino password authentication"))]
+    #[snafu(display("failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
 
-    #[snafu(display("Failed to configure trino OAuth2 authentication"))]
+    #[snafu(display("failed to configure trino OAuth2 authentication"))]
     InvalidOauth2AuthenticationConfig { source: oidc::Error },
 
     #[snafu(display(
-        "OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"
+        "oidc authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"
     ))]
     OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
 

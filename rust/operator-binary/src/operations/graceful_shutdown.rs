@@ -15,7 +15,7 @@ use crate::crd::{
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Failed to set terminationGracePeriod"))]
+    #[snafu(display("failed to set terminationGracePeriod"))]
     SetTerminationGracePeriod {
         source: stackable_operator::builder::pod::Error,
     },
