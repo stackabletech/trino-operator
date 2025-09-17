@@ -101,10 +101,8 @@ pub const STACKABLE_INTERNAL_TLS_DIR: &str = "/stackable/internal_tls";
 pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 pub const STACKABLE_MOUNT_SERVER_TLS_DIR: &str = "/stackable/mount_server_tls";
 pub const STACKABLE_MOUNT_INTERNAL_TLS_DIR: &str = "/stackable/mount_internal_tls";
-pub const SYSTEM_TRUST_STORE: &str = "/etc/pki/java/cacerts";
 // store pws
 pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
-pub const SYSTEM_TRUST_STORE_PASSWORD: &str = "changeit";
 // secret vars
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
