@@ -9,7 +9,18 @@ All notable changes to this project will be documented in this file.
 - Support for fault-tolerant execution ([#779]).
 - Helm: Allow Pod `priorityClassName` to be configured ([#798]).
 
+### Fixed
+
+- Previously we had a bug that could lead to missing certificates ([#796]).
+
+  This could be the case when the Stackable PKI rotated it's CA certificate or you specify multiple
+  CAs in your SecretClass.
+  Especially the CA rotation could brake working clusters.
+  We now correctly handle multiple certificates for both cases.
+  See [this GitHub issue](https://github.com/stackabletech/issues/issues/764) for details
+
 [#779]: https://github.com/stackabletech/trino-operator/pull/779
+[#796]: https://github.com/stackabletech/trino-operator/pull/796
 [#798]: https://github.com/stackabletech/trino-operator/pull/798
 
 ## [25.7.0] - 2025-07-23
