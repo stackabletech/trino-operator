@@ -73,7 +73,9 @@ impl ResolvedClientProtocolConfig {
                     match &spooling_config.filesystem {
                         SpoolingFileSystemConfig::S3(s3_config) => {
                             let resolved_s3_config = config::s3::ResolvedS3Config::from_config(
-                                s3_config, client, namespace,
+                                &s3_config.connection,
+                                client,
+                                namespace,
                             )
                             .await
                             .context(ResolveS3ConnectionSnafu)?;
@@ -132,7 +134,8 @@ mod tests {
               location: s3://my-bucket/spooling
               filesystem:
                 s3:
-                  reference: test-s3-connection
+                  connection:
+                    reference: test-s3-connection
         "#};
 
         let deserializer = serde_yaml::Deserializer::from_str(config_yaml);

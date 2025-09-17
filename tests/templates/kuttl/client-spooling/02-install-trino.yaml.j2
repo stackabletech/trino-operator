@@ -21,7 +21,8 @@ spec:
         location: "s3://spooling-bucket/trino/"
         filesystem:
           s3:
-            reference: "minio"
+            connection:
+              reference: "minio"
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}

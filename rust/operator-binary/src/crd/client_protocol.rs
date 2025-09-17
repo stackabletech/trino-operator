@@ -22,5 +22,14 @@ pub struct ClientSpoolingProtocolConfig {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SpoolingFileSystemConfig {
-    S3(stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference),
+    S3(S3FilesystemConfig),
+}
+
+// This adds a `connection` property to keep the structure consistent with the fault-tolerant execution
+// config. It is similar to the `crate::crd::fault_tolerant_execution::S3ExchangeConfig` and maybe
+// these two structures can be merged in the future.
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct S3FilesystemConfig {
+    pub connection: stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference,
 }

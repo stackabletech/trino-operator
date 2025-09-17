@@ -1901,7 +1901,8 @@ mod tests {
                 location: s3://my-bucket/spooling
                 filesystem:
                   s3:
-                    reference: test-s3-connection
+                    connection:
+                      reference: test-s3-connection
           coordinators:
             configOverrides:
               config.properties:
