@@ -14,9 +14,9 @@ All notable changes to this project will be documented in this file.
 
 - Previously we had a bug that could lead to missing certificates ([#796]).
 
-  This could be the case when the Stackable PKI rotated it's CA certificate or you specified multiple
+  This could be the case when the Stackable PKI rotated its CA certificate or you specified multiple
   CAs in your SecretClass.
-  Especially the CA rotation could brake working clusters at any time.
+  Especially the CA rotation could break working clusters at any time.
   We now correctly handle multiple certificates for both cases.
   See [this GitHub issue](https://github.com/stackabletech/issues/issues/764) for details
 
