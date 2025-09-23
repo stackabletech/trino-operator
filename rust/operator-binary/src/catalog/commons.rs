@@ -77,7 +77,7 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        catalog_name: &str,
+        _catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
         trino_version: u16,
@@ -151,11 +151,7 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
                 }) => {
                     if let Some(ca_cert) = s3.tls.tls_ca_cert_mount_path() {
                         catalog_config.init_container_extra_start_commands.extend(
-                            command::add_cert_to_truststore(
-                                &ca_cert,
-                                STACKABLE_CLIENT_TLS_DIR,
-                                &format!("{catalog_name}-ca-cert"),
-                            ),
+                            command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR),
                         );
                     }
                 }

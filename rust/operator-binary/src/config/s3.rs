@@ -108,11 +108,7 @@ impl ResolvedS3Config {
                 }) => {
                     if let Some(ca_cert) = s3_connection.tls.tls_ca_cert_mount_path() {
                         resolved_config.init_container_extra_start_commands.extend(
-                            command::add_cert_to_truststore(
-                                &ca_cert,
-                                STACKABLE_CLIENT_TLS_DIR,
-                                "resolved-s3-ca-cert",
-                            ),
+                            command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR),
                         );
                     }
                 }
