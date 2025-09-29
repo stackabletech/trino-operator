@@ -1,6 +1,6 @@
 = OpenTelemetry
 :description: Ship Trino traces and logs to OpenTelemetry
-:trino-docs: https://trino.io/docs/470/admin/opentelemetry.html
+:trino-docs: https://trino.io/docs/477/admin/opentelemetry.html
 
 Trino supports sending OpenTelemetry traces as stated in {trino-docs}[the documentation].
 
