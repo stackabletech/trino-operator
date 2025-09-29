@@ -5,7 +5,7 @@ metadata:
   name: trino-fault-tolerant
 spec:
   image:
-    productVersion: "476"
+    productVersion: "477"
   clusterConfig:
     catalogLabelSelector:
       matchLabels:
