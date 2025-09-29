@@ -9,6 +9,11 @@ All notable changes to this project will be documented in this file.
 - Support for fault-tolerant execution ([#779], [#793]).
 - Support for the client spooling protocol ([#793]).
 - Helm: Allow Pod `priorityClassName` to be configured ([#798]).
+- Add support for Trino 477 ([#801]).
+
+### Changed
+
+- Deprecate Trino 451 and 476 ([#801]).
 
 ### Fixed
 
@@ -20,10 +25,15 @@ All notable changes to this project will be documented in this file.
   We now correctly handle multiple certificates for both cases.
   See [this GitHub issue](https://github.com/stackabletech/issues/issues/764) for details
 
+### Removed
+
+- Remove support for Trino 470 ([#801]).
+
 [#779]: https://github.com/stackabletech/trino-operator/pull/779
 [#793]: https://github.com/stackabletech/trino-operator/pull/793
 [#796]: https://github.com/stackabletech/trino-operator/pull/796
 [#798]: https://github.com/stackabletech/trino-operator/pull/798
+[#801]: https://github.com/stackabletech/trino-operator/pull/801
 
 ## [25.7.0] - 2025-07-23
 
