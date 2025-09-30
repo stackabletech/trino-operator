@@ -129,9 +129,9 @@ fn recommended_trino_jvm_args(product_version: u16) -> Result<Vec<String>, Error
             "-XX:G1NumCollectionsKeepPinned=10000000".to_owned(),
         ]),
         // Copied from:
-        // - https://trino.io/docs/470/installation/deployment.html#jvm-config
         // - https://trino.io/docs/476/installation/deployment.html#jvm-config
-        470 | 476 => Ok(vec![
+        // - https://trino.io/docs/477/installation/deployment.html#jvm-config
+        476 | 477 => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),
@@ -172,7 +172,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "470"
+            productVersion: "477"
           clusterConfig:
             catalogLabelSelector: {}
           coordinators:
@@ -216,7 +216,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "470"
+            productVersion: "477"
           clusterConfig:
             catalogLabelSelector: {}
           coordinators:
