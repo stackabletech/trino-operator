@@ -2,6 +2,7 @@
 // This is a separate file, since it is used by both the direct Trino documentation, and the overarching
 // Stackable Platform documentation.
 
-- 451 (deprecated)
-- 476 (deprecated)
+// These versions must be sorted in descending order (highest to lowest).
 - 477 (LTS)
+- 476 (deprecated)
+- 451 (deprecated)
