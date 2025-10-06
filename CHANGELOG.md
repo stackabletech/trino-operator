@@ -6,7 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add end-of-support checker ([#804]).
+- - Add end-of-support checker which can be controlled with environment variables and CLI arguments ([#804]).
+  - `EOS_CHECK_MODE` (`--eos-check-mode`) to set the EoS check mode. Currently, only "offline" is supported.
+  - `EOS_INTERVAL` (`--eos-interval`) to set the interval in which the operator checks if it is EoS.
+  - `EOS_DISABLED` (`--eos-disabled`) to disable the EoS checker completely.
 - Support for fault-tolerant execution ([#779], [#793]).
 - Support for the client spooling protocol ([#793]).
 - Helm: Allow Pod `priorityClassName` to be configured ([#798]).
