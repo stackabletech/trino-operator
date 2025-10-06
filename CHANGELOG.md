@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add end-of-support checker ([#804]).
 - Support for fault-tolerant execution ([#779], [#793]).
 - Support for the client spooling protocol ([#793]).
 - Helm: Allow Pod `priorityClassName` to be configured ([#798]).
@@ -34,6 +35,7 @@ All notable changes to this project will be documented in this file.
 [#796]: https://github.com/stackabletech/trino-operator/pull/796
 [#798]: https://github.com/stackabletech/trino-operator/pull/798
 [#801]: https://github.com/stackabletech/trino-operator/pull/801
+[#804]: https://github.com/stackabletech/trino-operator/pull/804
 
 ## [25.7.0] - 2025-07-23
 
