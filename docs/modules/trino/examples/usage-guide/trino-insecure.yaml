@@ -31,18 +31,28 @@ spec:
       default:
         replicas: 1
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hive-credentials
+type: Opaque
+stringData:
+  username: APP
+  password: mine
+---
 apiVersion: hive.stackable.tech/v1alpha1
 kind: HiveCluster
 metadata:
   name: simple-hive-derby
 spec:
   image:
-    productVersion: 4.0.0
+    productVersion: 4.1.0
+    custom: oci.stackable.tech/sdp/hive:4.1.0-stackable0.0.0-dev-amd64
+    pullPolicy: IfNotPresent
   clusterConfig:
     database:
       connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
-      user: APP
-      password: mine
+      credentialsSecret: hive-credentials
       dbType: derby
   metastore:
     roleGroups:
