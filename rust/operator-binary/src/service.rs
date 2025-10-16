@@ -4,14 +4,11 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::meta::ObjectMetaBuilder,
     k8s_openapi::api::core::v1::{Service, ServicePort, ServiceSpec},
-    kvp::{Label, ObjectLabels},
+    kvp::{Annotations, Labels, ObjectLabels},
     role_utils::RoleGroupRef,
 };
 
-use crate::crd::{
-    METRICS_PORT, METRICS_PORT_NAME, rolegroup_headless_service_name,
-    rolegroup_metrics_service_name, v1alpha1,
-};
+use crate::crd::{METRICS_PORT, METRICS_PORT_NAME, v1alpha1};
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -42,9 +39,7 @@ pub fn build_rolegroup_headless_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(rolegroup_headless_service_name(
-                &role_group_ref.object_name(),
-            ))
+            .name(role_group_ref.rolegroup_headless_service_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(object_labels)
@@ -73,14 +68,13 @@ pub fn build_rolegroup_metrics_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(rolegroup_metrics_service_name(
-                &role_group_ref.object_name(),
-            ))
+            .name(role_group_ref.rolegroup_metrics_service_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(object_labels)
             .context(MetadataBuildSnafu)?
-            .with_label(Label::try_from(("prometheus.io/scrape", "true")).context(LabelBuildSnafu)?)
+            .with_labels(prometheus_labels())
+            .with_annotations(prometheus_annotations())
             .build(),
         spec: Some(ServiceSpec {
             // Internal communication does not need to be exposed
@@ -114,4 +108,24 @@ fn metrics_service_ports() -> Vec<ServicePort> {
         protocol: Some("TCP".to_string()),
         ..ServicePort::default()
     }]
+}
+
+/// Common labels for Prometheus
+fn prometheus_labels() -> Labels {
+    Labels::try_from([("prometheus.io/scrape", "true")]).expect("should be a valid label")
+}
+
+/// Common annotations for Prometheus
+///
+/// These annotations can be used in a ServiceMonitor.
+///
+/// see also <https://github.com/prometheus-community/helm-charts/blob/prometheus-27.32.0/charts/prometheus/values.yaml#L983-L1036>
+fn prometheus_annotations() -> Annotations {
+    Annotations::try_from([
+        ("prometheus.io/path".to_owned(), "/metrics".to_owned()),
+        ("prometheus.io/port".to_owned(), METRICS_PORT.to_string()),
+        ("prometheus.io/scheme".to_owned(), "http".to_owned()),
+        ("prometheus.io/scrape".to_owned(), "true".to_owned()),
+    ])
+    .expect("should be valid annotations")
 }
