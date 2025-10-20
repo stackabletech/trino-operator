@@ -47,8 +47,6 @@ metadata:
 spec:
   image:
     productVersion: 4.1.0
-    custom: oci.stackable.tech/sdp/hive:4.1.0-stackable0.0.0-dev-amd64
-    pullPolicy: IfNotPresent
   clusterConfig:
     database:
       connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
