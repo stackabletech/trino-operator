@@ -19,7 +19,7 @@ use clap::Parser;
 use futures::stream::StreamExt;
 use stackable_operator::{
     YamlSchema,
-    cli::{Command, ProductOperatorRun},
+    cli::{Command, RunArguments},
     crd::authentication::core,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
@@ -70,18 +70,19 @@ async fn main() -> anyhow::Result<()> {
             TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1)?
                 .print_yaml_schema(built_info::PKG_VERSION, SerializeOptions::default())?;
         }
-        Command::Run(ProductOperatorRun {
-            product_config,
-            watch_namespace,
+        Command::Run(RunArguments {
             operator_environment: _,
-            telemetry,
-            cluster_info,
+            watch_namespace,
+            product_config,
+            maintenance: _,
+            common,
         }) => {
             // NOTE (@NickLarsenNZ): Before stackable-telemetry was used:
             // - The console log level was set by `TRINO_OPERATOR_LOG`, and is now `CONSOLE_LOG` (when using Tracing::pre_configured).
             // - The file log level was set by `TRINO_OPERATOR_LOG`, and is now set via `FILE_LOG` (when using Tracing::pre_configured).
             // - The file log directory was set by `TRINO_OPERATOR_LOG_DIRECTORY`, and is now set by `ROLLING_LOGS_DIR` (or via `--rolling-logs <DIRECTORY>`).
-            let _tracing_guard = Tracing::pre_configured(built_info::PKG_NAME, telemetry).init()?;
+            let _tracing_guard =
+                Tracing::pre_configured(built_info::PKG_NAME, common.telemetry).init()?;
 
             tracing::info!(
                 built_info.pkg_version = built_info::PKG_VERSION,
@@ -99,7 +100,7 @@ async fn main() -> anyhow::Result<()> {
 
             let client = stackable_operator::client::initialize_operator(
                 Some(OPERATOR_NAME.to_string()),
-                &cluster_info,
+                &common.cluster_info,
             )
             .await?;
             let event_recorder = Arc::new(Recorder::new(
