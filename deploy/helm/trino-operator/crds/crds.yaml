@@ -125,14 +125,11 @@ spec:
                           type: object
                       type: object
                     clientProtocol:
-                      anyOf:
-                        - oneOf:
-                            - required:
-                                - spooling
-                        - enum:
-                            - null
-                          nullable: true
                       description: Client spooling protocol configuration.
+                      nullable: true
+                      oneOf:
+                        - required:
+                            - spooling
                       properties:
                         spooling:
                           properties:
@@ -302,18 +299,15 @@ spec:
                           type: object
                       type: object
                     faultTolerantExecution:
-                      anyOf:
-                        - oneOf:
-                            - required:
-                                - query
-                            - required:
-                                - task
-                        - enum:
-                            - null
-                          nullable: true
                       description: |-
                         Fault tolerant execution configuration.
                         When enabled, Trino can automatically retry queries or tasks in case of failures.
+                      nullable: true
+                      oneOf:
+                        - required:
+                            - query
+                        - required:
+                            - task
                       properties:
                         query:
                           description: Query-level fault tolerant execution. Retries entire queries on failure.
@@ -323,20 +317,17 @@ spec:
                               nullable: true
                               type: string
                             exchangeManager:
-                              anyOf:
-                                - oneOf:
-                                    - required:
-                                        - s3
-                                    - required:
-                                        - hdfs
-                                    - required:
-                                        - local
-                                - enum:
-                                    - null
-                                  nullable: true
                               description: |-
                                 Exchange manager configuration for spooling intermediate data during fault tolerant execution.
                                 Optional for Query retry policy, recommended for large result sets.
+                              nullable: true
+                              oneOf:
+                                - required:
+                                    - s3
+                                - required:
+                                    - hdfs
+                                - required:
+                                    - local
                               properties:
                                 encryptionEnabled:
                                   description: Whether to enable encryption of spooling data.
@@ -1039,12 +1030,11 @@ spec:
                                           - ERROR
                                           - FATAL
                                           - NONE
-                                          - null
                                         nullable: true
                                         type: string
                                     type: object
                                   custom:
-                                    description: Custom log configuration provided in a ConfigMap
+                                    description: Log configuration provided in a ConfigMap
                                     properties:
                                       configMap:
                                         description: ConfigMap containing the log configuration files
@@ -1067,7 +1057,6 @@ spec:
                                           - ERROR
                                           - FATAL
                                           - NONE
-                                          - null
                                         nullable: true
                                         type: string
                                     type: object
@@ -1087,7 +1076,6 @@ spec:
                                             - ERROR
                                             - FATAL
                                             - NONE
-                                            - null
                                           nullable: true
                                           type: string
                                       type: object
@@ -1358,12 +1346,11 @@ spec:
                                                 - ERROR
                                                 - FATAL
                                                 - NONE
-                                                - null
                                               nullable: true
                                               type: string
                                           type: object
                                         custom:
-                                          description: Custom log configuration provided in a ConfigMap
+                                          description: Log configuration provided in a ConfigMap
                                           properties:
                                             configMap:
                                               description: ConfigMap containing the log configuration files
@@ -1386,7 +1373,6 @@ spec:
                                                 - ERROR
                                                 - FATAL
                                                 - NONE
-                                                - null
                                               nullable: true
                                               type: string
                                           type: object
@@ -1406,7 +1392,6 @@ spec:
                                                   - ERROR
                                                   - FATAL
                                                   - NONE
-                                                  - null
                                                 nullable: true
                                                 type: string
                                             type: object
@@ -1708,12 +1693,11 @@ spec:
                                           - ERROR
                                           - FATAL
                                           - NONE
-                                          - null
                                         nullable: true
                                         type: string
                                     type: object
                                   custom:
-                                    description: Custom log configuration provided in a ConfigMap
+                                    description: Log configuration provided in a ConfigMap
                                     properties:
                                       configMap:
                                         description: ConfigMap containing the log configuration files
@@ -1736,7 +1720,6 @@ spec:
                                           - ERROR
                                           - FATAL
                                           - NONE
-                                          - null
                                         nullable: true
                                         type: string
                                     type: object
@@ -1756,7 +1739,6 @@ spec:
                                             - ERROR
                                             - FATAL
                                             - NONE
-                                            - null
                                           nullable: true
                                           type: string
                                       type: object
@@ -2022,12 +2004,11 @@ spec:
                                                 - ERROR
                                                 - FATAL
                                                 - NONE
-                                                - null
                                               nullable: true
                                               type: string
                                           type: object
                                         custom:
-                                          description: Custom log configuration provided in a ConfigMap
+                                          description: Log configuration provided in a ConfigMap
                                           properties:
                                             configMap:
                                               description: ConfigMap containing the log configuration files
@@ -2050,7 +2031,6 @@ spec:
                                                 - ERROR
                                                 - FATAL
                                                 - NONE
-                                                - null
                                               nullable: true
                                               type: string
                                           type: object
@@ -2070,7 +2050,6 @@ spec:
                                                   - ERROR
                                                   - FATAL
                                                   - NONE
-                                                  - null
                                                 nullable: true
                                                 type: string
                                             type: object
@@ -2371,19 +2350,16 @@ spec:
                             - configMap
                           type: object
                         s3:
-                          anyOf:
-                            - oneOf:
-                                - required:
-                                    - inline
-                                - required:
-                                    - reference
-                            - enum:
-                                - null
-                              nullable: true
                           description: |-
                             Connection to an S3 store.
                             Please make sure that the underlying Hive metastore also has access to the S3 store.
                             Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                          nullable: true
+                          oneOf:
+                            - required:
+                                - inline
+                            - required:
+                                - reference
                           properties:
                             inline:
                               description: |-
@@ -2644,19 +2620,16 @@ spec:
                             - configMap
                           type: object
                         s3:
-                          anyOf:
-                            - oneOf:
-                                - required:
-                                    - inline
-                                - required:
-                                    - reference
-                            - enum:
-                                - null
-                              nullable: true
                           description: |-
                             Connection to an S3 store.
                             Please make sure that the underlying Hive metastore also has access to the S3 store.
                             Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                          nullable: true
+                          oneOf:
+                            - required:
+                                - inline
+                            - required:
+                                - reference
                           properties:
                             inline:
                               description: |-
@@ -2826,19 +2799,16 @@ spec:
                             - configMap
                           type: object
                         s3:
-                          anyOf:
-                            - oneOf:
-                                - required:
-                                    - inline
-                                - required:
-                                    - reference
-                            - enum:
-                                - null
-                              nullable: true
                           description: |-
                             Connection to an S3 store.
                             Please make sure that the underlying Hive metastore also has access to the S3 store.
                             Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                          nullable: true
+                          oneOf:
+                            - required:
+                                - inline
+                            - required:
+                                - reference
                           properties:
                             inline:
                               description: |-
