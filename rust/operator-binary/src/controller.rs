@@ -92,7 +92,7 @@ use crate::{
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        rolegroup_headless_service_name, v1alpha1,
+        v1alpha1,
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
@@ -153,11 +153,6 @@ pub enum Error {
 
     #[snafu(display("failed to delete orphaned resources"))]
     DeleteOrphanedResources {
-        source: stackable_operator::cluster_resources::Error,
-    },
-
-    #[snafu(display("failed to apply global Service"))]
-    ApplyRoleService {
         source: stackable_operator::cluster_resources::Error,
     },
 
@@ -1394,9 +1389,7 @@ fn build_rolegroup_statefulset(
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(rolegroup_headless_service_name(
-                &role_group_ref.object_name(),
-            )),
+            service_name: Some(role_group_ref.rolegroup_headless_service_name()),
             template: pod_template,
             volume_claim_templates: Some(persistent_volume_claims),
             ..StatefulSetSpec::default()

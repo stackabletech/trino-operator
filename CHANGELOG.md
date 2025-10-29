@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 - Support for the client spooling protocol ([#793]).
 - Helm: Allow Pod `priorityClassName` to be configured ([#798]).
 - Add support for Trino 477 ([#801]).
+- Add support for Hive 4.1.0 ([#805]).
+- Add `prometheus.io/path|port|scheme` annotations to metrics service ([#807]).
 
 ### Changed
 
@@ -39,6 +41,8 @@ All notable changes to this project will be documented in this file.
 [#798]: https://github.com/stackabletech/trino-operator/pull/798
 [#801]: https://github.com/stackabletech/trino-operator/pull/801
 [#804]: https://github.com/stackabletech/trino-operator/pull/804
+[#805]: https://github.com/stackabletech/trino-operator/pull/805
+[#807]: https://github.com/stackabletech/trino-operator/pull/807
 
 ## [25.7.0] - 2025-07-23
 
