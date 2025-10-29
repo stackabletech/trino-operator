@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Bump stackable-operator to `0.100.1` and product-config to `0.8.0` ([#810]).
 - Deprecate Trino 451 and 476 ([#801]).
 
 ### Fixed
@@ -43,6 +44,7 @@ All notable changes to this project will be documented in this file.
 [#804]: https://github.com/stackabletech/trino-operator/pull/804
 [#805]: https://github.com/stackabletech/trino-operator/pull/805
 [#807]: https://github.com/stackabletech/trino-operator/pull/807
+[#810]: https://github.com/stackabletech/trino-operator/pull/810
 
 ## [25.7.0] - 2025-07-23
 
