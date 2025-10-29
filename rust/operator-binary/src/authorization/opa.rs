@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use stackable_operator::{
     client::Client,
     commons::opa::{OpaApiVersion, OpaConfig},
+    k8s_openapi::api::core::v1::ConfigMap,
+    kube::ResourceExt,
 };
 
 use crate::crd::v1alpha1::TrinoCluster;
@@ -28,6 +30,10 @@ pub struct TrinoOpaConfig {
     /// such operations, they will be bulk allowed or denied depending
     /// on this setting
     pub(crate) allow_permission_management_operations: bool,
+    /// Optional TLS secret class for OPA communication.
+    /// If set, the CA certificate from this secret class will be added
+    /// to Trino's truststore to make it trust OPA's TLS certificate.
+    pub(crate) tls_secret_class: Option<String>,
 }
 
 impl TrinoOpaConfig {
@@ -66,12 +72,24 @@ impl TrinoOpaConfig {
                 OpaApiVersion::V1,
             )
             .await?;
+
+        let tls_secret_class = client
+            .get::<ConfigMap>(
+                &opa_config.config_map_name,
+                trino.namespace().as_deref().unwrap_or("default"),
+            )
+            .await
+            .ok()
+            .and_then(|cm| cm.data)
+            .and_then(|mut data| data.remove("OPA_SECRET_CLASS"));
+
         Ok(TrinoOpaConfig {
             non_batched_connection_string,
             batched_connection_string,
             row_filters_connection_string: Some(row_filters_connection_string),
             column_masking_connection_string: Some(column_masking_connection_string),
             allow_permission_management_operations: true,
+            tls_secret_class,
         })
     }
 
