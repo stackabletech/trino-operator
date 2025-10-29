@@ -16,11 +16,12 @@ mod service;
 use std::sync::Arc;
 
 use clap::Parser;
-use futures::stream::StreamExt;
+use futures::{FutureExt, stream::StreamExt};
 use stackable_operator::{
     YamlSchema,
     cli::{Command, RunArguments},
     crd::authentication::core,
+    eos::EndOfSupportChecker,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service},
@@ -74,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
             operator_environment: _,
             watch_namespace,
             product_config,
-            maintenance: _,
+            maintenance,
             common,
         }) => {
             // NOTE (@NickLarsenNZ): Before stackable-telemetry was used:
@@ -93,6 +94,12 @@ async fn main() -> anyhow::Result<()> {
                 "Starting {description}",
                 description = built_info::PKG_DESCRIPTION
             );
+
+            let eos_checker =
+                EndOfSupportChecker::new(built_info::BUILT_TIME_UTC, maintenance.end_of_support)?
+                    .run()
+                    .map(anyhow::Ok);
+
             let product_config = product_config.load(&[
                 "deploy/config-spec/properties.yaml",
                 "/etc/stackable/trino-operator/config-spec/properties.yaml",
@@ -119,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
             let authentication_class_cluster_store = cluster_controller.store();
             let config_map_cluster_store = cluster_controller.store();
 
-            cluster_controller
+            let cluster_controller = cluster_controller
                 .owns(
                     watch_namespace.get_api::<DeserializeGuard<Service>>(&client),
                     watcher::Config::default(),
@@ -196,7 +203,9 @@ async fn main() -> anyhow::Result<()> {
                         }
                     },
                 )
-                .await;
+                .map(anyhow::Ok);
+
+            futures::try_join!(cluster_controller, eos_checker)?;
         }
     }
 
