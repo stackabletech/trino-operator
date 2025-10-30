@@ -111,7 +111,7 @@ Since no authentication is enabled you do not need to enter a password.
 
 With the port-forward still active, you can connect to the Trino web interfaceby pointing your browser to `https://localhost:8443/ui`.
 
-Using `stackablectl` you can obtain the direct node URL like this:
+Using `stackablectl` you can obtain the direct Trino endpoint like this:
 
 [source,bash]
 ----
