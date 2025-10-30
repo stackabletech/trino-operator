@@ -77,7 +77,7 @@ sleep 5
 echo "Start testing Trino"
 echo "Downloading Trino CLI tool as trino.jar"
 # tag::download-trino-cli[]
-curl --output trino.jar https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-476-executable.jar
+curl --fail --output trino.jar https://repo.stackable.tech/repository/packages/trino-cli/trino-cli-477
 # end::download-trino-cli[]
 
 echo "Run chmod +x for trino.jar"

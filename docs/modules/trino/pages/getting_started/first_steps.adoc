@@ -105,9 +105,26 @@ Congratulations, you set up your first Stackable Trino cluster successfully.
 
 === Access the Trino web interface
 
-With the port-forward still active, you can connect to the Trino web interface.
-Enter `https://localhost:8443/ui` in your browser and login with the username `admin`.
+To open the Trino UI in your browser you either have to start a port forwarding process or use `stackablectl` to obtain the node URL.
+Either way, log in with the `admin` user name.
 Since no authentication is enabled you do not need to enter a password.
+
+With the port-forward still active, you can connect to the Trino web interfaceby pointing your browser to `https://localhost:8443/ui`.
+
+Using `stackablectl` you can obtain the direct Trino endpoint like this:
+
+[source,bash]
+----
+❯ stackablectl stacklet list
+
+┌─────────┬──────────────┬───────────┬───────────────────────────────────────────────┬─────────────────────────────────┐
+│ PRODUCT ┆ NAME         ┆ NAMESPACE ┆ ENDPOINTS                                     ┆ CONDITIONS                      │
+╞═════════╪══════════════╪═══════════╪═══════════════════════════════════════════════╪═════════════════════════════════╡
+│ trino   ┆ simple-trino ┆ default   ┆ coordinator-https  https://192.168.49.2:32129 ┆ Available, Reconciling, Running │
+└─────────┴──────────────┴───────────┴───────────────────────────────────────────────┴─────────────────────────────────┘----
+----
+
+In this case, point your browser to `https://192.168.49.2:32129`.
 
 WARNING: Your browser will probably show a security risk warning because it does not trust the self generated TLS certificates.
 Just ignore that and continue.
