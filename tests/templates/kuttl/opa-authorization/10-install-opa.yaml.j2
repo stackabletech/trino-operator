@@ -5,6 +5,19 @@ commands:
   - script: |
       kubectl apply -n $NAMESPACE -f - <<EOF
       ---
+      apiVersion: secrets.stackable.tech/v1alpha1
+      kind: SecretClass
+      metadata:
+        name: opa-tls-$NAMESPACE
+      spec:
+        backend:
+          autoTls:
+            ca:
+              autoGenerate: true
+              secret:
+                name: opa-tls-ca-$NAMESPACE
+                namespace: $NAMESPACE
+      ---
       apiVersion: opa.stackable.tech/v1alpha1
       kind: OpaCluster
       metadata:
@@ -19,6 +32,8 @@ commands:
 {% endif %}
           pullPolicy: IfNotPresent
         clusterConfig:
+          tls:
+            serverSecretClass: opa-tls-$NAMESPACE
           userInfo:
             backend:
               keycloak:
