@@ -9,6 +9,8 @@ use stackable_operator::{
 
 use crate::crd::v1alpha1::TrinoCluster;
 
+pub const OPA_TLS_VOLUME_NAME: &str = "opa-tls";
+
 pub struct TrinoOpaConfig {
     /// URI for OPA policies, e.g.
     /// `http://localhost:8081/v1/data/trino/allow`
@@ -124,5 +126,11 @@ impl TrinoOpaConfig {
             );
         }
         config
+    }
+
+    pub fn tls_mount_path(&self) -> Option<String> {
+        self.tls_secret_class
+            .as_ref()
+            .map(|_| format!("/stackable/secrets/{OPA_TLS_VOLUME_NAME}"))
     }
 }

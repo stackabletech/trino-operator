@@ -76,10 +76,10 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
-    authorization::opa::TrinoOpaConfig,
+    authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
     catalog::{FromTrinoCatalogError, config::CatalogConfig},
-    command, config,
-    config::{client_protocol, fault_tolerant_execution},
+    command,
+    config::{self, client_protocol, fault_tolerant_execution},
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
         DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, EXCHANGE_MANAGER_PROPERTIES,
@@ -123,7 +123,6 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
 };
 
 const DOCKER_IMAGE_BASE_NAME: &str = "trino";
-const OPA_TLS_VOLUME_NAME: &str = "opa-tls";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -1170,13 +1169,12 @@ fn build_rolegroup_statefulset(
         .extend(trino_authentication_config.commands(&TrinoRole::Coordinator, &Container::Prepare));
 
     // Add OPA TLS certificate to truststore if configured
-    if trino_opa_config
+    if let Some(tls_mount_path) = trino_opa_config
         .as_ref()
-        .and_then(|c| c.tls_secret_class.as_ref())
-        .is_some()
+        .and_then(|opa_config| opa_config.tls_mount_path())
     {
         prepare_args.extend(command::add_cert_to_truststore(
-            &format!("/stackable/secrets/{OPA_TLS_VOLUME_NAME}/ca.crt"),
+            format!("{}/ca.crt", tls_mount_path).as_str(),
             STACKABLE_CLIENT_TLS_DIR,
         ));
     }
@@ -1806,26 +1804,30 @@ fn tls_volume_mounts(
             .context(AddVolumeSnafu)?;
     }
 
-    if let Some(opa_config) = trino_opa_config {
-        if let Some(opa_tls_secret_class) = &opa_config.tls_secret_class {
-            let opa_tls_mount_path = format!("/stackable/secrets/{OPA_TLS_VOLUME_NAME}");
+    // Add OPA TLS certs if configured
+    if let Some((tls_secret_class, tls_mount_path)) =
+        trino_opa_config.as_ref().and_then(|opa_config| {
+            opa_config
+                .tls_secret_class
+                .as_ref()
+                .zip(opa_config.tls_mount_path())
+        })
+    {
+        cb_prepare
+            .add_volume_mount(OPA_TLS_VOLUME_NAME, &tls_mount_path)
+            .context(AddVolumeMountSnafu)?;
 
-            cb_prepare
-                .add_volume_mount(OPA_TLS_VOLUME_NAME, &opa_tls_mount_path)
-                .context(AddVolumeMountSnafu)?;
+        let opa_tls_volume = VolumeBuilder::new(OPA_TLS_VOLUME_NAME)
+            .ephemeral(
+                SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
+                    .build()
+                    .context(TlsCertSecretClassVolumeBuildSnafu)?,
+            )
+            .build();
 
-            let opa_tls_volume = VolumeBuilder::new(OPA_TLS_VOLUME_NAME)
-                .ephemeral(
-                    SecretOperatorVolumeSourceBuilder::new(opa_tls_secret_class)
-                        .build()
-                        .context(TlsCertSecretClassVolumeBuildSnafu)?,
-                )
-                .build();
-
-            pod_builder
-                .add_volume(opa_tls_volume)
-                .context(AddVolumeSnafu)?;
-        }
+        pod_builder
+            .add_volume(opa_tls_volume)
+            .context(AddVolumeSnafu)?;
     }
 
     // fault tolerant execution S3 credentials and other resources
