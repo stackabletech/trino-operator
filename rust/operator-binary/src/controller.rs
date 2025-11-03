@@ -76,10 +76,10 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
-    authorization::opa::TrinoOpaConfig,
+    authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
     catalog::{FromTrinoCatalogError, config::CatalogConfig},
-    command, config,
-    config::{client_protocol, fault_tolerant_execution},
+    command,
+    config::{self, client_protocol, fault_tolerant_execution},
     crd::{
         ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
         DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, EXCHANGE_MANAGER_PROPERTIES,
@@ -630,6 +630,7 @@ pub async fn reconcile_trino(
                 &rbac_sa.name_any(),
                 &resolved_fte_config,
                 &resolved_client_protocol_config,
+                &trino_opa_config,
             )?;
 
             cluster_resources
@@ -1037,6 +1038,7 @@ fn build_rolegroup_statefulset(
     sa_name: &str,
     resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
+    trino_opa_config: &Option<TrinoOpaConfig>,
 ) -> Result<StatefulSet> {
     let role = trino
         .role(trino_role)
@@ -1140,6 +1142,7 @@ fn build_rolegroup_statefulset(
         &requested_secret_lifetime,
         resolved_fte_config,
         resolved_spooling_config,
+        trino_opa_config,
     )?;
 
     let mut prepare_args = vec![];
@@ -1164,6 +1167,17 @@ fn build_rolegroup_statefulset(
 
     prepare_args
         .extend(trino_authentication_config.commands(&TrinoRole::Coordinator, &Container::Prepare));
+
+    // Add OPA TLS certificate to truststore if configured
+    if let Some(tls_mount_path) = trino_opa_config
+        .as_ref()
+        .and_then(|opa_config| opa_config.tls_mount_path())
+    {
+        prepare_args.extend(command::add_cert_to_truststore(
+            format!("{}/ca.crt", tls_mount_path).as_str(),
+            STACKABLE_CLIENT_TLS_DIR,
+        ));
+    }
 
     let container_prepare = cb_prepare
         .image_from_product_image(resolved_product_image)
@@ -1710,6 +1724,7 @@ fn tls_volume_mounts(
     requested_secret_lifetime: &Duration,
     resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
+    trino_opa_config: &Option<TrinoOpaConfig>,
 ) -> Result<()> {
     if let Some(server_tls) = trino.get_server_tls() {
         cb_prepare
@@ -1786,6 +1801,32 @@ fn tls_volume_mounts(
             .context(AddVolumeMountSnafu)?;
         pod_builder
             .add_volumes(catalog.volumes.clone())
+            .context(AddVolumeSnafu)?;
+    }
+
+    // Add OPA TLS certs if configured
+    if let Some((tls_secret_class, tls_mount_path)) =
+        trino_opa_config.as_ref().and_then(|opa_config| {
+            opa_config
+                .tls_secret_class
+                .as_ref()
+                .zip(opa_config.tls_mount_path())
+        })
+    {
+        cb_prepare
+            .add_volume_mount(OPA_TLS_VOLUME_NAME, &tls_mount_path)
+            .context(AddVolumeMountSnafu)?;
+
+        let opa_tls_volume = VolumeBuilder::new(OPA_TLS_VOLUME_NAME)
+            .ephemeral(
+                SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
+                    .build()
+                    .context(TlsCertSecretClassVolumeBuildSnafu)?,
+            )
+            .build();
+
+        pod_builder
+            .add_volume(opa_tls_volume)
             .context(AddVolumeSnafu)?;
     }
 
@@ -2028,6 +2069,7 @@ mod tests {
                     .to_string(),
             ),
             allow_permission_management_operations: true,
+            tls_secret_class: None,
         });
         let resolved_fte_config = match &trino.spec.cluster_config.fault_tolerant_execution {
             Some(fault_tolerant_execution) => Some(
