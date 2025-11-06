@@ -26,20 +26,20 @@ case "$1" in
 "helm")
 echo "Installing Operators with Helm"
 # tag::helm-install-operators[]
-helm install --wait commons-operator oci://oci.stackable.tech/sdp-charts/commons-operator --version 0.0.0-dev
-helm install --wait secret-operator oci://oci.stackable.tech/sdp-charts/secret-operator --version 0.0.0-dev
-helm install --wait listener-operator oci://oci.stackable.tech/sdp-charts/listener-operator --version 0.0.0-dev
-helm install --wait trino-operator oci://oci.stackable.tech/sdp-charts/trino-operator --version 0.0.0-dev
+helm install --wait commons-operator oci://oci.stackable.tech/sdp-charts/commons-operator --version 25.11.0-rc1
+helm install --wait secret-operator oci://oci.stackable.tech/sdp-charts/secret-operator --version 25.11.0-rc1
+helm install --wait listener-operator oci://oci.stackable.tech/sdp-charts/listener-operator --version 25.11.0-rc1
+helm install --wait trino-operator oci://oci.stackable.tech/sdp-charts/trino-operator --version 25.11.0-rc1
 # end::helm-install-operators[]
 ;;
 "stackablectl")
 echo "installing Operators with stackablectl"
 # tag::stackablectl-install-operators[]
 stackablectl operator install \
-  commons=0.0.0-dev \
-  secret=0.0.0-dev \
-  listener=0.0.0-dev \
-  trino=0.0.0-dev
+  commons=25.11.0-rc1 \
+  secret=25.11.0-rc1 \
+  listener=25.11.0-rc1 \
+  trino=25.11.0-rc1
 # end::stackablectl-install-operators[]
 ;;
 *)
