@@ -2064,8 +2064,8 @@ mod tests {
                 "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/rowFilters"
                     .to_string(),
             ),
-            column_masking_connection_string: Some(
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/columnMask"
+            batched_column_masking_connection_string: Some(
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batchColumnMasks"
                     .to_string(),
             ),
             allow_permission_management_operations: true,
@@ -2167,7 +2167,7 @@ mod tests {
         assert!(access_control_config.contains("foo.bar=true"));
         assert!(access_control_config.contains("opa.allow-permission-management-operations=false"));
         assert!(access_control_config.contains(r#"opa.policy.batched-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/batch-new"#));
-        assert!(access_control_config.contains(r#"opa.policy.column-masking-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/columnMask"#));
+        assert!(access_control_config.contains(r#"opa.policy.batch-column-masking-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/batchColumnMasks"#));
         assert!(access_control_config.contains(r#"opa.policy.row-filters-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/rowFilters"#));
         assert!(access_control_config.contains(r#"opa.policy.uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/allow"#));
     }
