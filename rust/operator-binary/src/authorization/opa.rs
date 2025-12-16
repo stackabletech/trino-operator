@@ -23,10 +23,10 @@ pub struct TrinoOpaConfig {
     /// `http://localhost:8081/v1/data/trino/rowFilters` - if not set,
     /// no row filtering will be applied
     pub(crate) row_filters_connection_string: Option<String>,
-    /// URI for fetching column masks, e.g.
-    /// `http://localhost:8081/v1/data/trino/columnMask` - if not set,
-    /// no masking will be applied
-    pub(crate) column_masking_connection_string: Option<String>,
+    /// URI for fetching columns masks in batches, e.g.
+    /// `http://localhost:8081/v1/data/trino/batchColumnMasks` - if not set,
+    /// column-masking-uri will be used for getting column masks in parallel
+    pub(crate) batched_column_masking_connection_string: Option<String>,
     /// Whether to allow permission management (GRANT, DENY, ...) and
     /// role management operations - OPA will not be queried for any
     /// such operations, they will be bulk allowed or denied depending
@@ -65,12 +65,12 @@ impl TrinoOpaConfig {
                 OpaApiVersion::V1,
             )
             .await?;
-        let column_masking_connection_string = opa_config
+        let batched_column_masking_connection_string = opa_config
             .full_document_url_from_config_map(
                 client,
                 trino,
-                // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L47
-                Some("columnMask"),
+                // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L48
+                Some("batchColumnMasks"),
                 OpaApiVersion::V1,
             )
             .await?;
@@ -89,7 +89,7 @@ impl TrinoOpaConfig {
             non_batched_connection_string,
             batched_connection_string,
             row_filters_connection_string: Some(row_filters_connection_string),
-            column_masking_connection_string: Some(column_masking_connection_string),
+            batched_column_masking_connection_string: Some(batched_column_masking_connection_string),
             allow_permission_management_operations: true,
             tls_secret_class,
         })
@@ -113,10 +113,10 @@ impl TrinoOpaConfig {
                 Some(row_filters_connection_string.clone()),
             );
         }
-        if let Some(column_masking_connection_string) = &self.column_masking_connection_string {
+        if let Some(batched_column_masking_connection_string) = &self.batched_column_masking_connection_string {
             config.insert(
-                "opa.policy.column-masking-uri".to_string(),
-                Some(column_masking_connection_string.clone()),
+                "opa.policy.batch-column-masking-uri".to_string(),
+                Some(batched_column_masking_connection_string.clone()),
             );
         }
         if self.allow_permission_management_operations {
