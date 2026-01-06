@@ -313,6 +313,8 @@ pub mod versioned {
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoAuthorization {
+        #[serde(default = "TrinoAuthorization::disabled_column_masking_default")]
+        pub disable_column_masking: bool,
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub opa: Option<OpaConfig>,
@@ -362,6 +364,12 @@ pub mod versioned {
     pub struct TrinoClusterStatus {
         #[serde(default)]
         pub conditions: Vec<ClusterCondition>,
+    }
+}
+
+impl v1alpha1::TrinoAuthorization {
+    pub fn disabled_column_masking_default() -> bool {
+        false
     }
 }
 
@@ -875,6 +883,13 @@ impl v1alpha1::TrinoCluster {
     pub fn authentication_enabled(&self) -> bool {
         let spec: &v1alpha1::TrinoClusterSpec = &self.spec;
         !spec.cluster_config.authentication.is_empty()
+    }
+
+    pub fn column_masking_enabled(&self) -> bool {
+        match self.spec.cluster_config.authorization.as_ref() {
+            Some(a) => !a.disable_column_masking,
+            None => !v1alpha1::TrinoAuthorization::disabled_column_masking_default(),
+        }
     }
 
     pub fn get_opa_config(&self) -> Option<&OpaConfig> {

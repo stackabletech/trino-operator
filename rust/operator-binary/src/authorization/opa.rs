@@ -65,15 +65,21 @@ impl TrinoOpaConfig {
                 OpaApiVersion::V1,
             )
             .await?;
-        let batched_column_masking_connection_string = opa_config
-            .full_document_url_from_config_map(
-                client,
-                trino,
-                // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L48
-                Some("batchColumnMasks"),
-                OpaApiVersion::V1,
-            )
-            .await?;
+
+        let mut optional_batched_column_masking_connection_string = None;
+        if trino.column_masking_enabled() {
+            let batched_column_masking_connection_string = opa_config
+                .full_document_url_from_config_map(
+                    client,
+                    trino,
+                    // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L48
+                    Some("batchColumnMasks"),
+                    OpaApiVersion::V1,
+                )
+                .await?;
+            optional_batched_column_masking_connection_string =
+                Some(batched_column_masking_connection_string);
+        }
 
         let tls_secret_class = client
             .get::<ConfigMap>(
@@ -89,7 +95,8 @@ impl TrinoOpaConfig {
             non_batched_connection_string,
             batched_connection_string,
             row_filters_connection_string: Some(row_filters_connection_string),
-            batched_column_masking_connection_string: Some(batched_column_masking_connection_string),
+            batched_column_masking_connection_string:
+                optional_batched_column_masking_connection_string,
             allow_permission_management_operations: true,
             tls_secret_class,
         })
@@ -113,7 +120,9 @@ impl TrinoOpaConfig {
                 Some(row_filters_connection_string.clone()),
             );
         }
-        if let Some(batched_column_masking_connection_string) = &self.batched_column_masking_connection_string {
+        if let Some(batched_column_masking_connection_string) =
+            &self.batched_column_masking_connection_string
+        {
             config.insert(
                 "opa.policy.batch-column-masking-uri".to_string(),
                 Some(batched_column_masking_connection_string.clone()),

@@ -71,6 +71,9 @@ spec:
                         Learn more in the [Trino authorization usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authorization).
                       nullable: true
                       properties:
+                        disableColumnMasking:
+                          default: false
+                          type: boolean
                         opa:
                           description: |-
                             Configure the OPA stacklet [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery)
