@@ -25,12 +25,12 @@ commands:
           authentication:
             - authenticationClass: trino-users-auth
           authorization:
-{% if test_scenario['values']['trino'] == "451" %}
-            disableColumnMasking: true
-{% endif %}
             opa:
               configMapName: opa
               package: trino
+{% if test_scenario['values']['trino'] == "451" %}
+              enableColumnMasking: false
+{% endif %}
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
           vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
