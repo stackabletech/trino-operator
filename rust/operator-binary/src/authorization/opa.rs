@@ -1,13 +1,11 @@
 use std::collections::BTreeMap;
 
 use stackable_operator::{
-    client::Client,
-    commons::opa::{OpaApiVersion, OpaConfig},
-    k8s_openapi::api::core::v1::ConfigMap,
+    client::Client, commons::opa::OpaApiVersion, k8s_openapi::api::core::v1::ConfigMap,
     kube::ResourceExt,
 };
 
-use crate::crd::v1alpha1::TrinoCluster;
+use crate::crd::v1alpha1;
 
 pub const OPA_TLS_VOLUME_NAME: &str = "opa-tls";
 
@@ -41,13 +39,15 @@ pub struct TrinoOpaConfig {
 impl TrinoOpaConfig {
     pub async fn from_opa_config(
         client: &Client,
-        trino: &TrinoCluster,
-        opa_config: &OpaConfig,
+        trino: &v1alpha1::TrinoCluster,
+        opa_config: &v1alpha1::TrinoAuthorizationOpaConfig,
     ) -> Result<Self, stackable_operator::commons::opa::Error> {
         let non_batched_connection_string = opa_config
+            .opa
             .full_document_url_from_config_map(client, trino, Some("allow"), OpaApiVersion::V1)
             .await?;
         let batched_connection_string = opa_config
+            .opa
             .full_document_url_from_config_map(
                 client,
                 trino,
@@ -57,6 +57,7 @@ impl TrinoOpaConfig {
             )
             .await?;
         let row_filters_connection_string = opa_config
+            .opa
             .full_document_url_from_config_map(
                 client,
                 trino,
@@ -66,24 +67,26 @@ impl TrinoOpaConfig {
             )
             .await?;
 
-        let mut optional_batched_column_masking_connection_string = None;
-        if trino.column_masking_enabled() {
-            let batched_column_masking_connection_string = opa_config
-                .full_document_url_from_config_map(
-                    client,
-                    trino,
-                    // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L48
-                    Some("batchColumnMasks"),
-                    OpaApiVersion::V1,
-                )
-                .await?;
-            optional_batched_column_masking_connection_string =
-                Some(batched_column_masking_connection_string);
-        }
+        let batched_column_masking_connection_string = if trino.column_masking_enabled() {
+            Some(
+                opa_config
+                    .opa
+                    .full_document_url_from_config_map(
+                        client,
+                        trino,
+                        // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L48
+                        Some("batchColumnMasks"),
+                        OpaApiVersion::V1,
+                    )
+                    .await?,
+            )
+        } else {
+            None
+        };
 
         let tls_secret_class = client
             .get::<ConfigMap>(
-                &opa_config.config_map_name,
+                &opa_config.opa.config_map_name,
                 trino.namespace().as_deref().unwrap_or("default"),
             )
             .await
@@ -95,8 +98,7 @@ impl TrinoOpaConfig {
             non_batched_connection_string,
             batched_connection_string,
             row_filters_connection_string: Some(row_filters_connection_string),
-            batched_column_masking_connection_string:
-                optional_batched_column_masking_connection_string,
+            batched_column_masking_connection_string,
             allow_permission_management_operations: true,
             tls_secret_class,
         })
