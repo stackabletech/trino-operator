@@ -238,9 +238,8 @@ fn references_config_map(
     };
 
     match &trino.spec.cluster_config.authorization {
-        Some(trino_authorization) => match &trino_authorization.opa {
-            Some(opa_config) => opa_config.opa.config_map_name == config_map.name_any(),
-            None => false,
+        Some(trino_authorization) => match &trino_authorization {
+            v1alpha1::TrinoAuthorization::Opa { config } => config.opa.config_map_name == config_map.name_any(),
         },
         None => false,
     }

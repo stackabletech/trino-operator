@@ -312,10 +312,12 @@ pub mod versioned {
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct TrinoAuthorization {
-        // no doc - it's in the struct.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub opa: Option<TrinoAuthorizationOpaConfig>,
+    pub enum TrinoAuthorization {
+        Opa {
+            // no doc - it's in the struct.
+            #[serde(default, flatten)]
+            config: TrinoAuthorizationOpaConfig,
+        },
     }
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -906,7 +908,9 @@ impl v1alpha1::TrinoCluster {
             .cluster_config
             .authorization
             .as_ref()
-            .and_then(|a| a.opa.as_ref())
+            .and_then(|a| match a {
+                v1alpha1::TrinoAuthorization::Opa { config } => Some(config),
+            })
     }
 
     /// Return user provided server TLS settings

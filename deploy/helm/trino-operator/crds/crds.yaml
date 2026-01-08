@@ -70,6 +70,9 @@ spec:
                         Authorization options for Trino.
                         Learn more in the [Trino authorization usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authorization).
                       nullable: true
+                      oneOf:
+                        - required:
+                            - opa
                       properties:
                         opa:
                           description: |-
@@ -77,7 +80,6 @@ spec:
                             and the name of the Rego package containing your authorization rules.
                             Consult the [OPA authorization documentation](https://docs.stackable.tech/home/nightly/concepts/opa)
                             to learn how to deploy Rego authorization rules with OPA.
-                          nullable: true
                           properties:
                             configMapName:
                               description: |-
