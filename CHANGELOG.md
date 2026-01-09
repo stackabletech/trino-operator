@@ -7,13 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Support objectOverrides using `.spec.objectOverrides`.
-  See [objectOverrides concepts page](https://docs.stackable.tech/home/nightly/concepts/overrides/#object-overrides) for details ([#xxx]).
+  See [objectOverrides concepts page](https://docs.stackable.tech/home/nightly/concepts/overrides/#object-overrides) for details ([#831]).
 
 ### Changed
 
-- Pin k8s-openapi to `0.26.0` ([#xxx]).
+- Pin k8s-openapi to `0.26.0` ([#831]).
 
-[#779]: https://github.com/stackabletech/trino-operator/pull/779
+[#831]: https://github.com/stackabletech/trino-operator/pull/831
 
 ## [25.11.0] - 2025-11-07
 
