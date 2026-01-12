@@ -908,8 +908,8 @@ impl v1alpha1::TrinoCluster {
             .cluster_config
             .authorization
             .as_ref()
-            .and_then(|a| match a {
-                v1alpha1::TrinoAuthorization::Opa { config } => Some(config),
+            .map(|a| match a {
+                v1alpha1::TrinoAuthorization::Opa { config } => config,
             })
     }
 
