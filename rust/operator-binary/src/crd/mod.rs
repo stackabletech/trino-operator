@@ -327,7 +327,8 @@ pub mod versioned {
         #[serde(flatten)]
         pub opa: OpaConfig,
 
-        #[serde(default = "TrinoAuthorization::enabled_column_masking_default")]
+        /// Set the OPA batched column masking uri for Trino queries or not. Defaults to true.
+        #[serde(default = "TrinoAuthorizationOpaConfig::enabled_column_masking_default")]
         pub enable_column_masking: bool,
     }
 
@@ -378,7 +379,7 @@ pub mod versioned {
     }
 }
 
-impl v1alpha1::TrinoAuthorization {
+impl v1alpha1::TrinoAuthorizationOpaConfig {
     pub fn enabled_column_masking_default() -> bool {
         true
     }
@@ -899,7 +900,7 @@ impl v1alpha1::TrinoCluster {
     pub fn column_masking_enabled(&self) -> bool {
         match self.get_opa_config() {
             Some(a) => a.enable_column_masking,
-            None => v1alpha1::TrinoAuthorization::enabled_column_masking_default(),
+            None => v1alpha1::TrinoAuthorizationOpaConfig::enabled_column_masking_default(),
         }
     }
 
