@@ -206,6 +206,7 @@ pub mod versioned {
         #[serde(default)]
         pub cluster_operation: ClusterOperation,
 
+        // no doc - it's in the struct.
         #[serde(default)]
         pub object_overrides: ObjectOverrides,
 
