@@ -1608,6 +1608,20 @@ spec:
                       nullable: true
                       type: string
                   type: object
+                objectOverrides:
+                  default: []
+                  description: |-
+                    A list of generic Kubernetes objects, which are merged into the objects that the operator
+                    creates.
+
+                    List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.
+
+                    Read the [Object overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#object-overrides)
+                    for more information.
+                  items:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  type: array
                 workers:
                   description: |-
                     This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing

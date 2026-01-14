@@ -31,7 +31,7 @@ pub async fn add_pdbs(
     trino: &v1alpha1::TrinoCluster,
     role: &TrinoRole,
     client: &Client,
-    cluster_resources: &mut ClusterResources,
+    cluster_resources: &mut ClusterResources<'_>,
 ) -> Result<(), Error> {
     if !pdb.enabled {
         return Ok(());
