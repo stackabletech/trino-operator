@@ -28,6 +28,9 @@ serde_yaml.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
+# k8s-openapi 0.26.1 doesn't play well with our kube version: https://github.com/kube-rs/kube/issues/1869
+k8s-openapi.workspace = true
+
 [dev-dependencies]
 rstest.workspace = true
 serde_yaml.workspace = true

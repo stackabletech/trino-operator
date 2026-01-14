@@ -6,15 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Support objectOverrides using `.spec.objectOverrides`.
+  See [objectOverrides concepts page](https://docs.stackable.tech/home/nightly/concepts/overrides/#object-overrides) for details ([#831]).
 - Add `enabledColumnMasking` field to `opa` configuration in `authorization` ([#827]).
 - Support batched column masks in Rego rules ([#827]).
 
 ### Changed
 
+- Pin k8s-openapi to `0.26.0` ([#831]).
 - BREAKING: The field `opa` in `authorization` is now a mandatory enum variant instead of being optional ([#827]).
 - BREAKING: The operator no longer sets `opa.policy.column-masking-uri` in `access-control.properties` but
   `opa.policy.batch-column-masking-uri` instead, allowing Trino to fetch multiple column masks in a single request ([#827]).
 
+[#831]: https://github.com/stackabletech/trino-operator/pull/831
 [#827]: https://github.com/stackabletech/trino-operator/pull/827
 
 ## [25.11.0] - 2025-11-07

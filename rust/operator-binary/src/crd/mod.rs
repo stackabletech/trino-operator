@@ -26,6 +26,7 @@ use stackable_operator::{
         merge::Merge,
     },
     crd::authentication::core,
+    deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt, runtime::reflector::ObjectRef},
     memory::{BinaryMultiple, MemoryQuantity},
@@ -204,6 +205,10 @@ pub mod versioned {
         // no doc - it's in the struct.
         #[serde(default)]
         pub cluster_operation: ClusterOperation,
+
+        // no doc - it's in the struct.
+        #[serde(default)]
+        pub object_overrides: ObjectOverrides,
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]

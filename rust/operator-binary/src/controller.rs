@@ -504,6 +504,7 @@ pub async fn reconcile_trino(
         CONTROLLER_NAME,
         &trino.object_ref(&()),
         ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
+        &trino.spec.object_overrides,
     )
     .context(CreateClusterResourcesSnafu)?;
 
