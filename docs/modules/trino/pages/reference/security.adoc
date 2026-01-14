@@ -1,0 +1,39 @@
+= Security
+
+== Authorization
+
+=== OPA
+
+==== Column masking
+
+===== CRD configuration
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster # <1>
+spec:
+  clusterConfig:
+    authorization:
+      opa:
+        enableColumnMasking: true # default
+----
+
+<1> Redundant fields for column masking reference configuration are omitted
+
+===== Result
+
+In `access-control.properties` the following value is set, when `enableColumnMasking` is set to `true`:
+
+[.wrap,source]
+----
+opa.policy.batch-column-masking-uri=<opa-url>/v1/data/<package>/batchColumnMasks # <1> <2>
+----
+
+<1> `<opa-url>` is read from the OPA discovery ConfigMap
+<2> `<package>` is read from `spec.clusterConfig.authorization.opa.package` if set, otherwise defaults to the TrinoCluster name
+
+===== Considerations
+
+The default setting for `enableColumnMasking` assumes a `batchColumnMasks` rule is defined in the Rego rules for the TrinoCluster.
+If there is no such rule defined, Trino queries, using that column masking endpoint, will fail.

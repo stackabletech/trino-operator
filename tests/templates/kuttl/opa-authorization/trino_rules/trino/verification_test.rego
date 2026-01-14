@@ -436,6 +436,89 @@ test_column_mask_with_no_matching_rule if {
 		with data.trino_policies.policies as policies
 }
 
+test_batch_column_mask_with_expression_and_optional_identity if {
+	request := {
+		"action": {
+			"operation": "GetColumnMask",
+			"filterResources": [
+				{"column": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+					"columnName": "testcolumn",
+				}},
+				{"column": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+					"columnName": "testcolumn2",
+				}},
+			],
+		},
+		"context": testcontext,
+	}
+	policies := {"tables": [{
+		"privileges": ["SELECT"],
+		"columns": [
+			{
+				"name": "testcolumn",
+				"mask": "testmask",
+				"mask_environment": {"user": "testmaskenvironmentuser"},
+			},
+			{
+				"name": "testcolumn2",
+				"mask": "testmask2",
+			},
+		],
+	}]}
+
+	column_masks := trino.batchColumnMasks with input as request
+		with data.trino_policies.policies as policies
+
+	column_masks == {
+		{
+			"index": 0,
+			"viewExpression": {
+				"expression": "testmask",
+				"identity": "testmaskenvironmentuser",
+			},
+		},
+		{
+			"index": 1,
+			"viewExpression": {"expression": "testmask2"},
+		},
+	}
+}
+
+test_batch_column_mask_with_no_matching_rule if {
+	request := {
+		"action": {
+			"operation": "GetColumnMask",
+			"filterResources": [
+				{"column": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+					"columnName": "testcolumn",
+				}},
+				{"column": {
+					"catalogName": "testcatalog",
+					"schemaName": "testschema",
+					"tableName": "testtable",
+					"columnName": "testcolumn2",
+				}},
+			],
+		},
+		"context": testcontext,
+	}
+	policies := {}
+
+	column_masks := trino.batchColumnMasks with input as request
+		with data.trino_policies.policies as policies
+
+	count(column_masks) == 0
+}
+
 test_row_filters_with_expression_and_identity if {
 	request := {
 		"action": {

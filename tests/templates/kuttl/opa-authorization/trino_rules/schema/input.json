@@ -518,6 +518,18 @@
 
     "GetColumnMask": {
       "type": "object",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SingleColumnMask"
+        },
+        {
+          "$ref": "#/$defs/BatchColumnMasks"
+        }
+      ]
+    },
+
+    "SingleColumnMask": {
+      "type": "object",
       "properties": {
         "operation": {
           "const": "GetColumnMask"
@@ -560,6 +572,55 @@
       },
       "additionalProperties": false,
       "required": ["operation", "resource"]
+    },
+
+    "BatchColumnMasks": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "GetColumnMask"
+        },
+        "filterResources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "column": {
+                "type": "object",
+                "properties": {
+                  "catalogName": {
+                    "type": "string"
+                  },
+                  "schemaName": {
+                    "type": "string"
+                  },
+                  "tableName": {
+                    "type": "string"
+                  },
+                  "columnName": {
+                    "type": "string"
+                  },
+                  "columnType": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "catalogName",
+                  "schemaName",
+                  "tableName",
+                  "columnName",
+                  "columnType"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "required": ["column"]
+            }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["operation", "filterResources"]
     },
 
     "GetRowFilters": {

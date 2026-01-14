@@ -27,8 +27,13 @@ Confiuration overrides are applied like so:
 
 Configuration overrides can be applied to:
 
+* `access-control.properties`
 * `config.properties`
 * `node.properties`
+* `password-authenticator.properties`
+* `security.properties`
+* `exchange-manager.properties`
+* `spooling-manager.properties`
 
 === Configuration overrides in the TrinoCatalog
 
