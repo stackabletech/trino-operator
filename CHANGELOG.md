@@ -8,12 +8,14 @@ All notable changes to this project will be documented in this file.
 
 - Support objectOverrides using `.spec.objectOverrides`.
   See [objectOverrides concepts page](https://docs.stackable.tech/home/nightly/concepts/overrides/#object-overrides) for details ([#831]).
+- Enable the [restart-controller](https://docs.stackable.tech/home/nightly/commons-operator/restarter/), so that the Pods are automatically restarted on config changes ([#XXX]).
 
 ### Changed
 
 - Pin k8s-openapi to `0.26.0` ([#831]).
 
 [#831]: https://github.com/stackabletech/trino-operator/pull/831
+[#XXX]: https://github.com/stackabletech/trino-operator/pull/XXX
 
 ## [25.11.0] - 2025-11-07
 
