@@ -9,6 +9,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: trino-coordinator-default
+  generation: 1 # There should be no unneeded Pod restarts
 spec:
   template:
     spec:
@@ -21,6 +22,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: trino-worker-default
+  generation: 1 # There should be no unneeded Pod restarts
 spec:
   template:
     spec:
