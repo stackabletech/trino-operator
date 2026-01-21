@@ -23,7 +23,7 @@ pub struct TrinoOpaConfig {
     pub(crate) row_filters_connection_string: Option<String>,
     /// URI for fetching columns masks in batches, e.g.
     /// `http://localhost:8081/v1/data/trino/batchColumnMasks` - if not set,
-    /// column-masking-uri will be used for getting column masks in parallel
+    /// no masking will be applied
     pub(crate) batched_column_masking_connection_string: Option<String>,
     /// Whether to allow permission management (GRANT, DENY, ...) and
     /// role management operations - OPA will not be queried for any
