@@ -62,7 +62,7 @@ The `--insecure` flag ignores the server TLS certificate and is required in this
 
 [source,console]
 ----
-$ trino-cli-477 --server https://85.215.195.29:8443 --user admin --password --insecure
+$ trino-cli-479 --server https://85.215.195.29:8443 --user admin --password --insecure
 ----
 
 TIP: In case you are using OpenID connect, use `--external-authentication` instead of `--password`.

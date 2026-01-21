@@ -57,7 +57,7 @@ For these components extra steps are required.
 ** a Stackable xref:secret-operator:index.adoc[Secret Operator] for certificates when deploying for TLS
 ** a Stackable xref:commons-operator:index.adoc[Commons Operator] for certificates when deploying for TLS authentication
 ** (for authorization): a Stackable xref:opa:index.adoc[OPA Operator]
-** the https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-477[Trino CLI] to test SQL queries
+** the https://repo.stackable.tech/#browse/browse:packages:trino-cli%2Ftrino-cli-479[Trino CLI] to test SQL queries
 
 === S3 bucket
 
