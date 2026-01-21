@@ -3,6 +3,5 @@
 // Stackable Platform documentation.
 
 // These versions must be sorted in descending order (highest to lowest).
+- 479
 - 477 (LTS)
-- 476 (deprecated)
-- 451 (deprecated)
