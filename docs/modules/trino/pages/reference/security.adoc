@@ -25,7 +25,7 @@ spec:
 
 In `access-control.properties` the following value is set, when `enableColumnMasking` is set to `true`:
 
-[.wrap,source]
+[source]
 ----
 opa.policy.batch-column-masking-uri=<opa-url>/v1/data/<package>/batchColumnMasks # <1> <2>
 ----
