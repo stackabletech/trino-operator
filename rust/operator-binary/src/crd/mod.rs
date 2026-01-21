@@ -332,7 +332,7 @@ pub mod versioned {
         #[serde(flatten)]
         pub opa: OpaConfig,
 
-        /// Set the OPA batched column masking uri for Trino queries or not. Defaults to true.
+        /// Whether to set the OPA batched column masking URI for Trino queries; defaults to true
         #[serde(default = "TrinoAuthorizationOpaConfig::enabled_column_masking_default")]
         pub enable_column_masking: bool,
     }
