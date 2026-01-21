@@ -249,6 +249,7 @@ batch contains index if {
 #           "schemaName": "schema",
 #           "tableName": "table",
 #           "columnName": "column",
+#           "columnType": "varchar",
 #         },
 #       },
 #     },
