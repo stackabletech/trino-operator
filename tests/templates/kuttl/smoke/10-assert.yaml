@@ -9,6 +9,8 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: trino-coordinator-default
+  labels:
+    restarter.stackable.tech/enabled: "true"
 spec:
   template:
     spec:
@@ -21,6 +23,8 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: trino-worker-default
+  labels:
+    restarter.stackable.tech/enabled: "true"
 spec:
   template:
     spec:

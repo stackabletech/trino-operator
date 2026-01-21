@@ -1,73 +1,4 @@
 ---
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCluster
-metadata:
-  name: trino
-spec:
-  image:
-{% if test_scenario['values']['trino'].find(",") > 0 %}
-    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
-    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
-{% else %}
-    productVersion: "{{ test_scenario['values']['trino'] }}"
-{% endif %}
-    pullPolicy: IfNotPresent
-  clusterConfig:
-    catalogLabelSelector:
-      matchLabels:
-        trino: trino
-    authentication:
-      - authenticationClass: trino-users-auth
-    authorization:
-      opa:
-        configMapName: opa
-        package: trino
-{% if test_scenario['values']['trino'] == "451" %}
-        enableColumnMasking: false
-{% endif %}
-{% if lookup('env', 'VECTOR_AGGREGATOR') %}
-    vectorAggregatorConfigMapName: vector-aggregator-discovery
-{% endif %}
-  coordinators:
-    config:
-      logging:
-        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
-    envOverrides:
-      COMMON_VAR: role-value # overridden by role group below
-      ROLE_VAR: role-value   # only defined here at role level
-{% if test_scenario['values']['trino'] == "451" %}
-    configOverrides:
-      access-control.properties:
-        opa.policy.column-masking-uri: "http://opa-server:8081/v1/data/trino/columnMask"
-{% endif %}
-    roleGroups:
-      default:
-        replicas: 1
-        config: {}
-        envOverrides:
-          COMMON_VAR: group-value # overrides role value
-          GROUP_VAR: group-value # only defined here at group level
-  workers:
-    config:
-      gracefulShutdownTimeout: 5s # Let the test run faster
-      logging:
-        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
-    envOverrides:
-      COMMON_VAR: role-value # overridden by role group below
-      ROLE_VAR: role-value   # only defined here at role level
-{% if test_scenario['values']['trino'] == "451" %}
-    configOverrides:
-      access-control.properties:
-        opa.policy.column-masking-uri: "http://opa-server:8081/v1/data/trino/columnMask"
-{% endif %}
-    roleGroups:
-      default:
-        replicas: 1
-        config: {}
-        envOverrides:
-          COMMON_VAR: group-value # overrides role value
-          GROUP_VAR: group-value # only defined here at group level
----
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
@@ -160,3 +91,74 @@ metadata:
 stringData:
   user: hive
   password: hive
+---
+# We need to create the TrinoCluster last, so that the ConfigMaps/Secrets it mounts are already
+# existing to prevent unnecessary Pod restarts.
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  image:
+{% if test_scenario['values']['trino'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
+{% else %}
+    productVersion: "{{ test_scenario['values']['trino'] }}"
+{% endif %}
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: trino
+    authentication:
+      - authenticationClass: trino-users-auth
+    authorization:
+      opa:
+        configMapName: opa
+        package: trino
+{% if test_scenario['values']['trino'] == "451" %}
+        enableColumnMasking: false
+{% endif %}
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    envOverrides:
+      COMMON_VAR: role-value # overridden by role group below
+      ROLE_VAR: role-value   # only defined here at role level
+{% if test_scenario['values']['trino'] == "451" %}
+    configOverrides:
+      access-control.properties:
+        opa.policy.column-masking-uri: "http://opa-server:8081/v1/data/trino/columnMask"
+{% endif %}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+        envOverrides:
+          COMMON_VAR: group-value # overrides role value
+          GROUP_VAR: group-value # only defined here at group level
+  workers:
+    config:
+      gracefulShutdownTimeout: 5s # Let the test run faster
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    envOverrides:
+      COMMON_VAR: role-value # overridden by role group below
+      ROLE_VAR: role-value   # only defined here at role level
+{% if test_scenario['values']['trino'] == "451" %}
+    configOverrides:
+      access-control.properties:
+        opa.policy.column-masking-uri: "http://opa-server:8081/v1/data/trino/columnMask"
+{% endif %}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+        envOverrides:
+          COMMON_VAR: group-value # overrides role value
+          GROUP_VAR: group-value # only defined here at group level

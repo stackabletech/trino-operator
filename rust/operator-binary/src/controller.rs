@@ -33,6 +33,7 @@ use stackable_operator::{
         product_image_selection::{self, ResolvedProductImage},
         rbac::build_rbac_resources,
     },
+    constants::RESTART_CONTROLLER_ENABLED_LABEL,
     k8s_openapi::{
         DeepMerge,
         api::{
@@ -662,6 +663,9 @@ pub async fn reconcile_trino(
                     rolegroup: role_group_ref.clone(),
                 })?;
 
+            // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
+            // to prevent unnecessary Pod restarts.
+            // See https://github.com/stackabletech/commons-operator/issues/111 for details.
             sts_cond_builder.add(
                 cluster_resources
                     .add(client, rg_stateful_set)
@@ -1387,6 +1391,7 @@ fn build_rolegroup_statefulset(
                 &role_group_ref.role_group,
             ))
             .context(MetadataBuildSnafu)?
+            .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
