@@ -134,7 +134,7 @@ metadata:
   name: simple-hive-derby
 spec:
   image:
-    productVersion: 4.1.0
+    productVersion: 4.2.0
   clusterConfig:
     database:
       connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
