@@ -88,7 +88,7 @@ spec:
                               type: string
                             enableColumnMasking:
                               default: true
-                              description: Set the OPA batched column masking uri for Trino queries or not. Defaults to true.
+                              description: Whether to set the OPA batched column masking URI for Trino queries; defaults to true
                               type: boolean
                             package:
                               description: The name of the Rego package containing the Rego rules for the product.
