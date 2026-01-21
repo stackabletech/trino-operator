@@ -117,9 +117,6 @@ spec:
       opa:
         configMapName: opa
         package: trino
-{% if test_scenario['values']['trino'] == "451" %}
-        enableColumnMasking: false
-{% endif %}
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
@@ -130,11 +127,6 @@ spec:
     envOverrides:
       COMMON_VAR: role-value # overridden by role group below
       ROLE_VAR: role-value   # only defined here at role level
-{% if test_scenario['values']['trino'] == "451" %}
-    configOverrides:
-      access-control.properties:
-        opa.policy.column-masking-uri: "http://opa-server:8081/v1/data/trino/columnMask"
-{% endif %}
     roleGroups:
       default:
         replicas: 1
@@ -150,11 +142,6 @@ spec:
     envOverrides:
       COMMON_VAR: role-value # overridden by role group below
       ROLE_VAR: role-value   # only defined here at role level
-{% if test_scenario['values']['trino'] == "451" %}
-    configOverrides:
-      access-control.properties:
-        opa.policy.column-masking-uri: "http://opa-server:8081/v1/data/trino/columnMask"
-{% endif %}
     roleGroups:
       default:
         replicas: 1

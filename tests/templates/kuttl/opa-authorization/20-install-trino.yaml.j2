@@ -1,129 +1,110 @@
 ---
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - script: |
-      kubectl apply -n $NAMESPACE -f - <<EOF
-      ---
-      apiVersion: trino.stackable.tech/v1alpha1
-      kind: TrinoCluster
-      metadata:
-        name: trino
-      spec:
-        image:
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  image:
 {% if test_scenario['values']['trino'].find(",") > 0 %}
-          custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
-          productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
+    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
 {% else %}
-          productVersion: "{{ test_scenario['values']['trino'] }}"
+    productVersion: "{{ test_scenario['values']['trino'] }}"
 {% endif %}
-          pullPolicy: IfNotPresent
-        clusterConfig:
-          catalogLabelSelector:
-            matchLabels:
-              trino: trino
-          authentication:
-            - authenticationClass: trino-users-auth
-          authorization:
-            opa:
-              configMapName: opa
-              package: trino
-{% if test_scenario['values']['trino'] == "451" %}
-              enableColumnMasking: false
-{% endif %}
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: trino
+    authentication:
+      - authenticationClass: trino-users-auth
+    authorization:
+      opa:
+        configMapName: opa
+        package: trino
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
-          vectorAggregatorConfigMapName: vector-aggregator-discovery
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
-        coordinators:
-          config:
-            logging:
-              enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
-{% if test_scenario['values']['trino'] == "451" %}
-          configOverrides:
-            access-control.properties:
-              opa.policy.column-masking-uri: "https://opa-server.$NAMESPACE.svc.cluster.local:8443/v1/data/trino/columnMask"
-{% endif %}
-          roleGroups:
-            default:
-              replicas: 1
-              config: {}
-        workers:
-          config:
-            gracefulShutdownTimeout: 10s # Let the test run faster
-            logging:
-              enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
-{% if test_scenario['values']['trino'] == "451" %}
-          configOverrides:
-            access-control.properties:
-              opa.policy.column-masking-uri: "https://opa-server.$NAMESPACE.svc.cluster.local:8443/v1/data/trino/columnMask"
-{% endif %}
-          roleGroups:
-            default:
-              replicas: 1
-              config: {}
-      ---
-      apiVersion: authentication.stackable.tech/v1alpha1
-      kind: AuthenticationClass
-      metadata:
-        name: trino-users-auth
-      spec:
-        provider:
-          static:
-            userCredentialsSecret:
-              name: trino-users
-      ---
-      apiVersion: v1
-      kind: Secret
-      metadata:
+  coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+  workers:
+    config:
+      gracefulShutdownTimeout: 10s # Let the test run faster
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: trino-users-auth
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
         name: trino-users
-      type: kubernetes.io/opaque
-      stringData:
-        admin: admin
-        banned-user: banned-user
-        group-user: group-user
-        lakehouse: lakehouse
-        iceberg: iceberg
-      ---
-      apiVersion: trino.stackable.tech/v1alpha1
-      kind: TrinoCatalog
-      metadata:
-        name: lakehouse
-        labels:
-          trino: trino
-      spec:
-        connector:
-          tpch: {}
-      ---
-      apiVersion: trino.stackable.tech/v1alpha1
-      kind: TrinoCatalog
-      metadata:
-        name: tpch
-        labels:
-          trino: trino
-      spec:
-        connector:
-          tpch: {}
-      ---
-      apiVersion: trino.stackable.tech/v1alpha1
-      kind: TrinoCatalog
-      metadata:
-        name: tpcds
-        labels:
-          trino: trino
-      spec:
-        connector:
-          tpcds: {}
-      ---
-      apiVersion: trino.stackable.tech/v1alpha1
-      kind: TrinoCatalog
-      metadata:
-        name: iceberg
-        labels:
-          trino: trino
-      spec:
-        connector:
-          iceberg:
-            metastore:
-              configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
-            s3:
-              reference: minio
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-users
+type: kubernetes.io/opaque
+stringData:
+  admin: admin
+  banned-user: banned-user
+  group-user: group-user
+  lakehouse: lakehouse
+  iceberg: iceberg
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: lakehouse
+  labels:
+    trino: trino
+spec:
+  connector:
+    tpch: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: tpch
+  labels:
+    trino: trino
+spec:
+  connector:
+    tpch: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: tpcds
+  labels:
+    trino: trino
+spec:
+  connector:
+    tpcds: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: iceberg
+  labels:
+    trino: trino
+spec:
+  connector:
+    iceberg:
+      metastore:
+        configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
+      s3:
+        reference: minio
