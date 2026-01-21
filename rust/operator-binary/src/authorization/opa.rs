@@ -67,7 +67,7 @@ impl TrinoOpaConfig {
             )
             .await?;
 
-        let batched_column_masking_connection_string = if trino.column_masking_enabled() {
+        let batched_column_masking_connection_string = if opa_config.enable_column_masking {
             Some(
                 opa_config
                     .opa

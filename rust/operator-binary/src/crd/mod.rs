@@ -902,13 +902,6 @@ impl v1alpha1::TrinoCluster {
         !spec.cluster_config.authentication.is_empty()
     }
 
-    pub fn column_masking_enabled(&self) -> bool {
-        match self.get_opa_config() {
-            Some(a) => a.enable_column_masking,
-            None => v1alpha1::TrinoAuthorizationOpaConfig::enabled_column_masking_default(),
-        }
-    }
-
     pub fn get_opa_config(&self) -> Option<&v1alpha1::TrinoAuthorizationOpaConfig> {
         self.spec
             .cluster_config
