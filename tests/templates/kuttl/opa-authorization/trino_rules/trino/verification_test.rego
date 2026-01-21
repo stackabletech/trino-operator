@@ -516,7 +516,7 @@ test_batch_column_mask_with_no_matching_rule if {
 	column_masks := trino.batchColumnMasks with input as request
 		with data.trino_policies.policies as policies
 
-	count(column_masks) == 0
+	column_masks == set()
 }
 
 test_row_filters_with_expression_and_identity if {
