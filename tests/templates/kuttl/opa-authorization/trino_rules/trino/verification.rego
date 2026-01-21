@@ -319,6 +319,7 @@ columnMask := column_mask if {
 #           "schemaName": "schema",
 #           "tableName": "table",
 #           "columnName": "column",
+#           "columnType": "varchar",
 #         }},
 #         {"column": ...},
 #         ...
