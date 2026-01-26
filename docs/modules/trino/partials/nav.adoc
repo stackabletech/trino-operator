@@ -33,5 +33,6 @@
 ** xref:trino:reference/crds.adoc[]
 *** {crd-docs}/trino.stackable.tech/trinocluster/v1alpha1/[TrinoCluster {external-link-icon}^]
 *** {crd-docs}/trino.stackable.tech/trinocatalog/v1alpha1/[TrinoCatalog {external-link-icon}^]
+** xref:trino:reference/security.adoc[]
 ** xref:trino:reference/commandline-parameters.adoc[]
 ** xref:trino:reference/environment-variables.adoc[]

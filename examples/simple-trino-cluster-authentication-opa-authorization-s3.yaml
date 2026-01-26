@@ -11,6 +11,7 @@ spec:
       - authenticationClass: simple-trino-users
     authorization:
       opa:
+        enableColumnMasking: false
         configMapName: simple-opa
         package: trino
     catalogLabelSelector:
