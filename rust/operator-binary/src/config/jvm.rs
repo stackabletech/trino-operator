@@ -37,7 +37,7 @@ pub enum Error {
     MergeJvmArgumentOverrides { source: role_utils::Error },
 }
 
-// Currently works for all supported versions (451 and 455 as of 2024-09-04) but maybe be changed
+// Currently works for all supported versions (as of 2024-09-04) but maybe be changed
 // in the future depending on the role and version.
 pub fn jvm_config(
     product_version: u16,
@@ -110,28 +110,10 @@ fn recommended_trino_jvm_args(_product_version: u16) -> Result<Vec<String>, Erro
 #[cfg(not(test))]
 fn recommended_trino_jvm_args(product_version: u16) -> Result<Vec<String>, Error> {
     match product_version {
-        // Copied from https://trino.io/docs/451/installation/deployment.html
-        451 => Ok(vec![
-            "-XX:InitialRAMPercentage=80".to_owned(),
-            "-XX:MaxRAMPercentage=80".to_owned(),
-            "-XX:G1HeapRegionSize=32M".to_owned(),
-            "-XX:+ExitOnOutOfMemoryError".to_owned(),
-            "-XX:+HeapDumpOnOutOfMemoryError".to_owned(),
-            "-XX:-OmitStackTraceInFastThrow".to_owned(),
-            "-XX:ReservedCodeCacheSize=512M".to_owned(),
-            "-XX:PerMethodRecompilationCutoff=10000".to_owned(),
-            "-XX:PerBytecodeRecompilationCutoff=10000".to_owned(),
-            "-Djdk.attach.allowAttachSelf=true".to_owned(),
-            "-Djdk.nio.maxCachedBufferSize=2000000".to_owned(),
-            "-Dfile.encoding=UTF-8".to_owned(),
-            "-XX:+EnableDynamicAgentLoading".to_owned(),
-            "-XX:+UnlockDiagnosticVMOptions".to_owned(),
-            "-XX:G1NumCollectionsKeepPinned=10000000".to_owned(),
-        ]),
         // Copied from:
-        // - https://trino.io/docs/476/installation/deployment.html#jvm-config
         // - https://trino.io/docs/477/installation/deployment.html#jvm-config
-        476 | 477 => Ok(vec![
+        // - https://trino.io/docs/479/installation/deployment.html#jvm-config
+        477 | 479 => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),
@@ -172,7 +154,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "477"
+            productVersion: "479"
           clusterConfig:
             catalogLabelSelector: {}
           coordinators:
@@ -216,7 +198,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "477"
+            productVersion: "479"
           clusterConfig:
             catalogLabelSelector: {}
           coordinators:
