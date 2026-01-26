@@ -10,15 +10,21 @@ All notable changes to this project will be documented in this file.
   See [objectOverrides concepts page](https://docs.stackable.tech/home/nightly/concepts/overrides/#object-overrides) for details ([#831]).
 - Enable the [restart-controller](https://docs.stackable.tech/home/nightly/commons-operator/restarter/), so that the Pods are automatically restarted on config changes ([#833]).
 - Add support for Trino 479 ([#839]).
+- Add `enableColumnMasking` field to `opa` configuration in `authorization` ([#827]).
+- Support batched column masks in Rego rules ([#827]).
 
 ### Changed
 
 - Pin k8s-openapi to `0.26.0` ([#831]).
+- BREAKING: The field `opa` in `authorization` is now a mandatory enum variant instead of being optional ([#827]).
+- BREAKING: The operator no longer sets `opa.policy.column-masking-uri` in `access-control.properties` but
+  `opa.policy.batch-column-masking-uri` instead, allowing Trino to fetch multiple column masks in a single request ([#827]).
 
 ### Removed
 
 - Remove support for Trino 451 and 476 ([#839]).
 
+[#827]: https://github.com/stackabletech/trino-operator/pull/827
 [#831]: https://github.com/stackabletech/trino-operator/pull/831
 [#833]: https://github.com/stackabletech/trino-operator/pull/833
 [#839]: https://github.com/stackabletech/trino-operator/pull/839

@@ -5,6 +5,7 @@
 #     - allow
 #     - batch
 #     - columnMask
+#     - batchColumnMasks
 #     - rowFilters
 #   These rules use the rules and functions in requested_permission.rego
 #   and actual_permissions.rego to calculate the result.
@@ -248,6 +249,7 @@ batch contains index if {
 #           "schemaName": "schema",
 #           "tableName": "table",
 #           "columnName": "column",
+#           "columnType": "varchar",
 #         },
 #       },
 #     },
@@ -300,6 +302,89 @@ columnMask := column_mask if {
 	is_null(column.mask_environment.user)
 
 	column_mask := {"expression": column.mask}
+}
+
+# METADATA
+# description: |
+#   Entry point for fetching column masks in batch, configured in the
+#   Trino property `opa.policy.batch-column-masking-uri`.
+#
+#   The input has the following form:
+#
+#   {
+#     "action": {
+#       "operation": "GetColumnMasks",
+#       "filterResources": [{
+#         "column": {
+#           "catalogName": "catalog",
+#           "schemaName": "schema",
+#           "tableName": "table",
+#           "columnName": "column",
+#           "columnType": "varchar",
+#         }},
+#         {"column": ...},
+#         ...
+#       ],
+#     },
+#     "context": {
+#       "identity": {
+#         "groups": ["group1", ...],
+#         "user": "username",
+#       },
+#       "softwareStack": {"trinoVersion": "455"},
+#     }
+#   }
+#
+#   The batchColumnMask rule queries the column constraints in the
+#   Trino policies for each of the resources in the "filterResources"
+#   list of the request and returns a list of viewExpressions, containing
+#   the column mask if any set and optionally the identity for the mask
+#   evaluation, and the index of the corresponding resource in the
+#   "filterResources" list of the request.
+#   A column mask is an SQL expression,
+#   e.g. "'XXX-XX-' + substring(credit_card, -4)".
+# entrypoint: true
+batchColumnMasks contains column_mask if {
+	input.action.operation == "GetColumnMask"
+	some index, resource in input.action.filterResources
+
+	column := column_constraints(
+		resource.column.catalogName,
+		resource.column.schemaName,
+		resource.column.tableName,
+		resource.column.columnName,
+	)
+
+	is_string(column.mask)
+	is_string(column.mask_environment.user)
+
+	column_mask := {
+		"index": index,
+		"viewExpression": {
+			"expression": column.mask,
+			"identity": column.mask_environment.user,
+		},
+	}
+}
+
+batchColumnMasks contains column_mask if {
+	input.action.operation == "GetColumnMask"
+	some index, resource in input.action.filterResources
+
+	column := column_constraints(
+		resource.column.catalogName,
+		resource.column.schemaName,
+		resource.column.tableName,
+		resource.column.columnName,
+	)
+
+	is_string(column.mask)
+	is_null(column.mask_environment.user)
+
+	column_mask := {
+		"index": index,
+		"viewExpression": {"expression": column.mask},
+	}
 }
 
 # METADATA

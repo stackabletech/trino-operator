@@ -317,10 +317,24 @@ pub mod versioned {
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct TrinoAuthorization {
+    pub enum TrinoAuthorization {
+        Opa {
+            // no doc - it's in the struct.
+            #[serde(default, flatten)]
+            config: TrinoAuthorizationOpaConfig,
+        },
+    }
+
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoAuthorizationOpaConfig {
         // no doc - it's in the struct.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub opa: Option<OpaConfig>,
+        #[serde(flatten)]
+        pub opa: OpaConfig,
+
+        /// Whether to set the OPA batched column masking URI for Trino queries; defaults to true
+        #[serde(default = "TrinoAuthorizationOpaConfig::enabled_column_masking_default")]
+        pub enable_column_masking: bool,
     }
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -367,6 +381,12 @@ pub mod versioned {
     pub struct TrinoClusterStatus {
         #[serde(default)]
         pub conditions: Vec<ClusterCondition>,
+    }
+}
+
+impl v1alpha1::TrinoAuthorizationOpaConfig {
+    pub fn enabled_column_masking_default() -> bool {
+        true
     }
 }
 
@@ -882,12 +902,14 @@ impl v1alpha1::TrinoCluster {
         !spec.cluster_config.authentication.is_empty()
     }
 
-    pub fn get_opa_config(&self) -> Option<&OpaConfig> {
+    pub fn get_opa_config(&self) -> Option<&v1alpha1::TrinoAuthorizationOpaConfig> {
         self.spec
             .cluster_config
             .authorization
             .as_ref()
-            .and_then(|a| a.opa.as_ref())
+            .map(|a| match a {
+                v1alpha1::TrinoAuthorization::Opa { config } => config,
+            })
     }
 
     /// Return user provided server TLS settings

@@ -13,7 +13,6 @@ For a role or role group, at the same level of `config`, you can specify `config
 * `access-control.properties`
 * `config.properties`
 * `node.properties`
-* `password-authenticator.properties`
 * `security.properties`
 * `exchange-manager.properties`
 * `spooling-manager.properties`
