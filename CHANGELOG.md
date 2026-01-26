@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 - Support objectOverrides using `.spec.objectOverrides`.
   See [objectOverrides concepts page](https://docs.stackable.tech/home/nightly/concepts/overrides/#object-overrides) for details ([#831]).
 - Enable the [restart-controller](https://docs.stackable.tech/home/nightly/commons-operator/restarter/), so that the Pods are automatically restarted on config changes ([#833]).
-- Add `enabledColumnMasking` field to `opa` configuration in `authorization` ([#827]).
+- Add `enableColumnMasking` field to `opa` configuration in `authorization` ([#827]).
 - Support batched column masks in Rego rules ([#827]).
 
 ### Changed
