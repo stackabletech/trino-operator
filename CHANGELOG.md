@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: The operator no longer sets `opa.policy.column-masking-uri` in `access-control.properties` but
   `opa.policy.batch-column-masking-uri` instead, allowing Trino to fetch multiple column masks in a single request ([#827]).
 - Make `TrinoCatalog.spec.connector.iceberg.metastore` optional, as Iceberg also supports other catalogs, such as a REST catalog,
-  which (currently) can only be added using configOverrides ([#XXX]).
+  which (currently) can only be added using configOverrides ([#841]).
 
 ### Removed
 
@@ -30,7 +30,7 @@ All notable changes to this project will be documented in this file.
 [#831]: https://github.com/stackabletech/trino-operator/pull/831
 [#833]: https://github.com/stackabletech/trino-operator/pull/833
 [#839]: https://github.com/stackabletech/trino-operator/pull/839
-[#XXX]: https://github.com/stackabletech/trino-operator/pull/XXX
+[#841]: https://github.com/stackabletech/trino-operator/pull/841
 
 ## [25.11.0] - 2025-11-07
 
