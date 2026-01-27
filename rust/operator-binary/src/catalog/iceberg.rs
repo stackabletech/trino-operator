@@ -24,15 +24,17 @@ impl ToCatalogConfig for IcebergConnector {
         // See https://trino.io/docs/current/connector/iceberg.html
         config.add_property("iceberg.security", "allow-all");
 
-        self.metastore
-            .extend_catalog_config(
-                &mut config,
-                catalog_name,
-                catalog_namespace.clone(),
-                client,
-                trino_version,
-            )
-            .await?;
+        if let Some(metastore) = &self.metastore {
+            metastore
+                .extend_catalog_config(
+                    &mut config,
+                    catalog_name,
+                    catalog_namespace.clone(),
+                    client,
+                    trino_version,
+                )
+                .await?;
+        }
 
         if let Some(ref s3) = self.s3 {
             s3.extend_catalog_config(

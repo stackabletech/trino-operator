@@ -22,7 +22,10 @@ pub fn get_affinity(
             .iter()
             .filter_map(|catalog| match &catalog.spec.connector {
                 TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
-                TrinoCatalogConnector::Iceberg(iceberg) => Some(&iceberg.metastore.config_map),
+                TrinoCatalogConnector::Iceberg(iceberg) => iceberg
+                    .metastore
+                    .as_ref()
+                    .map(|metastore| &metastore.config_map),
                 TrinoCatalogConnector::DeltaLake(delta_lake) => {
                     Some(&delta_lake.metastore.config_map)
                 }
