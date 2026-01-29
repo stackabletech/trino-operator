@@ -75,6 +75,13 @@ tests:
       - hdfs
       - zookeeper
       - openshift
+  - name: delta
+    dimensions:
+      - trino
+      - hive
+      - hdfs
+      - zookeeper
+      - openshift
   - name: tls
     dimensions:
       - trino-latest
