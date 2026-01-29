@@ -2810,7 +2810,12 @@ spec:
                             - configMap
                           type: object
                         metastore:
-                          description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
+                          description: |-
+                            Optional connection to a Hive Metastore, which will be used as a storage for metadata.
+
+                            The connection is optional, as Iceberg also supports other catalogs, such as a REST catalog,
+                            which (currently) can only be added using configOverrides.
+                          nullable: true
                           properties:
                             configMap:
                               description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
@@ -2970,8 +2975,6 @@ spec:
                             reference:
                               type: string
                           type: object
-                      required:
-                        - metastore
                       type: object
                     tpcds:
                       description: A [TPC-DS](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpcds) connector.

@@ -11,8 +11,11 @@ use super::commons::{HdfsConnection, MetastoreConnection};
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IcebergConnector {
-    /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
-    pub metastore: MetastoreConnection,
+    /// Optional connection to a Hive Metastore, which will be used as a storage for metadata.
+    ///
+    /// The connection is optional, as Iceberg also supports other catalogs, such as a REST catalog,
+    /// which (currently) can only be added using configOverrides.
+    pub metastore: Option<MetastoreConnection>,
 
     /// Connection to an S3 store.
     /// Please make sure that the underlying Hive metastore also has access to the S3 store.
