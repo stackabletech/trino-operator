@@ -1,0 +1,8 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  clusterOperation:
+    stopped: true

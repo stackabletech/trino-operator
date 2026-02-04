@@ -1,0 +1,7 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+commands:
+  # Check that a graceful shutdown was triggered (it needs OPA permissions)
+  - script: 'kubectl -n $NAMESPACE logs trino-worker-default-0 | grep -P "io.trino.server.NodeStateManager[\h]*Shutdown requested"'
