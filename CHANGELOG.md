@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Gracefully shutdown all concurrent tasks by forwarding the SIGTERM signal ([#843]).
 - Pin k8s-openapi to `0.26.0` ([#831]).
 - BREAKING: The field `opa` in `authorization` is now a mandatory enum variant instead of being optional ([#827]).
 - BREAKING: The operator no longer sets `opa.policy.column-masking-uri` in `access-control.properties` but
@@ -31,6 +32,7 @@ All notable changes to this project will be documented in this file.
 [#833]: https://github.com/stackabletech/trino-operator/pull/833
 [#839]: https://github.com/stackabletech/trino-operator/pull/839
 [#841]: https://github.com/stackabletech/trino-operator/pull/841
+[#843]: https://github.com/stackabletech/trino-operator/pull/843
 
 ## [25.11.0] - 2025-11-07
 
