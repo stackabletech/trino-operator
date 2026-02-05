@@ -5,5 +5,4 @@ metadata:
   name: trino
 spec:
   clusterOperation:
-    stopped: false
-    reconciliationPaused: false
+    stopped: true
