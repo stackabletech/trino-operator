@@ -46,6 +46,7 @@ use v1alpha1::TrinoConfigFragment;
 
 use crate::crd::{discovery::TrinoPodRef, v1alpha1::TrinoCoordinatorRoleConfig};
 
+pub const FIELD_MANAGER: &str = "trino-operator";
 pub const APP_NAME: &str = "trino";
 // ports
 pub const HTTP_PORT: u16 = 8080;
