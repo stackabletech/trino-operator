@@ -19,8 +19,6 @@ built = { version = "0.8", features = ["chrono", "git2"] }
 clap = "4.5"
 const_format = "0.2"
 futures = { version = "0.3", features = ["compat"] }
-# We pin the kube version, as we use a patch for 2.0.1 below
-kube = "=2.0.1"
 indoc = "2.0"
 openssl = "0.10"
 rstest = "0.26"
