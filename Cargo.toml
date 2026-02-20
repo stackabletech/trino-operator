@@ -11,7 +11,7 @@ repository = "https://github.com/stackabletech/trino-operator"
 
 [workspace.dependencies]
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.8.0" }
-stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "stackable-operator-0.105.0", features = ["telemetry", "versioned", "webhook"] }
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs.git", tag = "stackable-operator-0.106.1", features = ["telemetry", "versioned", "webhook"] }
 
 anyhow = "1.0"
 async-trait = "0.1"
@@ -19,8 +19,6 @@ built = { version = "0.8", features = ["chrono", "git2"] }
 clap = "4.5"
 const_format = "0.2"
 futures = { version = "0.3", features = ["compat"] }
-# We pin the kube version, as we use a patch for 2.0.1 below
-kube = "=2.0.1"
 indoc = "2.0"
 openssl = "0.10"
 rstest = "0.26"
@@ -32,12 +30,6 @@ strum = { version = "0.27", features = ["derive"] }
 tokio = { version = "1.40", features = ["full"] }
 tracing = "0.1"
 
-# k8s-openapi 0.26.1 doesn't play well with our kube version: https://github.com/kube-rs/kube/issues/1869
-k8s-openapi = "=0.26.0"
-
 # [patch."https://github.com/stackabletech/operator-rs.git"]
 # stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", branch = "main" }
 # stackable-operator = { path = "../operator-rs/crates/stackable-operator" }
-
-[patch.crates-io]
-kube = { git = "https://github.com/stackabletech/kube-rs", branch = "2.0.1-fix-schema-hoisting" }
