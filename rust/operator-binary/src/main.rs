@@ -1,22 +1,12 @@
 // TODO: Look into how to properly resolve `clippy::result_large_err`.
 // This will need changes in our and upstream error types.
 #![allow(clippy::result_large_err)]
-mod authentication;
-mod authorization;
-mod catalog;
-mod command;
-mod config;
-mod controller;
-mod crd;
-mod listener;
-mod operations;
-mod product_logging;
-mod service;
 
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use clap::Parser;
-use futures::{FutureExt, stream::StreamExt};
+use futures::{FutureExt, TryFutureExt, stream::StreamExt};
 use stackable_operator::{
     YamlSchema,
     cli::{Command, RunArguments},
@@ -49,7 +39,21 @@ use crate::{
         catalog::{TrinoCatalog, TrinoCatalogVersion},
         v1alpha1,
     },
+    webhooks::conversion::create_webhook_server,
 };
+
+mod authentication;
+mod authorization;
+mod catalog;
+mod command;
+mod config;
+mod controller;
+mod crd;
+mod listener;
+mod operations;
+mod product_logging;
+mod service;
+mod webhooks;
 
 mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -73,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
                 .print_yaml_schema(built_info::PKG_VERSION, SerializeOptions::default())?;
         }
         Command::Run(RunArguments {
-            operator_environment: _,
+            operator_environment,
             watch_namespace,
             product_config,
             maintenance,
@@ -105,16 +109,28 @@ async fn main() -> anyhow::Result<()> {
                     .run(sigterm_watcher.handle())
                     .map(anyhow::Ok);
 
-            let product_config = product_config.load(&[
-                "deploy/config-spec/properties.yaml",
-                "/etc/stackable/trino-operator/config-spec/properties.yaml",
-            ])?;
-
             let client = stackable_operator::client::initialize_operator(
                 Some(OPERATOR_NAME.to_string()),
                 &common.cluster_info,
             )
             .await?;
+
+            let webhook_server = create_webhook_server(
+                &operator_environment,
+                maintenance.disable_crd_maintenance,
+                client.as_kube_client(),
+            )
+            .await?;
+
+            let webhook_server = webhook_server
+                .run(sigterm_watcher.handle())
+                .map_err(|err| anyhow!(err).context("failed to run webhook server"));
+
+            let product_config = product_config.load(&[
+                "deploy/config-spec/properties.yaml",
+                "/etc/stackable/trino-operator/config-spec/properties.yaml",
+            ])?;
+
             let event_recorder = Arc::new(Recorder::new(
                 client.as_kube_client(),
                 Reporter {
@@ -210,7 +226,7 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .map(anyhow::Ok);
 
-            futures::try_join!(cluster_controller, eos_checker)?;
+            futures::try_join!(cluster_controller, eos_checker, webhook_server)?;
         }
     }
 

@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add conversion webhook ([#848]).
 - Support objectOverrides using `.spec.objectOverrides`.
   See [objectOverrides concepts page](https://docs.stackable.tech/home/nightly/concepts/overrides/#object-overrides) for details ([#831]).
 - Enable the [restart-controller](https://docs.stackable.tech/home/nightly/commons-operator/restarter/), so that the Pods are automatically restarted on config changes ([#833]).
@@ -33,6 +34,7 @@ All notable changes to this project will be documented in this file.
 [#839]: https://github.com/stackabletech/trino-operator/pull/839
 [#841]: https://github.com/stackabletech/trino-operator/pull/841
 [#843]: https://github.com/stackabletech/trino-operator/pull/843
+[#848]: https://github.com/stackabletech/trino-operator/pull/848
 
 ## [25.11.0] - 2025-11-07
 
