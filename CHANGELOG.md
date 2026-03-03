@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Bump stackable-operator to 0.106.2, snafu to 0.9, strum to 0.28 ([#855]).
 - Gracefully shutdown all concurrent tasks by forwarding the SIGTERM signal ([#843]).
 - Pin k8s-openapi to `0.26.0` ([#831]).
 - BREAKING: The field `opa` in `authorization` is now a mandatory enum variant instead of being optional ([#827]).
@@ -35,6 +36,7 @@ All notable changes to this project will be documented in this file.
 [#841]: https://github.com/stackabletech/trino-operator/pull/841
 [#843]: https://github.com/stackabletech/trino-operator/pull/843
 [#848]: https://github.com/stackabletech/trino-operator/pull/848
+[#855]: https://github.com/stackabletech/trino-operator/pull/855
 
 ## [25.11.0] - 2025-11-07
 
