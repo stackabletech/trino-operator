@@ -429,32 +429,6 @@ pub async fn reconcile_trino(
     )
     .context(InvalidAuthenticationConfigSnafu)?;
 
-    let catalog_definitions = client
-        .list_with_label_selector::<catalog::v1alpha1::TrinoCatalog>(
-            trino
-                .metadata
-                .namespace
-                .as_deref()
-                .context(ObjectHasNoNamespaceSnafu)?,
-            &trino.spec.cluster_config.catalog_label_selector,
-        )
-        .await
-        .context(GetCatalogsSnafu)?;
-    let mut catalogs = vec![];
-    let product_version = trino.spec.image.product_version();
-    let product_version =
-        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
-    for catalog in &catalog_definitions {
-        let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
-            .await
-            .context(ParseCatalogSnafu {
-                catalog: catalog_ref,
-            })?;
-
-        catalogs.push(catalog_config);
-    }
-
     // Resolve fault tolerant execution configuration with S3 connections if needed
     let resolved_fte_config = match trino.spec.cluster_config.fault_tolerant_execution.as_ref() {
         Some(fte_config) => Some(
@@ -557,6 +531,31 @@ pub async fn reconcile_trino(
     )
     .await?;
 
+    let catalog_definitions = client
+        .list_with_label_selector::<catalog::v1alpha1::TrinoCatalog>(
+            trino
+                .metadata
+                .namespace
+                .as_deref()
+                .context(ObjectHasNoNamespaceSnafu)?,
+            &trino.spec.cluster_config.catalog_label_selector,
+        )
+        .await
+        .context(GetCatalogsSnafu)?;
+    let mut catalogs = vec![];
+    let product_version = trino.spec.image.product_version();
+    let product_version =
+        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
+    for catalog in &catalog_definitions {
+        let catalog_ref = ObjectRef::from_obj(catalog);
+        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
+            .await
+            .context(ParseCatalogSnafu {
+                catalog: catalog_ref,
+            })?;
+
+        catalogs.push(catalog_config);
+    }
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
     for (trino_role_str, role_config) in validated_config {
@@ -663,6 +662,22 @@ pub async fn reconcile_trino(
                     rolegroup: role_group_ref.clone(),
                 })?;
 
+            tracing::info!(
+                "reconciling sts [{sts_name}], trino args [{trino_args}]",
+                sts_name = rg_stateful_set.name_any(),
+                trino_args = rg_stateful_set
+                    .spec
+                    .as_ref()
+                    .and_then(|spec| spec.template.spec.as_ref())
+                    .and_then(|pod_spec| pod_spec.containers.iter().find_map(|container| {
+                        if container.name == "trino" {
+                            container.args.as_ref().map(|args| args.join(" "))
+                        } else {
+                            None
+                        }
+                    }))
+                    .unwrap_or_else(|| "not found".to_string())
+            );
             // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
             // to prevent unnecessary Pod restarts.
             // See https://github.com/stackabletech/commons-operator/issues/111 for details.
