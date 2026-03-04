@@ -1,48 +1,4 @@
 ---
-apiVersion: trino.stackable.tech/v1alpha1
-kind: TrinoCluster
-metadata:
-  name: trino
-spec:
-  image:
-{% if test_scenario['values']['trino'].find(",") > 0 %}
-    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
-    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
-{% else %}
-    productVersion: "{{ test_scenario['values']['trino'] }}"
-{% endif %}
-    pullPolicy: IfNotPresent
-  clusterConfig:
-    catalogLabelSelector:
-      matchLabels:
-        trino: trino
-    authentication:
-      - authenticationClass: trino-users-auth
-    authorization:
-      opa:
-        configMapName: opa
-        package: trino
-{% if lookup('env', 'VECTOR_AGGREGATOR') %}
-    vectorAggregatorConfigMapName: vector-aggregator-discovery
-{% endif %}
-  coordinators:
-    config:
-      logging:
-        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
-    roleGroups:
-      default:
-        replicas: 1
-        config: {}
-  workers:
-    config:
-      gracefulShutdownTimeout: 10s # Let the test run faster
-      logging:
-        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
-    roleGroups:
-      default:
-        replicas: 1
-        config: {}
----
 apiVersion: authentication.stackable.tech/v1alpha1
 kind: AuthenticationClass
 metadata:
@@ -108,3 +64,48 @@ spec:
         configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
       s3:
         reference: minio
+
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  image:
+{% if test_scenario['values']['trino'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
+{% else %}
+    productVersion: "{{ test_scenario['values']['trino'] }}"
+{% endif %}
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: trino
+    authentication:
+      - authenticationClass: trino-users-auth
+    authorization:
+      opa:
+        configMapName: opa
+        package: trino
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+  workers:
+    config:
+      gracefulShutdownTimeout: 10s # Let the test run faster
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
