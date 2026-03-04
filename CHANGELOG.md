@@ -25,6 +25,10 @@ All notable changes to this project will be documented in this file.
 - Make `TrinoCatalog.spec.connector.iceberg.metastore` optional, as Iceberg also supports other catalogs, such as a REST catalog,
   which (currently) can only be added using configOverrides ([#841]).
 
+### Fixed
+
+- Kuttl tests where catalogs are created after the Trino cluster. These tests failed on Kubernetes 1.35 because the Trino pods were missing catalog information ([#857]).
+
 ### Removed
 
 - Remove support for Trino 451 and 476 ([#839]).
@@ -37,6 +41,7 @@ All notable changes to this project will be documented in this file.
 [#843]: https://github.com/stackabletech/trino-operator/pull/843
 [#848]: https://github.com/stackabletech/trino-operator/pull/848
 [#855]: https://github.com/stackabletech/trino-operator/pull/855
+[#857]: https://github.com/stackabletech/trino-operator/pull/857
 
 ## [25.11.0] - 2025-11-07
 
