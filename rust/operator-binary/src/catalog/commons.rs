@@ -123,8 +123,8 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
                 ..=468 => ("hive.s3.aws-access-key", "hive.s3.aws-secret-key"),
                 469.. => ("s3.aws-access-key", "s3.aws-secret-key"),
             };
-            catalog_config.add_env_property_from_file(access_key_prop, access_key);
-            catalog_config.add_env_property_from_file(secret_key_prop, secret_key);
+            catalog_config.add_property_from_file(access_key_prop, access_key);
+            catalog_config.add_property_from_file(secret_key_prop, secret_key);
         }
 
         match trino_version {

@@ -55,15 +55,14 @@ impl CatalogConfig {
         self.properties.insert(property.into(), value.into());
     }
 
-    pub fn add_env_property_from_file(
+    pub fn add_property_from_file(
         &mut self,
         property: impl Into<String>,
         file_name: impl Into<String>,
     ) {
         let property = property.into();
-        let env_name = calculate_env_name(&self.name, &property);
-        self.add_property(&property, format!("${{ENV:{env_name}}}"));
-        self.load_env_from_files.insert(env_name, file_name.into());
+        let file = file_name.into();
+        self.add_property(&property, format!("${{file:UTF-8:{file}}}"));
     }
 
     pub fn add_env_property_from_secret(

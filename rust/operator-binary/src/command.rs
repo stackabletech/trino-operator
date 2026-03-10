@@ -112,6 +112,12 @@ pub fn container_trino_args(
         }
     });
 
+    // Resolve credentials in all catalog configs.
+    args.push(format!(
+        "for catalog_file in {rw_conf}/catalog/*; do test -f \"$catalog_file\" && config-utils template \"$catalog_file\"; done",
+        rw_conf = RW_CONFIG_DIR_NAME
+    ));
+
     // Resolve credentials for fault tolerant execution exchange manager if needed
     args.push(format!(
         "test -f {rw_exchange_manager_config_file} && config-utils template {rw_exchange_manager_config_file}",
