@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Kuttl tests where catalogs are created after the Trino cluster. These tests failed on Kubernetes 1.35 because the Trino pods were missing catalog information ([#857]).
+- Fix "404 page not found" error for the initial object list ([#859]).
 
 ### Removed
 
