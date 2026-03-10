@@ -21,11 +21,6 @@ pub struct CatalogConfig {
     /// List of EnvVar that will be added to every Trino container
     pub env_bindings: Vec<EnvVar>,
 
-    /// Env-Vars that should be exported.
-    /// The value will be read from the file specified.
-    /// You can think of it like `export <key>="$(cat <value>)"`
-    pub load_env_from_files: BTreeMap<String, String>,
-
     /// Additional commands that needs to be executed before starting Trino
     pub init_container_extra_start_commands: Vec<String>,
 
@@ -42,7 +37,6 @@ impl CatalogConfig {
             name: name.into(),
             properties: BTreeMap::new(),
             env_bindings: Vec::new(),
-            load_env_from_files: BTreeMap::new(),
             init_container_extra_start_commands: Vec::new(),
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
