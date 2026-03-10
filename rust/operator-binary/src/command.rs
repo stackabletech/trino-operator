@@ -106,7 +106,7 @@ pub fn container_trino_args(authentication_config: &TrinoAuthenticationConfig) -
 
     // Resolve credentials in all catalog configs.
     args.push(format!(
-        "for catalog_file in {rw_conf}/catalog/*; do test -f \"$catalog_file\" && config-utils template \"$catalog_file\"; done",
+        "find {rw_conf}/catalog -type f -exec config-utils template '{{}}' ';'",
         rw_conf = RW_CONFIG_DIR_NAME
     ));
 
