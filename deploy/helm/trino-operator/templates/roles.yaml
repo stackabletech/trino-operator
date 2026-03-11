@@ -108,6 +108,9 @@ rules:
       {{- if .Values.maintenance.customResourceDefinitions.maintain }}
       - create
       - patch
+      # Required for startup condition
+      - list
+      - watch
       {{- end }}
   - apiGroups:
       - listeners.stackable.tech

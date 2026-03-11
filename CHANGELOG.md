@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Bump stackable-operator to 0.106.2, snafu to 0.9, strum to 0.28 ([#855]).
+- Bump stackable-operator to 0.108.0, snafu to 0.9, strum to 0.28 ([#855], [#859]).
 - Gracefully shutdown all concurrent tasks by forwarding the SIGTERM signal ([#843]).
 - Pin k8s-openapi to `0.26.0` ([#831]).
 - BREAKING: The field `opa` in `authorization` is now a mandatory enum variant instead of being optional ([#827]).
@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Kuttl tests where catalogs are created after the Trino cluster. These tests failed on Kubernetes 1.35 because the Trino pods were missing catalog information ([#857]).
+- Fix "404 page not found" error for the initial object list ([#859]).
 
 ### Removed
 
@@ -42,6 +43,7 @@ All notable changes to this project will be documented in this file.
 [#848]: https://github.com/stackabletech/trino-operator/pull/848
 [#855]: https://github.com/stackabletech/trino-operator/pull/855
 [#857]: https://github.com/stackabletech/trino-operator/pull/857
+[#859]: https://github.com/stackabletech/trino-operator/pull/859
 
 ## [25.11.0] - 2025-11-07
 

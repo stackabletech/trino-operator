@@ -17,7 +17,7 @@ use stackable_operator::{
         core::v1::{ConfigMap, Service},
     },
     kube::{
-        ResourceExt,
+        CustomResourceExt as _, ResourceExt,
         core::DeserializeGuard,
         runtime::{
             Controller,
@@ -29,7 +29,7 @@ use stackable_operator::{
     logging::controller::report_controller_reconciled,
     shared::yaml::SerializeOptions,
     telemetry::Tracing,
-    utils::signal::SignalWatcher,
+    utils::signal::{self, SignalWatcher},
 };
 
 use crate::{
@@ -147,7 +147,7 @@ async fn main() -> anyhow::Result<()> {
             let authentication_class_cluster_store = cluster_controller.store();
             let config_map_cluster_store = cluster_controller.store();
 
-            let cluster_controller = cluster_controller
+            let trino_controller = cluster_controller
                 .owns(
                     watch_namespace.get_api::<DeserializeGuard<Service>>(&client),
                     watcher::Config::default(),
@@ -226,7 +226,12 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .map(anyhow::Ok);
 
-            futures::try_join!(cluster_controller, eos_checker, webhook_server)?;
+            let delayed_trino_controller = async {
+                signal::crd_established(&client, v1alpha1::TrinoCluster::crd_name(), None).await?;
+                trino_controller.await
+            };
+
+            futures::try_join!(delayed_trino_controller, eos_checker, webhook_server)?;
         }
     }
 
