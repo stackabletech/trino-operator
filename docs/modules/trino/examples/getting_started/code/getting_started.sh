@@ -48,6 +48,17 @@ exit 1
 ;;
 esac
 
+# TODO: Remove once https://github.com/stackabletech/issues/issues/828 has been
+# implemented (see that issue for details).
+until kubectl get crd trinoclusters.trino.stackable.tech >/dev/null 2>&1; do
+  echo "Waiting for CRDs to be installed"
+  sleep 1
+done
+until kubectl get crd trinocatalogs.trino.stackable.tech >/dev/null 2>&1; do
+  echo "Waiting for CRDs to be installed"
+  sleep 1
+done
+
 echo "Installing Trino cluster from trino.yaml"
 # tag::install-trino[]
 kubectl apply -f trino.yaml
