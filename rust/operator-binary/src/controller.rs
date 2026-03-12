@@ -34,6 +34,9 @@ use stackable_operator::{
         rbac::build_rbac_resources,
     },
     constants::RESTART_CONTROLLER_ENABLED_LABEL,
+    crd::scaler::{
+        ScalingCondition, reconcile_scaler, resolve_replicas, v1alpha1::StackableScaler,
+    },
     k8s_openapi::{
         DeepMerge,
         api::{
@@ -50,7 +53,7 @@ use stackable_operator::{
         core::{DeserializeGuard, error_boundary},
         runtime::{controller::Action, reflector::ObjectRef},
     },
-    kvp::{Annotation, Labels, ObjectLabels},
+    kvp::{Annotation, LabelSelectorExt, Labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{
@@ -101,6 +104,7 @@ use crate::{
     },
     operations::{
         add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
+        scaling::TrinoScalingHooks,
     },
     product_logging::{get_log_properties, get_vector_toml},
     service::{build_rolegroup_headless_service, build_rolegroup_metrics_service},
@@ -385,6 +389,26 @@ pub enum Error {
         "client spooling protocol is not supported for Trino version {product_version}"
     ))]
     ClientSpoolingProtocolTrinoVersion { product_version: String },
+
+    #[snafu(display("failed to list StackableScalers for rolegroup {rolegroup}"))]
+    ListScalers {
+        source: stackable_operator::client::Error,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    #[snafu(display("StackableScaler reconciliation failed for rolegroup {rolegroup}"))]
+    ScalerReconcile {
+        source: stackable_operator::crd::scaler::ReconcilerError,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    #[snafu(display(
+        "failed to build label selector string for StackableScaler in rolegroup {rolegroup}"
+    ))]
+    BuildSelectorString {
+        source: stackable_operator::kvp::SelectorError,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -584,6 +608,46 @@ pub async fn reconcile_trino(
             )
             .context(LabelBuildSnafu)?;
 
+            // Look up the StackableScaler for this worker role group if replicas == 0
+            // (the convention that signals "externally managed replicas").
+            let rolegroup_obj = trino
+                .rolegroup(&role_group_ref)
+                .context(InternalOperatorFailureSnafu)?;
+            let rg_replicas = rolegroup_obj.replicas;
+
+            let scaler: Option<StackableScaler> =
+                if trino_role == TrinoRole::Worker && rg_replicas == Some(0) {
+                    let selector = LabelSelector {
+                        match_expressions: None,
+                        match_labels: Some(
+                            Labels::role_group_selector(
+                                trino,
+                                APP_NAME,
+                                &role_group_ref.role,
+                                &role_group_ref.role_group,
+                            )
+                            .context(LabelBuildSnafu)?
+                            .into(),
+                        ),
+                    };
+                    client
+                        .list_with_label_selector::<StackableScaler>(&namespace, &selector)
+                        .await
+                        .context(ListScalersSnafu {
+                            rolegroup: role_group_ref.clone(),
+                        })?
+                        .into_iter()
+                        .find(|s| {
+                            s.spec.cluster_ref.name == trino.name_any()
+                                && s.spec.role == role_group_ref.role
+                                && s.spec.role_group == role_group_ref.role_group
+                        })
+                } else {
+                    None
+                };
+
+            let replicas = resolve_replicas(rg_replicas.map(i32::from), scaler.as_ref());
+
             let rg_headless_service = build_rolegroup_headless_service(
                 trino,
                 &role_group_ref,
@@ -633,6 +697,7 @@ pub async fn reconcile_trino(
                 &resolved_fte_config,
                 &resolved_client_protocol_config,
                 &trino_opa_config,
+                replicas,
             )?;
 
             cluster_resources
@@ -666,14 +731,89 @@ pub async fn reconcile_trino(
             // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
             // to prevent unnecessary Pod restarts.
             // See https://github.com/stackabletech/commons-operator/issues/111 for details.
-            sts_cond_builder.add(
-                cluster_resources
-                    .add(client, rg_stateful_set)
-                    .await
-                    .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
+            let applied_sts = cluster_resources
+                .add(client, rg_stateful_set)
+                .await
+                .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
+                    rolegroup: role_group_ref.clone(),
+                })?;
+            sts_cond_builder.add(applied_sts.clone());
+
+            // Run the scaler state machine if a scaler is present for this worker role group.
+            // This is done after applying the StatefulSet so we can read its current status.
+            if let Some(ref s) = scaler {
+                let selector_string = {
+                    LabelSelector {
+                        match_expressions: None,
+                        match_labels: Some(
+                            Labels::role_group_selector(
+                                trino,
+                                APP_NAME,
+                                &role_group_ref.role,
+                                &role_group_ref.role_group,
+                            )
+                            .context(LabelBuildSnafu)?
+                            .into(),
+                        ),
+                    }
+                    .to_query_string()
+                    .context(BuildSelectorStringSnafu {
                         rolegroup: role_group_ref.clone(),
-                    })?,
-            );
+                    })?
+                };
+
+                let sts_ready = applied_sts
+                    .status
+                    .as_ref()
+                    .and_then(|st| st.ready_replicas)
+                    .unwrap_or(0);
+                let sts_desired = applied_sts
+                    .spec
+                    .as_ref()
+                    .and_then(|sp| sp.replicas)
+                    .unwrap_or(0);
+                let scaler_target = s.status.as_ref().and_then(|st| st.desired_replicas);
+                let statefulset_stable =
+                    sts_ready == sts_desired && (sts_desired > 0 || scaler_target == Some(0));
+
+                let headless_svc_name = role_group_ref.object_name().to_string();
+                let scaling_result = reconcile_scaler(
+                    s,
+                    &TrinoScalingHooks {
+                        statefulset_name: role_group_ref.object_name(),
+                        headless_service_name: headless_svc_name,
+                        namespace: namespace.to_owned(),
+                        cluster_domain: client.kubernetes_cluster_info.cluster_domain.to_string(),
+                        exposed_protocol: trino.exposed_protocol().to_string(),
+                        exposed_port: trino.exposed_port(),
+                    },
+                    client,
+                    statefulset_stable,
+                    &selector_string,
+                )
+                .await
+                .context(ScalerReconcileSnafu {
+                    rolegroup: role_group_ref.clone(),
+                })?;
+
+                match &scaling_result.scaling_condition {
+                    ScalingCondition::Failed { reason, .. } => {
+                        tracing::warn!(
+                            rolegroup = %role_group_ref,
+                            reason = %reason,
+                            "StackableScaler entered Failed state"
+                        );
+                    }
+                    ScalingCondition::Progressing { stage } => {
+                        tracing::info!(
+                            rolegroup = %role_group_ref,
+                            stage = %stage,
+                            "StackableScaler scaling in progress"
+                        );
+                    }
+                    ScalingCondition::Healthy => {}
+                }
+            }
         }
 
         if let Some(listener_class) = trino_role.listener_class_name(trino) {
@@ -1044,6 +1184,7 @@ fn build_rolegroup_statefulset(
     resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
     trino_opa_config: &Option<TrinoOpaConfig>,
+    replicas: Option<i32>,
 ) -> Result<StatefulSet> {
     let role = trino
         .role(trino_role)
@@ -1395,7 +1536,7 @@ fn build_rolegroup_statefulset(
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
-            replicas: rolegroup.replicas.map(i32::from),
+            replicas,
             selector: LabelSelector {
                 match_labels: Some(
                     Labels::role_group_selector(

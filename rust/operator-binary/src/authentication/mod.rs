@@ -661,6 +661,7 @@ mod tests {
             .unwrap(),
             client_auth_options: Some(oidc::v1alpha1::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
+                client_authentication_method: Default::default(),
                 extra_scopes: Vec::new(),
                 product_specific_fields: (),
             }),

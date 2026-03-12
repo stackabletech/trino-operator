@@ -10,14 +10,14 @@ use futures::{FutureExt, TryFutureExt, stream::StreamExt};
 use stackable_operator::{
     YamlSchema,
     cli::{Command, RunArguments},
-    crd::authentication::core,
+    crd::{authentication::core, scaler::v1alpha1::StackableScaler},
     eos::EndOfSupportChecker,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service},
     },
     kube::{
-        CustomResourceExt as _, ResourceExt,
+        ResourceExt,
         core::DeserializeGuard,
         runtime::{
             Controller,
@@ -29,7 +29,7 @@ use stackable_operator::{
     logging::controller::report_controller_reconciled,
     shared::yaml::SerializeOptions,
     telemetry::Tracing,
-    utils::signal::{self, SignalWatcher},
+    utils::signal::SignalWatcher,
 };
 
 use crate::{
@@ -146,6 +146,7 @@ async fn main() -> anyhow::Result<()> {
             let catalog_cluster_store = cluster_controller.store();
             let authentication_class_cluster_store = cluster_controller.store();
             let config_map_cluster_store = cluster_controller.store();
+            let scaler_cluster_store = cluster_controller.store();
 
             let trino_controller = cluster_controller
                 .owns(
@@ -198,6 +199,25 @@ async fn main() -> anyhow::Result<()> {
                             .map(|druid| ObjectRef::from_obj(&*druid))
                     },
                 )
+                .watches(
+                    watch_namespace.get_api::<DeserializeGuard<StackableScaler>>(&client),
+                    watcher::Config::default(),
+                    move |scaler| {
+                        let Ok(scaler) = &scaler.0 else {
+                            return vec![];
+                        };
+                        let scaler_name = &scaler.spec.cluster_ref.name;
+                        scaler_cluster_store
+                            .state()
+                            .into_iter()
+                            .filter(move |trino| {
+                                trino.0.as_ref().is_ok_and(|t| t.name_any() == *scaler_name)
+                                    && trino.namespace() == scaler.namespace()
+                            })
+                            .map(|trino| ObjectRef::from_obj(&*trino))
+                            .collect::<Vec<_>>()
+                    },
+                )
                 .graceful_shutdown_on(sigterm_watcher.handle())
                 .run(
                     controller::reconcile_trino,
@@ -226,12 +246,8 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .map(anyhow::Ok);
 
-            let delayed_trino_controller = async {
-                signal::crd_established(&client, v1alpha1::TrinoCluster::crd_name(), None).await?;
-                trino_controller.await
-            };
-
-            futures::try_join!(delayed_trino_controller, eos_checker, webhook_server)?;
+            // TODO: Restore signal::crd_established once operator-rs is updated to 0.108+
+            futures::try_join!(trino_controller, eos_checker, webhook_server)?;
         }
     }
 
