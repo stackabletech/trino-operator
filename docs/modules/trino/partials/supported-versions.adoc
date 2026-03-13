@@ -3,5 +3,5 @@
 // Stackable Platform documentation.
 
 // These versions must be sorted in descending order (highest to lowest).
-- 479 (Please note that we had to use the https://github.com/snowlift/trino-storage[trino-storage] connector version 477, as no newer version was available)
+- 479 (Please note that we use the https://github.com/snowlift/trino-storage[trino-storage] connector version 477, as no newer version was available at the time of release)
 - 477 (LTS)
