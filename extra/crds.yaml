@@ -24,7 +24,7 @@ spec:
             description: |-
               A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
               Find more information on how to use it and the resources that the operator generates in the
-              [operator documentation](https://docs.stackable.tech/home/nightly/trino/).
+              [operator documentation](https://docs.stackable.tech/home/26.3/trino/).
             properties:
               clusterConfig:
                 description: |-
@@ -35,11 +35,11 @@ spec:
                     default: []
                     description: |-
                       Authentication options for Trino.
-                      Learn more in the [Trino authentication usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authentication).
+                      Learn more in the [Trino authentication usage guide](https://docs.stackable.tech/home/26.3/trino/usage-guide/security#authentication).
                     items:
                       properties:
                         authenticationClass:
-                          description: Name of the [AuthenticationClass](https://docs.stackable.tech/home/nightly/concepts/authentication) used to authenticate users
+                          description: Name of the [AuthenticationClass](https://docs.stackable.tech/home/26.3/concepts/authentication) used to authenticate users
                           type: string
                         oidc:
                           description: This field contains OIDC-specific configuration. It is only required in case OIDC is used.
@@ -66,7 +66,7 @@ spec:
                   authorization:
                     description: |-
                       Authorization options for Trino.
-                      Learn more in the [Trino authorization usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/security#authorization).
+                      Learn more in the [Trino authorization usage guide](https://docs.stackable.tech/home/26.3/trino/usage-guide/security#authorization).
                     nullable: true
                     oneOf:
                     - required:
@@ -74,14 +74,14 @@ spec:
                     properties:
                       opa:
                         description: |-
-                          Configure the OPA stacklet [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery)
+                          Configure the OPA stacklet [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery)
                           and the name of the Rego package containing your authorization rules.
-                          Consult the [OPA authorization documentation](https://docs.stackable.tech/home/nightly/concepts/opa)
+                          Consult the [OPA authorization documentation](https://docs.stackable.tech/home/26.3/concepts/opa)
                           to learn how to deploy Rego authorization rules with OPA.
                         properties:
                           configMapName:
                             description: |-
-                              The [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery)
+                              The [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery)
                               for the OPA stacklet that should be used for authorization requests.
                             type: string
                           enableColumnMasking:
@@ -154,7 +154,7 @@ spec:
                                       inline:
                                         description: |-
                                           S3 connection definition as a resource.
-                                          Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                          Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/26.3/concepts/s3).
                                         properties:
                                           accessStyle:
                                             default: VirtualHosted
@@ -169,14 +169,14 @@ spec:
                                           credentials:
                                             description: |-
                                               If the S3 uses authentication you have to specify you S3 credentials.
-                                              In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                                              In the most cases a [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass)
                                               providing `accessKey` and `secretKey` is sufficient.
                                             nullable: true
                                             properties:
                                               scope:
                                                 description: |-
-                                                  [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
-                                                  [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
+                                                  [Scope](https://docs.stackable.tech/home/26.3/secret-operator/scope) of the
+                                                  [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass).
                                                 nullable: true
                                                 properties:
                                                   listenerVolumes:
@@ -209,7 +209,7 @@ spec:
                                                     type: array
                                                 type: object
                                               secretClass:
-                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                description: '[SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) containing the LDAP bind credentials.'
                                                 type: string
                                             required:
                                             - secretClass
@@ -268,7 +268,7 @@ spec:
                                                         properties:
                                                           secretClass:
                                                             description: |-
-                                                              Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                              Name of the [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) which will provide the CA certificate.
                                                               Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
                                                               so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                             type: string
@@ -353,7 +353,7 @@ spec:
                                     description: HDFS connection configuration.
                                     properties:
                                       configMap:
-                                        description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                                        description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the HDFS cluster.
                                         type: string
                                     required:
                                     - configMap
@@ -388,7 +388,7 @@ spec:
                                   connection:
                                     description: |-
                                       S3 connection configuration.
-                                      Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                      Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/26.3/concepts/s3).
                                     oneOf:
                                     - required:
                                       - inline
@@ -398,7 +398,7 @@ spec:
                                       inline:
                                         description: |-
                                           S3 connection definition as a resource.
-                                          Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                          Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/26.3/concepts/s3).
                                         properties:
                                           accessStyle:
                                             default: VirtualHosted
@@ -413,14 +413,14 @@ spec:
                                           credentials:
                                             description: |-
                                               If the S3 uses authentication you have to specify you S3 credentials.
-                                              In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                                              In the most cases a [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass)
                                               providing `accessKey` and `secretKey` is sufficient.
                                             nullable: true
                                             properties:
                                               scope:
                                                 description: |-
-                                                  [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
-                                                  [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
+                                                  [Scope](https://docs.stackable.tech/home/26.3/secret-operator/scope) of the
+                                                  [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass).
                                                 nullable: true
                                                 properties:
                                                   listenerVolumes:
@@ -453,7 +453,7 @@ spec:
                                                     type: array
                                                 type: object
                                               secretClass:
-                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                description: '[SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) containing the LDAP bind credentials.'
                                                 type: string
                                             required:
                                             - secretClass
@@ -512,7 +512,7 @@ spec:
                                                         properties:
                                                           secretClass:
                                                             description: |-
-                                                              Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                              Name of the [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) which will provide the CA certificate.
                                                               Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
                                                               so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                             type: string
@@ -637,7 +637,7 @@ spec:
                                     description: HDFS connection configuration.
                                     properties:
                                       configMap:
-                                        description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                                        description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the HDFS cluster.
                                         type: string
                                     required:
                                     - configMap
@@ -672,7 +672,7 @@ spec:
                                   connection:
                                     description: |-
                                       S3 connection configuration.
-                                      Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                      Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/26.3/concepts/s3).
                                     oneOf:
                                     - required:
                                       - inline
@@ -682,7 +682,7 @@ spec:
                                       inline:
                                         description: |-
                                           S3 connection definition as a resource.
-                                          Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                                          Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/26.3/concepts/s3).
                                         properties:
                                           accessStyle:
                                             default: VirtualHosted
@@ -697,14 +697,14 @@ spec:
                                           credentials:
                                             description: |-
                                               If the S3 uses authentication you have to specify you S3 credentials.
-                                              In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                                              In the most cases a [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass)
                                               providing `accessKey` and `secretKey` is sufficient.
                                             nullable: true
                                             properties:
                                               scope:
                                                 description: |-
-                                                  [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
-                                                  [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
+                                                  [Scope](https://docs.stackable.tech/home/26.3/secret-operator/scope) of the
+                                                  [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass).
                                                 nullable: true
                                                 properties:
                                                   listenerVolumes:
@@ -737,7 +737,7 @@ spec:
                                                     type: array
                                                 type: object
                                               secretClass:
-                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                description: '[SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) containing the LDAP bind credentials.'
                                                 type: string
                                             required:
                                             - secretClass
@@ -796,7 +796,7 @@ spec:
                                                         properties:
                                                           secretClass:
                                                             description: |-
-                                                              Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                              Name of the [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) which will provide the CA certificate.
                                                               Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
                                                               so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                             type: string
@@ -912,9 +912,9 @@ spec:
                     type: object
                   vectorAggregatorConfigMapName:
                     description: |-
-                      Name of the Vector aggregator [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery).
+                      Name of the Vector aggregator [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery).
                       It must contain the key `ADDRESS` with the address of the Vector aggregator.
-                      Follow the [logging tutorial](https://docs.stackable.tech/home/nightly/tutorials/logging-vector-aggregator)
+                      Follow the [logging tutorial](https://docs.stackable.tech/home/26.3/tutorials/logging-vector-aggregator)
                       to learn how to configure log aggregation with Vector.
                     nullable: true
                     type: string
@@ -926,7 +926,7 @@ spec:
                   reconciliationPaused: false
                   stopped: false
                 description: |-
-                  [Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations)
+                  [Cluster operations](https://docs.stackable.tech/home/26.3/concepts/operations/cluster_operations)
                   properties, allow stopping the product instance as well as pausing reconciliation.
                 properties:
                   reconciliationPaused:
@@ -957,7 +957,7 @@ spec:
                   on role level. There is also a second form of config, which can only be configured
                   at role level, the `roleConfig`.
                   You can learn more about this in the
-                  [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
+                  [Roles and role group concept documentation](https://docs.stackable.tech/home/26.3/concepts/roles-and-role-groups).
                 nullable: true
                 properties:
                   cliOverrides:
@@ -976,7 +976,7 @@ spec:
                           podAntiAffinity: null
                         description: |-
                           These configuration settings control
-                          [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
+                          [Pod placement](https://docs.stackable.tech/home/26.3/concepts/operations/pod_placement).
                         properties:
                           nodeAffinity:
                             description: Same as the `spec.affinity.nodeAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
@@ -1008,7 +1008,7 @@ spec:
                         default:
                           containers: {}
                           enableVectorAgent: null
-                        description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                        description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/26.3/concepts/logging).
                         properties:
                           containers:
                             description: Log configuration per container.
@@ -1418,7 +1418,7 @@ spec:
                     description: |-
                       The `configOverrides` can be used to configure properties in product config files
                       that are not exposed in the CRD. Read the
-                      [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
+                      [config overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#config-overrides)
                       and consult the operator specific usage guide documentation for details on the
                       available config files and settings for the specific product.
                     type: object
@@ -1430,7 +1430,7 @@ spec:
                       `envOverrides` configure environment variables to be set in the Pods.
                       It is a map from strings to strings - environment variables and the value to set.
                       Read the
-                      [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
+                      [environment variable overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#env-overrides)
                       for more information and consult the operator specific usage guide to find out about
                       the product specific environment variables that are available.
                     type: object
@@ -1441,7 +1441,7 @@ spec:
                       removeRegex: []
                     description: |-
                       Allows overriding JVM arguments.
-                      Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#jvm-argument-overrides)
+                      Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#jvm-argument-overrides)
                       for details on the usage.
                     properties:
                       add:
@@ -1470,7 +1470,7 @@ spec:
                       [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#podtemplatespec-v1-core)
                       to override any property that can be set on a Kubernetes Pod.
                       Read the
-                      [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides)
+                      [Pod overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#pod-overrides)
                       for more information.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -1484,7 +1484,7 @@ spec:
                     properties:
                       listenerClass:
                         default: cluster-internal
-                        description: This field controls which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) is used to expose the coordinator.
+                        description: This field controls which [ListenerClass](https://docs.stackable.tech/home/26.3/listener-operator/listenerclass.html) is used to expose the coordinator.
                         type: string
                       podDisruptionBudget:
                         default:
@@ -1497,7 +1497,7 @@ spec:
                           2. The allowed number of Pods to be unavailable (`maxUnavailable`)
 
                           Learn more in the
-                          [allowed Pod disruptions documentation](https://docs.stackable.tech/home/nightly/concepts/operations/pod_disruptions).
+                          [allowed Pod disruptions documentation](https://docs.stackable.tech/home/26.3/concepts/operations/pod_disruptions).
                         properties:
                           enabled:
                             default: true
@@ -1537,7 +1537,7 @@ spec:
                                 podAntiAffinity: null
                               description: |-
                                 These configuration settings control
-                                [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
+                                [Pod placement](https://docs.stackable.tech/home/26.3/concepts/operations/pod_placement).
                               properties:
                                 nodeAffinity:
                                   description: Same as the `spec.affinity.nodeAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
@@ -1569,7 +1569,7 @@ spec:
                               default:
                                 containers: {}
                                 enableVectorAgent: null
-                              description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                              description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/26.3/concepts/logging).
                               properties:
                                 containers:
                                   description: Log configuration per container.
@@ -1979,7 +1979,7 @@ spec:
                           description: |-
                             The `configOverrides` can be used to configure properties in product config files
                             that are not exposed in the CRD. Read the
-                            [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
+                            [config overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#config-overrides)
                             and consult the operator specific usage guide documentation for details on the
                             available config files and settings for the specific product.
                           type: object
@@ -1991,7 +1991,7 @@ spec:
                             `envOverrides` configure environment variables to be set in the Pods.
                             It is a map from strings to strings - environment variables and the value to set.
                             Read the
-                            [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
+                            [environment variable overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#env-overrides)
                             for more information and consult the operator specific usage guide to find out about
                             the product specific environment variables that are available.
                           type: object
@@ -2002,7 +2002,7 @@ spec:
                             removeRegex: []
                           description: |-
                             Allows overriding JVM arguments.
-                            Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#jvm-argument-overrides)
+                            Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#jvm-argument-overrides)
                             for details on the usage.
                           properties:
                             add:
@@ -2031,7 +2031,7 @@ spec:
                             [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#podtemplatespec-v1-core)
                             to override any property that can be set on a Kubernetes Pod.
                             Read the
-                            [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides)
+                            [Pod overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#pod-overrides)
                             for more information.
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
@@ -2058,7 +2058,7 @@ spec:
                   You can also configure a custom image registry to pull from, as well as completely custom
                   images.
 
-                  Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection)
+                  Consult the [Product image selection documentation](https://docs.stackable.tech/home/26.3/concepts/product_image_selection)
                   for details.
                 properties:
                   custom:
@@ -2110,7 +2110,7 @@ spec:
 
                   List entries are arbitrary YAML objects, which need to be valid Kubernetes objects.
 
-                  Read the [Object overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#object-overrides)
+                  Read the [Object overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#object-overrides)
                   for more information.
                 items:
                   type: object
@@ -2124,7 +2124,7 @@ spec:
                   on role level. There is also a second form of config, which can only be configured
                   at role level, the `roleConfig`.
                   You can learn more about this in the
-                  [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
+                  [Roles and role group concept documentation](https://docs.stackable.tech/home/26.3/concepts/roles-and-role-groups).
                 nullable: true
                 properties:
                   cliOverrides:
@@ -2143,7 +2143,7 @@ spec:
                           podAntiAffinity: null
                         description: |-
                           These configuration settings control
-                          [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
+                          [Pod placement](https://docs.stackable.tech/home/26.3/concepts/operations/pod_placement).
                         properties:
                           nodeAffinity:
                             description: Same as the `spec.affinity.nodeAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
@@ -2175,7 +2175,7 @@ spec:
                         default:
                           containers: {}
                           enableVectorAgent: null
-                        description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                        description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/26.3/concepts/logging).
                         properties:
                           containers:
                             description: Log configuration per container.
@@ -2585,7 +2585,7 @@ spec:
                     description: |-
                       The `configOverrides` can be used to configure properties in product config files
                       that are not exposed in the CRD. Read the
-                      [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
+                      [config overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#config-overrides)
                       and consult the operator specific usage guide documentation for details on the
                       available config files and settings for the specific product.
                     type: object
@@ -2597,7 +2597,7 @@ spec:
                       `envOverrides` configure environment variables to be set in the Pods.
                       It is a map from strings to strings - environment variables and the value to set.
                       Read the
-                      [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
+                      [environment variable overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#env-overrides)
                       for more information and consult the operator specific usage guide to find out about
                       the product specific environment variables that are available.
                     type: object
@@ -2608,7 +2608,7 @@ spec:
                       removeRegex: []
                     description: |-
                       Allows overriding JVM arguments.
-                      Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#jvm-argument-overrides)
+                      Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#jvm-argument-overrides)
                       for details on the usage.
                     properties:
                       add:
@@ -2637,7 +2637,7 @@ spec:
                       [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#podtemplatespec-v1-core)
                       to override any property that can be set on a Kubernetes Pod.
                       Read the
-                      [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides)
+                      [Pod overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#pod-overrides)
                       for more information.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
@@ -2659,7 +2659,7 @@ spec:
                           2. The allowed number of Pods to be unavailable (`maxUnavailable`)
 
                           Learn more in the
-                          [allowed Pod disruptions documentation](https://docs.stackable.tech/home/nightly/concepts/operations/pod_disruptions).
+                          [allowed Pod disruptions documentation](https://docs.stackable.tech/home/26.3/concepts/operations/pod_disruptions).
                         properties:
                           enabled:
                             default: true
@@ -2699,7 +2699,7 @@ spec:
                                 podAntiAffinity: null
                               description: |-
                                 These configuration settings control
-                                [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
+                                [Pod placement](https://docs.stackable.tech/home/26.3/concepts/operations/pod_placement).
                               properties:
                                 nodeAffinity:
                                   description: Same as the `spec.affinity.nodeAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
@@ -2731,7 +2731,7 @@ spec:
                               default:
                                 containers: {}
                                 enableVectorAgent: null
-                              description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                              description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/26.3/concepts/logging).
                               properties:
                                 containers:
                                   description: Log configuration per container.
@@ -3141,7 +3141,7 @@ spec:
                           description: |-
                             The `configOverrides` can be used to configure properties in product config files
                             that are not exposed in the CRD. Read the
-                            [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
+                            [config overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#config-overrides)
                             and consult the operator specific usage guide documentation for details on the
                             available config files and settings for the specific product.
                           type: object
@@ -3153,7 +3153,7 @@ spec:
                             `envOverrides` configure environment variables to be set in the Pods.
                             It is a map from strings to strings - environment variables and the value to set.
                             Read the
-                            [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
+                            [environment variable overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#env-overrides)
                             for more information and consult the operator specific usage guide to find out about
                             the product specific environment variables that are available.
                           type: object
@@ -3164,7 +3164,7 @@ spec:
                             removeRegex: []
                           description: |-
                             Allows overriding JVM arguments.
-                            Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#jvm-argument-overrides)
+                            Please read on the [JVM argument overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#jvm-argument-overrides)
                             for details on the usage.
                           properties:
                             add:
@@ -3193,7 +3193,7 @@ spec:
                             [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.34/#podtemplatespec-v1-core)
                             to override any property that can be set on a Kubernetes Pod.
                             Read the
-                            [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides)
+                            [Pod overrides documentation](https://docs.stackable.tech/home/26.3/concepts/overrides#pod-overrides)
                             for more information.
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
@@ -3286,8 +3286,8 @@ spec:
           spec:
             description: |-
               The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
-              Read more about it in the [Trino operator concept docs](https://docs.stackable.tech/home/nightly/trino/concepts)
-              and the [Trino operator usage guide](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/).
+              Read more about it in the [Trino operator concept docs](https://docs.stackable.tech/home/26.3/trino/concepts)
+              and the [Trino operator usage guide](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/).
               The documentation also contains a list of all the supported backends.
             properties:
               configOverrides:
@@ -3319,10 +3319,10 @@ spec:
                   - tpch
                 properties:
                   blackHole:
-                    description: A [Black Hole](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/black-hole) connector.
+                    description: A [Black Hole](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/black-hole) connector.
                     type: object
                   deltaLake:
-                    description: An [Delta Lake](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/delta-lake) connector.
+                    description: An [Delta Lake](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/delta-lake) connector.
                     properties:
                       hdfs:
                         description: |-
@@ -3331,7 +3331,7 @@ spec:
                         nullable: true
                         properties:
                           configMap:
-                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the HDFS cluster.
                             type: string
                         required:
                         - configMap
@@ -3340,7 +3340,7 @@ spec:
                         description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
                         properties:
                           configMap:
-                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
+                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the Hive metastore.
                             type: string
                         required:
                         - configMap
@@ -3349,7 +3349,7 @@ spec:
                         description: |-
                           Connection to an S3 store.
                           Please make sure that the underlying Hive metastore also has access to the S3 store.
-                          Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                          Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/26.3/concepts/s3).
                         nullable: true
                         oneOf:
                         - required:
@@ -3360,7 +3360,7 @@ spec:
                           inline:
                             description: |-
                               S3 connection definition as a resource.
-                              Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                              Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/26.3/concepts/s3).
                             properties:
                               accessStyle:
                                 default: VirtualHosted
@@ -3375,14 +3375,14 @@ spec:
                               credentials:
                                 description: |-
                                   If the S3 uses authentication you have to specify you S3 credentials.
-                                  In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                                  In the most cases a [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass)
                                   providing `accessKey` and `secretKey` is sufficient.
                                 nullable: true
                                 properties:
                                   scope:
                                     description: |-
-                                      [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
-                                      [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
+                                      [Scope](https://docs.stackable.tech/home/26.3/secret-operator/scope) of the
+                                      [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass).
                                     nullable: true
                                     properties:
                                       listenerVolumes:
@@ -3415,7 +3415,7 @@ spec:
                                         type: array
                                     type: object
                                   secretClass:
-                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                    description: '[SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) containing the LDAP bind credentials.'
                                     type: string
                                 required:
                                 - secretClass
@@ -3474,7 +3474,7 @@ spec:
                                             properties:
                                               secretClass:
                                                 description: |-
-                                                  Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                  Name of the [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) which will provide the CA certificate.
                                                   Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
                                                   so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                 type: string
@@ -3501,7 +3501,7 @@ spec:
                     - metastore
                     type: object
                   generic:
-                    description: A [generic](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/generic) connector.
+                    description: A [generic](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/generic) connector.
                     properties:
                       connectorName:
                         description: |-
@@ -3562,7 +3562,7 @@ spec:
                     - connectorName
                     type: object
                   googleSheet:
-                    description: A [Google sheets](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/google-sheets) connector.
+                    description: A [Google sheets](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/google-sheets) connector.
                     properties:
                       cache:
                         description: |-
@@ -3592,7 +3592,7 @@ spec:
                     - metadataSheetId
                     type: object
                   hive:
-                    description: An [Apache Hive](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/hive) connector.
+                    description: An [Apache Hive](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/hive) connector.
                     properties:
                       hdfs:
                         description: |-
@@ -3601,7 +3601,7 @@ spec:
                         nullable: true
                         properties:
                           configMap:
-                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the HDFS cluster.
                             type: string
                         required:
                         - configMap
@@ -3610,7 +3610,7 @@ spec:
                         description: Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
                         properties:
                           configMap:
-                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
+                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the Hive metastore.
                             type: string
                         required:
                         - configMap
@@ -3619,7 +3619,7 @@ spec:
                         description: |-
                           Connection to an S3 store.
                           Please make sure that the underlying Hive metastore also has access to the S3 store.
-                          Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                          Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/26.3/concepts/s3).
                         nullable: true
                         oneOf:
                         - required:
@@ -3630,7 +3630,7 @@ spec:
                           inline:
                             description: |-
                               S3 connection definition as a resource.
-                              Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                              Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/26.3/concepts/s3).
                             properties:
                               accessStyle:
                                 default: VirtualHosted
@@ -3645,14 +3645,14 @@ spec:
                               credentials:
                                 description: |-
                                   If the S3 uses authentication you have to specify you S3 credentials.
-                                  In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                                  In the most cases a [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass)
                                   providing `accessKey` and `secretKey` is sufficient.
                                 nullable: true
                                 properties:
                                   scope:
                                     description: |-
-                                      [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
-                                      [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
+                                      [Scope](https://docs.stackable.tech/home/26.3/secret-operator/scope) of the
+                                      [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass).
                                     nullable: true
                                     properties:
                                       listenerVolumes:
@@ -3685,7 +3685,7 @@ spec:
                                         type: array
                                     type: object
                                   secretClass:
-                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                    description: '[SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) containing the LDAP bind credentials.'
                                     type: string
                                 required:
                                 - secretClass
@@ -3744,7 +3744,7 @@ spec:
                                             properties:
                                               secretClass:
                                                 description: |-
-                                                  Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                  Name of the [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) which will provide the CA certificate.
                                                   Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
                                                   so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                 type: string
@@ -3771,7 +3771,7 @@ spec:
                     - metastore
                     type: object
                   iceberg:
-                    description: An [Apache Iceberg](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/iceberg) connector.
+                    description: An [Apache Iceberg](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/iceberg) connector.
                     properties:
                       hdfs:
                         description: |-
@@ -3780,7 +3780,7 @@ spec:
                         nullable: true
                         properties:
                           configMap:
-                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the HDFS cluster.
                             type: string
                         required:
                         - configMap
@@ -3794,7 +3794,7 @@ spec:
                         nullable: true
                         properties:
                           configMap:
-                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
+                            description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/26.3/concepts/service_discovery) providing information about the Hive metastore.
                             type: string
                         required:
                         - configMap
@@ -3803,7 +3803,7 @@ spec:
                         description: |-
                           Connection to an S3 store.
                           Please make sure that the underlying Hive metastore also has access to the S3 store.
-                          Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
+                          Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/26.3/concepts/s3).
                         nullable: true
                         oneOf:
                         - required:
@@ -3814,7 +3814,7 @@ spec:
                           inline:
                             description: |-
                               S3 connection definition as a resource.
-                              Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+                              Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/26.3/concepts/s3).
                             properties:
                               accessStyle:
                                 default: VirtualHosted
@@ -3829,14 +3829,14 @@ spec:
                               credentials:
                                 description: |-
                                   If the S3 uses authentication you have to specify you S3 credentials.
-                                  In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                                  In the most cases a [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass)
                                   providing `accessKey` and `secretKey` is sufficient.
                                 nullable: true
                                 properties:
                                   scope:
                                     description: |-
-                                      [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
-                                      [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
+                                      [Scope](https://docs.stackable.tech/home/26.3/secret-operator/scope) of the
+                                      [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass).
                                     nullable: true
                                     properties:
                                       listenerVolumes:
@@ -3869,7 +3869,7 @@ spec:
                                         type: array
                                     type: object
                                   secretClass:
-                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                    description: '[SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) containing the LDAP bind credentials.'
                                     type: string
                                 required:
                                 - secretClass
@@ -3928,7 +3928,7 @@ spec:
                                             properties:
                                               secretClass:
                                                 description: |-
-                                                  Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                  Name of the [SecretClass](https://docs.stackable.tech/home/26.3/secret-operator/secretclass) which will provide the CA certificate.
                                                   Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
                                                   so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                                 type: string
@@ -3953,10 +3953,10 @@ spec:
                         type: object
                     type: object
                   tpcds:
-                    description: A [TPC-DS](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpcds) connector.
+                    description: A [TPC-DS](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/tpcds) connector.
                     type: object
                   tpch:
-                    description: A [TPC-H](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpch) connector.
+                    description: A [TPC-H](https://docs.stackable.tech/home/26.3/trino/usage-guide/catalogs/tpch) connector.
                     type: object
                 type: object
               experimentalConfigRemovals:
