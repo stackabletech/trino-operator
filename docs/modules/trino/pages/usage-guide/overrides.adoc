@@ -11,7 +11,7 @@ Trino configuration is stored in several files listed below.
 The configuration overrides menchanism allows you to customize parameters in these files;
 consult the Trino documentation to find out which settings available.
 
-Confiuration overrides are applied like so:
+Configuration overrides are applied like so:
 
 [source,yaml]
 ----

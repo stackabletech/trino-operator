@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     if int(active_workers) != int(expected_workers):
         print(
-            "Missmatch: [expected/active] workers ["
+            "Mismatch: [expected/active] workers ["
             + str(expected_workers)
             + "/"
             + str(active_workers)
