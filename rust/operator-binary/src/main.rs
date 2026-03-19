@@ -146,7 +146,6 @@ async fn main() -> anyhow::Result<()> {
             let catalog_cluster_store = cluster_controller.store();
             let authentication_class_cluster_store = cluster_controller.store();
             let config_map_cluster_store = cluster_controller.store();
-            let scaler_cluster_store = cluster_controller.store();
 
             let trino_controller = cluster_controller
                 .owns(
@@ -199,24 +198,9 @@ async fn main() -> anyhow::Result<()> {
                             .map(|druid| ObjectRef::from_obj(&*druid))
                     },
                 )
-                .watches(
-                    watch_namespace.get_api::<DeserializeGuard<StackableScaler>>(&client),
+                .owns(
+                    watch_namespace.get_api::<StackableScaler>(&client),
                     watcher::Config::default(),
-                    move |scaler| {
-                        let Ok(scaler) = &scaler.0 else {
-                            return vec![];
-                        };
-                        let scaler_name = &scaler.spec.cluster_ref.name;
-                        scaler_cluster_store
-                            .state()
-                            .into_iter()
-                            .filter(move |trino| {
-                                trino.0.as_ref().is_ok_and(|t| t.name_any() == *scaler_name)
-                                    && trino.namespace() == scaler.namespace()
-                            })
-                            .map(|trino| ObjectRef::from_obj(&*trino))
-                            .collect::<Vec<_>>()
-                    },
                 )
                 .graceful_shutdown_on(sigterm_watcher.handle())
                 .run(

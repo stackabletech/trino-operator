@@ -833,11 +833,16 @@ impl v1alpha1::TrinoCluster {
     }
 
     pub fn num_workers(&self) -> u16 {
+        use stackable_operator::crd::scaler::ReplicasConfig;
         self.spec
             .workers
             .iter()
             .flat_map(|w| w.role_groups.values())
-            .map(|rg| rg.replicas.unwrap_or(1))
+            .map(|rg| match rg.replicas.as_ref() {
+                Some(ReplicasConfig::Fixed(n)) => *n,
+                None => 1, // Default to 1 if unset
+                _ => 0,    // Hpa/Auto/ExternallyScaled have no static count
+            })
             .sum()
     }
 
@@ -881,7 +886,12 @@ impl v1alpha1::TrinoCluster {
             .flat_map(move |(rolegroup_name, rolegroup)| {
                 let role_group_ref = TrinoRole::Coordinator.rolegroup_ref(self, rolegroup_name);
                 let ns = ns.clone();
-                (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
+                let fixed_count = match rolegroup.replicas.as_ref() {
+                    Some(stackable_operator::crd::scaler::ReplicasConfig::Fixed(n)) => *n,
+                    None => 0,
+                    _ => 0, // Non-fixed coordinators are rejected during reconcile
+                };
+                (0..fixed_count).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
                     role_group_service_name: role_group_ref.rolegroup_headless_service_name(),
                     pod_name: format!(

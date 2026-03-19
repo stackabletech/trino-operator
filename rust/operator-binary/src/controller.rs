@@ -35,7 +35,9 @@ use stackable_operator::{
     },
     constants::RESTART_CONTROLLER_ENABLED_LABEL,
     crd::scaler::{
-        ScalingCondition, reconcile_scaler, resolve_replicas, v1alpha1::StackableScaler,
+        BuildScalerError, InitializeStatusError, ReplicasConfig, ScalingCondition,
+        build_hpa_from_user_spec, build_scaler, initialize_scaler_status, reconcile_scaler,
+        resolve_replicas, scale_target_ref, v1alpha1::StackableScaler,
     },
     k8s_openapi::{
         DeepMerge,
@@ -390,11 +392,31 @@ pub enum Error {
     ))]
     ClientSpoolingProtocolTrinoVersion { product_version: String },
 
-    #[snafu(display("failed to list StackableScalers for rolegroup {rolegroup}"))]
-    ListScalers {
-        source: stackable_operator::client::Error,
+    /// Failed to build a [`StackableScaler`] object for a role group.
+    #[snafu(display("failed to build StackableScaler for rolegroup {rolegroup}"))]
+    BuildScaler {
+        source: BuildScalerError,
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
+
+    /// Failed to initialize [`StackableScaler`] status for a freshly created scaler.
+    #[snafu(display("failed to initialize StackableScaler status for rolegroup {rolegroup}"))]
+    InitializeScalerStatus {
+        source: InitializeStatusError,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    /// The [`ReplicasConfig::Auto`] variant is not yet supported.
+    #[snafu(display("Auto scaling is not yet implemented for rolegroup {rolegroup}"))]
+    AutoScalingNotYetImplemented {
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    /// Scaling is only supported for worker role groups.
+    #[snafu(display(
+        "Scaling (via {config}) is not supported for role {role}, only workers can be scaled"
+    ))]
+    ScalingNotSupportedForRole { role: String, config: String },
 
     #[snafu(display("StackableScaler reconciliation failed for rolegroup {rolegroup}"))]
     ScalerReconcile {
@@ -407,6 +429,27 @@ pub enum Error {
     ))]
     BuildSelectorString {
         source: stackable_operator::kvp::SelectorError,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    /// Failed to build a `HorizontalPodAutoscaler` for a role group.
+    #[snafu(display("failed to build HorizontalPodAutoscaler for rolegroup {rolegroup}"))]
+    BuildHpa {
+        source: BuildScalerError,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    /// Failed to apply a `HorizontalPodAutoscaler` for a role group.
+    #[snafu(display("failed to apply HorizontalPodAutoscaler for rolegroup {rolegroup}"))]
+    ApplyHpa {
+        source: stackable_operator::cluster_resources::Error,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    /// Failed to apply a [`StackableScaler`] for a role group.
+    #[snafu(display("failed to apply StackableScaler for rolegroup {rolegroup}"))]
+    ApplyScaler {
+        source: stackable_operator::cluster_resources::Error,
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 }
@@ -608,45 +651,142 @@ pub async fn reconcile_trino(
             )
             .context(LabelBuildSnafu)?;
 
-            // Look up the StackableScaler for this worker role group if replicas == 0
-            // (the convention that signals "externally managed replicas").
-            let rolegroup_obj = trino
-                .rolegroup(&role_group_ref)
-                .context(InternalOperatorFailureSnafu)?;
-            let rg_replicas = rolegroup_obj.replicas;
+            // Determine the replicas config for this role group.
+            let replicas_config = role
+                .role_groups
+                .get(&role_group)
+                .and_then(|rg| rg.replicas.clone())
+                .unwrap_or_default();
 
-            let scaler: Option<StackableScaler> =
-                if trino_role == TrinoRole::Worker && rg_replicas == Some(0) {
-                    let selector = LabelSelector {
-                        match_expressions: None,
-                        match_labels: Some(
-                            Labels::role_group_selector(
-                                trino,
-                                APP_NAME,
-                                &role_group_ref.role,
-                                &role_group_ref.role_group,
-                            )
-                            .context(LabelBuildSnafu)?
-                            .into(),
-                        ),
-                    };
-                    client
-                        .list_with_label_selector::<StackableScaler>(&namespace, &selector)
+            // Only workers can use non-Fixed scaling modes.
+            if trino_role != TrinoRole::Worker {
+                match &replicas_config {
+                    ReplicasConfig::Fixed(_) => {} // OK for any role
+                    other => {
+                        return ScalingNotSupportedForRoleSnafu {
+                            role: trino_role.to_string(),
+                            config: format!("{other:?}"),
+                        }
+                        .fail();
+                    }
+                }
+            }
+
+            // Build the scaler (and optionally an HPA) for scaling variants,
+            // or resolve a fixed replica count directly.
+            let owner_ref = trino
+                .controller_owner_ref(&())
+                .context(ObjectHasNoNamespaceSnafu)?;
+
+            let (replicas, scaler): (Option<i32>, Option<StackableScaler>) = match &replicas_config
+            {
+                ReplicasConfig::Fixed(n) => (Some(i32::from(*n)), None),
+                ReplicasConfig::Auto(_) => {
+                    return AutoScalingNotYetImplementedSnafu {
+                        rolegroup: role_group_ref.clone(),
+                    }
+                    .fail();
+                }
+                ReplicasConfig::Hpa(_) | ReplicasConfig::ExternallyScaled => {
+                    // Build and apply a StackableScaler for this role group.
+                    let initial_replicas = 1;
+                    let scaler_obj = build_scaler(
+                        &trino.name_any(),
+                        APP_NAME,
+                        &namespace,
+                        &role_group_ref.role,
+                        &role_group_ref.role_group,
+                        initial_replicas,
+                        &owner_ref,
+                        OPERATOR_NAME,
+                    )
+                    .context(BuildScalerSnafu {
+                        rolegroup: role_group_ref.clone(),
+                    })?;
+
+                    let applied_scaler = cluster_resources
+                        .add(client, scaler_obj)
                         .await
-                        .context(ListScalersSnafu {
+                        .with_context(|_| ApplyScalerSnafu {
                             rolegroup: role_group_ref.clone(),
-                        })?
-                        .into_iter()
-                        .find(|s| {
-                            s.spec.cluster_ref.name == trino.name_any()
-                                && s.spec.role == role_group_ref.role
-                                && s.spec.role_group == role_group_ref.role_group
-                        })
-                } else {
-                    None
-                };
+                        })?;
 
-            let replicas = resolve_replicas(rg_replicas.map(i32::from), scaler.as_ref());
+                    // Initialize scaler status if it was just created (no status yet)
+                    // to prevent scale-to-zero on the first reconcile.
+                    if applied_scaler.status.is_none() {
+                        let selector_string = LabelSelector {
+                            match_expressions: None,
+                            match_labels: Some(
+                                Labels::role_group_selector(
+                                    trino,
+                                    APP_NAME,
+                                    &role_group_ref.role,
+                                    &role_group_ref.role_group,
+                                )
+                                .context(LabelBuildSnafu)?
+                                .into(),
+                            ),
+                        }
+                        .to_query_string()
+                        .context(BuildSelectorStringSnafu {
+                            rolegroup: role_group_ref.clone(),
+                        })?;
+
+                        initialize_scaler_status(
+                            client,
+                            &applied_scaler,
+                            initial_replicas,
+                            &selector_string,
+                        )
+                        .await
+                        .context(InitializeScalerStatusSnafu {
+                            rolegroup: role_group_ref.clone(),
+                        })?;
+                    }
+
+                    // If the variant is Hpa, also build and apply the HPA.
+                    if let ReplicasConfig::Hpa(hpa_config) = &replicas_config {
+                        let fallback_scaler_name = format!(
+                            "{}-{}-{}-scaler",
+                            trino.name_any(),
+                            role_group_ref.role,
+                            role_group_ref.role_group,
+                        );
+                        let scaler_name = applied_scaler
+                            .metadata
+                            .name
+                            .as_deref()
+                            .unwrap_or(&fallback_scaler_name);
+                        let target_ref =
+                            scale_target_ref(scaler_name, "autoscaling.stackable.tech", "v1alpha1");
+                        let hpa = build_hpa_from_user_spec(
+                            &hpa_config.spec,
+                            &target_ref,
+                            &trino.name_any(),
+                            APP_NAME,
+                            &namespace,
+                            &role_group_ref.role,
+                            &role_group_ref.role_group,
+                            &owner_ref,
+                            OPERATOR_NAME,
+                        )
+                        .context(BuildHpaSnafu {
+                            rolegroup: role_group_ref.clone(),
+                        })?;
+
+                        cluster_resources.add(client, hpa).await.with_context(|_| {
+                            ApplyHpaSnafu {
+                                rolegroup: role_group_ref.clone(),
+                            }
+                        })?;
+                    }
+
+                    // Resolve replicas from the scaler status (Some(0) signals
+                    // "externally managed" to resolve_replicas).
+                    let effective_replicas = resolve_replicas(Some(0), Some(&applied_scaler));
+                    (effective_replicas, Some(applied_scaler))
+                }
+            };
 
             let rg_headless_service = build_rolegroup_headless_service(
                 trino,
@@ -742,25 +882,23 @@ pub async fn reconcile_trino(
             // Run the scaler state machine if a scaler is present for this worker role group.
             // This is done after applying the StatefulSet so we can read its current status.
             if let Some(ref s) = scaler {
-                let selector_string = {
-                    LabelSelector {
-                        match_expressions: None,
-                        match_labels: Some(
-                            Labels::role_group_selector(
-                                trino,
-                                APP_NAME,
-                                &role_group_ref.role,
-                                &role_group_ref.role_group,
-                            )
-                            .context(LabelBuildSnafu)?
-                            .into(),
-                        ),
-                    }
-                    .to_query_string()
-                    .context(BuildSelectorStringSnafu {
-                        rolegroup: role_group_ref.clone(),
-                    })?
-                };
+                let selector_string = LabelSelector {
+                    match_expressions: None,
+                    match_labels: Some(
+                        Labels::role_group_selector(
+                            trino,
+                            APP_NAME,
+                            &role_group_ref.role,
+                            &role_group_ref.role_group,
+                        )
+                        .context(LabelBuildSnafu)?
+                        .into(),
+                    ),
+                }
+                .to_query_string()
+                .context(BuildSelectorStringSnafu {
+                    rolegroup: role_group_ref.clone(),
+                })?;
 
                 let sts_ready = applied_sts
                     .status
@@ -790,6 +928,7 @@ pub async fn reconcile_trino(
                     client,
                     statefulset_stable,
                     &selector_string,
+                    &role_group_ref.role_group,
                 )
                 .await
                 .context(ScalerReconcileSnafu {
