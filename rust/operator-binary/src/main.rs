@@ -14,6 +14,7 @@ use stackable_operator::{
     eos::EndOfSupportChecker,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
+        autoscaling::v2::HorizontalPodAutoscaler,
         core::v1::{ConfigMap, Service},
     },
     kube::{
@@ -200,6 +201,10 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .owns(
                     watch_namespace.get_api::<StackableScaler>(&client),
+                    watcher::Config::default(),
+                )
+                .owns(
+                    watch_namespace.get_api::<HorizontalPodAutoscaler>(&client),
                     watcher::Config::default(),
                 )
                 .graceful_shutdown_on(sigterm_watcher.handle())

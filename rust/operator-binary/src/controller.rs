@@ -37,7 +37,7 @@ use stackable_operator::{
     crd::scaler::{
         BuildScalerError, InitializeStatusError, ReplicasConfig, ScalingCondition,
         build_hpa_from_user_spec, build_scaler, initialize_scaler_status, reconcile_scaler,
-        resolve_replicas, scale_target_ref, v1alpha1::StackableScaler,
+        scale_target_ref, v1alpha1::StackableScaler,
     },
     k8s_openapi::{
         DeepMerge,
@@ -452,6 +452,13 @@ pub enum Error {
         source: stackable_operator::cluster_resources::Error,
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
+
+    /// Failed to read an existing [`StackableScaler`] for a role group.
+    #[snafu(display("failed to read existing StackableScaler for rolegroup {rolegroup}"))]
+    GetExistingScaler {
+        source: stackable_operator::client::Error,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -658,6 +665,12 @@ pub async fn reconcile_trino(
                 .and_then(|rg| rg.replicas.clone())
                 .unwrap_or_default();
 
+            tracing::debug!(
+                rolegroup = %role_group_ref,
+                replicas_config = ?replicas_config,
+                "Processing role group scaling configuration"
+            );
+
             // Only workers can use non-Fixed scaling modes.
             if trino_role != TrinoRole::Worker {
                 match &replicas_config {
@@ -671,6 +684,25 @@ pub async fn reconcile_trino(
                     }
                 }
             }
+
+            // Build the label selector for the scaler and HPA.
+            let selector_string = LabelSelector {
+                match_expressions: None,
+                match_labels: Some(
+                    Labels::role_group_selector(
+                        trino,
+                        APP_NAME,
+                        &role_group_ref.role,
+                        &role_group_ref.role_group,
+                    )
+                    .context(LabelBuildSnafu)?
+                    .into(),
+                ),
+            }
+            .to_query_string()
+            .context(BuildSelectorStringSnafu {
+                rolegroup: role_group_ref.clone(),
+            })?;
 
             // Build the scaler (and optionally an HPA) for scaling variants,
             // or resolve a fixed replica count directly.
@@ -688,17 +720,34 @@ pub async fn reconcile_trino(
                     .fail();
                 }
                 ReplicasConfig::Hpa(_) | ReplicasConfig::ExternallyScaled => {
-                    // Build and apply a StackableScaler for this role group.
-                    let initial_replicas = 1;
+                    // Preserve the existing scaler's replica count so that
+                    // server-side apply does not overwrite a value set by an
+                    // external controller or HPA.
+                    let scaler_name = format!(
+                        "{}-{}-{}-scaler",
+                        trino.name_any(),
+                        role_group_ref.role,
+                        role_group_ref.role_group,
+                    );
+                    let existing_scaler_replicas = client
+                        .get_opt::<StackableScaler>(&scaler_name, &namespace)
+                        .await
+                        .context(GetExistingScalerSnafu {
+                            rolegroup: role_group_ref.clone(),
+                        })?
+                        .map(|s| s.spec.replicas)
+                        .unwrap_or(1);
+
                     let scaler_obj = build_scaler(
                         &trino.name_any(),
                         APP_NAME,
                         &namespace,
                         &role_group_ref.role,
                         &role_group_ref.role_group,
-                        initial_replicas,
+                        existing_scaler_replicas,
                         &owner_ref,
                         OPERATOR_NAME,
+                        CONTROLLER_NAME,
                     )
                     .context(BuildScalerSnafu {
                         rolegroup: role_group_ref.clone(),
@@ -714,28 +763,10 @@ pub async fn reconcile_trino(
                     // Initialize scaler status if it was just created (no status yet)
                     // to prevent scale-to-zero on the first reconcile.
                     if applied_scaler.status.is_none() {
-                        let selector_string = LabelSelector {
-                            match_expressions: None,
-                            match_labels: Some(
-                                Labels::role_group_selector(
-                                    trino,
-                                    APP_NAME,
-                                    &role_group_ref.role,
-                                    &role_group_ref.role_group,
-                                )
-                                .context(LabelBuildSnafu)?
-                                .into(),
-                            ),
-                        }
-                        .to_query_string()
-                        .context(BuildSelectorStringSnafu {
-                            rolegroup: role_group_ref.clone(),
-                        })?;
-
                         initialize_scaler_status(
                             client,
                             &applied_scaler,
-                            initial_replicas,
+                            existing_scaler_replicas,
                             &selector_string,
                         )
                         .await
@@ -760,7 +791,7 @@ pub async fn reconcile_trino(
                         let target_ref =
                             scale_target_ref(scaler_name, "autoscaling.stackable.tech", "v1alpha1");
                         let hpa = build_hpa_from_user_spec(
-                            &hpa_config.spec,
+                            hpa_config.as_ref(),
                             &target_ref,
                             &trino.name_any(),
                             APP_NAME,
@@ -769,6 +800,7 @@ pub async fn reconcile_trino(
                             &role_group_ref.role_group,
                             &owner_ref,
                             OPERATOR_NAME,
+                            CONTROLLER_NAME,
                         )
                         .context(BuildHpaSnafu {
                             rolegroup: role_group_ref.clone(),
@@ -781,9 +813,8 @@ pub async fn reconcile_trino(
                         })?;
                     }
 
-                    // Resolve replicas from the scaler status (Some(0) signals
-                    // "externally managed" to resolve_replicas).
-                    let effective_replicas = resolve_replicas(Some(0), Some(&applied_scaler));
+                    // Read effective replicas from the scaler's status.
+                    let effective_replicas = applied_scaler.status.as_ref().map(|st| st.replicas);
                     (effective_replicas, Some(applied_scaler))
                 }
             };
@@ -882,24 +913,6 @@ pub async fn reconcile_trino(
             // Run the scaler state machine if a scaler is present for this worker role group.
             // This is done after applying the StatefulSet so we can read its current status.
             if let Some(ref s) = scaler {
-                let selector_string = LabelSelector {
-                    match_expressions: None,
-                    match_labels: Some(
-                        Labels::role_group_selector(
-                            trino,
-                            APP_NAME,
-                            &role_group_ref.role,
-                            &role_group_ref.role_group,
-                        )
-                        .context(LabelBuildSnafu)?
-                        .into(),
-                    ),
-                }
-                .to_query_string()
-                .context(BuildSelectorStringSnafu {
-                    rolegroup: role_group_ref.clone(),
-                })?;
-
                 let sts_ready = applied_sts
                     .status
                     .as_ref()
