@@ -2148,7 +2148,7 @@ mod tests {
             configOverrides:
               access-control.properties:
                 hello-from-role: "true" # only defined here at role level
-                foo.bar: "false" # overriden by role group below
+                foo.bar: "false" # overridden by role group below
                 opa.allow-permission-management-operations: "false" # override value from config
             roleGroups:
               default:
