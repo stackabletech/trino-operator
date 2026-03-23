@@ -4,6 +4,8 @@ kind: Secret
 metadata:
   name: password-file-users
   namespace: $NAMESPACE
+  annotations:
+    restarter.stackable.tech/ignore: "true"
 stringData:
   test_user_1: test_user_1
   test_user_2: test_user_2
