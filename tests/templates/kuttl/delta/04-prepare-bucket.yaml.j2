@@ -1,0 +1,11 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  # give minio enough time to start
+  - command: sleep 5
+  - script: |
+     POD=$(kubectl -n $NAMESPACE get pod -l app.kubernetes.io/instance=minio -o name | head -n1 | sed 's#pod/##')
+     kubectl -n $NAMESPACE cp delta-table "$POD:/tmp/delta-table"
+     kubectl -n $NAMESPACE exec "$POD" -- mc rm -r --force local/trino/delta-table || true
+     kubectl -n $NAMESPACE exec "$POD" -- mc mirror --overwrite /tmp/delta-table local/trino/delta-table

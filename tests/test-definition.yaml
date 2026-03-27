@@ -27,7 +27,10 @@ dimensions:
     values:
       - "479"
       # To use a custom image, add a comma and the full name after the product version
-      # - 477,oci.stackable.tech/sdp/trino:477-stackable0.0.0-dev
+      # - 470,oci.stackable.tech/sdp/trino:470-stackable0.0.0-dev
+  - name: trino-delta
+    values:
+      - "479"
   - name: hive
     values:
       - 3.1.3
@@ -123,6 +126,13 @@ tests:
   - name: listener
     dimensions:
       - trino
+      - openshift
+  - name: delta
+    # NOTE: this test only works because we set `parquet.use-column-index=false` in the delta catalog
+    # to work around this bug: https://github.com/trinodb/trino/issues/28885
+    dimensions:
+      - trino-delta
+      - hive-latest
       - openshift
 suites:
   - name: nightly
