@@ -5,6 +5,7 @@ commands:
   # give minio enough time to start
   - command: sleep 5
   - script: |
-      POD=$(kubectl -n $NAMESPACE get pod -l app.kubernetes.io/instance=minio -o name | head -n 1 | sed -e 's#pod/##')
-      kubectl cp -n $NAMESPACE yellow_tripdata_2021-07.csv $POD:/tmp
-      kubectl -n $NAMESPACE exec $POD -- mc cp /tmp/yellow_tripdata_2021-07.csv local/trino/taxi-data/
+     POD=$(kubectl -n $NAMESPACE get pod -l app.kubernetes.io/instance=minio -o name | head -n1 | sed 's#pod/##')
+     kubectl -n $NAMESPACE cp delta-table "$POD:/tmp/delta-table"
+     kubectl -n $NAMESPACE exec "$POD" -- mc rm -r --force local/trino/delta-table || true
+     kubectl -n $NAMESPACE exec "$POD" -- mc mirror --overwrite /tmp/delta-table local/trino/delta-table

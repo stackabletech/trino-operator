@@ -1,0 +1,11 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: delta-check
+status:
+  succeeded: 1
