@@ -15,7 +15,13 @@ spec:
       s3:
         reference: minio
   configOverrides:
+    #
+    # Needed for writing (deleting) data on S3
+    #
     delta.enable-non-concurrent-writes: 'true'
+    #
+    # Needed for the register_table() call in the Python test script.
+    #
     delta.register-table-procedure.enabled: 'true'
     #
     # 2026-03-27: This is needed to avoid this bug: https://github.com/trinodb/trino/issues/28885
