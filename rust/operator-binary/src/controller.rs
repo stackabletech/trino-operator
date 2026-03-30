@@ -385,6 +385,9 @@ pub enum Error {
         "client spooling protocol is not supported for Trino version {product_version}"
     ))]
     ClientSpoolingProtocolTrinoVersion { product_version: String },
+
+    #[snafu(display("failed to generate random bytes"))]
+    GenerateRandomBytes { source: openssl::error::ErrorStack },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -1533,7 +1536,10 @@ async fn create_random_secret(
     client: &Client,
 ) -> Result<()> {
     let mut internal_secret = BTreeMap::new();
-    internal_secret.insert(secret_key.to_string(), get_random_base64(secret_byte_size));
+    internal_secret.insert(
+        secret_key.to_string(),
+        get_random_base64(secret_name.as_bytes(), secret_byte_size)?,
+    );
 
     let secret = Secret {
         immutable: Some(true),
@@ -1578,10 +1584,17 @@ fn shared_spooling_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
 
 // TODO: Maybe switch to something non-openssl.
 // See https://github.com/stackabletech/airflow-operator/pull/686#discussion_r2348354468 (which is currently under discussion)
-fn get_random_base64(byte_size: usize) -> String {
+fn get_random_base64(seed: &[u8], byte_size: usize) -> Result<String> {
     let mut buf: Vec<u8> = vec![0; byte_size];
-    openssl::rand::rand_bytes(&mut buf).unwrap();
-    openssl::base64::encode_block(&buf)
+    openssl::pkcs5::pbkdf2_hmac(
+        seed,
+        b"",
+        1,
+        openssl::hash::MessageDigest::sha256(),
+        &mut buf,
+    )
+    .context(GenerateRandomBytesSnafu)?;
+    Ok(openssl::base64::encode_block(&buf))
 }
 
 fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
@@ -1877,6 +1890,14 @@ mod tests {
         },
         crd::v1alpha1::TrinoCluster,
     };
+
+    #[test]
+    fn test_get_random_base64_is_stable() {
+        let seed = b"my-trino-cluster-internal-secret";
+        let result1 = get_random_base64(seed, 32).expect("failed to generate random base64");
+        let result2 = get_random_base64(seed, 32).expect("failed to generate random base64");
+        assert_eq!(result1, result2);
+    }
 
     #[tokio::test]
     async fn test_config_overrides() {

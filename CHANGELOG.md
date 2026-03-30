@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Make internal shared secrets stable across reconcile operations. This ensures that Trino pods have the same secrets at any time. ([#873]).
+
+[#873]: https://github.com/stackabletech/trino-operator/pull/873
+
 ## [26.3.0] - 2026-03-16
 
 ## [26.3.0-rc1] - 2026-03-16
