@@ -32,7 +32,7 @@ public class Main {
 
         var data = spark.range(0, 50_000)
                 .withColumn("year", lit("2026"))
-                .withColumn("id_mandant", lit("0157"))
+                .withColumn("id_mandant", lit("7"))
                 .withColumn("text", concat(lit("text"), try_divide(col("id"), lit(5000)).cast("int")))
                 .select(col("year"), col("id_mandant"), col("text"));
 
