@@ -30,7 +30,7 @@ dimensions:
       # - 470,oci.stackable.tech/sdp/trino:470-stackable0.0.0-dev
   - name: trino-delta
     values:
-      - "479"
+      - "477"
   - name: hive
     values:
       - 3.1.3
