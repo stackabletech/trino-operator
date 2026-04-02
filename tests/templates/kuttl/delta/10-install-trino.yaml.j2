@@ -24,8 +24,8 @@ spec:
     #
     delta.register-table-procedure.enabled: 'true'
     #
-    # 2026-03-27: This is needed to avoid this bug: https://github.com/trinodb/trino/issues/28885
-    # Should be removed as soon as that issue is solved or we have a patched Trino version.
+    # 2026-03-27: This was previously needed to avoid this bug: https://github.com/trinodb/trino/issues/28885
+    # Now commented out as we now have a patched Trino version with a backported fix.
     #
     # parquet.use-column-index: 'false'
 ---
