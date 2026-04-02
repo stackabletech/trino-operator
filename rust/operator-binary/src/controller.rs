@@ -1536,7 +1536,10 @@ async fn create_random_secret(
     internal_secret.insert(secret_key.to_string(), get_random_base64(secret_byte_size));
 
     let secret = Secret {
-        immutable: Some(true),
+        // This secret used to be immutable but immutable secrets cannot be modified
+        // as they are heavily cached by Kubernetes.
+        // Different pods with different secrets will render the cluster unusable.
+        immutable: Some(false),
         metadata: ObjectMetaBuilder::new()
             .name(secret_name)
             .namespace_opt(trino.namespace())

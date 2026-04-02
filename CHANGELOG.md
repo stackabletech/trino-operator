@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Do not make internal secrets immutable. Immutable secrets are cached and (accidental) deletes can render the cluster unusable ([#875]).
+
+[#875]: https://github.com/stackabletech/trino-operator/pull/875
+
 ## [26.3.0] - 2026-03-16
 
 ## [26.3.0-rc1] - 2026-03-16
