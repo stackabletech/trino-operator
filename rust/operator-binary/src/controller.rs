@@ -1584,8 +1584,8 @@ async fn create_random_secret_if_not_exists(
                 .await
                 .context(ApplyInternalSecretSnafu)?;
 
-            // Note: restart-controller will restart all Trino (coordinator and worker) Pods, but
-            // this should be fine.
+            // Note: restart-controller will restart all Trino (coordinator and worker) Pods as the
+            // mounted Secret changed.
         }
         Some(_) => {
             tracing::debug!(
