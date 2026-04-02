@@ -1,0 +1,116 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: delta-check-script
+data:
+  check-delta.py: |
+    #!/usr/bin/env python
+    #
+    # This script is used to run a series of SQL statements against the Trino cluster to verify that the Delta Lake connector is working correctly.
+    #
+    # It assumes that data is already present in the S3 location and that the Trino cluster is configured to access it. The script will:
+    # 1. Register the Delta table using the system.register_table procedure.
+    # 2. Run a SELECT query to verify that the expected data is present.
+    # 3. Run a DELETE query to remove some data.
+    # 4. Run another SELECT query to verify that the data was deleted.
+    #
+    import argparse
+    import sys
+
+    import trino
+
+    if not sys.warnoptions:
+        import warnings
+
+    warnings.simplefilter("ignore")
+
+    def get_connection(username, password, coordinator):
+        conn = trino.dbapi.connect(
+            host=coordinator,
+            port=8443,
+            user=username,
+            http_scheme="https",
+            auth=trino.auth.BasicAuthentication(username, password),
+            session_properties={"query_max_execution_time": "60s"},
+        )
+        conn._http_session.verify = False
+        return conn
+
+
+    def run_query(connection, query):
+        print(f"[DEBUG] Executing query {query}")
+        cursor = connection.cursor()
+        cursor.execute(query)
+        return cursor.fetchall()
+
+
+    if __name__ == "__main__":
+        all_args = argparse.ArgumentParser()
+        all_args.add_argument(
+            "-c",
+            "--coordinator",
+            required=True,
+            help="Trino Coordinator Host to connect to",
+        )
+        args = vars(all_args.parse_args())
+
+        coordinator = args["coordinator"]
+
+        print("[INFO] Running Delta SQL commands")
+        connection = get_connection("admin", "admin", coordinator)
+
+        statement = "DROP TABLE IF EXISTS delta.default.delta_table"
+        run_query(connection, statement)
+
+        # Must use the register_table procedure to create the table because data is already present in the S3 location
+        # and Trino's CREATE TABLE AS doesn't support that.
+        statement = "CALL delta.system.register_table(schema_name => 'default', table_name => 'delta_table', table_location => 's3a://trino/delta-table')"
+        run_query(connection, statement)
+
+        statement = "select count(*) from delta.default.delta_table where text='text5'"
+        result = run_query(connection, statement)
+        assert result[0][0] == 5000, (
+          f"Expected 5000 rows, got {result}\nQuery: {statement}"
+        )
+
+        statement = "delete from delta.default.delta_table where text = 'text5'"
+        run_query(connection, statement)
+
+        statement = "select count(*) from delta.default.delta_table where text='text5'"
+        result = run_query(connection, statement)
+        assert result[0][0] == 0, (
+          f"Expected 0 rows, got {result}\nQuery: {statement}"
+        )
+
+        print("[SUCCESS] Delta checks succeeded.")
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: delta-check
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: integration-tests-sa
+      restartPolicy: Never
+      containers:
+        - name: trino-test-helper
+          image: oci.stackable.tech/sdp/testing-tools:0.2.0-stackable0.0.0-dev
+          command: ["python", "/tmp/check-delta.py", "-c", "trino-coordinator"]
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "64Mi"
+          volumeMounts:
+            - name: delta-check-script
+              mountPath: /tmp/check-delta.py
+              subPath: check-delta.py
+      volumes:
+        - name: delta-check-script
+          configMap:
+            name: delta-check-script

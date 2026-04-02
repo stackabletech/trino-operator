@@ -1,0 +1,39 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+application {
+    mainClass = 'org.example.Main'
+    applicationDefaultJvmArgs = [
+            '--add-opens=java.base/sun.nio.ch=ALL-UNNAMED'
+    ]
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+
+    // Source: https://mvnrepository.com/artifact/org.apache.spark/spark-sql
+    implementation 'org.apache.spark:spark-sql_2.12:3.5.5'
+    // Source: https://mvnrepository.com/artifact/io.delta/delta-spark
+    implementation 'io.delta:delta-spark_2.12:3.3.2'
+    // Source: https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-aws
+    implementation 'org.apache.hadoop:hadoop-aws:3.3.4'
+    // Source: https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-bundle
+    implementation 'com.amazonaws:aws-java-sdk-bundle:1.12.262'
+
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
