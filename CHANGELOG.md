@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Helm deployed RBAC permissions documented, with unnecessary permissions removed ([#869]).
+- Document Helm deployed RBAC permissions and remove unnecessary permissions ([#869]).
 
 [#869]: https://github.com/stackabletech/trino-operator/pull/869
 
