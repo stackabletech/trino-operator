@@ -9,9 +9,9 @@ All notable changes to this project will be documented in this file.
 - Previously, the shared secret as well as the client spooling secret have been placed in immutable Kubernetes Secrets.
   This caused problems, as they have been cached by Kubernetes, so re-creations of the mentioned Secrets (e.g. by deleting and re-creating the stacklet)
   could cause Trino Pods to have different shared secrets, causing workers failing to join the coordinator.
-  This fix places the secrets in mutable Kubernetes Secrets going forward and migrates existing immutable Secrets to mutable by re-creating them ([#XXX]).
+  This fix places the secrets in mutable Kubernetes Secrets going forward and migrates existing immutable Secrets to mutable by re-creating them ([#876]).
 
-[#XXX]: https://github.com/stackabletech/trino-operator/pull/XXX
+[#876]: https://github.com/stackabletech/trino-operator/pull/876
 
 ## [26.3.0] - 2026-03-16
 
