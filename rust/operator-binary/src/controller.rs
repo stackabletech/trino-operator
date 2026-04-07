@@ -182,16 +182,6 @@ pub enum Error {
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
-    #[snafu(display("failed to apply internal secret"))]
-    ApplyInternalSecret {
-        source: stackable_operator::client::Error,
-    },
-
-    #[snafu(display("failed to delete internal secret"))]
-    DeleteInternalSecret {
-        source: stackable_operator::kube::Error,
-    },
-
     #[snafu(display("invalid product config"))]
     InvalidProductConfig {
         source: stackable_operator::product_config_utils::Error,
