@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump stackable-operator to 0.109.0 ([#877]).
+- Warn when an unsupported OIDC client authentication method is configured ([#877]).
+
+[#877]: https://github.com/stackabletech/trino-operator/pull/877
+
 ## [26.3.0] - 2026-03-16
 
 ## [26.3.0-rc1] - 2026-03-16
