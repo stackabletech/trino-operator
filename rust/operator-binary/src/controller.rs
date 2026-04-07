@@ -32,6 +32,7 @@ use stackable_operator::{
     commons::{
         product_image_selection::{self, ResolvedProductImage},
         rbac::build_rbac_resources,
+        secret_class::SecretClassVolumeProvisionParts,
     },
     constants::RESTART_CONTROLLER_ENABLED_LABEL,
     k8s_openapi::{
@@ -1753,7 +1754,10 @@ fn create_tls_volume(
     requested_secret_lifetime: &Duration,
     listener_scope: Option<String>,
 ) -> Result<Volume> {
-    let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(tls_secret_class);
+    let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(
+        tls_secret_class,
+        SecretClassVolumeProvisionParts::PublicPrivate,
+    );
 
     secret_volume_source_builder
         .with_pod_scope()
@@ -1880,9 +1884,12 @@ fn tls_volume_mounts(
 
         let opa_tls_volume = VolumeBuilder::new(OPA_TLS_VOLUME_NAME)
             .ephemeral(
-                SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
-                    .build()
-                    .context(TlsCertSecretClassVolumeBuildSnafu)?,
+                SecretOperatorVolumeSourceBuilder::new(
+                    tls_secret_class,
+                    SecretClassVolumeProvisionParts::PublicPrivate,
+                )
+                .build()
+                .context(TlsCertSecretClassVolumeBuildSnafu)?,
             )
             .build();
 
