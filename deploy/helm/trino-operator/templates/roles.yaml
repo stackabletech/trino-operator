@@ -104,10 +104,10 @@ rules:
       {{- if .Values.maintenance.customResourceDefinitions.maintain }}
       - create
       - patch
+      {{- end }}
       # Required for startup condition
       - list
       - watch
-      {{- end }}
   # Listeners are applied via SSA and tracked for orphan cleanup, but are not watched
   # by the controller.
   - apiGroups:
