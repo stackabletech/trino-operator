@@ -6,7 +6,7 @@ metadata:
   labels:
   {{- include "operator.labels" . | nindent 4 }}
 rules:
-  # For automatic cluster domain detection (reads kubelet /configz via the proxy subresource)
+  # For automatic cluster domain detection
   - apiGroups:
       - ""
     resources:
@@ -14,12 +14,8 @@ rules:
     verbs:
       - get
   # Manage core workload resources created per TrinoCluster.
-  # All are applied via Server-Side Apply (create + patch), tracked for orphan cleanup
-  # (list + delete), and watched via .owns() in the controller (watch).
-  # get is required by the ReconciliationPaused strategy, which calls client.get()
-  # instead of apply_patch().
-  # - configmaps: role-group config maps and catalog config maps
-  # - services: role-group headless services and metrics services
+  # All resources are applied via Server-Side Apply (create + patch) and tracked for
+  # orphan cleanup (list + delete).
   - apiGroups:
       - ""
     resources:
@@ -32,8 +28,8 @@ rules:
       - list
       - patch
       - watch
-  # ServiceAccounts are applied via SSA and tracked for orphan cleanup, but are not
-  # watched by the controller.
+  # ServiceAccount created per TrinoCluster for workload pod identity.
+  # Applied via SSA and tracked for orphan cleanup.
   - apiGroups:
       - ""
     resources:
@@ -44,9 +40,8 @@ rules:
       - get
       - list
       - patch
-  # Internal Secrets (shared internal communication key and spooling secret) are created
-  # via direct client.get_opt() + client.apply_patch() calls, not via cluster_resources.
-  # They are not tracked for orphan cleanup and not watched by the controller.
+  # Shared internal authentication secrets (communication key and spooling secret).
+  # Orphan cleanup not needed (instead, Kubernetes GC via owner reference).
   - apiGroups:
       - ""
     resources:
@@ -55,8 +50,8 @@ rules:
       - create
       - get
       - patch
-  # RoleBindings are applied via SSA and tracked for orphan cleanup, but are not
-  # watched by the controller.
+  # RoleBinding created per TrinoCluster to bind the product ClusterRole to the workload
+  # ServiceAccount. Applied via SSA and tracked for orphan cleanup.
   - apiGroups:
       - rbac.authorization.k8s.io
     resources:
@@ -67,8 +62,8 @@ rules:
       - get
       - list
       - patch
-  # StatefulSets are applied via SSA, tracked for orphan cleanup, and watched via
-  # .owns() in the controller.
+  # StatefulSet created per role group. Applied via SSA, tracked for orphan cleanup, and
+  # owned by the controller.
   - apiGroups:
       - apps
     resources:
@@ -80,8 +75,7 @@ rules:
       - list
       - patch
       - watch
-  # PodDisruptionBudgets are applied via SSA and tracked for orphan cleanup, but are
-  # not watched by the controller.
+  # PodDisruptionBudget created per role. Applied via SSA and tracked for orphan cleanup.
   - apiGroups:
       - policy
     resources:
@@ -108,8 +102,8 @@ rules:
       # Required for startup condition
       - list
       - watch
-  # Listeners are applied via SSA and tracked for orphan cleanup, but are not watched
-  # by the controller.
+  # Listener created per role group for external access. Applied via SSA and tracked for orphan
+  # cleanup.
   - apiGroups:
       - listeners.stackable.tech
     resources:
@@ -120,7 +114,7 @@ rules:
       - get
       - list
       - patch
-  # For publishing Kubernetes events on reconciliation errors and status changes
+  # Required to report reconciliation results and warnings back to the TrinoCluster object.
   - apiGroups:
       - events.k8s.io
     resources:
@@ -128,7 +122,7 @@ rules:
     verbs:
       - create
       - patch
-  # The primary TrinoCluster CRD: watched by Controller::new(), reconciled on changes
+  # Primary CRD: watched by the controller and read during reconciliation.
   - apiGroups:
       - {{ include "operator.name" . }}.stackable.tech
     resources:
@@ -137,14 +131,14 @@ rules:
       - get
       - list
       - watch
-  # For writing reconciliation status back to the TrinoCluster via apply_patch_status()
+  # Status subresource: updated at the end of every reconciliation.
   - apiGroups:
       - {{ include "operator.name" . }}.stackable.tech
     resources:
       - {{ include "operator.name" . }}clusters/status
     verbs:
       - patch
-  # Read-only access to S3Connection resources referenced in catalog definitions
+  # Read S3 connection configuration referenced in catalog definitions.
   - apiGroups:
       - s3.stackable.tech
     resources:
@@ -153,8 +147,7 @@ rules:
       - get
       - list
       - watch
-  # TrinoCatalog resources are watched via .watches() to trigger reconciliation of any
-  # TrinoCluster that references the changed catalog
+  # Read TrinoCatalog resources referenced in the TrinoCluster spec.
   - apiGroups:
       - trino.stackable.tech
     resources:
@@ -163,8 +156,7 @@ rules:
       - get
       - list
       - watch
-  # AuthenticationClass resources are watched via .watches() to trigger reconciliation
-  # of any TrinoCluster that references the changed AuthenticationClass
+  # Read authentication class configuration referenced in the TrinoCluster spec.
   - apiGroups:
       - authentication.stackable.tech
     resources:
@@ -173,7 +165,7 @@ rules:
       - get
       - list
       - watch
-  # For binding the product ClusterRole to per-cluster ServiceAccounts via RoleBindings
+  # Required to bind the product ClusterRole to the per-cluster ServiceAccount.
   - apiGroups:
       - rbac.authorization.k8s.io
     resources:
