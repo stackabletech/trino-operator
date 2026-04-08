@@ -2596,34 +2596,6 @@ rec {
           "default" = [ "std" ];
         };
       };
-      "foreign-types" = rec {
-        crateName = "foreign-types";
-        version = "0.3.2";
-        edition = "2015";
-        sha256 = "1cgk0vyd7r45cj769jym4a6s7vwshvd0z4bqrb92q1fwibmkkwzn";
-        libName = "foreign_types";
-        authors = [
-          "Steven Fackler <sfackler@gmail.com>"
-        ];
-        dependencies = [
-          {
-            name = "foreign-types-shared";
-            packageId = "foreign-types-shared";
-          }
-        ];
-
-      };
-      "foreign-types-shared" = rec {
-        crateName = "foreign-types-shared";
-        version = "0.1.1";
-        edition = "2015";
-        sha256 = "0jxgzd04ra4imjv8jgkmdq59kj8fsz6w4zxsbmlai34h26225c00";
-        libName = "foreign_types_shared";
-        authors = [
-          "Steven Fackler <sfackler@gmail.com>"
-        ];
-
-      };
       "form_urlencoded" = rec {
         crateName = "form_urlencoded";
         version = "1.2.2";
@@ -6039,78 +6011,6 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
-      "openssl" = rec {
-        crateName = "openssl";
-        version = "0.10.76";
-        edition = "2021";
-        sha256 = "1kwfn77qi342fr3hn1kxza6hslyma4ylszlcbg3a4vp1fln0074m";
-        authors = [
-          "Steven Fackler <sfackler@gmail.com>"
-        ];
-        dependencies = [
-          {
-            name = "bitflags";
-            packageId = "bitflags";
-          }
-          {
-            name = "cfg-if";
-            packageId = "cfg-if";
-          }
-          {
-            name = "foreign-types";
-            packageId = "foreign-types";
-          }
-          {
-            name = "libc";
-            packageId = "libc";
-          }
-          {
-            name = "once_cell";
-            packageId = "once_cell";
-          }
-          {
-            name = "openssl-macros";
-            packageId = "openssl-macros";
-          }
-          {
-            name = "openssl-sys";
-            packageId = "openssl-sys";
-            rename = "ffi";
-          }
-        ];
-        features = {
-          "aws-lc" = [ "ffi/aws-lc" ];
-          "aws-lc-fips" = [ "ffi/aws-lc-fips" ];
-          "bindgen" = [ "ffi/bindgen" ];
-          "unstable_boringssl" = [ "ffi/unstable_boringssl" ];
-          "vendored" = [ "ffi/vendored" ];
-        };
-        resolvedDefaultFeatures = [ "default" ];
-      };
-      "openssl-macros" = rec {
-        crateName = "openssl-macros";
-        version = "0.1.1";
-        edition = "2018";
-        sha256 = "173xxvfc63rr5ybwqwylsir0vq6xsj4kxiv4hmg4c3vscdmncj59";
-        procMacro = true;
-        libName = "openssl_macros";
-        dependencies = [
-          {
-            name = "proc-macro2";
-            packageId = "proc-macro2";
-          }
-          {
-            name = "quote";
-            packageId = "quote";
-          }
-          {
-            name = "syn";
-            packageId = "syn 2.0.117";
-            features = [ "full" ];
-          }
-        ];
-
-      };
       "openssl-probe" = rec {
         crateName = "openssl-probe";
         version = "0.2.1";
@@ -6121,48 +6021,6 @@ rec {
           "Alex Crichton <alex@alexcrichton.com>"
         ];
 
-      };
-      "openssl-sys" = rec {
-        crateName = "openssl-sys";
-        version = "0.9.112";
-        edition = "2021";
-        links = "openssl";
-        sha256 = "1nyvn3nvkcknjpkh8c19zjb9q3mbcyxgsvajw4mm09p2ngrmmmap";
-        build = "build/main.rs";
-        libName = "openssl_sys";
-        authors = [
-          "Alex Crichton <alex@alexcrichton.com>"
-          "Steven Fackler <sfackler@gmail.com>"
-        ];
-        dependencies = [
-          {
-            name = "libc";
-            packageId = "libc";
-          }
-        ];
-        buildDependencies = [
-          {
-            name = "cc";
-            packageId = "cc";
-          }
-          {
-            name = "pkg-config";
-            packageId = "pkg-config";
-          }
-          {
-            name = "vcpkg";
-            packageId = "vcpkg";
-          }
-        ];
-        features = {
-          "aws-lc" = [ "dep:aws-lc-sys" ];
-          "aws-lc-fips" = [ "dep:aws-lc-fips-sys" ];
-          "bindgen" = [ "dep:bindgen" ];
-          "bssl-sys" = [ "dep:bssl-sys" ];
-          "openssl-src" = [ "dep:openssl-src" ];
-          "unstable_boringssl" = [ "bssl-sys" ];
-          "vendored" = [ "openssl-src" ];
-        };
       };
       "opentelemetry" = rec {
         crateName = "opentelemetry";
@@ -10185,10 +10043,6 @@ rec {
           {
             name = "indoc";
             packageId = "indoc";
-          }
-          {
-            name = "openssl";
-            packageId = "openssl";
           }
           {
             name = "product-config";
