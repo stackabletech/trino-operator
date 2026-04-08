@@ -383,7 +383,7 @@ pub enum Error {
     ClientSpoolingProtocolTrinoVersion { product_version: String },
 
     #[snafu(display("failed to create internal secret"))]
-    InvalidInternalSecret {
+    CreateInternalSecret {
         source: random_secret_creation::Error,
     },
 }
