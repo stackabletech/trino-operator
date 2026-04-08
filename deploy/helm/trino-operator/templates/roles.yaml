@@ -92,6 +92,8 @@ rules:
       - get
       - list
       - patch
+  # Required for maintaining the CRDs within the operator (including the conversion webhook info).
+  # Also for the startup condition check before the controller can run.
   - apiGroups:
       - apiextensions.k8s.io
     resources:
@@ -205,6 +207,7 @@ rules:
       - create
       - patch
 {{ if .Capabilities.APIVersions.Has "security.openshift.io/v1" }}
+  # Required on OpenShift to allow the Trino pods to run as a non-root user.
   - apiGroups:
       - security.openshift.io
     resources:
