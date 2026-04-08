@@ -191,14 +191,6 @@ metadata:
   {{- include "operator.labels" . | nindent 4 }}
 rules:
   - apiGroups:
-      - ""
-    resources:
-      - configmaps
-      - secrets
-      - serviceaccounts
-    verbs:
-      - get
-  - apiGroups:
       - events.k8s.io
     resources:
       - events
