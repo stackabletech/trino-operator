@@ -546,7 +546,7 @@ pub async fn reconcile_trino(
         client,
     )
     .await
-    .context(InvalidInternalSecretSnafu)?;
+    .context(CreateInternalSecretSnafu)?;
 
     // This secret is created even if spooling is not configured.
     // Trino currently requires the secret to be exactly 256 bits long.
@@ -558,7 +558,7 @@ pub async fn reconcile_trino(
         client,
     )
     .await
-    .context(InvalidInternalSecretSnafu)?;
+    .context(CreateInternalSecretSnafu)?;
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
