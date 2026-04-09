@@ -6,25 +6,6 @@ metadata:
   labels:
   {{- include "operator.labels" . | nindent 4 }}
 rules:
-  # For OPA dependents. Note that OPA it's self is listed here because it's own resource name
-  # doesn't follow the *clusters convention
-  - apiGroups:
-      - opa.stackable.tech
-    resources:
-      - regorules
-    verbs:
-      - create
-      - get
-      - list
-      - watch
-      - patch
-  - apiGroups:
-      - ""
-    resources:
-      - nodes
-    verbs:
-      - list
-      - watch
   # For automatic cluster domain detection
   - apiGroups:
       - ""
@@ -32,14 +13,26 @@ rules:
       - nodes/proxy
     verbs:
       - get
+  # Manage core workload resources created per TrinoCluster.
+  # All resources are applied via Server-Side Apply (create + patch) and tracked for
+  # orphan cleanup (list + delete).
   - apiGroups:
       - ""
     resources:
-      - pods
       - configmaps
-      - secrets
       - services
-      - endpoints
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - watch
+  # ServiceAccount created per TrinoCluster for workload pod identity.
+  # Applied via SSA and tracked for orphan cleanup.
+  - apiGroups:
+      - ""
+    resources:
       - serviceaccounts
     verbs:
       - create
@@ -47,8 +40,20 @@ rules:
       - get
       - list
       - patch
-      - update
-      - watch
+  # Shared internal authentication secrets (communication key and spooling secret).
+  # Delete is needed to migrate immutable secrets to mutable ones.
+  # Orphan cleanup not needed (instead, Kubernetes GC via owner reference).
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+      - delete
+      - get
+      - patch
+  # RoleBinding created per TrinoCluster to bind the product ClusterRole to the workload
+  # ServiceAccount. Applied via SSA and tracked for orphan cleanup.
   - apiGroups:
       - rbac.authorization.k8s.io
     resources:
@@ -59,32 +64,29 @@ rules:
       - get
       - list
       - patch
-      - update
-      - watch
+  # Required to bind the product ClusterRole to the per-cluster ServiceAccount.
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterroles
+    verbs:
+      - bind
+    resourceNames:
+      - {{ include "operator.name" . }}-clusterrole
+  # StatefulSet created per role group. Applied via SSA, tracked for orphan cleanup, and
+  # owned by the controller.
   - apiGroups:
       - apps
     resources:
       - statefulsets
     verbs:
-      - get
-      - create
-      - delete
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - batch
-    resources:
-      - jobs
-    verbs:
       - create
       - delete
       - get
       - list
       - patch
-      - update
       - watch
+  # PodDisruptionBudget created per role. Applied via SSA and tracked for orphan cleanup.
   - apiGroups:
       - policy
     resources:
@@ -95,34 +97,35 @@ rules:
       - get
       - list
       - patch
-      - update
-      - watch
+  # Required for maintaining the CRDs within the operator (including the conversion webhook info).
+  # Also for the startup condition check before the controller can run.
   - apiGroups:
       - apiextensions.k8s.io
     resources:
       - customresourcedefinitions
     verbs:
-      - get
       # Required to maintain the CRD. The operator needs to do this, as it needs to enter e.g. it's
       # generated certificate in the conversion webhook.
       {{- if .Values.maintenance.customResourceDefinitions.maintain }}
       - create
       - patch
+      {{- end }}
       # Required for startup condition
       - list
       - watch
-      {{- end }}
+  # Listener created per role group for external access. Applied via SSA and tracked for orphan
+  # cleanup.
   - apiGroups:
       - listeners.stackable.tech
     resources:
       - listeners
     verbs:
-      - get
-      - list
-      - watch
-      - patch
       - create
       - delete
+      - get
+      - list
+      - patch
+  # Required to report reconciliation results and warnings back to the TrinoCluster object.
   - apiGroups:
       - events.k8s.io
     resources:
@@ -130,6 +133,7 @@ rules:
     verbs:
       - create
       - patch
+  # Primary CRD: watched by the controller and read during reconciliation.
   - apiGroups:
       - {{ include "operator.name" . }}.stackable.tech
     resources:
@@ -137,14 +141,15 @@ rules:
     verbs:
       - get
       - list
-      - patch
       - watch
+  # Status subresource: updated at the end of every reconciliation.
   - apiGroups:
       - {{ include "operator.name" . }}.stackable.tech
     resources:
       - {{ include "operator.name" . }}clusters/status
     verbs:
       - patch
+  # Read S3 connection configuration referenced in catalog definitions.
   - apiGroups:
       - s3.stackable.tech
     resources:
@@ -153,6 +158,7 @@ rules:
       - get
       - list
       - watch
+  # Read TrinoCatalog resources referenced in the TrinoCluster spec.
   - apiGroups:
       - trino.stackable.tech
     resources:
@@ -161,6 +167,7 @@ rules:
       - get
       - list
       - watch
+  # Read authentication class configuration referenced in the TrinoCluster spec.
   - apiGroups:
       - authentication.stackable.tech
     resources:
@@ -169,44 +176,3 @@ rules:
       - get
       - list
       - watch
-  - apiGroups:
-      - rbac.authorization.k8s.io
-    resources:
-      - clusterroles
-    verbs:
-      - bind
-    resourceNames:
-      - {{ include "operator.name" . }}-clusterrole
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{ include "operator.name" . }}-clusterrole
-  labels:
-  {{- include "operator.labels" . | nindent 4 }}
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-      - secrets
-      - serviceaccounts
-    verbs:
-      - get
-  - apiGroups:
-      - events.k8s.io
-    resources:
-      - events
-    verbs:
-      - create
-      - patch
-{{ if .Capabilities.APIVersions.Has "security.openshift.io/v1" }}
-  - apiGroups:
-      - security.openshift.io
-    resources:
-      - securitycontextconstraints
-    resourceNames:
-      - nonroot-v2
-    verbs:
-      - use
-{{ end }}
