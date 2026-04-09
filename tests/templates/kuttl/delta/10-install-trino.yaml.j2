@@ -1,0 +1,99 @@
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  # The name of the catalog as it will appear in Trino
+  name: delta
+  labels:
+    trino: trino
+spec:
+  connector:
+    # Specify deltaLake here when defining a Delta Lake catalog
+    deltaLake:
+      metastore:
+        configMap: hive
+      s3:
+        reference: minio
+  configOverrides:
+    #
+    # Needed for writing (deleting) data on S3
+    #
+    delta.enable-non-concurrent-writes: 'true'
+    #
+    # Needed for the register_table() call in the Python test script.
+    #
+    delta.register-table-procedure.enabled: 'true'
+    #
+    # 2026-03-27: This was previously needed to avoid this bug: https://github.com/trinodb/trino/issues/28885
+    # Now commented out as we now have a patched Trino version with a backported fix.
+    #
+    # parquet.use-column-index: 'false'
+---
+apiVersion: authentication.stackable.tech/v1alpha1
+kind: AuthenticationClass
+metadata:
+  name: trino-users-auth
+spec:
+  provider:
+    static:
+      userCredentialsSecret:
+        name: trino-users
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-users
+type: kubernetes.io/opaque
+stringData:
+  admin: admin
+  alice: alice
+  bob: bob
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgresql-credentials-secret
+stringData:
+  user: hive
+  password: hive
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  image:
+{% if test_scenario['values']['trino-delta'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino-delta'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino-delta'].split(',')[0] }}"
+{% else %}
+    productVersion: "{{ test_scenario['values']['trino-delta'] }}"
+{% endif %}
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: trino
+    authentication:
+      - authenticationClass: trino-users-auth
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    envOverrides:
+      COMMON_VAR: role-value # overridden by role group below
+      ROLE_VAR: role-value   # only defined here at role level
+    roleGroups:
+      default:
+        replicas: 1
+  workers:
+    config:
+      gracefulShutdownTimeout: 5s # Let the test run faster
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
