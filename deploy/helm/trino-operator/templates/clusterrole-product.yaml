@@ -1,0 +1,21 @@
+---
+# Product ClusterRole: bound (via per TrinoCluster RoleBinding) to the ServiceAccount that Trino
+# workload pods (coordinators, workers) run as.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "operator.name" . }}-clusterrole
+  labels:
+  {{- include "operator.labels" . | nindent 4 }}
+rules:
+{{ if .Capabilities.APIVersions.Has "security.openshift.io/v1" }}
+  # Required on OpenShift to allow the Trino pods to run as a non-root user.
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - nonroot-v2
+    verbs:
+      - use
+{{ end }}

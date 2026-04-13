@@ -27,11 +27,12 @@ use stackable_operator::{
             volume::{SecretFormat, SecretOperatorVolumeSourceBuilder, VolumeBuilder},
         },
     },
-    client::Client,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
     commons::{
         product_image_selection::{self, ResolvedProductImage},
+        random_secret_creation,
         rbac::build_rbac_resources,
+        secret_class::SecretClassVolumeProvisionParts,
     },
     constants::RESTART_CONTROLLER_ENABLED_LABEL,
     k8s_openapi::{
@@ -40,7 +41,7 @@ use stackable_operator::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
                 ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, ExecAction,
-                HTTPGetAction, Probe, Secret, SecretKeySelector, Volume,
+                HTTPGetAction, Probe, SecretKeySelector, Volume,
             },
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
@@ -179,11 +180,6 @@ pub enum Error {
     ApplyRoleGroupStatefulSet {
         source: stackable_operator::cluster_resources::Error,
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
-    },
-
-    #[snafu(display("failed to apply internal secret"))]
-    ApplyInternalSecret {
-        source: stackable_operator::client::Error,
     },
 
     #[snafu(display("invalid product config"))]
@@ -385,6 +381,11 @@ pub enum Error {
         "client spooling protocol is not supported for Trino version {product_version}"
     ))]
     ClientSpoolingProtocolTrinoVersion { product_version: String },
+
+    #[snafu(display("failed to create internal secret"))]
+    CreateInternalSecret {
+        source: random_secret_creation::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -537,25 +538,27 @@ pub async fn reconcile_trino(
         None => None,
     };
 
-    create_random_secret(
+    random_secret_creation::create_random_secret_if_not_exists(
         &shared_internal_secret_name(trino),
         ENV_INTERNAL_SECRET,
         512,
         trino,
         client,
     )
-    .await?;
+    .await
+    .context(CreateInternalSecretSnafu)?;
 
     // This secret is created even if spooling is not configured.
     // Trino currently requires the secret to be exactly 256 bits long.
-    create_random_secret(
+    random_secret_creation::create_random_secret_if_not_exists(
         &shared_spooling_secret_name(trino),
         ENV_SPOOLING_SECRET,
         32,
         trino,
         client,
     )
-    .await?;
+    .await
+    .context(CreateInternalSecretSnafu)?;
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
@@ -1541,63 +1544,12 @@ fn build_recommended_labels<'a>(
     }
 }
 
-async fn create_random_secret(
-    secret_name: &str,
-    secret_key: &str,
-    secret_byte_size: usize,
-    trino: &v1alpha1::TrinoCluster,
-    client: &Client,
-) -> Result<()> {
-    let mut internal_secret = BTreeMap::new();
-    internal_secret.insert(secret_key.to_string(), get_random_base64(secret_byte_size));
-
-    let secret = Secret {
-        immutable: Some(true),
-        metadata: ObjectMetaBuilder::new()
-            .name(secret_name)
-            .namespace_opt(trino.namespace())
-            .ownerreference_from_resource(trino, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .build(),
-        string_data: Some(internal_secret),
-        ..Secret::default()
-    };
-
-    if client
-        .get_opt::<Secret>(
-            &secret.name_any(),
-            secret
-                .namespace()
-                .as_deref()
-                .context(ObjectHasNoNamespaceSnafu)?,
-        )
-        .await
-        .context(FailedToRetrieveInternalSecretSnafu)?
-        .is_none()
-    {
-        client
-            .apply_patch(CONTROLLER_NAME, &secret, &secret)
-            .await
-            .context(ApplyInternalSecretSnafu)?;
-    }
-
-    Ok(())
-}
-
 fn shared_internal_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
     format!("{}-internal-secret", trino.name_any())
 }
 
 fn shared_spooling_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
     format!("{}-spooling-secret", trino.name_any())
-}
-
-// TODO: Maybe switch to something non-openssl.
-// See https://github.com/stackabletech/airflow-operator/pull/686#discussion_r2348354468 (which is currently under discussion)
-fn get_random_base64(byte_size: usize) -> String {
-    let mut buf: Vec<u8> = vec![0; byte_size];
-    openssl::rand::rand_bytes(&mut buf).unwrap();
-    openssl::base64::encode_block(&buf)
 }
 
 fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
@@ -1714,7 +1666,10 @@ fn create_tls_volume(
     requested_secret_lifetime: &Duration,
     listener_scope: Option<String>,
 ) -> Result<Volume> {
-    let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(tls_secret_class);
+    let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(
+        tls_secret_class,
+        SecretClassVolumeProvisionParts::PublicPrivate,
+    );
 
     secret_volume_source_builder
         .with_pod_scope()
@@ -1841,9 +1796,12 @@ fn tls_volume_mounts(
 
         let opa_tls_volume = VolumeBuilder::new(OPA_TLS_VOLUME_NAME)
             .ephemeral(
-                SecretOperatorVolumeSourceBuilder::new(tls_secret_class)
-                    .build()
-                    .context(TlsCertSecretClassVolumeBuildSnafu)?,
+                SecretOperatorVolumeSourceBuilder::new(
+                    tls_secret_class,
+                    SecretClassVolumeProvisionParts::PublicPrivate,
+                )
+                .build()
+                .context(TlsCertSecretClassVolumeBuildSnafu)?,
             )
             .build();
 

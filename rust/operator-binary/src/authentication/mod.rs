@@ -521,6 +521,14 @@ impl TryFrom<Vec<ResolvedAuthenticationClassRef>> for TrinoAuthenticationTypes {
                             auth_class_name: auth_class_name.clone(),
                         },
                     )?;
+                    if oidc.client_authentication_method
+                        != stackable_operator::crd::authentication::oidc::v1alpha1::ClientAuthenticationMethod::default()
+                    {
+                        tracing::warn!(
+                            "Trino does not support configuring the OIDC client authentication method. \
+                             The setting will be ignored and Trino will use its default method."
+                        );
+                    }
                     oidc_authenticators.push(OidcAuthenticator::new(
                         auth_class_name,
                         provider,
@@ -676,6 +684,7 @@ mod tests {
             client_auth_options: Some(oidc::v1alpha1::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
+                client_authentication_method: Default::default(),
                 product_specific_fields: (),
             }),
         }
