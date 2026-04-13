@@ -52,7 +52,6 @@ IMPORTANT: Due to Kubernetes restrictions, the name of the AuthenticationClass m
 
 Changes to the referenced user Secret (e.g. adding or removing a user) are updated in Trino without restarts but after a small delay.
 This heavily depends on Kubernetes and may take a couple of minutes.
-To prevent restarts triggered by the restart controller, the Secret must be annotated with `restarter.stackable.tech/ignore: "true"`.
 
 Adding or removing an AuthenticationClass will however result in a Pod restart.
 

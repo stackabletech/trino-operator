@@ -119,6 +119,9 @@ impl TrinoPasswordAuthentication {
                         Container::Trino,
                         FileAuthenticator::password_db_volume_mount(),
                     );
+
+                    password_authentication_config
+                        .add_hot_reloaded_secret(file_authenticator.secret_name());
                 }
                 TrinoPasswordAuthenticator::Ldap(ldap_authenticator) => {
                     let config_file_name = ldap_authenticator.config_file_name();

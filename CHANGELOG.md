@@ -6,8 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Re-enable hot-reloading in password file Secrets with the annotation
-  `restarter.stackable.tech/ignore: "true"` ([#868]).
+- Re-enable hot-reloading of password file Secrets ([#868]).
 
 [#868]: https://github.com/stackabletech/trino-operator/pull/868
 

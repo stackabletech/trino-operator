@@ -65,10 +65,15 @@ impl FileAuthenticator {
         config_data
     }
 
+    /// Return the name of the Secret providing the usernames and passwords
+    pub fn secret_name(&self) -> String {
+        self.file.user_credentials_secret.name.clone()
+    }
+
     /// Build the volume for the user secret
     pub fn secret_volume(&self) -> Volume {
         VolumeBuilder::new(self.secret_volume_name())
-            .with_secret(&self.file.user_credentials_secret.name, false)
+            .with_secret(self.secret_name(), false)
             .build()
     }
 
