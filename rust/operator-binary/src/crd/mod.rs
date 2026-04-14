@@ -230,20 +230,11 @@ pub mod versioned {
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub coordinators: Option<
-            Role<
-                TrinoConfigFragment,
-                TrinoConfigOverrides,
-                TrinoCoordinatorRoleConfig,
-                JavaCommonConfig,
-            >,
-        >,
+        pub coordinators: Option<super::TrinoCoordinatorRoleType>,
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub workers: Option<
-            Role<TrinoConfigFragment, TrinoConfigOverrides, GenericRoleConfig, JavaCommonConfig>,
-        >,
+        pub workers: Option<super::TrinoRoleType>,
     }
 
     #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
