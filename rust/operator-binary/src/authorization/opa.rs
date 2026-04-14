@@ -44,7 +44,7 @@ impl TrinoOpaConfig {
     ) -> Result<Self, stackable_operator::commons::opa::Error> {
         let non_batched_connection_string = opa_config
             .opa
-            .full_document_url_from_config_map(client, trino, Some("allow"), OpaApiVersion::V1)
+            .full_document_url_from_config_map(client, trino, Some("allow"), &OpaApiVersion::V1)
             .await?;
         let batched_connection_string = opa_config
             .opa
@@ -53,7 +53,7 @@ impl TrinoOpaConfig {
                 trino,
                 // Sticking to example https://trino.io/docs/current/security/opa-access-control.html
                 Some("batch"),
-                OpaApiVersion::V1,
+                &OpaApiVersion::V1,
             )
             .await?;
         let row_filters_connection_string = opa_config
@@ -63,7 +63,7 @@ impl TrinoOpaConfig {
                 trino,
                 // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L46
                 Some("rowFilters"),
-                OpaApiVersion::V1,
+                &OpaApiVersion::V1,
             )
             .await?;
 
@@ -76,7 +76,7 @@ impl TrinoOpaConfig {
                         trino,
                         // Sticking to https://github.com/trinodb/trino/blob/455/plugin/trino-opa/src/test/java/io/trino/plugin/opa/TestOpaAccessControlDataFilteringSystem.java#L48
                         Some("batchColumnMasks"),
-                        OpaApiVersion::V1,
+                        &OpaApiVersion::V1,
                     )
                     .await?,
             )

@@ -25,6 +25,7 @@ use stackable_operator::{
         fragment::{self, Fragment, ValidationError},
         merge::Merge,
     },
+    config_overrides::{KeyValueConfigOverrides, KeyValueOverridesProvider},
     crd::authentication::core,
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
@@ -42,9 +43,25 @@ use stackable_operator::{
     versioned::versioned,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
-use v1alpha1::TrinoConfigFragment;
 
-use crate::crd::{discovery::TrinoPodRef, v1alpha1::TrinoCoordinatorRoleConfig};
+use crate::crd::discovery::TrinoPodRef;
+
+pub type TrinoCoordinatorRoleType = Role<
+    v1alpha1::TrinoConfigFragment,
+    v1alpha1::TrinoConfigOverrides,
+    v1alpha1::TrinoCoordinatorRoleConfig,
+    JavaCommonConfig,
+>;
+
+pub type TrinoRoleType = Role<
+    v1alpha1::TrinoConfigFragment,
+    v1alpha1::TrinoConfigOverrides,
+    GenericRoleConfig,
+    JavaCommonConfig,
+>;
+
+pub type TrinoRoleGroupType =
+    RoleGroup<v1alpha1::TrinoConfigFragment, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>;
 
 pub const FIELD_MANAGER: &str = "trino-operator";
 pub const APP_NAME: &str = "trino";
@@ -213,12 +230,73 @@ pub mod versioned {
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub coordinators:
-            Option<Role<TrinoConfigFragment, TrinoCoordinatorRoleConfig, JavaCommonConfig>>,
+        pub coordinators: Option<
+            Role<
+                TrinoConfigFragment,
+                TrinoConfigOverrides,
+                TrinoCoordinatorRoleConfig,
+                JavaCommonConfig,
+            >,
+        >,
 
         // no doc - it's in the struct.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub workers: Option<Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>>,
+        pub workers: Option<
+            Role<TrinoConfigFragment, TrinoConfigOverrides, GenericRoleConfig, JavaCommonConfig>,
+        >,
+    }
+
+    #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoConfigOverrides {
+        #[serde(
+            default,
+            rename = "config.properties",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub config_properties: Option<KeyValueConfigOverrides>,
+
+        #[serde(
+            default,
+            rename = "node.properties",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub node_properties: Option<KeyValueConfigOverrides>,
+
+        #[serde(
+            default,
+            rename = "log.properties",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub log_properties: Option<KeyValueConfigOverrides>,
+
+        #[serde(
+            default,
+            rename = "security.properties",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub security_properties: Option<KeyValueConfigOverrides>,
+
+        #[serde(
+            default,
+            rename = "access-control.properties",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub access_control_properties: Option<KeyValueConfigOverrides>,
+
+        #[serde(
+            default,
+            rename = "exchange-manager.properties",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub exchange_manager_properties: Option<KeyValueConfigOverrides>,
+
+        #[serde(
+            default,
+            rename = "spooling-manager.properties",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub spooling_manager_properties: Option<KeyValueConfigOverrides>,
     }
 
     // TODO: move generic version to op-rs?
@@ -388,6 +466,24 @@ pub mod versioned {
 impl v1alpha1::TrinoAuthorizationOpaConfig {
     pub fn enabled_column_masking_default() -> bool {
         true
+    }
+}
+
+impl KeyValueOverridesProvider for v1alpha1::TrinoConfigOverrides {
+    fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
+        let field = match file {
+            CONFIG_PROPERTIES => self.config_properties.as_ref(),
+            NODE_PROPERTIES => self.node_properties.as_ref(),
+            LOG_PROPERTIES => self.log_properties.as_ref(),
+            JVM_SECURITY_PROPERTIES => self.security_properties.as_ref(),
+            ACCESS_CONTROL_PROPERTIES => self.access_control_properties.as_ref(),
+            EXCHANGE_MANAGER_PROPERTIES => self.exchange_manager_properties.as_ref(),
+            SPOOLING_MANAGER_PROPERTIES => self.spooling_manager_properties.as_ref(),
+            _ => None,
+        };
+        field
+            .map(KeyValueConfigOverrides::as_product_config_overrides)
+            .unwrap_or_default()
     }
 }
 
@@ -781,11 +877,7 @@ impl v1alpha1::TrinoCluster {
     }
 
     /// Returns a reference to the role. Raises an error if the role is not defined.
-    pub fn role(
-        &self,
-        role_variant: &TrinoRole,
-    ) -> Result<Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>, Error>
-    {
+    pub fn role(&self, role_variant: &TrinoRole) -> Result<TrinoRoleType, Error> {
         match role_variant {
             TrinoRole::Coordinator => self
                 .spec
@@ -803,7 +895,7 @@ impl v1alpha1::TrinoCluster {
     pub fn rolegroup(
         &self,
         rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    ) -> Result<RoleGroup<v1alpha1::TrinoConfigFragment, JavaCommonConfig>, Error> {
+    ) -> Result<TrinoRoleGroupType, Error> {
         let trino_role =
             TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
                 role: rolegroup_ref.role.to_owned(),
@@ -986,9 +1078,7 @@ impl v1alpha1::TrinoCluster {
     }
 }
 
-fn extract_role_from_coordinator_config(
-    fragment: Role<TrinoConfigFragment, TrinoCoordinatorRoleConfig, JavaCommonConfig>,
-) -> Role<TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig> {
+fn extract_role_from_coordinator_config(fragment: TrinoCoordinatorRoleType) -> TrinoRoleType {
     Role {
         config: CommonConfiguration {
             config: fragment.config.config,
