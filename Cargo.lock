@@ -169,9 +169,9 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "axum"
-version = "0.8.8"
+version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b52af3cb4058c895d37317bb27508dccc8e5f2d39454016b297bf4a400597b8"
+checksum = "31b698c5f9a010f6573133b09e0de5408834d0c82f8d7475a89fc1867a71cd90"
 dependencies = [
  "axum-core",
  "bytes",
@@ -265,9 +265,9 @@ checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitflags"
-version = "2.11.0"
+version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
+checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
 name = "block-buffer"
@@ -302,9 +302,9 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "cc"
-version = "1.2.59"
+version = "1.2.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7a4d3ec6524d28a329fc53654bbadc9bdd7b0431f5d65f1a56ffb28a1ee5283"
+checksum = "43c5703da9466b66a946814e1adf53ea2c90f10063b86290cc9eb67ce3478a20"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -1053,6 +1053,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashbrown"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1153,9 +1159,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.27.7"
+version = "0.27.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3c93eb611681b207e1fe55d5a71ecf91572ec8a6705cdb6857f7d8d5242cf58"
+checksum = "33ca68d021ef39cf6463ab54c1d0f5daf03377b70561305bb89a8f83aab66e0f"
 dependencies = [
  "http",
  "hyper",
@@ -1163,7 +1169,6 @@ dependencies = [
  "log",
  "rustls",
  "rustls-native-certs",
- "rustls-pki-types",
  "tokio",
  "tokio-rustls",
  "tower-service",
@@ -1340,12 +1345,12 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.13.1"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45a8a2b9cb3e0b0c1803dbb0758ffac5de2f425b23c28f518faabd9d805342ff"
+checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.17.0",
 ]
 
 [[package]]
@@ -1458,9 +1463,9 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.94"
+version = "0.3.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e04e2ef80ce82e13552136fabeef8a5ed1f985a96805761cbb9a2c34e7664d9"
+checksum = "2964e92d1d9dc3364cae4d718d93f227e3abb088e747d92e0395bfdedf1c12ca"
 dependencies = [
  "cfg-if",
  "futures-util",
@@ -1519,7 +1524,7 @@ dependencies = [
 [[package]]
 name = "k8s-version"
 version = "0.1.3"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "darling",
  "regex",
@@ -1528,8 +1533,9 @@ dependencies = [
 
 [[package]]
 name = "kube"
-version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acc5a6a69da2975ed9925d56b5dcfc9cc739b66f37add06785b7c9f6d1e88741"
 dependencies = [
  "k8s-openapi",
  "kube-client",
@@ -1540,8 +1546,9 @@ dependencies = [
 
 [[package]]
 name = "kube-client"
-version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fcaf2d1f1a91e1805d4cd82e8333c022767ae8ffd65909bbef6802733a7dd40"
 dependencies = [
  "base64",
  "bytes",
@@ -1574,8 +1581,9 @@ dependencies = [
 
 [[package]]
 name = "kube-core"
-version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f126d2db7a8b532ec1d839ece2a71e2485dc3bbca6cc3c3f929becaa810e719e"
 dependencies = [
  "derive_more",
  "form_urlencoded",
@@ -1592,8 +1600,9 @@ dependencies = [
 
 [[package]]
 name = "kube-derive"
-version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6b9b97e121fce957f9cafc6da534abc4276983ab03190b76c09361e2df849fa"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1605,8 +1614,9 @@ dependencies = [
 
 [[package]]
 name = "kube-runtime"
-version = "3.0.1"
-source = "git+https://github.com/kube-rs/kube-rs?rev=fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5#fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c072737075826ee74d3e615e80334e41e617ca3d14fb46ef7cdfda822d6f15f2"
 dependencies = [
  "ahash",
  "async-broadcast",
@@ -1614,7 +1624,7 @@ dependencies = [
  "backon",
  "educe",
  "futures 0.3.32",
- "hashbrown",
+ "hashbrown 0.16.1",
  "hostname",
  "json-patch",
  "k8s-openapi",
@@ -1640,9 +1650,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.184"
+version = "0.2.185"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48f5d2a454e16a5ea0f4ced81bd44e4cfc7bd3a507b61887c99fd3538b28e4af"
+checksum = "52ff2c0fe9bc6cb6b14a0592c2ff4fa9ceb83eea9db979b0487cd054946a2b8f"
 
 [[package]]
 name = "libgit2-sys"
@@ -1910,7 +1920,7 @@ dependencies = [
  "futures-util",
  "opentelemetry",
  "percent-encoding",
- "rand 0.9.2",
+ "rand 0.9.4",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
@@ -2083,9 +2093,9 @@ dependencies = [
 
 [[package]]
 name = "pkg-config"
-version = "0.3.32"
+version = "0.3.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
+checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
 
 [[package]]
 name = "portable-atomic"
@@ -2219,9 +2229,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.2"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db2770f06117d490610c7488547d543617b21bfa07796d7a12f6f1bd53850d1"
+checksum = "44c5af06bb1b7d3216d91932aed5265164bf384dc89cd6ba05cf59a35f5f76ea"
 dependencies = [
  "rand_chacha 0.9.0",
  "rand_core 0.9.5",
@@ -2448,9 +2458,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.37"
+version = "0.23.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "758025cb5fccfd3bc2fd74708fd4682be41d99e5dff73c377c0646c6012c73a4"
+checksum = "69f9466fb2c14ea04357e91413efb882e2a6d4a406e625449bc0a5d360d53a21"
 dependencies = [
  "log",
  "once_cell",
@@ -2484,9 +2494,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.10"
+version = "0.103.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df33b2b81ac578cabaf06b89b0631153a3f416b0a886e8a7a1707fb51abbd1ef"
+checksum = "8279bb85272c9f10811ae6a6c547ff594d6a7f3c6c6b02ee9726d1d0dcfcdd06"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -2871,14 +2881,14 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 [[package]]
 name = "stackable-certs"
 version = "0.4.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "const-oid",
  "ecdsa",
  "k8s-openapi",
  "kube",
  "p256",
- "rand 0.9.2",
+ "rand 0.9.4",
  "rand_core 0.6.4",
  "rsa",
  "sha2",
@@ -2894,8 +2904,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.109.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+version = "0.110.0"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "base64",
  "clap",
@@ -2912,7 +2922,7 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "product-config",
- "rand 0.9.2",
+ "rand 0.9.4",
  "regex",
  "schemars",
  "semver",
@@ -2936,7 +2946,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator-derive"
 version = "0.3.1"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -2947,7 +2957,7 @@ dependencies = [
 [[package]]
 name = "stackable-shared"
 version = "0.1.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "jiff",
  "k8s-openapi",
@@ -2964,7 +2974,7 @@ dependencies = [
 [[package]]
 name = "stackable-telemetry"
 version = "0.6.3"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "axum",
  "clap",
@@ -3011,7 +3021,7 @@ dependencies = [
 [[package]]
 name = "stackable-versioned"
 version = "0.9.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "schemars",
  "serde",
@@ -3024,7 +3034,7 @@ dependencies = [
 [[package]]
 name = "stackable-versioned-macros"
 version = "0.9.0"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "convert_case",
  "convert_case_extras",
@@ -3042,7 +3052,7 @@ dependencies = [
 [[package]]
 name = "stackable-webhook"
 version = "0.9.1"
-source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.109.0#a4a204b0696a696b9a49c930703037dd124e876d"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.110.0#95490f2d703d20cf1895e5976fdc5fb8f02aa293"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -3055,7 +3065,7 @@ dependencies = [
  "kube",
  "opentelemetry",
  "opentelemetry-semantic-conventions",
- "rand 0.9.2",
+ "rand 0.9.4",
  "serde",
  "serde_json",
  "snafu 0.9.0",
@@ -3259,9 +3269,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.51.0"
+version = "1.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bd1c4c0fc4a7ab90fc15ef6daaa3ec3b893f004f915f2392557ed23237820cd"
+checksum = "a91135f59b1cbf38c91e73cf3386fca9bb77915c45ce2771460c9d92f0f3d776"
 dependencies = [
  "bytes",
  "libc",
@@ -3331,9 +3341,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.25.10+spec-1.1.0"
+version = "0.25.11+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a82418ca169e235e6c399a84e395ab6debeb3bc90edc959bf0f48647c6a32d1b"
+checksum = "0b59c4d22ed448339746c59b905d24568fcbb3ab65a500494f7b8c3e97739f2b"
 dependencies = [
  "indexmap",
  "toml_datetime",
@@ -3660,9 +3670,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.117"
+version = "0.2.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0551fc1bb415591e3372d0bc4780db7e587d84e2a7e79da121051c5c4b89d0b0"
+checksum = "0bf938a0bacb0469e83c1e148908bd7d5a6010354cf4fb73279b7447422e3a89"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -3673,9 +3683,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.67"
+version = "0.4.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03623de6905b7206edd0a75f69f747f134b7f0a2323392d664448bf2d3c5d87e"
+checksum = "f371d383f2fb139252e0bfac3b81b265689bf45b6874af544ffa4c975ac1ebf8"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -3683,9 +3693,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.117"
+version = "0.2.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fbdf9a35adf44786aecd5ff89b4563a90325f9da0923236f6104e603c7e86be"
+checksum = "eeff24f84126c0ec2db7a449f0c2ec963c6a49efe0698c4242929da037ca28ed"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -3693,9 +3703,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.117"
+version = "0.2.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dca9693ef2bab6d4e6707234500350d8dad079eb508dca05530c85dc3a529ff2"
+checksum = "9d08065faf983b2b80a79fd87d8254c409281cf7de75fc4b773019824196c904"
 dependencies = [
  "bumpalo",
  "proc-macro2",
@@ -3706,18 +3716,18 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.117"
+version = "0.2.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39129a682a6d2d841b6c429d0c51e5cb0ed1a03829d8b3d1e69a011e62cb3d3b"
+checksum = "5fd04d9e306f1907bd13c6361b5c6bfc7b3b3c095ed3f8a9246390f8dbdee129"
 dependencies = [
  "unicode-ident",
 ]
 
 [[package]]
 name = "web-sys"
-version = "0.3.94"
+version = "0.3.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd70027e39b12f0849461e08ffc50b9cd7688d942c1c8e3c7b22273236b4dd0a"
+checksum = "4f2dfbb17949fa2088e5d39408c48368947b86f7834484e87b73de55bc14d97d"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

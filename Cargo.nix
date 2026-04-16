@@ -499,9 +499,9 @@ rec {
       };
       "axum" = rec {
         crateName = "axum";
-        version = "0.8.8";
+        version = "0.8.9";
         edition = "2021";
-        sha256 = "1f4p0m04mgwpn8b40i9r5mgqxk6w11sv4yri6xfqk305nhyayllb";
+        sha256 = "146df5x8dhczm1sp939gr3839220wl6rxc1k65bzc450z72ridii";
         dependencies = [
           {
             name = "axum-core";
@@ -866,9 +866,9 @@ rec {
       };
       "bitflags" = rec {
         crateName = "bitflags";
-        version = "2.11.0";
+        version = "2.11.1";
         edition = "2021";
-        sha256 = "1bwjibwry5nfwsfm9kjg2dqx5n5nja9xymwbfl6svnn8jsz6ff44";
+        sha256 = "1cvqijg3rvwgis20a66vfdxannjsxfy5fgjqkaq3l13gyfcj4lf4";
         authors = [
           "The Rust Project Developers"
         ];
@@ -961,9 +961,9 @@ rec {
       };
       "cc" = rec {
         crateName = "cc";
-        version = "1.2.59";
+        version = "1.2.60";
         edition = "2018";
-        sha256 = "10sjxshjiyvglpqnap8z8fqdggf9mnxm8dn5kwr8mli4cpnd795p";
+        sha256 = "084a8ziprdlyrj865f3303qr0b7aaggilkl18slncss6m4yp1ia3";
         authors = [
           "Alex Crichton <alex@alexcrichton.com>"
         ];
@@ -3279,7 +3279,7 @@ rec {
         features = {
         };
       };
-      "hashbrown" = rec {
+      "hashbrown 0.16.1" = rec {
         crateName = "hashbrown";
         version = "0.16.1";
         edition = "2021";
@@ -3321,6 +3321,27 @@ rec {
           "serde" = [ "dep:serde_core" "dep:serde" ];
         };
         resolvedDefaultFeatures = [ "allocator-api2" "default" "default-hasher" "equivalent" "inline-more" "raw-entry" ];
+      };
+      "hashbrown 0.17.0" = rec {
+        crateName = "hashbrown";
+        version = "0.17.0";
+        edition = "2024";
+        sha256 = "0l8gvcz80lvinb7x22h53cqbi2y1fm603y2jhhh9qwygvkb7sijg";
+        authors = [
+          "Amanieu d'Antras <amanieu@gmail.com>"
+        ];
+        features = {
+          "alloc" = [ "dep:alloc" ];
+          "allocator-api2" = [ "dep:allocator-api2" ];
+          "core" = [ "dep:core" ];
+          "default" = [ "default-hasher" "inline-more" "allocator-api2" "equivalent" "raw-entry" ];
+          "default-hasher" = [ "dep:foldhash" ];
+          "equivalent" = [ "dep:equivalent" ];
+          "nightly" = [ "foldhash?/nightly" "bumpalo/allocator_api" ];
+          "rayon" = [ "dep:rayon" ];
+          "rustc-dep-of-std" = [ "nightly" "core" "alloc" "rustc-internal-api" ];
+          "serde" = [ "dep:serde_core" "dep:serde" ];
+        };
       };
       "heck" = rec {
         crateName = "heck";
@@ -3607,9 +3628,9 @@ rec {
       };
       "hyper-rustls" = rec {
         crateName = "hyper-rustls";
-        version = "0.27.7";
+        version = "0.27.9";
         edition = "2021";
-        sha256 = "0n6g8998szbzhnvcs1b7ibn745grxiqmlpg53xz206v826v3xjg3";
+        sha256 = "03vfnsm873wsp1dk0q85nxvk7w6syp8c2m5bcdjcyfgg4786ijik";
         libName = "hyper_rustls";
         dependencies = [
           {
@@ -3641,11 +3662,6 @@ rec {
             name = "rustls-native-certs";
             packageId = "rustls-native-certs";
             optional = true;
-          }
-          {
-            name = "rustls-pki-types";
-            packageId = "rustls-pki-types";
-            rename = "pki-types";
           }
           {
             name = "tokio";
@@ -4305,9 +4321,9 @@ rec {
       };
       "indexmap" = rec {
         crateName = "indexmap";
-        version = "2.13.1";
-        edition = "2021";
-        sha256 = "1zs2af09vgdaix8qzhi3bd12zpn5za7pbc6v0cc0q2ryrfws5a25";
+        version = "2.14.0";
+        edition = "2024";
+        sha256 = "1na9z6f0d5pkjr1lgsni470v98gv2r7c41j8w48skr089x2yjrnl";
         dependencies = [
           {
             name = "equivalent";
@@ -4316,7 +4332,7 @@ rec {
           }
           {
             name = "hashbrown";
-            packageId = "hashbrown";
+            packageId = "hashbrown 0.17.0";
             usesDefaultFeatures = false;
           }
         ];
@@ -4640,9 +4656,9 @@ rec {
       };
       "js-sys" = rec {
         crateName = "js-sys";
-        version = "0.3.94";
+        version = "0.3.95";
         edition = "2021";
-        sha256 = "1nb4fr7c78mrrdhmg04nbac1zvd5z3panvqka8sy30nfh3py411f";
+        sha256 = "1jhj3kgxxgwm0cpdjiz7i2qapqr7ya9qswadmr63dhwx3lnyjr19";
         libName = "js_sys";
         authors = [
           "The wasm-bindgen Developers"
@@ -4846,7 +4862,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         libName = "k8s_version";
@@ -4876,14 +4892,9 @@ rec {
       };
       "kube" = rec {
         crateName = "kube";
-        version = "3.0.1";
+        version = "3.1.0";
         edition = "2024";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/kube-rs/kube-rs";
-          rev = "fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5";
-          sha256 = "1irm4g79crlxjm3iqrgvx0f6wxdcj394ky84q89pk9i36y2mlw3n";
-        };
+        sha256 = "0hc7x38zdjdphmkx1b9pdyv3kiwwzkfbamjxjbcmx5x2knkadidc";
         authors = [
           "clux <sszynrae@gmail.com>"
           "Natalie Klestrup Röijezon <nat@nullable.se>"
@@ -4954,14 +4965,9 @@ rec {
       };
       "kube-client" = rec {
         crateName = "kube-client";
-        version = "3.0.1";
+        version = "3.1.0";
         edition = "2024";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/kube-rs/kube-rs";
-          rev = "fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5";
-          sha256 = "1irm4g79crlxjm3iqrgvx0f6wxdcj394ky84q89pk9i36y2mlw3n";
-        };
+        sha256 = "0h6xlwrjg07npsdr0rgxiyp6f9q27hryi0ndsh2ih7m9y78z5jhg";
         libName = "kube_client";
         authors = [
           "clux <sszynrae@gmail.com>"
@@ -5087,7 +5093,7 @@ rec {
             name = "tokio";
             packageId = "tokio";
             optional = true;
-            features = [ "time" "signal" "sync" ];
+            features = [ "time" "signal" "sync" "rt" ];
           }
           {
             name = "tokio-util";
@@ -5187,14 +5193,9 @@ rec {
       };
       "kube-core" = rec {
         crateName = "kube-core";
-        version = "3.0.1";
+        version = "3.1.0";
         edition = "2024";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/kube-rs/kube-rs";
-          rev = "fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5";
-          sha256 = "1irm4g79crlxjm3iqrgvx0f6wxdcj394ky84q89pk9i36y2mlw3n";
-        };
+        sha256 = "17ki1s0smv4vj8zkrk56phxxr1943sky5v1rv30jwlwbgbdx49pi";
         libName = "kube_core";
         authors = [
           "clux <sszynrae@gmail.com>"
@@ -5274,14 +5275,9 @@ rec {
       };
       "kube-derive" = rec {
         crateName = "kube-derive";
-        version = "3.0.1";
+        version = "3.1.0";
         edition = "2024";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/kube-rs/kube-rs";
-          rev = "fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5";
-          sha256 = "1irm4g79crlxjm3iqrgvx0f6wxdcj394ky84q89pk9i36y2mlw3n";
-        };
+        sha256 = "1yj9z0niwdh9djvr0cdh7ac7chmw999xmimgkizrbkhz29zbkffn";
         procMacro = true;
         libName = "kube_derive";
         authors = [
@@ -5328,14 +5324,9 @@ rec {
       };
       "kube-runtime" = rec {
         crateName = "kube-runtime";
-        version = "3.0.1";
+        version = "3.1.0";
         edition = "2024";
-        workspace_member = null;
-        src = pkgs.fetchgit {
-          url = "https://github.com/kube-rs/kube-rs";
-          rev = "fe69cc486ff8e62a7da61d64ec3ebbd9e64c43b5";
-          sha256 = "1irm4g79crlxjm3iqrgvx0f6wxdcj394ky84q89pk9i36y2mlw3n";
-        };
+        sha256 = "1whmdwnq5nnzgkpldyql7p51grj19qrq0pk17r6yfvl2fmq76wn0";
         libName = "kube_runtime";
         authors = [
           "clux <sszynrae@gmail.com>"
@@ -5373,7 +5364,7 @@ rec {
           }
           {
             name = "hashbrown";
-            packageId = "hashbrown";
+            packageId = "hashbrown 0.16.1";
           }
           {
             name = "hostname";
@@ -5475,9 +5466,9 @@ rec {
       };
       "libc" = rec {
         crateName = "libc";
-        version = "0.2.184";
+        version = "0.2.185";
         edition = "2021";
-        sha256 = "1bz4525m7lwzr63iidh7lp9ppz2c9va1pn6fyjh5wsp1ajjd5xa8";
+        sha256 = "13rbdaa59l3w92q7kfcxx8zbikm99zzw54h59aqvcv5wx47jrzsj";
         authors = [
           "The Rust Project Developers"
         ];
@@ -6415,7 +6406,7 @@ rec {
           }
           {
             name = "rand";
-            packageId = "rand 0.9.2";
+            packageId = "rand 0.9.4";
             optional = true;
             usesDefaultFeatures = false;
             features = [ "std" "std_rng" "small_rng" "os_rng" "thread_rng" ];
@@ -6954,9 +6945,9 @@ rec {
       };
       "pkg-config" = rec {
         crateName = "pkg-config";
-        version = "0.3.32";
+        version = "0.3.33";
         edition = "2018";
-        sha256 = "0k4h3gnzs94sjb2ix6jyksacs52cf1fanpwsmlhjnwrdnp8dppby";
+        sha256 = "17jnqmcbxsnwhg9gjf0nh6dj5k0x3hgwi3mb9krjnmfa9v435w8r";
         libName = "pkg_config";
         authors = [
           "Alex Crichton <alex@alexcrichton.com>"
@@ -7311,11 +7302,11 @@ rec {
         };
         resolvedDefaultFeatures = [ "rand_chacha" "std_rng" ];
       };
-      "rand 0.9.2" = rec {
+      "rand 0.9.4" = rec {
         crateName = "rand";
-        version = "0.9.2";
+        version = "0.9.4";
         edition = "2021";
-        sha256 = "1lah73ainvrgl7brcxx0pwhpnqa3sm3qaj672034jz8i0q7pgckd";
+        sha256 = "1sknbxgs6nfg0nxdd7689lwbyr2i4vaswchrv4b34z8vpc3azia4";
         authors = [
           "The Rand Project Developers"
           "The Rust Project Developers"
@@ -7335,7 +7326,6 @@ rec {
         ];
         features = {
           "default" = [ "std" "std_rng" "os_rng" "small_rng" "thread_rng" ];
-          "log" = [ "dep:log" ];
           "os_rng" = [ "rand_core/os_rng" ];
           "serde" = [ "dep:serde" "rand_core/serde" ];
           "std" = [ "rand_core/std" "rand_chacha?/std" "alloc" ];
@@ -8210,9 +8200,9 @@ rec {
       };
       "rustls" = rec {
         crateName = "rustls";
-        version = "0.23.37";
+        version = "0.23.38";
         edition = "2021";
-        sha256 = "193k5h0wcih6ghvkrxyzwncivr1bd3a8yw3lzp13pzfcbz5jb03m";
+        sha256 = "089ssmhd79f0kd22brh6lkaadql2p3pi6579ax1s0kn1n9pldyb9";
         dependencies = [
           {
             name = "log";
@@ -8332,9 +8322,9 @@ rec {
       };
       "rustls-webpki" = rec {
         crateName = "rustls-webpki";
-        version = "0.103.10";
+        version = "0.103.12";
         edition = "2021";
-        sha256 = "1vyipcdbazvhl6kyi1m8n0bg98sk25iv12bby2xcly653awb4cyz";
+        sha256 = "01nxzkfd1l96jzp04svc7iznlkarzx3wb9p63a0i17rc4y2vnyc2";
         libName = "webpki";
         dependencies = [
           {
@@ -9501,7 +9491,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         libName = "stackable_certs";
@@ -9538,7 +9528,7 @@ rec {
           }
           {
             name = "rand";
-            packageId = "rand 0.9.2";
+            packageId = "rand 0.9.4";
           }
           {
             name = "rand_core";
@@ -9599,12 +9589,12 @@ rec {
       };
       "stackable-operator" = rec {
         crateName = "stackable-operator";
-        version = "0.109.0";
+        version = "0.110.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         libName = "stackable_operator";
@@ -9681,7 +9671,7 @@ rec {
           }
           {
             name = "rand";
-            packageId = "rand 0.9.2";
+            packageId = "rand 0.9.4";
           }
           {
             name = "regex";
@@ -9784,7 +9774,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         procMacro = true;
@@ -9819,7 +9809,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         libName = "stackable_shared";
@@ -9900,7 +9890,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         libName = "stackable_telemetry";
@@ -10111,7 +10101,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         libName = "stackable_versioned";
@@ -10155,7 +10145,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         procMacro = true;
@@ -10223,7 +10213,7 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "a4a204b0696a696b9a49c930703037dd124e876d";
+          rev = "95490f2d703d20cf1895e5976fdc5fb8f02aa293";
           sha256 = "1fgc7i8rhq1nl9m4s69sbfiywy2jx4narpynvm3g54vd5yd4c6m2";
         };
         libName = "stackable_webhook";
@@ -10283,7 +10273,7 @@ rec {
           }
           {
             name = "rand";
-            packageId = "rand 0.9.2";
+            packageId = "rand 0.9.4";
           }
           {
             name = "serde";
@@ -10858,9 +10848,9 @@ rec {
       };
       "tokio" = rec {
         crateName = "tokio";
-        version = "1.51.0";
+        version = "1.52.0";
         edition = "2021";
-        sha256 = "1k90g0ij7vap4lwz45gr0kq97f637smdmxjyq47vjyjazk0c9l9b";
+        sha256 = "0xnpygq9578c8rqjgkj5bj8pgfx9zj337kvk3v4kigqwkgska4d9";
         authors = [
           "Tokio Contributors <team@tokio.rs>"
         ];
@@ -11170,9 +11160,9 @@ rec {
       };
       "toml_edit" = rec {
         crateName = "toml_edit";
-        version = "0.25.10+spec-1.1.0";
+        version = "0.25.11+spec-1.1.0";
         edition = "2024";
-        sha256 = "06rdlg34g1ply2drbp0fr4xypsvdmfay714s75n5w8wy2v51h958";
+        sha256 = "0awzffbkx33v9x4h19b5mfrwp3sn4ifr16y58sbk6j6l5v9c8n8b";
         dependencies = [
           {
             name = "indexmap";
@@ -12320,9 +12310,9 @@ rec {
       };
       "wasm-bindgen" = rec {
         crateName = "wasm-bindgen";
-        version = "0.2.117";
+        version = "0.2.118";
         edition = "2021";
-        sha256 = "1c6hi55mq70546hrvrx7wa27sn3yvf04gg6hf8riwn8mnhdzql85";
+        sha256 = "129s5r14fx4v4xrzpx2c6l860nkxpl48j50y7kl6j16bpah3iy8b";
         libName = "wasm_bindgen";
         authors = [
           "The wasm-bindgen Developers"
@@ -12371,9 +12361,9 @@ rec {
       };
       "wasm-bindgen-futures" = rec {
         crateName = "wasm-bindgen-futures";
-        version = "0.4.67";
+        version = "0.4.68";
         edition = "2021";
-        sha256 = "0znqqp9z52s4ckb94crjlbqbfd7i8zvnjpx7s3nhcwjvj3k3sqh3";
+        sha256 = "1y7bq5d9fk7s9xaayx38bgs9ns35na0kpb5zw19944zvya1x6wgk";
         libName = "wasm_bindgen_futures";
         authors = [
           "The wasm-bindgen Developers"
@@ -12400,9 +12390,9 @@ rec {
       };
       "wasm-bindgen-macro" = rec {
         crateName = "wasm-bindgen-macro";
-        version = "0.2.117";
+        version = "0.2.118";
         edition = "2021";
-        sha256 = "1gl6gqy60khhyqv354m0kmgk541sass8kzymxim7hi6zbaizkgbz";
+        sha256 = "1v98r8vs17cj8918qsg0xx4nlg4nxk1g0jd4nwnyrh1687w29zzf";
         procMacro = true;
         libName = "wasm_bindgen_macro";
         authors = [
@@ -12424,9 +12414,9 @@ rec {
       };
       "wasm-bindgen-macro-support" = rec {
         crateName = "wasm-bindgen-macro-support";
-        version = "0.2.117";
+        version = "0.2.118";
         edition = "2021";
-        sha256 = "1wlza8xdr18cac2wm3ahxdwx1nnqa01m0d3jf3kd9dmsy8z6kafw";
+        sha256 = "0169jr0q469hfx5zqxfyywf2h2f4aj17vn4zly02nfwqmxghc24x";
         libName = "wasm_bindgen_macro_support";
         authors = [
           "The wasm-bindgen Developers"
@@ -12460,10 +12450,10 @@ rec {
       };
       "wasm-bindgen-shared" = rec {
         crateName = "wasm-bindgen-shared";
-        version = "0.2.117";
+        version = "0.2.118";
         edition = "2021";
         links = "wasm_bindgen";
-        sha256 = "0frxrdi1w0cswv8v7n1972hd23nbwm8hr7a2dhdq8bbd59l9l4ir";
+        sha256 = "0ag1vvdzi4334jlzilsy14y3nyzwddf1ndn62fyhf6bg62g4vl2z";
         libName = "wasm_bindgen_shared";
         authors = [
           "The wasm-bindgen Developers"
@@ -12478,9 +12468,9 @@ rec {
       };
       "web-sys" = rec {
         crateName = "web-sys";
-        version = "0.3.94";
+        version = "0.3.95";
         edition = "2021";
-        sha256 = "02nxnhv349r2gcy8w71cjj6nimww1g2zy20y8r4hhbxi75z04w6d";
+        sha256 = "0zfr2jy5bpkkggl88i43yy37p538hg20i56kwn421yj9g6qznbag";
         libName = "web_sys";
         authors = [
           "The wasm-bindgen Developers"

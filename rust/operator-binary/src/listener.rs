@@ -45,7 +45,7 @@ pub fn build_group_listener(
             .name(listener_group_name)
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(object_labels)
+            .with_recommended_labels(&object_labels)
             .context(BuildObjectMetaSnafu)?
             .build(),
         spec: ListenerSpec {

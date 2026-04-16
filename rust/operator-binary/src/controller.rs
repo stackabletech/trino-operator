@@ -66,7 +66,7 @@ use stackable_operator::{
             CustomContainerLogConfig,
         },
     },
-    role_utils::{GenericRoleConfig, JavaCommonConfig, Role, RoleGroupRef},
+    role_utils::{GenericRoleConfig, RoleGroupRef},
     shared::time::Duration,
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
@@ -90,7 +90,7 @@ use crate::{
         METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES,
         STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole,
+        TrinoRole, TrinoRoleType,
         authentication::resolve_authentication_classes,
         catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
@@ -739,7 +739,7 @@ pub async fn reconcile_trino(
 fn build_rolegroup_config_map(
     trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
-    role: &Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
+    role: &TrinoRoleType,
     trino_role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
     config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
@@ -960,7 +960,7 @@ fn build_rolegroup_config_map(
                 .name(rolegroup_ref.object_name())
                 .ownerreference_from_resource(trino, None, Some(true))
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
-                .with_recommended_labels(build_recommended_labels(
+                .with_recommended_labels(&build_recommended_labels(
                     trino,
                     &resolved_product_image.app_version_label_value,
                     &rolegroup_ref.role,
@@ -991,7 +991,7 @@ fn build_rolegroup_catalog_config_map(
                 .name(format!("{}-catalog", rolegroup_ref.object_name()))
                 .ownerreference_from_resource(trino, None, Some(true))
                 .context(ObjectMissingMetadataForOwnerRefSnafu)?
-                .with_recommended_labels(build_recommended_labels(
+                .with_recommended_labels(&build_recommended_labels(
                     trino,
                     &resolved_product_image.app_version_label_value,
                     &rolegroup_ref.role,
@@ -1221,7 +1221,7 @@ fn build_rolegroup_statefulset(
             .context(AddVolumeMountSnafu)?;
 
         // Used for PVC templates that cannot be modified once they are deployed
-        let unversioned_recommended_labels = Labels::recommended(build_recommended_labels(
+        let unversioned_recommended_labels = Labels::recommended(&build_recommended_labels(
             trino,
             // A version value is required, and we do want to use the "recommended" format for the other desired labels
             "none",
@@ -1328,7 +1328,7 @@ fn build_rolegroup_statefulset(
     }
 
     let metadata = ObjectMetaBuilder::new()
-        .with_recommended_labels(build_recommended_labels(
+        .with_recommended_labels(&build_recommended_labels(
             trino,
             &resolved_product_image.app_version_label_value,
             &role_group_ref.role,
@@ -1402,7 +1402,7 @@ fn build_rolegroup_statefulset(
             .name(role_group_ref.object_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(build_recommended_labels(
+            .with_recommended_labels(&build_recommended_labels(
                 trino,
                 &resolved_product_image.app_version_label_value,
                 &role_group_ref.role,
@@ -1521,7 +1521,7 @@ fn validated_product_config(
     );
 
     let role_config =
-        transform_all_roles_to_config(trino, roles).context(ProductConfigTransformSnafu)?;
+        transform_all_roles_to_config(trino, &roles).context(ProductConfigTransformSnafu)?;
 
     validate_all_roles_and_groups_config(version, &role_config, product_config, false, false)
         .context(InvalidProductConfigSnafu)
@@ -1995,7 +1995,7 @@ mod tests {
             &format!("{}.0.0", resolved_product_image.product_version),
             &transform_all_roles_to_config(
                 &trino,
-                [
+                &HashMap::from([
                     (
                         TrinoRole::Coordinator.to_string(),
                         (
@@ -2007,8 +2007,7 @@ mod tests {
                         TrinoRole::Worker.to_string(),
                         (config_files, trino.role(&TrinoRole::Worker).unwrap()),
                     ),
-                ]
-                .into(),
+                ]),
             )
             .unwrap(),
             // Using this instead of ProductConfigManager::from_yaml_file, as that did not find the file

@@ -3,12 +3,12 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     memory::{BinaryMultiple, MemoryQuantity},
-    role_utils::{self, GenericRoleConfig, JavaCommonConfig, JvmArgumentOverrides, Role},
+    role_utils::{self, JvmArgumentOverrides},
 };
 
 use crate::crd::{
     JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT, RW_CONFIG_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, v1alpha1,
+    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, TrinoRoleType, v1alpha1,
 };
 
 #[derive(Snafu, Debug)]
@@ -42,7 +42,7 @@ pub enum Error {
 pub fn jvm_config(
     product_version: u16,
     merged_config: &v1alpha1::TrinoConfig,
-    role: &Role<v1alpha1::TrinoConfigFragment, GenericRoleConfig, JavaCommonConfig>,
+    role: &TrinoRoleType,
     role_group: &str,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;

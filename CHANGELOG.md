@@ -6,9 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: `configOverrides` now only accepts the supported config file names
+  (`config.properties`, `node.properties`, `log.properties`, `security.properties`,
+  `access-control.properties`, `exchange-manager.properties`,
+  `spooling-manager.properties`). Previously arbitrary keys were silently accepted
+  but ignored ([#878]).
 - Document Helm deployed RBAC permissions and remove unnecessary permissions ([#869]).
-- Bump stackable-operator to 0.109.0 ([#877]).
-- Warn when an unsupported OIDC client authentication method is configured ([#877]).
+- Bump `stackable-operator` to 0.110.0 and `kube` to 3.1.0 ([#878]).
 
 ### Fixed
 
@@ -21,7 +25,7 @@ All notable changes to this project will be documented in this file.
 [#868]: https://github.com/stackabletech/trino-operator/pull/868
 [#869]: https://github.com/stackabletech/trino-operator/pull/869
 [#876]: https://github.com/stackabletech/trino-operator/pull/876
-[#877]: https://github.com/stackabletech/trino-operator/pull/877
+[#878]: https://github.com/stackabletech/trino-operator/pull/878
 
 ## [26.3.0] - 2026-03-16
 
