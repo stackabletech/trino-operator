@@ -51,7 +51,7 @@ use stackable_operator::{
         core::{DeserializeGuard, error_boundary},
         runtime::{controller::Action, reflector::ObjectRef},
     },
-    kvp::{Annotation, Labels, ObjectLabels},
+    kvp::{Annotation, Annotations, Labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
     product_config_utils::{
@@ -1381,6 +1381,21 @@ fn build_rolegroup_statefulset(
     pod_template.merge_from(role.config.pod_overrides.clone());
     pod_template.merge_from(rolegroup.config.pod_overrides.clone());
 
+    let ignore_secret_annotations = trino_authentication_config
+        .hot_reloaded_secrets()
+        .iter()
+        .enumerate()
+        .map(|(i, secret_name)| {
+            (
+                format!("restarter.stackable.tech/ignore-secret.{i}"),
+                secret_name,
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let annotations =
+        Annotations::try_from(ignore_secret_annotations).context(AnnotationBuildSnafu)?;
+
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
@@ -1395,6 +1410,7 @@ fn build_rolegroup_statefulset(
             ))
             .context(MetadataBuildSnafu)?
             .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
+            .with_annotations(annotations)
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),

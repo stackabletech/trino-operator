@@ -7,7 +7,7 @@
 //! - volume and volume mounts
 //! - extra containers and commands
 //!
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -99,6 +99,8 @@ pub struct TrinoAuthenticationConfig {
     volume_mounts: HashMap<TrinoRole, BTreeMap<crate::crd::Container, Vec<VolumeMount>>>,
     /// Additional side car container for the provided role
     sidecar_containers: HashMap<TrinoRole, Vec<Container>>,
+    /// Secrets which can be hot-reloaded and should be excluded from the restart controller
+    hot_reloaded_secrets: BTreeSet<String>,
 }
 
 impl TrinoAuthenticationConfig {
@@ -368,6 +370,16 @@ impl TrinoAuthenticationConfig {
             .unwrap_or_default()
     }
 
+    /// Retrieve all Secrets which can be hot-reloaded
+    pub fn hot_reloaded_secrets(&self) -> &BTreeSet<String> {
+        &self.hot_reloaded_secrets
+    }
+
+    /// Add a Secret which can be hot-reloaded
+    pub fn add_hot_reloaded_secret(&mut self, secret_name: String) {
+        self.hot_reloaded_secrets.insert(secret_name);
+    }
+
     /// This is a helper to easily extend/merge this struct
     fn extend(&mut self, other: Self) {
         for (role, data) in other.config_properties {
@@ -419,6 +431,8 @@ impl TrinoAuthenticationConfig {
                 .or_default()
                 .extend(data)
         }
+
+        self.hot_reloaded_secrets.extend(other.hot_reloaded_secrets);
     }
 }
 

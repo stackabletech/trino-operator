@@ -20,7 +20,9 @@ All notable changes to this project will be documented in this file.
   This caused problems, as they have been cached by Kubernetes, so re-creations of the mentioned Secrets (e.g. by deleting and re-creating the stacklet)
   could cause Trino Pods to have different shared secrets, causing workers failing to join the coordinator.
   This fix places the secrets in mutable Kubernetes Secrets going forward and migrates existing immutable Secrets to mutable by re-creating them ([#876]).
+- Re-enable hot-reloading of password file Secrets ([#868]).
 
+[#868]: https://github.com/stackabletech/trino-operator/pull/868
 [#869]: https://github.com/stackabletech/trino-operator/pull/869
 [#876]: https://github.com/stackabletech/trino-operator/pull/876
 [#878]: https://github.com/stackabletech/trino-operator/pull/878
