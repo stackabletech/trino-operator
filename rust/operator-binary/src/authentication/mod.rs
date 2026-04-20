@@ -371,8 +371,8 @@ impl TrinoAuthenticationConfig {
     }
 
     /// Retrieve all Secrets which can be hot-reloaded
-    pub fn hot_reloaded_secrets(&self) -> BTreeSet<String> {
-        self.hot_reloaded_secrets.clone()
+    pub fn hot_reloaded_secrets(&self) -> &BTreeSet<String> {
+        &self.hot_reloaded_secrets
     }
 
     /// Add a Secret which can be hot-reloaded

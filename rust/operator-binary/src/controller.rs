@@ -1383,7 +1383,7 @@ fn build_rolegroup_statefulset(
 
     let ignore_secret_annotations = trino_authentication_config
         .hot_reloaded_secrets()
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(i, secret_name)| {
             (
