@@ -22,7 +22,7 @@ impl ToCatalogConfig for PostgresqlConnector {
         _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
-        // SAFETY: `unique_database_name` must only contains uppercase ASCII letters and underscores.
+        // SAFETY: `unique_database_name` must only contain uppercase ASCII letters and underscores.
         let unique_database_name = format!(
             "POSTGRESQL_{}",
             catalog_name.replace('-', "_").to_uppercase()
