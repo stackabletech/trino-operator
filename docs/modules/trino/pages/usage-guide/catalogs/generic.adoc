@@ -8,6 +8,7 @@ In case the Stackable operator for Trino does not support a specific connector y
 This is how you can e.g. use the {trino-psql-connector}[PostgreSQL connector]:
 
 == Example generic catalog properties
+
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1

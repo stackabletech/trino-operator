@@ -4,6 +4,7 @@ The https://trino.io/docs/current/connector/tpch.html[TPC-H connector] provides 
 This is not a stored data set and is instead a virtual data set generated at query time using a deterministic algorithm.
 
 == Example TPC-H catalog configuration
+
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1

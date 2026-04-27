@@ -8,10 +8,11 @@ spec:
     productVersion: "{{ test_scenario['values']['hive-latest'] }}"
     pullPolicy: IfNotPresent
   clusterConfig:
-    database:
-      connString: jdbc:postgresql://postgresql:5432/hive
-      credentialsSecret: postgres-credentials
-      dbType: postgres
+    metadataDatabase:
+      postgresql:
+        host: postgresql
+        database: hive
+        credentialsSecretName: postgres-credentials
     s3:
       reference: minio
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}

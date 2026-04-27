@@ -114,48 +114,20 @@ impl CatalogConfig {
             .ok_or(FromTrinoCatalogError::InvalidCatalogSpec)?;
         let catalog_namespace = catalog.namespace();
 
-        let mut catalog_config = match &catalog.spec.connector {
-            TrinoCatalogConnector::BlackHole(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-            TrinoCatalogConnector::DeltaLake(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-            TrinoCatalogConnector::GoogleSheet(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-            TrinoCatalogConnector::Generic(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-            TrinoCatalogConnector::Hive(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-            TrinoCatalogConnector::Iceberg(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-            TrinoCatalogConnector::Tpcds(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-            TrinoCatalogConnector::Tpch(connector) => {
-                connector
-                    .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
-                    .await
-            }
-        }?;
+        let to_catalog_config: &dyn ToCatalogConfig = match &catalog.spec.connector {
+            TrinoCatalogConnector::BlackHole(black_hole_connector) => black_hole_connector,
+            TrinoCatalogConnector::DeltaLake(delta_lake_connector) => delta_lake_connector,
+            TrinoCatalogConnector::GoogleSheet(google_sheet_connector) => google_sheet_connector,
+            TrinoCatalogConnector::Generic(generic_connector) => generic_connector,
+            TrinoCatalogConnector::Hive(hive_connector) => hive_connector,
+            TrinoCatalogConnector::Iceberg(iceberg_connector) => iceberg_connector,
+            TrinoCatalogConnector::Postgresql(postgresql_connector) => postgresql_connector,
+            TrinoCatalogConnector::Tpcds(tpcds_connector) => tpcds_connector,
+            TrinoCatalogConnector::Tpch(tpch_connector) => tpch_connector,
+        };
+        let mut catalog_config = to_catalog_config
+            .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
+            .await?;
 
         catalog_config
             .properties

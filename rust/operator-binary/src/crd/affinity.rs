@@ -32,6 +32,7 @@ pub fn get_affinity(
                 TrinoCatalogConnector::BlackHole(_)
                 | TrinoCatalogConnector::Generic(_)
                 | TrinoCatalogConnector::GoogleSheet(_)
+                | TrinoCatalogConnector::Postgresql(_)
                 | TrinoCatalogConnector::Tpcds(_)
                 | TrinoCatalogConnector::Tpch(_) => None,
             })
@@ -59,6 +60,7 @@ pub fn get_affinity(
                 TrinoCatalogConnector::BlackHole(_)
                 | TrinoCatalogConnector::Generic(_)
                 | TrinoCatalogConnector::GoogleSheet(_)
+                | TrinoCatalogConnector::Postgresql(_)
                 | TrinoCatalogConnector::Tpcds(_)
                 | TrinoCatalogConnector::Tpch(_) => None,
             })

@@ -1,0 +1,32 @@
+= PostgreSQL
+
+The https://trino.io/docs/current/connector/postgresql.html[PostgreSQL connector] provides connectivity to a PostgreSQL databases.
+
+== Example PostgreSQL catalog configuration
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  # The name of the catalog as it will appear in Trino
+  name: postgresql
+  # TrinoCluster can use these labels to select which catalogs to include
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    postgresql:
+      host: my-postgresql
+      port: 5432 # defaults to 5432
+      database: mydatabase
+      credentialsSecretName: my-postgresql-credentials # Must provide the username and password keys
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-postgresql-credentials
+stringData:
+  username: myusername
+  password: mypassword
+----

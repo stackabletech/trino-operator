@@ -279,16 +279,17 @@ AS SELECT * FROM hive.s3.taxi_data
 
     # Test could be improved by also testing update and deletes
 
-    # # Test postgres connection
-    # run_query(connection, "SHOW SCHEMAS IN postgresgeneric")
-    # run_query(connection, "CREATE SCHEMA IF NOT EXISTS postgresgeneric.tpch")
-    # run_query(
-    #     connection,
-    #     "CREATE TABLE IF NOT EXISTS postgresgeneric.tpch.nation AS SELECT * FROM tpch.tiny.nation",
-    # )
-    # assert (
-    #     run_query(connection, "SELECT COUNT(*) FROM postgresgeneric.tpch.nation")[0][0]
-    #     == 25
-    # )
+    # Test postgres connection(s)
+    for catalog in ["postgresql", "postgresqlgeneric"]:
+        run_query(connection, f"SHOW SCHEMAS IN {catalog}")
+        run_query(connection, f"CREATE SCHEMA IF NOT EXISTS {catalog}.tpch")
+        run_query(
+            connection,
+            f"CREATE TABLE IF NOT EXISTS {catalog}.tpch.nation AS SELECT * FROM tpch.tiny.nation",
+        )
+        assert (
+            run_query(connection, f"SELECT COUNT(*) FROM {catalog}.tpch.nation")[0][0]
+            == 25
+        )
 
     print("[SUCCESS] All tests in check-s3.py succeeded!")
