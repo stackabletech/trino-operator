@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added support for the [PostgreSQL connector](https://trino.io/docs/current/connector/postgresql.html) using the new generic database connection mechanism.
-  Previously, users had to use the `generic` connector ([#XXX]).
+  Previously, users had to use the `generic` connector ([#883]).
 
 ### Changed
 
@@ -31,7 +31,7 @@ All notable changes to this project will be documented in this file.
 [#869]: https://github.com/stackabletech/trino-operator/pull/869
 [#876]: https://github.com/stackabletech/trino-operator/pull/876
 [#878]: https://github.com/stackabletech/trino-operator/pull/878
-[#XXX]: https://github.com/stackabletech/trino-operator/pull/XXX
+[#883]: https://github.com/stackabletech/trino-operator/pull/883
 
 ## [26.3.0] - 2026-03-16
 
