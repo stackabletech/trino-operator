@@ -5,6 +5,7 @@ pub mod generic;
 pub mod google_sheet;
 pub mod hive;
 pub mod iceberg;
+pub mod postgresql;
 pub mod tpcds;
 pub mod tpch;
 
@@ -25,6 +26,7 @@ use tpcds::TpcdsConnector;
 use tpch::TpchConnector;
 
 use self::delta_lake::DeltaLakeConnector;
+use crate::crd::catalog::postgresql::PostgresqlConnector;
 
 #[versioned(
     version(name = "v1alpha1"),
@@ -85,6 +87,9 @@ pub enum TrinoCatalogConnector {
 
     /// An [Apache Iceberg](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/iceberg) connector.
     Iceberg(IcebergConnector),
+
+    /// An [PostgreSQL](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/postgresql) connector.
+    Postgresql(PostgresqlConnector),
 
     /// A [TPC-DS](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/tpcds) connector.
     Tpcds(TpcdsConnector),

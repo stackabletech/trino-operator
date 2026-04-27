@@ -6,6 +6,7 @@ It needs a service-user to access the Google APIs.
 Consult the {trino-google-sheets-connector}[official documentation] on how to use the Google Sheets connector.
 
 == Example Google sheets catalog configuration
+
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1

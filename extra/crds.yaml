@@ -3578,6 +3578,8 @@ spec:
                 - required:
                   - iceberg
                 - required:
+                  - postgresql
+                - required:
                   - tpcds
                 - required:
                   - tpch
@@ -4215,6 +4217,41 @@ spec:
                           reference:
                             type: string
                         type: object
+                    type: object
+                  postgresql:
+                    description: An [PostgreSQL](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/postgresql) connector.
+                    properties:
+                      credentialsSecretName:
+                        description: |-
+                          Name of a Secret containing the `username` and `password` keys used to authenticate
+                          against the PostgreSQL server.
+                        type: string
+                      database:
+                        description: Name of the database (schema) to connect to.
+                        type: string
+                      host:
+                        description: Hostname or IP address of the PostgreSQL server.
+                        type: string
+                      parameters:
+                        additionalProperties:
+                          type: string
+                        default: {}
+                        description: |-
+                          Additional map of JDBC connection parameters to append to the connection URL. The given
+                          `HashMap<String, String>` will be converted to query parameters in the form of
+                          `?param1=value1&param2=value2`.
+                        type: object
+                      port:
+                        default: 5432
+                        description: Port the PostgreSQL server is listening on. Defaults to `5432`.
+                        format: uint16
+                        maximum: 65535.0
+                        minimum: 0.0
+                        type: integer
+                    required:
+                    - credentialsSecretName
+                    - database
+                    - host
                     type: object
                   tpcds:
                     description: A [TPC-DS](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/tpcds) connector.

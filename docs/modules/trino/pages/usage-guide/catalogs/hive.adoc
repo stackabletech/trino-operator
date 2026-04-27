@@ -5,6 +5,7 @@ The Apache Hive connector allows Trino to connect to a Hive metastore and query 
 Deploy a Hive Stacklet with the xref:hive:index.adoc[].
 
 == Example Hive catalog configuration
+
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1
@@ -34,6 +35,7 @@ spec:
 <4> Use `configOverrides` to add arbitrary properties to the Trino catalog configuration
 
 == Connect to S3 store
+
 The Hive connector can connect to an S3 store as follows:
 
 [source,yaml]
@@ -58,6 +60,7 @@ See xref:concepts:s3.adoc[] for details about S3 connections.
 IMPORTANT: Make sure that the underlying Hive metastore also has access to the S3 store, because it will e.g. check if the directory exists when creating tables.
 
 == Connect to HDFS cluster
+
 The hive connector can connect to an HDFS operated by Stackable as follows:
 
 [source,yaml]
@@ -72,10 +75,12 @@ spec:
 IMPORTANT: Make sure that the underlying Hive metastore also has access to the HDFS, because it will e.g. check if the directory exists when creating tables.
 
 == Adding unmanaged Hive clusters
+
 You can add connect Trino to Hive catalogs from systems that are not managed by Stackable, including Hive running on existing Hadoop clusters.
 Unmanaged Hive instances can be defined by creating a ConfigMap containing the configuration for the remote Hive Metastore and HDFS or S3 storage services.
 
 === Create a Hive Metastore configMap
+
 The Hive metastore ConfigMap contains the URL for the metastore's thrift endpoint.
 [source,yaml]
 ----
@@ -88,6 +93,7 @@ data:
 ----
 
 === Create a HDFS configMap
+
 When the Hive data is stored on HDFS you will need to provide a ConfigMap containing the HDFS configuration.
 To do this take the `core-site.xml` and `hdfs-site.xml` from your Hadoop cluster and create a ConfigMap with the keys `core-site.xml` and `hdfs-site.xml`.
 
@@ -119,6 +125,7 @@ data:
 ----
 
 === Create the Trino Hive catalog
+
 To use the unmanaged Hive metastore we define a TrinoCatalog object in the same way we would for a managed cluster, referencing the custom ConfigMap we created for Hive and HDFS.
 
 [source,yaml]

@@ -22,6 +22,7 @@
 *** xref:trino:usage-guide/catalogs/google-sheets.adoc[]
 *** xref:trino:usage-guide/catalogs/hive.adoc[]
 *** xref:trino:usage-guide/catalogs/iceberg.adoc[]
+*** xref:trino:usage-guide/catalogs/postgresql.adoc[]
 *** xref:trino:usage-guide/catalogs/tpcds.adoc[]
 *** xref:trino:usage-guide/catalogs/tpch.adoc[]
 ** xref:trino:usage-guide/operations/index.adoc[]

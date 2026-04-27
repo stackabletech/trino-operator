@@ -64,7 +64,20 @@ spec:
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:
-  name: postgresgeneric
+  name: postgresql
+  labels:
+    trino: trino
+spec:
+  connector:
+    postgresql:
+      host: postgresql
+      database: hive
+      credentialsSecretName: my-postgresql-credentials-secret
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: postgresqlgeneric
   labels:
     trino: trino
 spec:
@@ -78,7 +91,7 @@ spec:
         connection-user:
           valueFromSecret:
             name: my-postgresql-credentials-secret
-            key: user
+            key: username
         connection-password:
           valueFromSecret:
             name: my-postgresql-credentials-secret
@@ -89,7 +102,7 @@ kind: Secret
 metadata:
   name: my-postgresql-credentials-secret
 stringData:
-  user: hive
+  username: hive
   password: hive
 ---
 # We need to create the TrinoCluster last, so that the ConfigMaps/Secrets it mounts are already

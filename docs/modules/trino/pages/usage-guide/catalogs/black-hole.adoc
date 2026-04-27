@@ -4,6 +4,7 @@ Primarily the https://trino.io/docs/current/connector/blackhole.html[Black Hole 
 It works like the `/dev/null` device on Unix-like operating systems for data writing and like `/dev/null` or `/dev/zero` for data reading.
 
 == Example Black Hole catalog configuration
+
 [source,yaml]
 ----
 apiVersion: trino.stackable.tech/v1alpha1

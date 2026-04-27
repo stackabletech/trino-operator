@@ -6,6 +6,7 @@ pub mod generic;
 pub mod google_sheet;
 pub mod hive;
 pub mod iceberg;
+pub mod postgresql;
 pub mod tpcds;
 pub mod tpch;
 
@@ -60,6 +61,11 @@ pub enum FromTrinoCatalogError {
     #[snafu(display("failed to create the Secret Volume for the S3 credentials"))]
     CreateS3CredentialsSecretOperatorVolume {
         source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
+    },
+
+    #[snafu(display("failed to get PostgreSQL connection details"))]
+    GetPostgresConnectionDetails {
+        source: stackable_operator::database_connections::Error,
     },
 }
 
