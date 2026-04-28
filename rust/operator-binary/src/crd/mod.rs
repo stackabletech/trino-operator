@@ -1114,6 +1114,8 @@ impl HasStatusCondition for v1alpha1::TrinoCluster {
 
 #[cfg(test)]
 mod tests {
+    use stackable_operator::versioned::test_utils::RoundtripTestData;
+
     use super::*;
 
     #[test]
@@ -1327,5 +1329,11 @@ mod tests {
             trino.min_worker_graceful_shutdown_timeout(),
             Duration::from_minutes_unchecked(5)
         );
+    }
+
+    impl RoundtripTestData for v1alpha1::TrinoClusterSpec {
+        fn roundtrip_test_data() -> Vec<Self> {
+            vec![]
+        }
     }
 }
