@@ -100,9 +100,18 @@ pub enum TrinoCatalogConnector {
 
 #[cfg(test)]
 mod tests {
-    use crate::crd::catalog::{TrinoCatalog, TrinoCatalogVersion};
+    use stackable_operator::versioned::test_utils::RoundtripTestData;
+
+    use super::{TrinoCatalog, TrinoCatalogVersion, v1alpha1};
+
     #[test]
     fn test_crd_generation() {
         TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1).unwrap();
+    }
+
+    impl RoundtripTestData for v1alpha1::TrinoCatalogSpec {
+        fn roundtrip_test_data() -> Vec<Self> {
+            vec![]
+        }
     }
 }

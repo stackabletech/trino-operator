@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- BREAKING: Add required CLI argument and env var to set the image repository used to construct final product image names: `IMAGE_REPOSITORY` (`--image-repository`), eg. `oci.example.org/my/namespace` ([#884]).
 - Added support for the [PostgreSQL connector](https://trino.io/docs/current/connector/postgresql.html) using the new generic database connection mechanism.
   Previously, users had to use the `generic` connector ([#883]).
 
@@ -32,6 +33,7 @@ All notable changes to this project will be documented in this file.
 [#876]: https://github.com/stackabletech/trino-operator/pull/876
 [#878]: https://github.com/stackabletech/trino-operator/pull/878
 [#883]: https://github.com/stackabletech/trino-operator/pull/883
+[#884]: https://github.com/stackabletech/trino-operator/pull/884
 
 ## [26.3.0] - 2026-03-16
 
