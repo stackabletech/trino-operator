@@ -27,6 +27,7 @@ use stackable_operator::{
             volume::{SecretFormat, SecretOperatorVolumeSourceBuilder, VolumeBuilder},
         },
     },
+    cli::OperatorEnvironmentOptions,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
     commons::{
         product_image_selection::{self, ResolvedProductImage},
@@ -110,6 +111,7 @@ use crate::{
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
     pub product_config: ProductConfigManager,
+    pub operator_environment: OperatorEnvironmentOptions,
 }
 
 pub const OPERATOR_NAME: &str = "trino.stackable.tech";
@@ -124,7 +126,7 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
-const DOCKER_IMAGE_BASE_NAME: &str = "trino";
+const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -416,7 +418,11 @@ pub async fn reconcile_trino(
     let resolved_product_image = trino
         .spec
         .image
-        .resolve(DOCKER_IMAGE_BASE_NAME, crate::built_info::PKG_VERSION)
+        .resolve(
+            CONTAINER_IMAGE_BASE_NAME,
+            &ctx.operator_environment.image_repository,
+            crate::built_info::PKG_VERSION,
+        )
         .context(ResolveProductImageSnafu)?;
 
     let resolved_authentication_classes =
@@ -1975,7 +1981,7 @@ mod tests {
         let resolved_product_image = trino
             .spec
             .image
-            .resolve(DOCKER_IMAGE_BASE_NAME, "0.0.0-dev")
+            .resolve(CONTAINER_IMAGE_BASE_NAME, "oci.example.org", "0.0.0-dev")
             .expect("test resolved product image is always valid");
 
         let config_files = vec![
