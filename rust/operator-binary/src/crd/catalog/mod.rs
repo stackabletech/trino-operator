@@ -111,7 +111,71 @@ mod tests {
 
     impl RoundtripTestData for v1alpha1::TrinoCatalogSpec {
         fn roundtrip_test_data() -> Vec<Self> {
-            vec![]
+            stackable_operator::utils::yaml_from_str_singleton_map(indoc::indoc! {"
+          - connector:
+              blackHole: {}
+          - connector:
+              deltaLake:
+                metastore:
+                  configMap: simple-hive
+                s3:
+                  inline:
+                    host: test-minio
+                    port: 9000
+                    accessStyle: Path
+                    credentials:
+                      secretClass: minio-credentials
+          - connector:
+              generic:
+                connectorName: postgresql
+                properties: # optional
+                  connection-url:
+                    value: jdbc:postgresql://example.net:5432/database
+                  connection-user:
+                    valueFromSecret:
+                      name: my-postgresql-credentials-secret
+                      key: user
+                  connection-password:
+                    valueFromSecret:
+                      name: my-postgresql-credentials-secret
+                      key: password
+          - connector:
+              googleSheet:
+                credentialsSecret: gsheet-credentials
+                metadataSheetId: 1dT4dRWo9tAKBk5GdH-a54dcizuoxOTn98X8igZcnYr8
+                cache: # optional
+                  sheetsDataMaxCacheSize: 1000
+                  sheetsDataExpireAfterWrite: 5m
+          - connector:
+              hive:
+                metastore:
+                  configMap: simple-hive
+                s3:
+                  inline:
+                    host: test-minio
+                    port: 9000
+                    accessStyle: Path
+                    credentials:
+                      secretClass: minio-credentials
+            configOverrides:
+              hive.metastore.username: trino
+          - connector:
+              iceberg:
+                metastore:
+                  configMap: simple-hive
+                s3:
+                  inline:
+                    host: test-minio
+                    port: 9000
+                    accessStyle: Path
+                    credentials:
+                      secretClass: minio-credentials
+          - connector:
+              tpcds: {}
+          - connector:
+              tpch: {}
+        "})
+            .expect("Failed to parse TrinoCatalogSpec YAML")
         }
     }
 }

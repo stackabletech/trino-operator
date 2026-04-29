@@ -1333,7 +1333,85 @@ mod tests {
 
     impl RoundtripTestData for v1alpha1::TrinoClusterSpec {
         fn roundtrip_test_data() -> Vec<Self> {
-            vec![]
+            stackable_operator::utils::yaml_from_str_singleton_map(indoc::indoc! {r#"
+              - image:
+                  productVersion: "42"
+                  pullPolicy: IfNotPresent
+                clusterOperation:
+                  stopped: false
+                  reconciliationPaused: false
+                clusterConfig:
+                  catalogLabelSelector:
+                    matchLabels:
+                      trino: trino
+                  authentication:
+                    - authenticationClass: oidc
+                      oidc:
+                        clientCredentialsSecret: oidc-secret
+                    - authenticationClass: password
+                    - authenticationClass: password-other
+                    - authenticationClass: ldap
+                    - authenticationClass: ldap-other
+                  authorization:
+                    opa:
+                      configMapName: opa
+                      package: trino
+                  tls:
+                    serverSecretClass: my-tls
+                    internalSecretClass: null
+                  clientProtocol:
+                    spooling:
+                      location: s3://spooling-bucket/trino/
+                      filesystem:
+                        s3:
+                          connection:
+                            reference: minio
+                  faultTolerantExecution:
+                    task:
+                      exchangeManager:
+                        s3:
+                          baseDirectories:
+                            - s3://exchange-bucket/
+                          connection:
+                            reference: minio
+                  vectorAggregatorConfigMapName: vector-aggregator-discovery
+                coordinators:
+                  config:
+                    logging:
+                      enableVectorAgent: true
+                  roleConfig:
+                    listenerClass: external-unstable
+                  envOverrides:
+                    COMMON_VAR: role-value
+                    ROLE_VAR: role-value
+                  roleGroups:
+                    default:
+                      replicas: 1
+                      envOverrides:
+                        COMMON_VAR: group-value
+                        GROUP_VAR: group-value
+                workers:
+                  config:
+                    resources:
+                      cpu:
+                        min: 300m
+                        max: 600m
+                      memory:
+                        limit: 3Gi
+                    gracefulShutdownTimeout: 5s
+                    logging:
+                      enableVectorAgent: true
+                  envOverrides:
+                    COMMON_VAR: role-value
+                    ROLE_VAR: role-value
+                  roleGroups:
+                    default:
+                      replicas: 1
+                      envOverrides:
+                        COMMON_VAR: group-value
+                        GROUP_VAR: group-value
+        "#})
+            .expect("Failed to parse TrinoClusterSpec YAML")
         }
     }
 }
