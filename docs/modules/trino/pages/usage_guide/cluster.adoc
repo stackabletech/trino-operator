@@ -4,7 +4,7 @@
 
 Create an insecure single node Trino cluster for testing. This can be accessed with the UI/CLI via http without either user/password credentials or authorization.
 
-For testing purposes we use the https://trino.io/docs/current/installation/cli.html[Trino CLI].
+For testing purposes we use the https://trino.io/docs/current/client/cli.html[Trino CLI].
 
 First, ensure all necessary operator have been deployed:
 
