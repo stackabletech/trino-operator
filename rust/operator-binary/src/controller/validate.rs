@@ -31,12 +31,6 @@ use crate::{
 #[strum_discriminants(derive(IntoStaticStr))]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
-    #[snafu(display("trino cluster {name:?} has no namespace"))]
-    MissingTrinoNamespace {
-        source: crate::crd::Error,
-        name: String,
-    },
-
     #[snafu(display("failed to resolve product image"))]
     ResolveProductImage {
         source: product_image_selection::Error,
@@ -74,7 +68,6 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Synchronous inputs the rest of `reconcile_trino` needs after dereferencing.
 pub struct ValidatedInputs {
-    pub namespace: String,
     pub resolved_product_image: ResolvedProductImage,
     pub trino_authentication_config: TrinoAuthenticationConfig,
     pub validated_role_config: ValidatedRoleConfigByPropertyKind,
@@ -87,10 +80,6 @@ pub fn validate(
     operator_environment: &OperatorEnvironmentOptions,
     dereferenced: &DereferencedObjects,
 ) -> Result<ValidatedInputs> {
-    let namespace = trino.namespace_r().context(MissingTrinoNamespaceSnafu {
-        name: stackable_operator::kube::ResourceExt::name_any(trino),
-    })?;
-
     let resolved_product_image = trino
         .spec
         .image
@@ -128,14 +117,13 @@ pub fn validate(
     )?;
 
     Ok(ValidatedInputs {
-        namespace,
         resolved_product_image,
         trino_authentication_config,
         validated_role_config,
     })
 }
 
-fn validated_product_config(
+pub(super) fn validated_product_config(
     trino: &v1alpha1::TrinoCluster,
     version: &str,
     product_config: &ProductConfigManager,

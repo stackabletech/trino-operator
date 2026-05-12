@@ -358,8 +358,6 @@ pub async fn reconcile_trino(
         &dereferenced,
     )
     .context(ValidateClusterSnafu)?;
-    // `validated.namespace` is only used by validate.rs itself; bind once to keep the field live.
-    let _ = &validated.namespace;
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -1983,40 +1981,11 @@ mod tests {
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
-        let config_files = vec![
-            PropertyNameKind::Env,
-            PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-            PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-            PropertyNameKind::File(JVM_CONFIG.to_string()),
-            PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-            PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
-            PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
-            PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
-            PropertyNameKind::File(EXCHANGE_MANAGER_PROPERTIES.to_string()),
-        ];
-        let validated_config = validate_all_roles_and_groups_config(
+        let validated_config = validate::validated_product_config(
+            &trino,
             "455.0.0",
-            &transform_all_roles_to_config(
-                &trino,
-                &HashMap::from([
-                    (
-                        TrinoRole::Coordinator.to_string(),
-                        (
-                            config_files.clone(),
-                            trino.role(&TrinoRole::Coordinator).unwrap(),
-                        ),
-                    ),
-                    (
-                        TrinoRole::Worker.to_string(),
-                        (config_files, trino.role(&TrinoRole::Worker).unwrap()),
-                    ),
-                ]),
-            )
-            .unwrap(),
             &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")
                 .unwrap(),
-            false,
-            false,
         )
         .unwrap();
 
