@@ -77,6 +77,8 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
+mod dereference;
+
 use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
