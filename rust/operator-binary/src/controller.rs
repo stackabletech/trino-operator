@@ -78,6 +78,7 @@ use stackable_operator::{
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 mod dereference;
+mod validate;
 
 use crate::{
     authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
@@ -128,7 +129,7 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
-const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
+pub(super) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
