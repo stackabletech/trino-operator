@@ -30,10 +30,8 @@ use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
     commons::{
-        product_image_selection::ResolvedProductImage,
-        random_secret_creation,
-        rbac::build_rbac_resources,
-        secret_class::SecretClassVolumeProvisionParts,
+        product_image_selection::ResolvedProductImage, random_secret_creation,
+        rbac::build_rbac_resources, secret_class::SecretClassVolumeProvisionParts,
     },
     constants::RESTART_CONTROLLER_ENABLED_LABEL,
     k8s_openapi::{
@@ -187,11 +185,6 @@ pub enum Error {
     IllegalContainerName {
         source: stackable_operator::builder::pod::container::Error,
         container_name: String,
-    },
-
-    #[snafu(display("failed to retrieve secret for internal communications"))]
-    FailedToRetrieveInternalSecret {
-        source: stackable_operator::client::Error,
     },
 
     #[snafu(display("failed to resolve and merge config for role and role group"))]
@@ -419,7 +412,11 @@ pub async fn reconcile_trino(
             let role_group_ref = trino_role.rolegroup_ref(trino, &role_group);
 
             let merged_config = trino
-                .merged_config(&trino_role, &role_group_ref, &dereferenced.catalog_definitions)
+                .merged_config(
+                    &trino_role,
+                    &role_group_ref,
+                    &dereferenced.catalog_definitions,
+                )
                 .context(FailedToResolveConfigSnafu)?;
 
             let role_group_service_recommended_labels = build_recommended_labels(
