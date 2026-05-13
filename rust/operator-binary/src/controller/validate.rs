@@ -92,10 +92,8 @@ pub fn validate(
 
     let trino_authentication_config = TrinoAuthenticationConfig::new(
         &resolved_product_image,
-        TrinoAuthenticationTypes::try_from(
-            dereferenced.resolved_authentication_classes.clone(),
-        )
-        .context(UnsupportedAuthenticationConfigSnafu)?,
+        TrinoAuthenticationTypes::try_from(dereferenced.resolved_authentication_classes.clone())
+            .context(UnsupportedAuthenticationConfigSnafu)?,
     )
     .context(InvalidAuthenticationConfigSnafu)?;
 

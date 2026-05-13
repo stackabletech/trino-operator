@@ -9,10 +9,7 @@
 use std::{num::ParseIntError, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{
-    client::Client,
-    kube::runtime::reflector::ObjectRef,
-};
+use stackable_operator::{client::Client, kube::runtime::reflector::ObjectRef};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -24,8 +21,7 @@ use crate::{
     },
     crd::{
         authentication::{ResolvedAuthenticationClassRef, resolve_authentication_classes},
-        catalog,
-        v1alpha1,
+        catalog, v1alpha1,
     },
 };
 
@@ -110,10 +106,9 @@ pub async fn dereference(
         .context(GetCatalogsSnafu)?;
 
     let raw_product_version = trino.spec.image.product_version();
-    let product_version =
-        u16::from_str(raw_product_version).context(ParseTrinoVersionSnafu {
-            product_version: raw_product_version,
-        })?;
+    let product_version = u16::from_str(raw_product_version).context(ParseTrinoVersionSnafu {
+        product_version: raw_product_version,
+    })?;
 
     let mut catalogs = Vec::with_capacity(catalog_definitions.len());
     for catalog in &catalog_definitions {
@@ -144,19 +139,14 @@ pub async fn dereference(
         None => None,
     };
 
-    let resolved_client_protocol_config =
-        match trino.spec.cluster_config.client_protocol.as_ref() {
-            Some(spooling_config) => Some(
-                ResolvedClientProtocolConfig::from_config(
-                    spooling_config,
-                    Some(client),
-                    namespace,
-                )
+    let resolved_client_protocol_config = match trino.spec.cluster_config.client_protocol.as_ref() {
+        Some(spooling_config) => Some(
+            ResolvedClientProtocolConfig::from_config(spooling_config, Some(client), namespace)
                 .await
                 .context(ClientProtocolConfigurationSnafu)?,
-            ),
-            None => None,
-        };
+        ),
+        None => None,
+    };
 
     Ok(DereferencedObjects {
         resolved_authentication_classes,
