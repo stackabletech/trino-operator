@@ -344,7 +344,7 @@ pub async fn reconcile_trino(
         .context(DereferenceSnafu)?;
 
     // validate (no client required)
-    let validated = validate::validate_cluster(
+    let validated = validate::validate(
         trino,
         &ctx.product_config,
         &ctx.operator_environment,

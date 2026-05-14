@@ -74,7 +74,7 @@ pub struct ValidatedInputs {
 }
 
 /// Validates the cluster spec and the dereferenced inputs.
-pub fn validate_cluster(
+pub fn validate(
     trino: &v1alpha1::TrinoCluster,
     product_config: &ProductConfigManager,
     operator_environment: &OperatorEnvironmentOptions,
