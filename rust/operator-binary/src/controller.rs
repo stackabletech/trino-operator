@@ -339,16 +339,16 @@ pub async fn reconcile_trino(
     let client = &ctx.client;
 
     // dereference (client required)
-    let dereferenced = dereference::dereference(client, trino)
+    let dereferenced_objects = dereference::dereference(client, trino)
         .await
         .context(DereferenceSnafu)?;
 
     // validate (no client required)
     let validated = validate::validate(
         trino,
-        &ctx.product_config,
+        &dereferenced_objects,
         &ctx.operator_environment,
-        &dereferenced,
+        &ctx.product_config,
     )
     .context(ValidateClusterSnafu)?;
 
@@ -415,7 +415,7 @@ pub async fn reconcile_trino(
                 .merged_config(
                     &trino_role,
                     &role_group_ref,
-                    &dereferenced.catalog_definitions,
+                    &dereferenced_objects.catalog_definitions,
                 )
                 .context(FailedToResolveConfigSnafu)?;
 
@@ -459,16 +459,16 @@ pub async fn reconcile_trino(
                 &config,
                 &merged_config,
                 &validated.trino_authentication_config,
-                &dereferenced.trino_opa_config,
+                &dereferenced_objects.trino_opa_config,
                 &client.kubernetes_cluster_info,
-                &dereferenced.resolved_fte_config,
-                &dereferenced.resolved_client_protocol_config,
+                &dereferenced_objects.resolved_fte_config,
+                &dereferenced_objects.resolved_client_protocol_config,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
                 &validated.image,
                 &role_group_ref,
-                &dereferenced.catalogs,
+                &dereferenced_objects.catalogs,
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
@@ -478,11 +478,11 @@ pub async fn reconcile_trino(
                 &config,
                 &merged_config,
                 &validated.trino_authentication_config,
-                &dereferenced.catalogs,
+                &dereferenced_objects.catalogs,
                 &rbac_sa.name_any(),
-                &dereferenced.resolved_fte_config,
-                &dereferenced.resolved_client_protocol_config,
-                &dereferenced.trino_opa_config,
+                &dereferenced_objects.resolved_fte_config,
+                &dereferenced_objects.resolved_client_protocol_config,
+                &dereferenced_objects.trino_opa_config,
             )?;
 
             cluster_resources

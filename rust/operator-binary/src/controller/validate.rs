@@ -76,9 +76,9 @@ pub struct ValidatedInputs {
 /// Validates the cluster spec and the dereferenced inputs.
 pub fn validate(
     trino: &v1alpha1::TrinoCluster,
-    product_config: &ProductConfigManager,
+    dereferenced_objects: &DereferencedObjects,
     operator_environment: &OperatorEnvironmentOptions,
-    dereferenced: &DereferencedObjects,
+    product_config: &ProductConfigManager,
 ) -> Result<ValidatedInputs> {
     let resolved_product_image = trino
         .spec
@@ -92,12 +92,16 @@ pub fn validate(
 
     let trino_authentication_config = TrinoAuthenticationConfig::new(
         &resolved_product_image,
-        TrinoAuthenticationTypes::try_from(dereferenced.resolved_authentication_classes.clone())
-            .context(UnsupportedAuthenticationConfigSnafu)?,
+        TrinoAuthenticationTypes::try_from(
+            dereferenced_objects.resolved_authentication_classes.clone(),
+        )
+        .context(UnsupportedAuthenticationConfigSnafu)?,
     )
     .context(InvalidAuthenticationConfigSnafu)?;
 
-    if dereferenced.resolved_client_protocol_config.is_some()
+    if dereferenced_objects
+        .resolved_client_protocol_config
+        .is_some()
         && resolved_product_image.product_version.starts_with("45")
     {
         return Err(Error::ClientSpoolingProtocolTrinoVersion {
