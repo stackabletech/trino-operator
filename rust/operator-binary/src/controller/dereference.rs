@@ -10,7 +10,6 @@ use std::{num::ParseIntError, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{client::Client, kube::runtime::reflector::ObjectRef};
-use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     authorization::opa::TrinoOpaConfig,
@@ -25,9 +24,7 @@ use crate::{
     },
 };
 
-#[derive(Snafu, Debug, EnumDiscriminants)]
-#[strum_discriminants(derive(IntoStaticStr))]
-#[allow(clippy::enum_variant_names)]
+#[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
