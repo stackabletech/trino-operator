@@ -421,7 +421,7 @@ pub async fn reconcile_trino(
 
             let role_group_service_recommended_labels = build_recommended_labels(
                 trino,
-                &validated.resolved_product_image.app_version_label_value,
+                &validated.image.app_version_label_value,
                 &role_group_ref.role,
                 &role_group_ref.role_group,
             );
@@ -452,7 +452,7 @@ pub async fn reconcile_trino(
 
             let rg_configmap = build_rolegroup_config_map(
                 trino,
-                &validated.resolved_product_image,
+                &validated.image,
                 &role,
                 &trino_role,
                 &role_group_ref,
@@ -466,14 +466,14 @@ pub async fn reconcile_trino(
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
-                &validated.resolved_product_image,
+                &validated.image,
                 &role_group_ref,
                 &dereferenced.catalogs,
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
                 &trino_role,
-                &validated.resolved_product_image,
+                &validated.image,
                 &role_group_ref,
                 &config,
                 &merged_config,
@@ -532,7 +532,7 @@ pub async fn reconcile_trino(
                     trino,
                     build_recommended_labels(
                         trino,
-                        &validated.resolved_product_image.app_version_label_value,
+                        &validated.image.app_version_label_value,
                         &trino_role_str,
                         "none",
                     ),

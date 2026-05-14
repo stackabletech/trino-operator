@@ -68,7 +68,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Synchronous inputs the rest of `reconcile_trino` needs after dereferencing.
 pub struct ValidatedInputs {
-    pub resolved_product_image: ResolvedProductImage,
+    pub image: ResolvedProductImage,
     pub trino_authentication_config: TrinoAuthenticationConfig,
     pub validated_role_config: ValidatedRoleConfigByPropertyKind,
 }
@@ -115,7 +115,7 @@ pub fn validate(
     )?;
 
     Ok(ValidatedInputs {
-        resolved_product_image,
+        image: resolved_product_image,
         trino_authentication_config,
         validated_role_config,
     })
