@@ -30,10 +30,8 @@ use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
     commons::{
-        product_image_selection::{self, ResolvedProductImage},
-        random_secret_creation,
-        rbac::build_rbac_resources,
-        secret_class::SecretClassVolumeProvisionParts,
+        product_image_selection::ResolvedProductImage, random_secret_creation,
+        rbac::build_rbac_resources, secret_class::SecretClassVolumeProvisionParts,
     },
     constants::RESTART_CONTROLLER_ENABLED_LABEL,
     k8s_openapi::{
@@ -50,15 +48,11 @@ use stackable_operator::{
     kube::{
         Resource, ResourceExt,
         core::{DeserializeGuard, error_boundary},
-        runtime::{controller::Action, reflector::ObjectRef},
+        runtime::controller::Action,
     },
     kvp::{Annotation, Annotations, Labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
-    product_config_utils::{
-        ValidatedRoleConfigByPropertyKind, transform_all_roles_to_config,
-        validate_all_roles_and_groups_config,
-    },
     product_logging::{
         self,
         framework::LoggingError,
@@ -77,10 +71,13 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
+mod dereference;
+mod validate;
+
 use crate::{
-    authentication::{TrinoAuthenticationConfig, TrinoAuthenticationTypes},
+    authentication::TrinoAuthenticationConfig,
     authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
-    catalog::{FromTrinoCatalogError, config::CatalogConfig},
+    catalog::config::CatalogConfig,
     command,
     config::{self, client_protocol, fault_tolerant_execution},
     crd::{
@@ -92,8 +89,6 @@ use crate::{
         STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
         TrinoRole, TrinoRoleType,
-        authentication::resolve_authentication_classes,
-        catalog,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
         v1alpha1,
     },
@@ -126,7 +121,7 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
-const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
+pub(super) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -134,21 +129,6 @@ const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 pub enum Error {
     #[snafu(display("missing secret lifetime"))]
     MissingSecretLifetime,
-
-    #[snafu(display("object defines no namespace"))]
-    ObjectHasNoNamespace,
-
-    #[snafu(display("trino cluster {name:?} has no namespace"))]
-    MissingTrinoNamespace {
-        source: crate::crd::Error,
-        name: String,
-    },
-
-    #[snafu(display("object defines no {role:?} role"))]
-    MissingTrinoRole {
-        source: crate::crd::Error,
-        role: String,
-    },
 
     #[snafu(display("failed to create cluster resources"))]
     CreateClusterResources {
@@ -184,19 +164,9 @@ pub enum Error {
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
-    #[snafu(display("invalid product config"))]
-    InvalidProductConfig {
-        source: stackable_operator::product_config_utils::Error,
-    },
-
     #[snafu(display("object is missing metadata to build owner reference"))]
     ObjectMissingMetadataForOwnerRef {
         source: stackable_operator::builder::meta::Error,
-    },
-
-    #[snafu(display("failed to transform configs"))]
-    ProductConfigTransform {
-        source: stackable_operator::product_config_utils::Error,
     },
 
     #[snafu(display("failed to format runtime properties"))]
@@ -211,31 +181,10 @@ pub enum Error {
     #[snafu(display("no coordinator pods found for discovery"))]
     MissingCoordinatorPods,
 
-    #[snafu(display("invalid OpaConfig"))]
-    InvalidOpaConfig {
-        source: stackable_operator::commons::opa::Error,
-    },
-
-    #[snafu(display("failed to get associated TrinoCatalogs"))]
-    GetCatalogs {
-        source: stackable_operator::client::Error,
-    },
-
-    #[snafu(display("failed to parse {catalog}"))]
-    ParseCatalog {
-        source: FromTrinoCatalogError,
-        catalog: ObjectRef<catalog::v1alpha1::TrinoCatalog>,
-    },
-
     #[snafu(display("illegal container name: [{container_name}]"))]
     IllegalContainerName {
         source: stackable_operator::builder::pod::container::Error,
         container_name: String,
-    },
-
-    #[snafu(display("failed to retrieve secret for internal communications"))]
-    FailedToRetrieveInternalSecret {
-        source: stackable_operator::client::Error,
     },
 
     #[snafu(display("failed to resolve and merge config for role and role group"))]
@@ -273,21 +222,6 @@ pub enum Error {
         source: stackable_operator::commons::rbac::Error,
     },
 
-    #[snafu(display("failed to retrieve AuthenticationClass"))]
-    AuthenticationClassRetrieval {
-        source: crate::crd::authentication::Error,
-    },
-
-    #[snafu(display("unsupported Trino authentication"))]
-    UnsupportedAuthenticationConfig {
-        source: crate::authentication::Error,
-    },
-
-    #[snafu(display("invalid Trino authentication"))]
-    InvalidAuthenticationConfig {
-        source: crate::authentication::Error,
-    },
-
     #[snafu(display("failed to serialize [{JVM_SECURITY_PROPERTIES}] for {}", rolegroup))]
     JvmSecurityProperties {
         source: PropertiesWriterError,
@@ -302,11 +236,6 @@ pub enum Error {
     #[snafu(display("failed to configure graceful shutdown"))]
     GracefulShutdown {
         source: crate::operations::graceful_shutdown::Error,
-    },
-
-    #[snafu(display("failed to configure fault tolerant execution"))]
-    FaultTolerantExecution {
-        source: fault_tolerant_execution::Error,
     },
 
     #[snafu(display("failed to get required Labels"))]
@@ -351,8 +280,19 @@ pub enum Error {
         source: error_boundary::InvalidObject,
     },
 
+    #[snafu(display("failed to dereference resources"))]
+    Dereference { source: dereference::Error },
+
+    #[snafu(display("failed to validate cluster"))]
+    ValidateCluster { source: validate::Error },
+
     #[snafu(display("failed to read role"))]
     ReadRole { source: crate::crd::Error },
+
+    #[snafu(display("invalid Trino authentication"))]
+    InvalidAuthenticationConfig {
+        source: crate::authentication::Error,
+    },
 
     #[snafu(display("unable to parse Trino version: {product_version:?}"))]
     ParseTrinoVersion {
@@ -370,19 +310,6 @@ pub enum Error {
 
     #[snafu(display("failed to configure service"))]
     ServiceConfiguration { source: crate::service::Error },
-
-    #[snafu(display("failed to resolve product image"))]
-    ResolveProductImage {
-        source: product_image_selection::Error,
-    },
-
-    #[snafu(display("failed to resolve client protocol configuration"))]
-    ClientProtocolConfiguration { source: client_protocol::Error },
-
-    #[snafu(display(
-        "client spooling protocol is not supported for Trino version {product_version}"
-    ))]
-    ClientSpoolingProtocolTrinoVersion { product_version: String },
 
     #[snafu(display("failed to create internal secret"))]
     CreateInternalSecret {
@@ -411,100 +338,19 @@ pub async fn reconcile_trino(
         .context(InvalidTrinoClusterSnafu)?;
     let client = &ctx.client;
 
-    let namespace = trino.namespace_r().context(MissingTrinoNamespaceSnafu {
-        name: trino.name_any(),
-    })?;
-
-    let resolved_product_image = trino
-        .spec
-        .image
-        .resolve(
-            CONTAINER_IMAGE_BASE_NAME,
-            &ctx.operator_environment.image_repository,
-            crate::built_info::PKG_VERSION,
-        )
-        .context(ResolveProductImageSnafu)?;
-
-    let resolved_authentication_classes =
-        resolve_authentication_classes(client, trino.get_authentication())
-            .await
-            .context(AuthenticationClassRetrievalSnafu)?;
-    let trino_authentication_config = TrinoAuthenticationConfig::new(
-        &resolved_product_image,
-        TrinoAuthenticationTypes::try_from(resolved_authentication_classes)
-            .context(UnsupportedAuthenticationConfigSnafu)?,
-    )
-    .context(InvalidAuthenticationConfigSnafu)?;
-
-    let catalog_definitions = client
-        .list_with_label_selector::<catalog::v1alpha1::TrinoCatalog>(
-            trino
-                .metadata
-                .namespace
-                .as_deref()
-                .context(ObjectHasNoNamespaceSnafu)?,
-            &trino.spec.cluster_config.catalog_label_selector,
-        )
+    // dereference (client required)
+    let dereferenced_objects = dereference::dereference(client, trino)
         .await
-        .context(GetCatalogsSnafu)?;
-    let mut catalogs = vec![];
-    let product_version = trino.spec.image.product_version();
-    let product_version =
-        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
-    for catalog in &catalog_definitions {
-        let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
-            .await
-            .context(ParseCatalogSnafu {
-                catalog: catalog_ref,
-            })?;
+        .context(DereferenceSnafu)?;
 
-        catalogs.push(catalog_config);
-    }
-
-    // Resolve fault tolerant execution configuration with S3 connections if needed
-    let resolved_fte_config = match trino.spec.cluster_config.fault_tolerant_execution.as_ref() {
-        Some(fte_config) => Some(
-            fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig::from_config(
-                fte_config,
-                Some(client),
-                &namespace,
-            )
-            .await
-            .context(FaultTolerantExecutionSnafu)?,
-        ),
-        None => None,
-    };
-
-    // Resolve client spooling protocol configuration with S3 connections if needed
-    let resolved_client_protocol_config = match trino.spec.cluster_config.client_protocol.as_ref() {
-        Some(spooling_config) => Some(
-            client_protocol::ResolvedClientProtocolConfig::from_config(
-                spooling_config,
-                Some(client),
-                &namespace,
-            )
-            .await
-            .context(ClientProtocolConfigurationSnafu)?,
-        ),
-        None => None,
-    };
-    if resolved_client_protocol_config.is_some()
-        && resolved_product_image.product_version.starts_with("45")
-    {
-        return Err(Error::ClientSpoolingProtocolTrinoVersion {
-            product_version: resolved_product_image.product_version,
-        });
-    }
-
-    let validated_config = validated_product_config(
+    // validate (no client required)
+    let validated = validate::validate(
         trino,
-        // The Trino version is a single number like 396.
-        // The product config expects semver formatted version strings.
-        // That is why we just add minor and patch version 0 here.
-        &format!("{}.0.0", resolved_product_image.product_version),
+        &dereferenced_objects,
+        &ctx.operator_environment,
         &ctx.product_config,
-    )?;
+    )
+    .context(ValidateClusterSnafu)?;
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -535,15 +381,6 @@ pub async fn reconcile_trino(
         .await
         .context(ApplyRoleBindingSnafu)?;
 
-    let trino_opa_config = match trino.get_opa_config() {
-        Some(opa_config) => Some(
-            TrinoOpaConfig::from_opa_config(client, trino, opa_config)
-                .await
-                .context(InvalidOpaConfigSnafu)?,
-        ),
-        None => None,
-    };
-
     random_secret_creation::create_random_secret_if_not_exists(
         &shared_internal_secret_name(trino),
         ENV_INTERNAL_SECRET,
@@ -568,19 +405,23 @@ pub async fn reconcile_trino(
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
-    for (trino_role_str, role_config) in validated_config {
+    for (trino_role_str, role_config) in validated.validated_role_config {
         let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
         let role = trino.role(&trino_role).context(ReadRoleSnafu)?;
         for (role_group, config) in role_config {
             let role_group_ref = trino_role.rolegroup_ref(trino, &role_group);
 
             let merged_config = trino
-                .merged_config(&trino_role, &role_group_ref, &catalog_definitions)
+                .merged_config(
+                    &trino_role,
+                    &role_group_ref,
+                    &dereferenced_objects.catalog_definitions,
+                )
                 .context(FailedToResolveConfigSnafu)?;
 
             let role_group_service_recommended_labels = build_recommended_labels(
                 trino,
-                &resolved_product_image.app_version_label_value,
+                &validated.image.app_version_label_value,
                 &role_group_ref.role,
                 &role_group_ref.role_group,
             );
@@ -611,37 +452,37 @@ pub async fn reconcile_trino(
 
             let rg_configmap = build_rolegroup_config_map(
                 trino,
-                &resolved_product_image,
+                &validated.image,
                 &role,
                 &trino_role,
                 &role_group_ref,
                 &config,
                 &merged_config,
-                &trino_authentication_config,
-                &trino_opa_config,
+                &validated.trino_authentication_config,
+                &dereferenced_objects.trino_opa_config,
                 &client.kubernetes_cluster_info,
-                &resolved_fte_config,
-                &resolved_client_protocol_config,
+                &dereferenced_objects.resolved_fte_config,
+                &dereferenced_objects.resolved_client_protocol_config,
             )?;
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
-                &resolved_product_image,
+                &validated.image,
                 &role_group_ref,
-                &catalogs,
+                &dereferenced_objects.catalogs,
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
                 &trino_role,
-                &resolved_product_image,
+                &validated.image,
                 &role_group_ref,
                 &config,
                 &merged_config,
-                &trino_authentication_config,
-                &catalogs,
+                &validated.trino_authentication_config,
+                &dereferenced_objects.catalogs,
                 &rbac_sa.name_any(),
-                &resolved_fte_config,
-                &resolved_client_protocol_config,
-                &trino_opa_config,
+                &dereferenced_objects.resolved_fte_config,
+                &dereferenced_objects.resolved_client_protocol_config,
+                &dereferenced_objects.trino_opa_config,
             )?;
 
             cluster_resources
@@ -691,7 +532,7 @@ pub async fn reconcile_trino(
                     trino,
                     build_recommended_labels(
                         trino,
-                        &resolved_product_image.app_version_label_value,
+                        &validated.image.app_version_label_value,
                         &trino_role_str,
                         "none",
                     ),
@@ -1472,67 +1313,6 @@ fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &st
     }
 }
 
-/// Defines all required roles and their required configuration.
-///
-/// The roles and their configs are then validated and complemented by the product config.
-///
-/// # Arguments
-/// * `resource`        - The TrinoCluster containing the role definitions.
-/// * `version`         - The TrinoCluster version.
-/// * `product_config`  - The product config to validate and complement the user config.
-///
-fn validated_product_config(
-    trino: &v1alpha1::TrinoCluster,
-    version: &str,
-    product_config: &ProductConfigManager,
-) -> Result<ValidatedRoleConfigByPropertyKind, Error> {
-    let mut roles = HashMap::new();
-
-    let config_files = vec![
-        PropertyNameKind::Env,
-        PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-        PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-        PropertyNameKind::File(JVM_CONFIG.to_string()),
-        PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-        PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
-        PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
-        PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
-        PropertyNameKind::File(EXCHANGE_MANAGER_PROPERTIES.to_string()),
-    ];
-
-    let coordinator_role = TrinoRole::Coordinator;
-    roles.insert(
-        coordinator_role.to_string(),
-        (
-            config_files.clone(),
-            trino
-                .role(&coordinator_role)
-                .with_context(|_| MissingTrinoRoleSnafu {
-                    role: coordinator_role.to_string(),
-                })?,
-        ),
-    );
-
-    let worker_role = TrinoRole::Worker;
-    roles.insert(
-        worker_role.to_string(),
-        (
-            config_files,
-            trino
-                .role(&worker_role)
-                .with_context(|_| MissingTrinoRoleSnafu {
-                    role: worker_role.to_string(),
-                })?,
-        ),
-    );
-
-    let role_config =
-        transform_all_roles_to_config(trino, &roles).context(ProductConfigTransformSnafu)?;
-
-    validate_all_roles_and_groups_config(version, &role_config, product_config, false, false)
-        .context(InvalidProductConfigSnafu)
-}
-
 fn build_recommended_labels<'a>(
     owner: &'a v1alpha1::TrinoCluster,
     app_version: &'a str,
@@ -1847,10 +1627,17 @@ fn tls_volume_mounts(
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::commons::networking::DomainName;
+    use stackable_operator::{
+        commons::networking::DomainName,
+        kube::runtime::reflector::ObjectRef,
+        product_config_utils::{
+            transform_all_roles_to_config, validate_all_roles_and_groups_config,
+        },
+    };
 
     use super::*;
     use crate::{
+        authentication::TrinoAuthenticationTypes,
         config::{
             client_protocol::ResolvedClientProtocolConfig,
             fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
@@ -2191,7 +1978,7 @@ mod tests {
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
-        let validated_config = validated_product_config(
+        let validated_config = validate::validated_product_config(
             &trino,
             "455.0.0",
             &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")

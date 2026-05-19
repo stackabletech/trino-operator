@@ -1,0 +1,431 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 60
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-coordinator-default
+  annotations:
+    restarter.stackable.tech/ignore-secret.0: trino-users
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    restarter.stackable.tech/enabled: "true"
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: coordinator
+      app.kubernetes.io/instance: trino
+      app.kubernetes.io/name: trino
+      app.kubernetes.io/role-group: default
+  serviceName: trino-coordinator-default-headless
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: trino
+      labels:
+        app.kubernetes.io/component: coordinator
+        app.kubernetes.io/instance: trino
+        app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+        app.kubernetes.io/name: trino
+        app.kubernetes.io/role-group: default
+        stackable.tech/vendor: Stackable
+    spec:
+      serviceAccount: trino-serviceaccount
+      serviceAccountName: trino-serviceaccount
+      terminationGracePeriodSeconds: 900
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-worker-default
+  annotations:
+    restarter.stackable.tech/ignore-secret.0: trino-users
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    restarter.stackable.tech/enabled: "true"
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+      app.kubernetes.io/instance: trino
+      app.kubernetes.io/name: trino
+      app.kubernetes.io/role-group: default
+  serviceName: trino-worker-default-headless
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: trino
+      labels:
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/instance: trino
+        app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+        app.kubernetes.io/name: trino
+        app.kubernetes.io/role-group: default
+        stackable.tech/vendor: Stackable
+    spec:
+      serviceAccount: trino-serviceaccount
+      serviceAccountName: trino-serviceaccount
+      terminationGracePeriodSeconds: 75 # 5s gracefulShutdownTimeout + 2 x 30s grace period + 10s safety buffer
+status:
+  readyReplicas: 1
+  replicas: 1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-coordinator-default
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-coordinator-default-catalog
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-worker-default
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trino-worker-default-catalog
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-internal-secret
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-spooling-secret
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-coordinator-default-headless
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  clusterIP: None
+  ports:
+    - name: https
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-coordinator-default-metrics
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8081"
+    prometheus.io/scheme: http
+    prometheus.io/scrape: "true"
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    prometheus.io/scrape: "true"
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-worker-default-headless
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  clusterIP: None
+  ports:
+    - name: https
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trino-worker-default-metrics
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8081"
+    prometheus.io/scheme: http
+    prometheus.io/scrape: "true"
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+    prometheus.io/scrape: "true"
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: default
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trino-serviceaccount
+  labels:
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: trino-rolebinding
+  labels:
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: trino-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: trino-serviceaccount
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trino-coordinator
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: coordinator
+      app.kubernetes.io/instance: trino
+      app.kubernetes.io/name: trino
+status:
+  currentHealthy: 1
+  disruptionsAllowed: 1
+  expectedPods: 1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trino-worker
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+      app.kubernetes.io/instance: trino
+      app.kubernetes.io/name: trino
+status:
+  currentHealthy: 1
+  disruptionsAllowed: 1
+  expectedPods: 1
+---
+apiVersion: listeners.stackable.tech/v1alpha1
+kind: Listener
+metadata:
+  name: trino-coordinator
+  labels:
+    app.kubernetes.io/component: coordinator
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/role-group: none
+    stackable.tech/vendor: Stackable
+  ownerReferences:
+    - apiVersion: trino.stackable.tech/v1alpha1
+      controller: true
+      kind: TrinoCluster
+      name: trino
+spec:
+  className: cluster-internal
+  ports:
+    - name: https
+      port: 8443
+      protocol: TCP

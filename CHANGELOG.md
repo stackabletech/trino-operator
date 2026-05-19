@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
   but ignored ([#878]).
 - Document Helm deployed RBAC permissions and remove unnecessary permissions ([#869]).
 - Bump `stackable-operator` to 0.111.0 and `kube` to 3.1.0 ([#878], [#884]).
+- Internal operator refactoring: introduce dereference() and validate() steps in the reconciler ([#889]).
 
 ### Fixed
 
@@ -34,6 +35,7 @@ All notable changes to this project will be documented in this file.
 [#878]: https://github.com/stackabletech/trino-operator/pull/878
 [#883]: https://github.com/stackabletech/trino-operator/pull/883
 [#884]: https://github.com/stackabletech/trino-operator/pull/884
+[#889]: https://github.com/stackabletech/trino-operator/pull/889
 
 ## [26.3.0] - 2026-03-16
 

@@ -20,6 +20,7 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+#[derive(Clone)]
 pub struct ResolvedAuthenticationClassRef {
     /// An [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) to use.
     pub authentication_class: core::v1alpha1::AuthenticationClass,
