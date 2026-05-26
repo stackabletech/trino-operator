@@ -38,9 +38,9 @@ dimensions:
   - name: hive-latest
     values:
       - 4.2.0
-  - name: opa
+  - name: opa-latest
     values:
-      - 1.12.3
+      - 1.16.2
   - name: hdfs
     values:
       - 3.4.2
