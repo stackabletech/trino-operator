@@ -8,6 +8,9 @@ use std::collections::BTreeMap;
 
 use snafu::{ResultExt, Snafu};
 
+// Until callers exist (wired in by build/config_map.rs in Task 12), the
+// writer is transient dead code. Allow the warning to keep `cargo check` clean.
+#[allow(dead_code)]
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to write properties output"))]
@@ -18,6 +21,7 @@ pub enum Error {
 ///
 /// Keys and values are escaped per <https://docs.oracle.com/javase/8/docs/api/java/util/Properties.html>:
 /// `:`, `=`, `#`, `!`, `\\`, leading whitespace, and ` ` (space).
+#[allow(dead_code)]
 pub fn to_java_properties_string(
     props: &BTreeMap<String, String>,
 ) -> Result<String, Error> {
