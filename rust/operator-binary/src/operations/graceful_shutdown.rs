@@ -9,8 +9,10 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
 };
 
+use crate::controller::ValidatedCluster;
 use crate::crd::{
-    TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD, WORKER_SHUTDOWN_GRACE_PERIOD, v1alpha1,
+    DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT, TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD,
+    WORKER_SHUTDOWN_GRACE_PERIOD, v1alpha1,
 };
 
 #[derive(Debug, Snafu)]
@@ -50,6 +52,59 @@ pub fn graceful_shutdown_config_properties(
             Some(format!("{}s", WORKER_SHUTDOWN_GRACE_PERIOD.as_secs())),
         )]),
     }
+}
+
+/// V2 variant of [`graceful_shutdown_config_properties`] that reads from a
+/// [`ValidatedCluster`]. The legacy function is preserved until reconcile is
+/// switched (Task 14) and is then deleted (Task 15).
+///
+/// Returns a flat `BTreeMap<String, String>` (unlike the legacy variant which
+/// returns `BTreeMap<String, Option<String>>`) — the new builders no longer
+/// thread `Option` values through.
+// Until callers exist (wired in by build/config_map.rs in Task 12), this
+// helper is transient dead code. Allow the warning to keep `cargo check` clean.
+#[allow(dead_code)]
+pub fn graceful_shutdown_config_properties_v2(
+    cluster: &ValidatedCluster,
+    role: TrinoRole,
+) -> BTreeMap<String, String> {
+    match role {
+        TrinoRole::Coordinator => {
+            // Only set query.max-execution-time if fault tolerant execution is not configured.
+            // With fault tolerant execution enabled, queries can be retried and run indefinitely.
+            if cluster.resolved_fte_config.is_none() {
+                let min_worker_graceful_shutdown_timeout =
+                    min_worker_graceful_shutdown_timeout_v2(cluster);
+                BTreeMap::from([(
+                    "query.max-execution-time".to_string(),
+                    format!("{}s", min_worker_graceful_shutdown_timeout.as_secs()),
+                )])
+            } else {
+                BTreeMap::new()
+            }
+        }
+        TrinoRole::Worker => BTreeMap::from([(
+            "shutdown.grace-period".to_string(),
+            format!("{}s", WORKER_SHUTDOWN_GRACE_PERIOD.as_secs()),
+        )]),
+    }
+}
+
+/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups.
+///
+/// Mirrors [`v1alpha1::TrinoCluster::min_worker_graceful_shutdown_timeout`] but
+/// reads from [`ValidatedCluster::role_group_configs`].
+fn min_worker_graceful_shutdown_timeout_v2(
+    cluster: &ValidatedCluster,
+) -> stackable_operator::shared::time::Duration {
+    cluster
+        .role_group_configs
+        .get(&TrinoRole::Worker)
+        .into_iter()
+        .flat_map(|groups| groups.values())
+        .filter_map(|rg| rg.config.graceful_shutdown_timeout)
+        .min()
+        .unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT)
 }
 
 pub fn add_graceful_shutdown_config(
