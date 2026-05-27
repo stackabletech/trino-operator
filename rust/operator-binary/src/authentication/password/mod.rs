@@ -36,7 +36,7 @@ pub enum Error {
 
     #[snafu(display("failed to write password authentication config file"))]
     WritePasswordAuthenticationFile {
-        source: product_config::writer::PropertiesWriterError,
+        source: crate::controller::build::properties::writer::Error,
     },
 
     #[snafu(display("failed to create LDAP Volumes and VolumeMounts"))]
@@ -90,16 +90,13 @@ impl TrinoPasswordAuthentication {
                         .push(format!("{RW_CONFIG_DIR_NAME}/{config_file_name}"));
 
                     // authenticator property file
+                    let file_props: BTreeMap<String, String> =
+                        file_authenticator.config_file_data().into_iter().collect();
                     password_authentication_config.add_config_file(
                         TrinoRole::Coordinator,
                         config_file_name,
-                        product_config::writer::to_java_properties_string(
-                            file_authenticator
-                                .config_file_data()
-                                .into_iter()
-                                .map(|(k, v)| (k, Some(v)))
-                                .collect::<BTreeMap<String, Option<String>>>()
-                                .iter(),
+                        crate::controller::build::properties::writer::to_java_properties_string(
+                            &file_props,
                         )
                         .context(WritePasswordAuthenticationFileSnafu)?,
                     );
@@ -130,17 +127,14 @@ impl TrinoPasswordAuthentication {
                         .push(format!("{RW_CONFIG_DIR_NAME}/{config_file_name}",));
 
                     // authenticator property file
+                    let ldap_props = ldap_authenticator
+                        .config_file_data()
+                        .context(InvalidLdapAuthenticationConfigurationSnafu)?;
                     password_authentication_config.add_config_file(
                         TrinoRole::Coordinator,
                         config_file_name,
-                        product_config::writer::to_java_properties_string(
-                            ldap_authenticator
-                                .config_file_data()
-                                .context(InvalidLdapAuthenticationConfigurationSnafu)?
-                                .into_iter()
-                                .map(|(k, v)| (k, Some(v)))
-                                .collect::<BTreeMap<String, Option<String>>>()
-                                .iter(),
+                        crate::controller::build::properties::writer::to_java_properties_string(
+                            &ldap_props,
                         )
                         .context(WritePasswordAuthenticationFileSnafu)?,
                     );

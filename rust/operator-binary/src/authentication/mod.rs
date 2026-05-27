@@ -52,7 +52,7 @@ pub enum Error {
 
     #[snafu(display("failed to format trino authentication java properties"))]
     FailedToWriteJavaProperties {
-        source: product_config::writer::PropertiesWriterError,
+        source: crate::controller::build::properties::writer::Error,
     },
 
     #[snafu(display("failed to configure trino password authentication"))]

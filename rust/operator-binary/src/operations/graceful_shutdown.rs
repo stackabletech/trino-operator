@@ -23,45 +23,9 @@ pub enum Error {
     },
 }
 
+/// Computes the graceful-shutdown-related properties for the role's
+/// `config.properties` file from a [`ValidatedCluster`].
 pub fn graceful_shutdown_config_properties(
-    trino: &v1alpha1::TrinoCluster,
-    role: &TrinoRole,
-) -> BTreeMap<String, Option<String>> {
-    match role {
-        TrinoRole::Coordinator => {
-            // Only set query.max-execution-time if fault tolerant execution is not configured.
-            // With fault tolerant execution enabled, queries can be retried and run indefinitely.
-            if trino.spec.cluster_config.fault_tolerant_execution.is_none() {
-                let min_worker_graceful_shutdown_timeout =
-                    trino.min_worker_graceful_shutdown_timeout();
-                // We know that queries taking longer than the minimum gracefulShutdownTimeout are subject to failure.
-                // Read operator docs for reasoning.
-                BTreeMap::from([(
-                    "query.max-execution-time".to_string(),
-                    Some(format!(
-                        "{}s",
-                        min_worker_graceful_shutdown_timeout.as_secs()
-                    )),
-                )])
-            } else {
-                BTreeMap::new()
-            }
-        }
-        TrinoRole::Worker => BTreeMap::from([(
-            "shutdown.grace-period".to_string(),
-            Some(format!("{}s", WORKER_SHUTDOWN_GRACE_PERIOD.as_secs())),
-        )]),
-    }
-}
-
-/// V2 variant of [`graceful_shutdown_config_properties`] that reads from a
-/// [`ValidatedCluster`]. The legacy function is preserved until reconcile is
-/// switched (Task 14) and is then deleted (Task 15).
-///
-/// Returns a flat `BTreeMap<String, String>` (unlike the legacy variant which
-/// returns `BTreeMap<String, Option<String>>`) — the new builders no longer
-/// thread `Option` values through.
-pub fn graceful_shutdown_config_properties_v2(
     cluster: &ValidatedCluster,
     role: TrinoRole,
 ) -> BTreeMap<String, String> {
@@ -71,7 +35,7 @@ pub fn graceful_shutdown_config_properties_v2(
             // With fault tolerant execution enabled, queries can be retried and run indefinitely.
             if cluster.resolved_fte_config.is_none() {
                 let min_worker_graceful_shutdown_timeout =
-                    min_worker_graceful_shutdown_timeout_v2(cluster);
+                    min_worker_graceful_shutdown_timeout(cluster);
                 BTreeMap::from([(
                     "query.max-execution-time".to_string(),
                     format!("{}s", min_worker_graceful_shutdown_timeout.as_secs()),
@@ -91,7 +55,7 @@ pub fn graceful_shutdown_config_properties_v2(
 ///
 /// Mirrors [`v1alpha1::TrinoCluster::min_worker_graceful_shutdown_timeout`] but
 /// reads from [`ValidatedCluster::role_group_configs`].
-fn min_worker_graceful_shutdown_timeout_v2(
+fn min_worker_graceful_shutdown_timeout(
     cluster: &ValidatedCluster,
 ) -> stackable_operator::shared::time::Duration {
     cluster

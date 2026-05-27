@@ -1,18 +1,12 @@
 //! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`]
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     convert::Infallible,
     num::ParseIntError,
-    str::FromStr,
     sync::Arc,
 };
 
 use const_format::concatcp;
-use product_config::{
-    self,
-    types::PropertyNameKind,
-    writer::{PropertiesWriterError, to_java_properties_string},
-};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
@@ -67,11 +61,10 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
-    utils::cluster_info::KubernetesClusterInfo,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
-mod build;
+pub mod build;
 mod dereference;
 mod validate;
 
@@ -82,25 +75,18 @@ use crate::{
     command,
     config::{self, client_protocol, fault_tolerant_execution},
     crd::{
-        ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
-        DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, EXCHANGE_MANAGER_PROPERTIES,
-        HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, JVM_CONFIG,
-        JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
-        METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES,
-        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole, TrinoRoleType,
-        discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        v1alpha1,
+        APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
+        HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
+        METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+        STACKABLE_TLS_STORE_PASSWORD, TrinoRole, v1alpha1,
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
         group_listener_name, secret_volume_listener_scope,
     },
-    operations::{
-        add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
-    },
-    product_logging::{get_log_properties, get_vector_toml},
+    operations::{add_graceful_shutdown_config, pdb::add_pdbs},
+    product_logging::get_vector_toml,
     service::{build_rolegroup_headless_service, build_rolegroup_metrics_service},
 };
 
@@ -110,10 +96,10 @@ use crate::{
 /// Carries everything downstream needs — no `&v1alpha1::TrinoCluster` or
 /// `&DereferencedObjects` survives past validate.
 #[derive(Clone, Debug)]
-// Some fields (metadata, namespace, uid, catalog_label_selector,
-// cluster_operation, object_overrides) are accumulated for future builders
-// that don't yet consume them. They're kept on the struct because the
-// validate step assembles them once from the input cluster.
+// Some fields (metadata, uid, catalog_label_selector, cluster_operation,
+// object_overrides) are accumulated for future builders that don't yet
+// consume them. They're kept on the struct because the validate step
+// assembles them once from the input cluster.
 #[allow(dead_code)]
 pub struct ValidatedCluster {
     pub metadata: stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta,
@@ -229,7 +215,9 @@ pub enum Error {
     },
 
     #[snafu(display("failed to format runtime properties"))]
-    FailedToWriteJavaProperties { source: PropertiesWriterError },
+    FailedToWriteJavaProperties {
+        source: build::properties::writer::Error,
+    },
 
     #[snafu(display("failed to parse role: {source}"))]
     FailedToParseRole { source: strum::ParseError },
@@ -279,12 +267,6 @@ pub enum Error {
     #[snafu(display("failed to build RBAC resources"))]
     BuildRbacResources {
         source: stackable_operator::commons::rbac::Error,
-    },
-
-    #[snafu(display("failed to serialize [{JVM_SECURITY_PROPERTIES}] for {}", rolegroup))]
-    JvmSecurityProperties {
-        source: PropertiesWriterError,
-        rolegroup: String,
     },
 
     #[snafu(display("failed to create PodDisruptionBudget"))]
@@ -648,249 +630,6 @@ pub async fn reconcile_trino(
     Ok(Action::await_change())
 }
 
-/// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
-// Deleted in Task 15. Until then, allow `dead_code` because the new pipeline
-// (build/config_map.rs) is what reconcile actually calls.
-#[allow(dead_code, clippy::too_many_arguments)]
-fn build_rolegroup_config_map(
-    trino: &v1alpha1::TrinoCluster,
-    resolved_product_image: &ResolvedProductImage,
-    role: &TrinoRoleType,
-    trino_role: &TrinoRole,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    merged_config: &v1alpha1::TrinoConfig,
-    trino_authentication_config: &TrinoAuthenticationConfig,
-    trino_opa_config: &Option<TrinoOpaConfig>,
-    cluster_info: &KubernetesClusterInfo,
-    resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
-) -> Result<ConfigMap> {
-    let mut cm_conf_data = BTreeMap::new();
-
-    let product_version = &resolved_product_image.product_version;
-    let product_version =
-        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
-    let jvm_config = config::jvm::jvm_config(
-        product_version,
-        merged_config,
-        role,
-        &rolegroup_ref.role_group,
-    )
-    .context(FailedToCreateJvmConfigSnafu)?;
-
-    // TODO: we support only one coordinator for now
-    let coordinator_ref: TrinoPodRef = trino
-        .coordinator_pods()
-        .context(InternalOperatorFailureSnafu)?
-        .next()
-        .context(MissingCoordinatorPodsSnafu)?;
-
-    // Add additional config files for authentication
-    cm_conf_data.extend(trino_authentication_config.config_files(trino_role));
-
-    for (property_name_kind, config) in config {
-        // We used this temporary map to add all dynamically resolved (e.g. discovery config maps)
-        // properties. This will be extended with the merged role group properties (transformed_config)
-        // to respect all possible override settings.
-        let mut dynamic_resolved_config = BTreeMap::<String, Option<String>>::new();
-
-        let transformed_config: BTreeMap<String, Option<String>> = config
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(v.clone())))
-            .collect();
-
-        match property_name_kind {
-            PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
-                // Add authentication properties (only required for the Coordinator)
-                dynamic_resolved_config.extend(
-                    trino_authentication_config
-                        .config_properties(trino_role)
-                        .into_iter()
-                        .map(|(k, v)| (k, Some(v)))
-                        .collect::<BTreeMap<String, Option<String>>>(),
-                );
-
-                let protocol = if trino.get_internal_tls().is_some() {
-                    TrinoDiscoveryProtocol::Https
-                } else {
-                    TrinoDiscoveryProtocol::Http
-                };
-
-                let discovery = TrinoDiscovery::new(&coordinator_ref, protocol);
-                dynamic_resolved_config.insert(
-                    DISCOVERY_URI.to_string(),
-                    Some(discovery.discovery_uri(cluster_info)),
-                );
-
-                dynamic_resolved_config
-                    .extend(graceful_shutdown_config_properties(trino, trino_role));
-
-                // Add fault tolerant execution properties from resolved configuration
-                if let Some(resolved_fte) = resolved_fte_config {
-                    dynamic_resolved_config.extend(
-                        resolved_fte
-                            .config_properties
-                            .iter()
-                            .map(|(k, v)| (k.clone(), Some(v.clone()))),
-                    );
-                }
-
-                // Add spooling properties from resolved configuration
-                if let Some(resolved_spooling) = resolved_spooling_config {
-                    dynamic_resolved_config.extend(
-                        resolved_spooling
-                            .config_properties
-                            .iter()
-                            .map(|(k, v)| (k.clone(), Some(v.clone()))),
-                    );
-                }
-
-                // Add static properties and overrides
-                dynamic_resolved_config.extend(transformed_config);
-
-                let config_properties = product_config::writer::to_java_properties_string(
-                    dynamic_resolved_config.iter(),
-                )
-                .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                cm_conf_data.insert(file_name.to_string(), config_properties);
-            }
-
-            PropertyNameKind::File(file_name) if file_name == NODE_PROPERTIES => {
-                // Add static properties and overrides
-                dynamic_resolved_config.extend(transformed_config);
-
-                let node_properties = product_config::writer::to_java_properties_string(
-                    dynamic_resolved_config.iter(),
-                )
-                .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                cm_conf_data.insert(file_name.to_string(), node_properties);
-            }
-            PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
-                // No overrides required here, all settings can be set via logging options
-                if let Some(log_properties) = get_log_properties(&merged_config.logging) {
-                    cm_conf_data.insert(file_name.to_string(), log_properties);
-                }
-
-                if let Some(vector_toml) = get_vector_toml(rolegroup_ref, &merged_config.logging)
-                    .context(InvalidLoggingConfigSnafu {
-                        cm_name: rolegroup_ref.object_name(),
-                    })?
-                {
-                    cm_conf_data.insert(
-                        product_logging::framework::VECTOR_CONFIG_FILE.to_string(),
-                        vector_toml,
-                    );
-                }
-            }
-            PropertyNameKind::File(file_name) if file_name == ACCESS_CONTROL_PROPERTIES => {
-                if let Some(trino_opa_config) = trino_opa_config {
-                    dynamic_resolved_config.extend(trino_opa_config.as_config());
-                }
-
-                // Add static properties and overrides
-                dynamic_resolved_config.extend(transformed_config);
-
-                if !dynamic_resolved_config.is_empty() {
-                    let access_control_properties =
-                        product_config::writer::to_java_properties_string(
-                            dynamic_resolved_config.iter(),
-                        )
-                        .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                    cm_conf_data.insert(file_name.to_string(), access_control_properties);
-                }
-            }
-            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
-            PropertyNameKind::File(file_name) if file_name == SPOOLING_MANAGER_PROPERTIES => {
-                // Add automatic properties for the spooling protocol
-                if let Some(spooling_config) = resolved_spooling_config {
-                    dynamic_resolved_config = spooling_config
-                        .spooling_manager_properties
-                        .iter()
-                        .map(|(k, v)| (k.clone(), Some(v.clone())))
-                        .collect();
-                }
-
-                // Override automatic properties with user provided configuration for the spooling protocol
-                dynamic_resolved_config.extend(transformed_config);
-
-                if !dynamic_resolved_config.is_empty() {
-                    cm_conf_data.insert(
-                        file_name.to_string(),
-                        to_java_properties_string(dynamic_resolved_config.iter())
-                            .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-                    );
-                }
-            }
-            PropertyNameKind::File(file_name) if file_name == EXCHANGE_MANAGER_PROPERTIES => {
-                // Add exchange manager properties from resolved fault tolerant execution configuration
-                if let Some(resolved_fte) = resolved_fte_config {
-                    dynamic_resolved_config = resolved_fte
-                        .exchange_manager_properties
-                        .iter()
-                        .map(|(k, v)| (k.clone(), Some(v.clone())))
-                        .collect();
-                }
-
-                // Override automatic properties with user provided configuration for the spooling protocol
-                dynamic_resolved_config.extend(transformed_config);
-
-                if !dynamic_resolved_config.is_empty() {
-                    cm_conf_data.insert(
-                        file_name.to_string(),
-                        to_java_properties_string(dynamic_resolved_config.iter())
-                            .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-                    );
-                }
-            }
-            _ => {}
-        }
-    }
-
-    cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
-
-    let jvm_sec_props: BTreeMap<String, Option<String>> = config
-        .get(&PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()))
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
-        .map(|(k, v)| (k, Some(v)))
-        .collect();
-
-    cm_conf_data.insert(
-        JVM_SECURITY_PROPERTIES.to_string(),
-        to_java_properties_string(jvm_sec_props.iter()).with_context(|_| {
-            JvmSecurityPropertiesSnafu {
-                rolegroup: rolegroup_ref.role_group.clone(),
-            }
-        })?,
-    );
-
-    ConfigMapBuilder::new()
-        .metadata(
-            ObjectMetaBuilder::new()
-                .name_and_namespace(trino)
-                .name(rolegroup_ref.object_name())
-                .ownerreference_from_resource(trino, None, Some(true))
-                .context(ObjectMissingMetadataForOwnerRefSnafu)?
-                .with_recommended_labels(&build_recommended_labels(
-                    trino,
-                    &resolved_product_image.app_version_label_value,
-                    &rolegroup_ref.role,
-                    &rolegroup_ref.role_group,
-                ))
-                .context(MetadataBuildSnafu)?
-                .build(),
-        )
-        .data(cm_conf_data)
-        .build()
-        .with_context(|_| BuildRoleGroupConfigSnafu {
-            rolegroup: rolegroup_ref.clone(),
-        })
-}
 
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
 /// given by the administrator
@@ -920,21 +659,15 @@ fn build_rolegroup_catalog_config_map(
             catalogs
                 .iter()
                 .map(|catalog| {
-                    let catalog_props = catalog
+                    let catalog_props: BTreeMap<String, String> = catalog
                         .properties
                         .iter()
-                        .map(|(k, v)| (k.to_string(), Some(v.to_string())))
-                        .collect::<Vec<_>>();
+                        .map(|(k, v)| (k.to_string(), v.to_string()))
+                        .collect();
                     Ok((
                         format!("{}.properties", catalog.name),
-                        // false positive https://github.com/rust-lang/rust-clippy/issues/9280
-                        // we need the tuple (&String, &Option<String>) which the extra map is doing.
-                        // Removing the map changes the type to &(String, Option<String>)
-                        #[allow(clippy::map_identity)]
-                        product_config::writer::to_java_properties_string(
-                            catalog_props.iter().map(|(k, v)| (k, v)),
-                        )
-                        .context(FailedToWriteJavaPropertiesSnafu)?,
+                        build::properties::writer::to_java_properties_string(&catalog_props)
+                            .context(FailedToWriteJavaPropertiesSnafu)?,
                     ))
                 })
                 .collect::<Result<_>>()?,

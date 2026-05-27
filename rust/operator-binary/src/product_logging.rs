@@ -55,23 +55,7 @@ impl From<LogLevel> for TrinoLogLevel {
     }
 }
 
-/// Return the `log.properties` configuration
-pub fn get_log_properties(logging: &Logging<Container>) -> Option<String> {
-    if let Some(ContainerLogConfig {
-        choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
-    }) = logging.containers.get(&Container::Trino)
-    {
-        Some(create_trino_log_properties(log_config))
-    } else {
-        None
-    }
-}
-
-/// Same as [`get_log_properties`] but returns a typed `BTreeMap` instead of
-/// a Java-properties-formatted string.
-///
-/// New per-file builders use this; the old `get_log_properties` will be removed
-/// once the legacy `build_rolegroup_config_map` is deleted (see Task 14).
+/// Return the `log.properties` content as a typed `BTreeMap`.
 pub fn get_log_property_map(
     logging: &Logging<Container>,
 ) -> Option<std::collections::BTreeMap<String, String>> {
@@ -120,26 +104,3 @@ pub fn get_vector_toml(
     }
 }
 
-/// Create trino `log.properties` containing loggers and their respective log levels.
-/// The operator-rs framework `LogLevel` offers more choices which are parsed to the available
-/// `TrinoLogLevel`.
-///
-/// The `log.properties` will adhere to the example format:
-/// ```
-/// io.trino=debug
-/// io.trino.server=info
-/// ```
-fn create_trino_log_properties(automatic_container_config: &AutomaticContainerLogConfig) -> String {
-    automatic_container_config
-        .loggers
-        .iter()
-        .map(|(logger, config)| {
-            let log_level = TrinoLogLevel::from(config.level);
-            if logger == AutomaticContainerLogConfig::ROOT_LOGGER {
-                format!("={}\n", log_level)
-            } else {
-                format!("{}={}\n", logger, log_level)
-            }
-        })
-        .collect::<String>()
-}

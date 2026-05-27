@@ -10,7 +10,6 @@ publish = false
 build = "build.rs"
 
 [dependencies]
-product-config.workspace = true
 stackable-operator.workspace = true
 
 anyhow.workspace = true

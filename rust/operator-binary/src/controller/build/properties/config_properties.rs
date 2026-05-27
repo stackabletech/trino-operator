@@ -193,7 +193,7 @@ pub fn build(
     // would have errored earlier (MissingCoordinatorPods).
 
     // Graceful shutdown.
-    for (k, v) in crate::operations::graceful_shutdown_config_properties_v2(cluster, role) {
+    for (k, v) in crate::operations::graceful_shutdown_config_properties(cluster, role) {
         props.insert(k, v);
     }
 
