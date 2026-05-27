@@ -42,9 +42,6 @@ pub enum Error {
 }
 
 /// Build the `config.properties` key/value pairs.
-// Until callers exist (wired in by build/config_map.rs in Task 12), this
-// builder is transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code)]
 pub fn build(
     cluster: &ValidatedCluster,
     role: TrinoRole,

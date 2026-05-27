@@ -9,9 +9,6 @@ use crate::controller::{TrinoRoleGroupConfig, ValidatedCluster};
 /// Returns an empty map when client spooling is not configured and no user
 /// overrides are provided — callers should omit the file from the ConfigMap
 /// in that case.
-// Until callers exist (wired in by build/config_map.rs in Task 12), this
-// builder is transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code)]
 pub fn build(
     cluster: &ValidatedCluster,
     rg: &TrinoRoleGroupConfig,

@@ -54,9 +54,7 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-// Until callers exist (wired in by reconcile in Task 14), this builder is
-// transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code, clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub fn build_rolegroup_config_map(
     cluster: &ValidatedCluster,
     role: TrinoRole,

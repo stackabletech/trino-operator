@@ -61,9 +61,6 @@ pub fn graceful_shutdown_config_properties(
 /// Returns a flat `BTreeMap<String, String>` (unlike the legacy variant which
 /// returns `BTreeMap<String, Option<String>>`) — the new builders no longer
 /// thread `Option` values through.
-// Until callers exist (wired in by build/config_map.rs in Task 12), this
-// helper is transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code)]
 pub fn graceful_shutdown_config_properties_v2(
     cluster: &ValidatedCluster,
     role: TrinoRole,

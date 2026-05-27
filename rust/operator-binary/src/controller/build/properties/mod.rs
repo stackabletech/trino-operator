@@ -35,8 +35,8 @@ pub(crate) mod test_support {
             operator_service_name: "trino-operator".to_string(),
             image_repository: "oci.example.org".to_string(),
         };
-        crate::controller::validate::validate_v2(&trino, &derefs, &operator_env)
-            .expect("validate_v2 should succeed for the minimal fixture")
+        crate::controller::validate::validate(&trino, &derefs, &operator_env)
+            .expect("validate should succeed for the minimal fixture")
     }
 
     pub const MINIMAL_TRINO_YAML: &str = r#"

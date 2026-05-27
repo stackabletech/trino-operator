@@ -11,9 +11,6 @@ const NODE_ENVIRONMENT: &str = "node.environment";
 /// `node.environment` is derived from the cluster name: lowercased, with `-`
 /// replaced by `_`. Trino requires `^[a-z][a-z0-9_]*[a-z0-9]$`; cluster names
 /// constrained by Kubernetes naming already satisfy this after the transform.
-// Until callers exist (wired in by build/config_map.rs in Task 12), this
-// builder is transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code)]
 pub fn build(
     cluster: &ValidatedCluster,
     rg: &TrinoRoleGroupConfig,

@@ -12,9 +12,6 @@ const DEFAULT_IO_TRINO: &str = "INFO";
 ///
 /// Returns an empty map when there is nothing to write — callers
 /// should omit the file from the ConfigMap if the result is empty.
-// Until callers exist (wired in by build/config_map.rs in Task 12), this
-// builder is transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code)]
 pub fn build(
     cluster: &ValidatedCluster,
     role: TrinoRole,

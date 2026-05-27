@@ -72,9 +72,6 @@ pub fn get_log_properties(logging: &Logging<Container>) -> Option<String> {
 ///
 /// New per-file builders use this; the old `get_log_properties` will be removed
 /// once the legacy `build_rolegroup_config_map` is deleted (see Task 14).
-// Until callers exist (wired in by build/config_map.rs in Task 12), this
-// helper is transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code)]
 pub fn get_log_property_map(
     logging: &Logging<Container>,
 ) -> Option<std::collections::BTreeMap<String, String>> {

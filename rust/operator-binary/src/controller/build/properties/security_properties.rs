@@ -13,9 +13,6 @@ const DEFAULT_NETWORKADDRESS_CACHE_NEGATIVE_TTL: &str = "0";
 /// Build the `security.properties` key/value pairs.
 ///
 /// Both keys apply to both `coordinator` and `worker` roles.
-// Until callers exist (wired in by build/config_map.rs in Task 12), this
-// builder is transient dead code. Allow the warning to keep `cargo check` clean.
-#[allow(dead_code)]
 pub fn build(rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
     let mut props = BTreeMap::new();
 

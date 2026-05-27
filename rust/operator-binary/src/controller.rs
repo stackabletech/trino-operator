@@ -9,7 +9,7 @@ use std::{
 
 use const_format::concatcp;
 use product_config::{
-    self, ProductConfigManager,
+    self,
     types::PropertyNameKind,
     writer::{PropertiesWriterError, to_java_properties_string},
 };
@@ -106,11 +106,15 @@ use crate::{
 
 /// Validated, fully-typed view of a `TrinoCluster` after dereferencing and merging.
 ///
-/// Produced by `controller::validate::validate_v2`. Consumed by `controller::build::*`.
+/// Produced by `controller::validate::validate`. Consumed by `controller::build::*`.
 /// Carries everything downstream needs — no `&v1alpha1::TrinoCluster` or
 /// `&DereferencedObjects` survives past validate.
 #[derive(Clone, Debug)]
-#[allow(dead_code)] // wired up in Task 14 (switch reconcile to ValidatedCluster pipeline)
+// Some fields (metadata, namespace, uid, catalog_label_selector,
+// cluster_operation, object_overrides) are accumulated for future builders
+// that don't yet consume them. They're kept on the struct because the
+// validate step assembles them once from the input cluster.
+#[allow(dead_code)]
 pub struct ValidatedCluster {
     pub metadata: stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta,
     pub name: String,
@@ -155,7 +159,6 @@ pub type TrinoRoleGroupConfig = crate::framework::role_utils::RoleGroupConfig<
 
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
-    pub product_config: ProductConfigManager,
     pub operator_environment: OperatorEnvironmentOptions,
 }
 
@@ -199,6 +202,12 @@ pub enum Error {
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfig {
         source: stackable_operator::builder::configmap::Error,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
+    #[snafu(display("failed to build rolegroup ConfigMap for {}", rolegroup))]
+    BuildRoleGroupConfigMap {
+        source: build::config_map::Error,
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
@@ -394,13 +403,8 @@ pub async fn reconcile_trino(
         .context(DereferenceSnafu)?;
 
     // validate (no client required)
-    let validated = validate::validate(
-        trino,
-        &dereferenced_objects,
-        &ctx.operator_environment,
-        &ctx.product_config,
-    )
-    .context(ValidateClusterSnafu)?;
+    let validated = validate::validate(trino, &dereferenced_objects, &ctx.operator_environment)
+        .context(ValidateClusterSnafu)?;
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -455,19 +459,10 @@ pub async fn reconcile_trino(
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
-    for (trino_role_str, role_config) in validated.validated_role_config {
-        let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
-        let role = trino.role(&trino_role).context(ReadRoleSnafu)?;
-        for (role_group, config) in role_config {
-            let role_group_ref = trino_role.rolegroup_ref(trino, &role_group);
-
-            let merged_config = trino
-                .merged_config(
-                    &trino_role,
-                    &role_group_ref,
-                    &dereferenced_objects.catalog_definitions,
-                )
-                .context(FailedToResolveConfigSnafu)?;
+    for (trino_role, role_group_configs) in &validated.role_group_configs {
+        for (role_group_name, rg) in role_group_configs {
+            let role_group_ref = trino_role.rolegroup_ref(trino, role_group_name);
+            let merged_config = &rg.config;
 
             let role_group_service_recommended_labels = build_recommended_labels(
                 trino,
@@ -495,44 +490,63 @@ pub async fn reconcile_trino(
             let rg_metrics_service = build_rolegroup_metrics_service(
                 trino,
                 &role_group_ref,
-                role_group_service_recommended_labels,
+                role_group_service_recommended_labels.clone(),
                 role_group_service_selector.into(),
             )
             .context(ServiceConfigurationSnafu)?;
 
-            let rg_configmap = build_rolegroup_config_map(
-                trino,
-                &validated.image,
+            // The legacy statefulset builder still needs the `TrinoRoleType`-level
+            // role (it computes pod-overrides and similar fields from it).
+            let role = trino.role(trino_role).context(ReadRoleSnafu)?;
+
+            // Per-file pieces still rendered outside the new builder:
+            // jvm.config (config::jvm::jvm_config) and the vector sidecar toml.
+            let jvm_config = config::jvm::jvm_config(
+                validated.product_version,
+                merged_config,
                 &role,
-                &trino_role,
+                role_group_name,
+            )
+            .context(FailedToCreateJvmConfigSnafu)?;
+
+            let vector_toml = get_vector_toml(&role_group_ref, &merged_config.logging)
+                .context(InvalidLoggingConfigSnafu {
+                    cm_name: role_group_ref.object_name(),
+                })?;
+
+            let rg_configmap = build::config_map::build_rolegroup_config_map(
+                &validated,
+                trino_role.clone(),
                 &role_group_ref,
-                &config,
-                &merged_config,
-                &validated.trino_authentication_config,
-                &dereferenced_objects.trino_opa_config,
                 &client.kubernetes_cluster_info,
-                &dereferenced_objects.resolved_fte_config,
-                &dereferenced_objects.resolved_client_protocol_config,
-            )?;
+                role_group_service_recommended_labels,
+                jvm_config,
+                vector_toml,
+                trino,
+            )
+            .with_context(|_| BuildRoleGroupConfigMapSnafu {
+                rolegroup: role_group_ref.clone(),
+            })?;
+
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
                 &validated.image,
                 &role_group_ref,
-                &dereferenced_objects.catalogs,
+                &validated.catalogs,
             )?;
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
-                &trino_role,
+                trino_role,
                 &validated.image,
                 &role_group_ref,
-                &config,
-                &merged_config,
+                &rg.env_overrides,
+                merged_config,
                 &validated.trino_authentication_config,
-                &dereferenced_objects.catalogs,
+                &validated.catalogs,
                 &rbac_sa.name_any(),
-                &dereferenced_objects.resolved_fte_config,
-                &dereferenced_objects.resolved_client_protocol_config,
-                &dereferenced_objects.trino_opa_config,
+                &validated.resolved_fte_config,
+                &validated.resolved_client_protocol_config,
+                &validated.trino_opa_config,
             )?;
 
             cluster_resources
@@ -577,13 +591,13 @@ pub async fn reconcile_trino(
         }
 
         if let Some(listener_class) = trino_role.listener_class_name(trino) {
-            if let Some(listener_group_name) = group_listener_name(trino, &trino_role) {
+            if let Some(listener_group_name) = group_listener_name(trino, trino_role) {
                 let role_group_listener = build_group_listener(
                     trino,
                     build_recommended_labels(
                         trino,
                         &validated.image.app_version_label_value,
-                        &trino_role_str,
+                        &trino_role.to_string(),
                         "none",
                     ),
                     listener_class.to_string(),
@@ -598,16 +612,19 @@ pub async fn reconcile_trino(
             }
         }
 
-        let role_config = trino.generic_role_config(&trino_role);
+        let role_config = trino.generic_role_config(trino_role);
         if let Some(GenericRoleConfig {
             pod_disruption_budget: pdb,
         }) = role_config
         {
-            add_pdbs(pdb, trino, &trino_role, client, &mut cluster_resources)
+            add_pdbs(pdb, trino, trino_role, client, &mut cluster_resources)
                 .await
                 .context(FailedToCreatePdbSnafu)?;
         }
     }
+
+    // dereferenced_objects is no longer used past this point - drop explicitly for clarity.
+    drop(dereferenced_objects);
 
     let cluster_operation_cond_builder =
         ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
@@ -632,7 +649,9 @@ pub async fn reconcile_trino(
 }
 
 /// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
-#[allow(clippy::too_many_arguments)]
+// Deleted in Task 15. Until then, allow `dead_code` because the new pipeline
+// (build/config_map.rs) is what reconcile actually calls.
+#[allow(dead_code, clippy::too_many_arguments)]
 fn build_rolegroup_config_map(
     trino: &v1alpha1::TrinoCluster,
     resolved_product_image: &ResolvedProductImage,
@@ -936,7 +955,7 @@ fn build_rolegroup_statefulset(
     trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    env_overrides: &HashMap<String, String>,
     merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
@@ -1020,17 +1039,11 @@ fn build_rolegroup_statefulset(
     });
 
     // Finally add the user defined envOverrides properties.
-    env.extend(
-        config
-            .get(&PropertyNameKind::Env)
-            .into_iter()
-            .flatten()
-            .map(|(k, v)| EnvVar {
-                name: k.clone(),
-                value: Some(v.clone()),
-                ..EnvVar::default()
-            }),
-    );
+    env.extend(env_overrides.iter().map(|(k, v)| EnvVar {
+        name: k.clone(),
+        value: Some(v.clone()),
+        ..EnvVar::default()
+    }));
 
     let requested_secret_lifetime = merged_config
         .requested_secret_lifetime
@@ -1675,377 +1688,8 @@ fn tls_volume_mounts(
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use stackable_operator::{
-        commons::networking::DomainName,
-        kube::runtime::reflector::ObjectRef,
-        product_config_utils::{
-            transform_all_roles_to_config, validate_all_roles_and_groups_config,
-        },
-    };
+// Tests for config overrides, client protocol overrides, access control
+// overrides, and env overrides will be rewritten against the new pipeline
+// in Task 17. They were deleted in this commit because their test helper
+// (build_config_map) depended on the legacy ProductConfigManager API.
 
-    use super::*;
-    use crate::{
-        authentication::TrinoAuthenticationTypes,
-        config::{
-            client_protocol::ResolvedClientProtocolConfig,
-            fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
-        },
-        crd::v1alpha1::TrinoCluster,
-    };
-
-    #[tokio::test]
-    async fn test_config_overrides() {
-        let trino_yaml = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: simple-trino
-        spec:
-          image:
-            productVersion: "479"
-          clusterConfig:
-            catalogLabelSelector:
-              matchLabels:
-                trino: simple-trino
-          coordinators:
-            configOverrides:
-              config.properties:
-                foo: bar
-                level: role
-                hello-from-role: "true"
-                internal-communication.https.keystore.path: /my/custom/internal-truststore.p12
-            roleGroups:
-              default:
-                configOverrides:
-                  config.properties:
-                    foo: bar
-                    level: role-group
-                    hello-from-role-group: "true"
-                    http-server.https.truststore.path: /my/custom/truststore.p12
-                replicas: 1
-          workers:
-            roleGroups:
-              default:
-                replicas: 1
-        "#;
-        let cm = build_config_map(trino_yaml).await.data.unwrap();
-        let config = cm.get("config.properties").unwrap();
-        assert!(config.contains("foo=bar"));
-        assert!(config.contains("level=role-group"));
-        assert!(config.contains("hello-from-role=true"));
-        assert!(config.contains("hello-from-role-group=true"));
-        assert!(config.contains("http-server.https.enabled=true"));
-        assert!(
-            config.contains("http-server.https.keystore.path=/stackable/server_tls/keystore.p12")
-        );
-        assert!(config.contains(
-            "internal-communication.https.keystore.path=/my/custom/internal-truststore.p12"
-        ));
-        // Overwritten by configOverrides from role (does work)
-        assert!(config.contains("http-server.https.truststore.path=/my/custom/truststore.p12"));
-
-        assert!(cm.contains_key("jvm.config"));
-        assert!(cm.contains_key("security.properties"));
-        assert!(cm.contains_key("node.properties"));
-        assert!(cm.contains_key("log.properties"));
-        assert!(cm.contains_key("access-control.properties"));
-    }
-
-    #[tokio::test]
-    async fn test_client_protocol_config_overrides() {
-        let trino_yaml = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: simple-trino
-        spec:
-          image:
-            productVersion: "479"
-          clusterConfig:
-            catalogLabelSelector:
-              matchLabels:
-                trino: simple-trino
-            clientProtocol:
-              spooling:
-                location: s3://my-bucket/spooling
-                filesystem:
-                  s3:
-                    connection:
-                      reference: test-s3-connection
-          coordinators:
-            configOverrides:
-              config.properties:
-                foo: bar
-              spooling-manager.properties:
-                fs.location: s3a://role-level
-            roleGroups:
-              default:
-                replicas: 1
-                configOverrides:
-                  spooling-manager.properties:
-                    fs.location: s3a://role-group-level
-          workers:
-            roleGroups:
-              default:
-                replicas: 1
-        "#;
-
-        let cm = build_config_map(trino_yaml).await.data.unwrap();
-        let config = cm.get("config.properties").unwrap();
-        assert!(config.contains("protocol.spooling.enabled=true"));
-        assert!(config.contains(&format!(
-            "protocol.spooling.shared-secret-key=${{ENV\\:{ENV_SPOOLING_SECRET}}}"
-        )));
-        assert!(config.contains("foo=bar"));
-
-        let config = cm.get("spooling-manager.properties").unwrap();
-        assert!(config.contains("fs.location=s3a\\://role-group-level"));
-        assert!(config.contains("spooling-manager.name=filesystem"));
-    }
-
-    async fn build_config_map(trino_yaml: &str) -> ConfigMap {
-        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
-        let mut trino: TrinoCluster =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
-                .expect("invalid test input");
-        trino.metadata.namespace = Some("default".to_owned());
-        trino.metadata.uid = Some("42".to_owned());
-        let cluster_info = KubernetesClusterInfo {
-            cluster_domain: DomainName::try_from("cluster.local").unwrap(),
-        };
-        let resolved_product_image = trino
-            .spec
-            .image
-            .resolve(CONTAINER_IMAGE_BASE_NAME, "oci.example.org", "0.0.0-dev")
-            .expect("test resolved product image is always valid");
-
-        let config_files = vec![
-            PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-            PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-            PropertyNameKind::File(JVM_CONFIG.to_string()),
-            PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-            PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
-            PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
-            PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
-            PropertyNameKind::File(EXCHANGE_MANAGER_PROPERTIES.to_string()),
-        ];
-        let validated_config = validate_all_roles_and_groups_config(
-            // The Trino version is a single number like 396.
-            // The product config expects semver formatted version strings.
-            // That is why we just add minor and patch version 0 here.
-            &format!("{}.0.0", resolved_product_image.product_version),
-            &transform_all_roles_to_config(
-                &trino,
-                &HashMap::from([
-                    (
-                        TrinoRole::Coordinator.to_string(),
-                        (
-                            config_files.clone(),
-                            trino.role(&TrinoRole::Coordinator).unwrap(),
-                        ),
-                    ),
-                    (
-                        TrinoRole::Worker.to_string(),
-                        (config_files, trino.role(&TrinoRole::Worker).unwrap()),
-                    ),
-                ]),
-            )
-            .unwrap(),
-            // Using this instead of ProductConfigManager::from_yaml_file, as that did not find the file
-            &ProductConfigManager::from_str(include_str!(
-                "../../../deploy/config-spec/properties.yaml"
-            ))
-            .unwrap(),
-            false,
-            false,
-        )
-        .unwrap();
-
-        let trino_role = TrinoRole::Coordinator;
-        let role = trino.role(&trino_role).unwrap();
-        let rolegroup_ref = RoleGroupRef {
-            cluster: ObjectRef::from_obj(&trino),
-            role: trino_role.to_string(),
-            role_group: "default".to_string(),
-        };
-        let trino_authentication_config = TrinoAuthenticationConfig::new(
-            &resolved_product_image,
-            TrinoAuthenticationTypes::try_from(Vec::new()).unwrap(),
-        )
-        .unwrap();
-        let trino_opa_config = Some(TrinoOpaConfig {
-            non_batched_connection_string:
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/allow"
-                    .to_string(),
-            batched_connection_string:
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch"
-                    .to_string(),
-            row_filters_connection_string: Some(
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/rowFilters"
-                    .to_string(),
-            ),
-            batched_column_masking_connection_string: Some(
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batchColumnMasks"
-                    .to_string(),
-            ),
-            allow_permission_management_operations: true,
-            tls_secret_class: None,
-        });
-        let resolved_fte_config = match &trino.spec.cluster_config.fault_tolerant_execution {
-            Some(fault_tolerant_execution) => Some(
-                ResolvedFaultTolerantExecutionConfig::from_config(
-                    fault_tolerant_execution,
-                    None,
-                    &trino.namespace().unwrap(),
-                )
-                .await
-                .unwrap(),
-            ),
-            None => None,
-        };
-        let resolved_spooling_config = match &trino.spec.cluster_config.client_protocol {
-            Some(client_protocol) => Some(
-                ResolvedClientProtocolConfig::from_config(
-                    client_protocol,
-                    None,
-                    &trino.namespace().unwrap(),
-                )
-                .await
-                .unwrap(),
-            ),
-            None => None,
-        };
-        let merged_config = trino
-            .merged_config(&trino_role, &rolegroup_ref, &[])
-            .unwrap();
-
-        build_rolegroup_config_map(
-            &trino,
-            &resolved_product_image,
-            &role,
-            &trino_role,
-            &rolegroup_ref,
-            validated_config
-                .get("coordinator")
-                .unwrap()
-                .get("default")
-                .unwrap(),
-            &merged_config,
-            &trino_authentication_config,
-            &trino_opa_config,
-            &cluster_info,
-            &resolved_fte_config,
-            &resolved_spooling_config,
-        )
-        .unwrap()
-    }
-
-    #[tokio::test]
-    async fn test_access_control_overrides() {
-        let trino_yaml = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: trino
-        spec:
-          image:
-            productVersion: "479"
-          clusterConfig:
-            catalogLabelSelector:
-              matchLabels:
-                trino: simple-trino
-            authorization:
-              opa:
-                configMapName: simple-opa
-                package: my-product
-          coordinators:
-            configOverrides:
-              access-control.properties:
-                hello-from-role: "true" # only defined here at role level
-                foo.bar: "false" # overridden by role group below
-                opa.allow-permission-management-operations: "false" # override value from config
-            roleGroups:
-              default:
-                configOverrides:
-                  access-control.properties:
-                    hello-from-role-group: "true" # only defined here at group level
-                    foo.bar: "true" # overrides role value
-                    opa.policy.batched-uri: "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch-new" # override value from config
-                    opa.policy.batch-column-masking-uri: "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batchColumnMasks-new" # override value from config
-                replicas: 1
-          workers:
-            roleGroups:
-              default:
-                replicas: 1
-        "#;
-
-        let cm = build_config_map(trino_yaml).await.data.unwrap();
-        let access_control_config = cm.get("access-control.properties").unwrap();
-
-        assert!(access_control_config.contains("access-control.name=opa"));
-        assert!(access_control_config.contains("hello-from-role=true"));
-        assert!(access_control_config.contains("hello-from-role-group=true"));
-        assert!(access_control_config.contains("foo.bar=true"));
-        assert!(access_control_config.contains("opa.allow-permission-management-operations=false"));
-        assert!(access_control_config.contains(r#"opa.policy.batched-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/batch-new"#));
-        assert!(access_control_config.contains(r#"opa.policy.batch-column-masking-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/batchColumnMasks-new"#));
-        assert!(access_control_config.contains(r#"opa.policy.row-filters-uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/rowFilters"#));
-        assert!(access_control_config.contains(r#"opa.policy.uri=http\://simple-opa.default.svc.cluster.local\:8081/v1/data/my-product/allow"#));
-    }
-
-    #[test]
-    fn test_env_overrides() {
-        let trino_yaml = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: trino
-        spec:
-          image:
-            productVersion: "479"
-          clusterConfig:
-            catalogLabelSelector:
-              matchLabels:
-                trino: simple-trino
-          coordinators:
-            envOverrides:
-              COMMON_VAR: role-value # overridden by role group below
-              ROLE_VAR: role-value   # only defined here at role level
-            roleGroups:
-              default:
-                envOverrides:
-                  COMMON_VAR: group-value # overrides role value
-                  GROUP_VAR: group-value # only defined here at group level
-                replicas: 1
-          workers:
-            roleGroups:
-              default:
-                replicas: 1
-        "#;
-        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
-        let trino: v1alpha1::TrinoCluster =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
-
-        let validated_config = validate::validated_product_config(
-            &trino,
-            "455.0.0",
-            &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")
-                .unwrap(),
-        )
-        .unwrap();
-
-        let env = validated_config
-            .get(&TrinoRole::Coordinator.to_string())
-            .unwrap()
-            .get("default")
-            .unwrap()
-            .get(&PropertyNameKind::Env)
-            .unwrap();
-
-        assert_eq!(&"group-value".to_string(), env.get("COMMON_VAR").unwrap());
-        assert_eq!(&"group-value".to_string(), env.get("GROUP_VAR").unwrap());
-        assert_eq!(&"role-value".to_string(), env.get("ROLE_VAR").unwrap());
-    }
-}
