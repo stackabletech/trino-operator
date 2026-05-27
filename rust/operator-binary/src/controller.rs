@@ -104,6 +104,55 @@ use crate::{
     service::{build_rolegroup_headless_service, build_rolegroup_metrics_service},
 };
 
+/// Validated, fully-typed view of a `TrinoCluster` after dereferencing and merging.
+///
+/// Produced by `controller::validate::validate_v2`. Consumed by `controller::build::*`.
+/// Carries everything downstream needs — no `&v1alpha1::TrinoCluster` or
+/// `&DereferencedObjects` survives past validate.
+#[derive(Clone, Debug)]
+#[allow(dead_code)] // wired up in Task 14 (switch reconcile to ValidatedCluster pipeline)
+pub struct ValidatedCluster {
+    pub metadata: stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta,
+    pub name: String,
+    pub namespace: String,
+    pub uid: String,
+    pub image:
+        stackable_operator::commons::product_image_selection::ResolvedProductImage,
+    pub product_version: u16,
+
+    // CRD facts absorbed from &TrinoCluster.
+    pub server_tls: Option<String>,
+    pub internal_tls: Option<String>,
+    pub authentication_enabled: bool,
+    pub catalog_label_selector:
+        stackable_operator::k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector,
+    pub cluster_operation: stackable_operator::commons::cluster_operation::ClusterOperation,
+    pub object_overrides: stackable_operator::deep_merger::ObjectOverrides,
+
+    // Dereferenced state absorbed from `DereferencedObjects`.
+    pub trino_authentication_config: crate::authentication::TrinoAuthenticationConfig,
+    pub trino_opa_config: Option<crate::authorization::opa::TrinoOpaConfig>,
+    pub resolved_fte_config:
+        Option<crate::config::fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
+    pub resolved_client_protocol_config:
+        Option<crate::config::client_protocol::ResolvedClientProtocolConfig>,
+    pub catalogs: Vec<crate::catalog::config::CatalogConfig>,
+    pub coordinator_pod_refs: Vec<crate::crd::discovery::TrinoPodRef>,
+
+    pub role_group_configs: std::collections::BTreeMap<
+        crate::crd::TrinoRole,
+        std::collections::BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+    >,
+}
+
+pub type RoleGroupName = String;
+
+pub type TrinoRoleGroupConfig = crate::framework::role_utils::RoleGroupConfig<
+    crate::crd::v1alpha1::TrinoConfig,
+    stackable_operator::role_utils::JavaCommonConfig,
+    crate::crd::v1alpha1::TrinoConfigOverrides,
+>;
+
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
     pub product_config: ProductConfigManager,

@@ -42,6 +42,7 @@ pub enum Error {
 }
 
 /// Fault tolerant execution configuration with external resources resolved
+#[derive(Clone, Debug)]
 pub struct ResolvedFaultTolerantExecutionConfig {
     /// Properties to add to config.properties
     pub config_properties: BTreeMap<String, String>,

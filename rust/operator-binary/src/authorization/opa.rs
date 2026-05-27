@@ -9,6 +9,7 @@ use crate::crd::v1alpha1;
 
 pub const OPA_TLS_VOLUME_NAME: &str = "opa-tls";
 
+#[derive(Clone, Debug)]
 pub struct TrinoOpaConfig {
     /// URI for OPA policies, e.g.
     /// `http://localhost:8081/v1/data/trino/allow`

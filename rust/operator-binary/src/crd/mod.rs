@@ -557,7 +557,9 @@ fn tls_secret_class_default() -> Option<String> {
     Eq,
     Hash,
     JsonSchema,
+    Ord,
     PartialEq,
+    PartialOrd,
     Serialize,
     EnumString,
 )]
@@ -639,7 +641,7 @@ pub enum Container {
 }
 
 impl v1alpha1::TrinoConfig {
-    fn default_config(
+    pub fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
         trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],

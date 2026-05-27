@@ -31,6 +31,7 @@ pub enum Error {
     },
 }
 
+#[derive(Clone, Debug)]
 pub struct ResolvedClientProtocolConfig {
     /// Properties to add to config.properties
     pub config_properties: BTreeMap<String, String>,
