@@ -955,7 +955,7 @@ fn build_rolegroup_statefulset(
     trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    env_overrides: &HashMap<String, String>,
+    env_overrides: &BTreeMap<String, String>,
     merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],

@@ -15,7 +15,7 @@
 //! Replace with `stackable_operator::v2::role_utils::*` once upstream publishes
 //! the module.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use serde::Serialize;
 use stackable_operator::{
@@ -31,14 +31,14 @@ use stackable_operator::{
 /// Trino-friendly view of a validated, merged `RoleGroup`.
 ///
 /// Mirrors `stackable_operator::v2::role_utils::RoleGroupConfig` on the
-/// `smooth-operator` branch, with `env_overrides: HashMap<String, String>`
+/// `smooth-operator` branch, with `env_overrides: BTreeMap<String, String>`
 /// instead of the upstream `EnvVarSet`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoleGroupConfig<Config, CommonConfig, ConfigOverrides> {
     pub replicas: u16,
     pub config: Config,
     pub config_overrides: ConfigOverrides,
-    pub env_overrides: HashMap<String, String>,
+    pub env_overrides: BTreeMap<String, String>,
     pub cli_overrides: BTreeMap<String, String>,
     pub pod_overrides: PodTemplateSpec,
     pub product_specific_common_config: CommonConfig,
@@ -79,8 +79,8 @@ where
             role_group.config.config_overrides.clone(),
         ),
         env_overrides: merged_env_overrides(
-            role.config.env_overrides.clone(),
-            role_group.config.env_overrides.clone(),
+            role.config.env_overrides.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+            role_group.config.env_overrides.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
         ),
         cli_overrides: merged_cli_overrides(
             role.config.cli_overrides.clone(),
@@ -123,9 +123,9 @@ where
 }
 
 fn merged_env_overrides(
-    role_env_overrides: HashMap<String, String>,
-    role_group_env_overrides: HashMap<String, String>,
-) -> HashMap<String, String> {
+    role_env_overrides: BTreeMap<String, String>,
+    role_group_env_overrides: BTreeMap<String, String>,
+) -> BTreeMap<String, String> {
     let mut merged = role_env_overrides;
     merged.extend(role_group_env_overrides);
     merged
