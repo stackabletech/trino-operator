@@ -5,4 +5,5 @@
 //! Java-properties on-wire format.
 
 pub mod log_properties;
+pub mod security_properties;
 pub mod writer;
