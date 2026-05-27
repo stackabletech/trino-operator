@@ -35,5 +35,17 @@ pub fn build(
 
 #[cfg(test)]
 mod tests {
-    // Tests added in Task 13 once the shared ValidatedCluster fixture exists.
+    use super::*;
+    use crate::controller::build::properties::test_support::{
+        MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
+    };
+    use crate::crd::TrinoRole;
+
+    #[test]
+    fn default_renders_empty_when_no_fte() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]["default"].clone();
+        let props = build(&cluster, &rg);
+        assert!(props.is_empty());
+    }
 }

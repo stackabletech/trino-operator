@@ -41,5 +41,18 @@ pub fn build(rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
 
 #[cfg(test)]
 mod tests {
-    // Tests added in Task 13 once the shared ValidatedCluster fixture exists.
+    use super::*;
+    use crate::controller::build::properties::test_support::{
+        MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
+    };
+    use crate::crd::TrinoRole;
+
+    #[test]
+    fn default_renders_networkaddress_cache_settings() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]["default"].clone();
+        let props = build(&rg);
+        assert_eq!(props.get("networkaddress.cache.ttl").map(String::as_str), Some("30"));
+        assert_eq!(props.get("networkaddress.cache.negative.ttl").map(String::as_str), Some("0"));
+    }
 }
