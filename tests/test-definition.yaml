@@ -74,7 +74,7 @@ tests:
     dimensions:
       - trino
       - hive
-      - opa
+      - opa-latest
       - hdfs
       - zookeeper
       - openshift
@@ -110,7 +110,7 @@ tests:
     dimensions:
       - trino
       - hive-latest
-      - opa
+      - opa-latest
       - keycloak
       - openshift
   - name: fault-tolerant-execution
@@ -142,8 +142,6 @@ suites:
           - name: trino
             expr: last
           - name: hive
-            expr: last
-          - name: opa
             expr: last
           - name: zookeeper
             expr: last
