@@ -4,4 +4,5 @@
 //! Trino config file. The shared [`writer`] module serializes the map to the
 //! Java-properties on-wire format.
 
+pub mod log_properties;
 pub mod writer;

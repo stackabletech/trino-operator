@@ -67,6 +67,38 @@ pub fn get_log_properties(logging: &Logging<Container>) -> Option<String> {
     }
 }
 
+/// Same as [`get_log_properties`] but returns a typed `BTreeMap` instead of
+/// a Java-properties-formatted string.
+///
+/// New per-file builders use this; the old `get_log_properties` will be removed
+/// once the legacy `build_rolegroup_config_map` is deleted (see Task 14).
+pub fn get_log_property_map(
+    logging: &Logging<Container>,
+) -> Option<std::collections::BTreeMap<String, String>> {
+    if let Some(ContainerLogConfig {
+        choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+    }) = logging.containers.get(&Container::Trino)
+    {
+        let map = log_config
+            .loggers
+            .iter()
+            .map(|(logger, config)| {
+                let log_level = TrinoLogLevel::from(config.level);
+                let key = if logger == AutomaticContainerLogConfig::ROOT_LOGGER {
+                    // ROOT logger maps to an empty key in log.properties (=LEVEL).
+                    String::new()
+                } else {
+                    logger.clone()
+                };
+                (key, log_level.to_string())
+            })
+            .collect();
+        Some(map)
+    } else {
+        None
+    }
+}
+
 /// Return the vector toml configuration
 pub fn get_vector_toml(
     rolegroup: &RoleGroupRef<v1alpha1::TrinoCluster>,
