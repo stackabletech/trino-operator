@@ -71,6 +71,7 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
+mod build;
 mod dereference;
 mod validate;
 
