@@ -2,4 +2,5 @@
 //!
 //! Each submodule owns one output: properties files, ConfigMaps, StatefulSets, etc.
 
+pub mod config_map;
 pub mod properties;
