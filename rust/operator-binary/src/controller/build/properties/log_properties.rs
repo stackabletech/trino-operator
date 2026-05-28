@@ -28,9 +28,13 @@ pub fn build(
 
     // 3. No merged_config contribution.
     // 4. User overrides (highest precedence).
-    if let Some(kv) = &rg.config_overrides.log_properties {
-        props.extend(kv.overrides.clone());
-    }
+    props.extend(
+        rg.config_overrides
+            .log_properties
+            .overrides
+            .iter()
+            .filter_map(|(k, v)| v.as_ref().map(|v| (k.clone(), v.clone()))),
+    );
 
     let _ = (cluster, role); // currently unused; preserved for symmetry with siblings
     props

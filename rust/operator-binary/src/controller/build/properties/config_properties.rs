@@ -213,9 +213,13 @@ pub fn build(
     }
 
     // ---- 4. User overrides (highest precedence) ----
-    if let Some(kv) = &rg.config_overrides.config_properties {
-        props.extend(kv.overrides.clone());
-    }
+    props.extend(
+        rg.config_overrides
+            .config_properties
+            .overrides
+            .iter()
+            .filter_map(|(k, v)| v.as_ref().map(|v| (k.clone(), v.clone()))),
+    );
 
     Ok(props)
 }

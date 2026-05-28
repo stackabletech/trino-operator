@@ -29,9 +29,13 @@ pub fn build(rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
     // 2. No automatic operator-injected values.
     // 3. No merged_config contribution.
     // 4. User overrides (highest precedence).
-    if let Some(kv) = &rg.config_overrides.security_properties {
-        props.extend(kv.overrides.clone());
-    }
+    props.extend(
+        rg.config_overrides
+            .security_properties
+            .overrides
+            .iter()
+            .filter_map(|(k, v)| v.as_ref().map(|v| (k.clone(), v.clone()))),
+    );
 
     props
 }

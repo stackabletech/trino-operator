@@ -20,9 +20,13 @@ pub fn build(cluster: &ValidatedCluster, rg: &TrinoRoleGroupConfig) -> BTreeMap<
 
     // 3. No merged_config contribution.
     // 4. User overrides (highest precedence).
-    if let Some(kv) = &rg.config_overrides.spooling_manager_properties {
-        props.extend(kv.overrides.clone());
-    }
+    props.extend(
+        rg.config_overrides
+            .spooling_manager_properties
+            .overrides
+            .iter()
+            .filter_map(|(k, v)| v.as_ref().map(|v| (k.clone(), v.clone()))),
+    );
 
     props
 }

@@ -25,7 +25,6 @@ use stackable_operator::{
         fragment::{self, Fragment, ValidationError},
         merge::Merge,
     },
-    config_overrides::KeyValueConfigOverrides,
     crd::authentication::core,
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
@@ -39,6 +38,7 @@ use stackable_operator::{
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
     utils::cluster_info::KubernetesClusterInfo,
+    v2::config_overrides::KeyValueConfigOverrides,
     versioned::versioned,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -233,57 +233,57 @@ pub mod versioned {
         pub workers: Option<super::TrinoRoleType>,
     }
 
-    #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, Merge, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoConfigOverrides {
         #[serde(
             default,
             rename = "config.properties",
-            skip_serializing_if = "Option::is_none"
+            skip_serializing_if = "super::key_value_overrides_is_empty"
         )]
-        pub config_properties: Option<KeyValueConfigOverrides>,
+        pub config_properties: KeyValueConfigOverrides,
 
         #[serde(
             default,
             rename = "node.properties",
-            skip_serializing_if = "Option::is_none"
+            skip_serializing_if = "super::key_value_overrides_is_empty"
         )]
-        pub node_properties: Option<KeyValueConfigOverrides>,
+        pub node_properties: KeyValueConfigOverrides,
 
         #[serde(
             default,
             rename = "log.properties",
-            skip_serializing_if = "Option::is_none"
+            skip_serializing_if = "super::key_value_overrides_is_empty"
         )]
-        pub log_properties: Option<KeyValueConfigOverrides>,
+        pub log_properties: KeyValueConfigOverrides,
 
         #[serde(
             default,
             rename = "security.properties",
-            skip_serializing_if = "Option::is_none"
+            skip_serializing_if = "super::key_value_overrides_is_empty"
         )]
-        pub security_properties: Option<KeyValueConfigOverrides>,
+        pub security_properties: KeyValueConfigOverrides,
 
         #[serde(
             default,
             rename = "access-control.properties",
-            skip_serializing_if = "Option::is_none"
+            skip_serializing_if = "super::key_value_overrides_is_empty"
         )]
-        pub access_control_properties: Option<KeyValueConfigOverrides>,
+        pub access_control_properties: KeyValueConfigOverrides,
 
         #[serde(
             default,
             rename = "exchange-manager.properties",
-            skip_serializing_if = "Option::is_none"
+            skip_serializing_if = "super::key_value_overrides_is_empty"
         )]
-        pub exchange_manager_properties: Option<KeyValueConfigOverrides>,
+        pub exchange_manager_properties: KeyValueConfigOverrides,
 
         #[serde(
             default,
             rename = "spooling-manager.properties",
-            skip_serializing_if = "Option::is_none"
+            skip_serializing_if = "super::key_value_overrides_is_empty"
         )]
-        pub spooling_manager_properties: Option<KeyValueConfigOverrides>,
+        pub spooling_manager_properties: KeyValueConfigOverrides,
     }
 
     // TODO: move generic version to op-rs?
@@ -456,48 +456,8 @@ impl v1alpha1::TrinoAuthorizationOpaConfig {
     }
 }
 
-// TODO: Remove once `KeyValueConfigOverrides` derives `Merge` upstream.
-// `stackable_operator::v2::role_utils::with_validated_config` requires
-// `ConfigOverrides: Merge`. Until upstreamed, merge field-by-field:
-// the right-hand (role-group level) override wins per file when both sides
-// are Some; otherwise the side that is Some survives.
-impl Merge for v1alpha1::TrinoConfigOverrides {
-    fn merge(&mut self, defaults: &Self) {
-        merge_key_value(&mut self.config_properties, &defaults.config_properties);
-        merge_key_value(&mut self.node_properties, &defaults.node_properties);
-        merge_key_value(&mut self.log_properties, &defaults.log_properties);
-        merge_key_value(&mut self.security_properties, &defaults.security_properties);
-        merge_key_value(
-            &mut self.access_control_properties,
-            &defaults.access_control_properties,
-        );
-        merge_key_value(
-            &mut self.exchange_manager_properties,
-            &defaults.exchange_manager_properties,
-        );
-        merge_key_value(
-            &mut self.spooling_manager_properties,
-            &defaults.spooling_manager_properties,
-        );
-    }
-}
-
-fn merge_key_value(
-    rg: &mut Option<KeyValueConfigOverrides>,
-    role: &Option<KeyValueConfigOverrides>,
-) {
-    match (rg.as_mut(), role) {
-        (Some(rg_overrides), Some(role_overrides)) => {
-            // role-group keys win over role keys.
-            let mut merged = role_overrides.overrides.clone();
-            merged.extend(std::mem::take(&mut rg_overrides.overrides));
-            rg_overrides.overrides = merged;
-        }
-        (None, Some(role_overrides)) => {
-            *rg = Some(role_overrides.clone());
-        }
-        _ => {} // None defaults: nothing to merge in.
-    }
+fn key_value_overrides_is_empty(kv: &KeyValueConfigOverrides) -> bool {
+    kv.overrides.is_empty()
 }
 
 impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
@@ -1243,35 +1203,37 @@ mod tests {
         use stackable_operator::config::merge::Merge;
 
         let mut rg = v1alpha1::TrinoConfigOverrides {
-            config_properties: Some(
-                stackable_operator::config_overrides::KeyValueConfigOverrides {
-                    overrides: [
-                        ("k_both".to_string(), "rg".to_string()),
-                        ("k_rg_only".to_string(), "rg".to_string()),
-                    ]
-                    .into(),
-                },
-            ),
+            config_properties: KeyValueConfigOverrides {
+                overrides: [
+                    ("k_both".to_string(), Some("rg".to_string())),
+                    ("k_rg_only".to_string(), Some("rg".to_string())),
+                ]
+                .into(),
+            },
             ..Default::default()
         };
         let role = v1alpha1::TrinoConfigOverrides {
-            config_properties: Some(
-                stackable_operator::config_overrides::KeyValueConfigOverrides {
-                    overrides: [
-                        ("k_both".to_string(), "role".to_string()),
-                        ("k_role_only".to_string(), "role".to_string()),
-                    ]
-                    .into(),
-                },
-            ),
+            config_properties: KeyValueConfigOverrides {
+                overrides: [
+                    ("k_both".to_string(), Some("role".to_string())),
+                    ("k_role_only".to_string(), Some("role".to_string())),
+                ]
+                .into(),
+            },
             ..Default::default()
         };
 
         rg.merge(&role);
 
-        let merged = rg.config_properties.unwrap().overrides;
-        assert_eq!(merged.get("k_both").map(String::as_str), Some("rg"));
-        assert_eq!(merged.get("k_rg_only").map(String::as_str), Some("rg"));
-        assert_eq!(merged.get("k_role_only").map(String::as_str), Some("role"));
+        let merged = rg.config_properties.overrides;
+        assert_eq!(merged.get("k_both").and_then(|v| v.as_deref()), Some("rg"));
+        assert_eq!(
+            merged.get("k_rg_only").and_then(|v| v.as_deref()),
+            Some("rg")
+        );
+        assert_eq!(
+            merged.get("k_role_only").and_then(|v| v.as_deref()),
+            Some("role")
+        );
     }
 }
