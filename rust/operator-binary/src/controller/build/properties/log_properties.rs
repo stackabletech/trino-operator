@@ -2,8 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::controller::{TrinoRoleGroupConfig, ValidatedCluster};
-use crate::crd::TrinoRole;
+use crate::{
+    controller::{TrinoRoleGroupConfig, ValidatedCluster},
+    crd::TrinoRole,
+};
 
 /// Build the `log.properties` key/value pairs for `(role, rg)`.
 ///

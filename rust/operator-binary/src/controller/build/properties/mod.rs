@@ -15,9 +15,12 @@ pub mod writer;
 
 #[cfg(test)]
 pub(crate) mod test_support {
-    use crate::controller::{ValidatedCluster, dereference::DereferencedObjects};
-    use crate::crd::v1alpha1;
     use stackable_operator::cli::OperatorEnvironmentOptions;
+
+    use crate::{
+        controller::{ValidatedCluster, dereference::DereferencedObjects},
+        crd::v1alpha1,
+    };
 
     pub fn validated_cluster_from_yaml(yaml: &str) -> ValidatedCluster {
         let trino: v1alpha1::TrinoCluster = serde_yaml::from_str(yaml).expect("invalid test YAML");

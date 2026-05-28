@@ -12,18 +12,20 @@ use stackable_operator::{
     utils::cluster_info::KubernetesClusterInfo,
 };
 
-use crate::controller::{
-    ValidatedCluster,
-    build::properties::{
-        access_control_properties, config_properties, exchange_manager_properties, log_properties,
-        node_properties, security_properties, spooling_manager_properties,
-        writer::to_java_properties_string,
+use crate::{
+    controller::{
+        ValidatedCluster,
+        build::properties::{
+            access_control_properties, config_properties, exchange_manager_properties,
+            log_properties, node_properties, security_properties, spooling_manager_properties,
+            writer::to_java_properties_string,
+        },
     },
-};
-use crate::crd::{
-    ACCESS_CONTROL_PROPERTIES, CONFIG_PROPERTIES, EXCHANGE_MANAGER_PROPERTIES, JVM_CONFIG,
-    JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, NODE_PROPERTIES, SPOOLING_MANAGER_PROPERTIES,
-    TrinoRole, v1alpha1,
+    crd::{
+        ACCESS_CONTROL_PROPERTIES, CONFIG_PROPERTIES, EXCHANGE_MANAGER_PROPERTIES, JVM_CONFIG,
+        JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, NODE_PROPERTIES, SPOOLING_MANAGER_PROPERTIES,
+        TrinoRole, v1alpha1,
+    },
 };
 
 #[derive(Debug, Snafu)]

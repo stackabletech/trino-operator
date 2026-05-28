@@ -30,10 +30,12 @@ pub fn build(cluster: &ValidatedCluster, rg: &TrinoRoleGroupConfig) -> BTreeMap<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::controller::build::properties::test_support::{
-        MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
+    use crate::{
+        controller::build::properties::test_support::{
+            MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
+        },
+        crd::TrinoRole,
     };
-    use crate::crd::TrinoRole;
 
     #[test]
     fn default_renders_empty_when_no_spooling() {

@@ -39,10 +39,12 @@ pub fn build(rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::controller::build::properties::test_support::{
-        MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
+    use crate::{
+        controller::build::properties::test_support::{
+            MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
+        },
+        crd::TrinoRole,
     };
-    use crate::crd::TrinoRole;
 
     #[test]
     fn default_renders_networkaddress_cache_settings() {

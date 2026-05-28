@@ -9,10 +9,12 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
 };
 
-use crate::controller::ValidatedCluster;
-use crate::crd::{
-    DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT, TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD,
-    WORKER_SHUTDOWN_GRACE_PERIOD, v1alpha1,
+use crate::{
+    controller::ValidatedCluster,
+    crd::{
+        DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT, TrinoRole,
+        WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD, WORKER_SHUTDOWN_GRACE_PERIOD, v1alpha1,
+    },
 };
 
 #[derive(Debug, Snafu)]
