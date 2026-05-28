@@ -22,7 +22,7 @@ pub fn to_java_properties_string(props: &BTreeMap<String, String>) -> Result<Str
     use std::fmt::Write;
     let mut out = String::new();
     for (k, v) in props {
-        write!(out, "{}={}\n", escape_key(k), escape_value(v)).context(FormatSnafu)?;
+        writeln!(out, "{}={}", escape_key(k), escape_value(v)).context(FormatSnafu)?;
     }
     Ok(out)
 }
