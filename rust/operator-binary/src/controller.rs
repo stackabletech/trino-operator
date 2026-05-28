@@ -1,10 +1,5 @@
 //! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`]
-use std::{
-    collections::BTreeMap,
-    convert::Infallible,
-    num::ParseIntError,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, convert::Infallible, num::ParseIntError, sync::Arc};
 
 use const_format::concatcp;
 use snafu::{OptionExt, ResultExt, Snafu};
@@ -77,9 +72,10 @@ use crate::{
     crd::{
         APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
         HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
-        METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-        STACKABLE_TLS_STORE_PASSWORD, TrinoRole, v1alpha1,
+        METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+        STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+        TrinoRole, v1alpha1,
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
@@ -106,8 +102,7 @@ pub struct ValidatedCluster {
     pub name: String,
     pub namespace: String,
     pub uid: String,
-    pub image:
-        stackable_operator::commons::product_image_selection::ResolvedProductImage,
+    pub image: stackable_operator::commons::product_image_selection::ResolvedProductImage,
     pub product_version: u16,
 
     // CRD facts absorbed from &TrinoCluster.
@@ -491,10 +486,11 @@ pub async fn reconcile_trino(
             )
             .context(FailedToCreateJvmConfigSnafu)?;
 
-            let vector_toml = get_vector_toml(&role_group_ref, &merged_config.logging)
-                .context(InvalidLoggingConfigSnafu {
+            let vector_toml = get_vector_toml(&role_group_ref, &merged_config.logging).context(
+                InvalidLoggingConfigSnafu {
                     cm_name: role_group_ref.object_name(),
-                })?;
+                },
+            )?;
 
             let rg_configmap = build::config_map::build_rolegroup_config_map(
                 &validated,
@@ -629,7 +625,6 @@ pub async fn reconcile_trino(
 
     Ok(Action::await_change())
 }
-
 
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
 /// given by the administrator
@@ -1424,12 +1419,9 @@ fn tls_volume_mounts(
 #[cfg(test)]
 mod tests {
     use stackable_operator::{
-        cli::OperatorEnvironmentOptions,
-        commons::networking::DomainName,
-        k8s_openapi::api::core::v1::ConfigMap,
-        kube::runtime::reflector::ObjectRef,
-        role_utils::RoleGroupRef,
-        utils::cluster_info::KubernetesClusterInfo,
+        cli::OperatorEnvironmentOptions, commons::networking::DomainName,
+        k8s_openapi::api::core::v1::ConfigMap, kube::runtime::reflector::ObjectRef,
+        role_utils::RoleGroupRef, utils::cluster_info::KubernetesClusterInfo,
     };
 
     use super::*;
@@ -1514,8 +1506,8 @@ mod tests {
             image_repository: "oci.example.org".to_string(),
         };
 
-        let validated = validate::validate(&trino, &derefs, &operator_env)
-            .expect("validate should succeed");
+        let validated =
+            validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         let trino_role = TrinoRole::Coordinator;
         let role = trino.role(&trino_role).unwrap();
@@ -1541,8 +1533,8 @@ mod tests {
         )
         .expect("jvm config should render");
 
-        let vector_toml = get_vector_toml(&rolegroup_ref, &rg.config.logging)
-            .expect("vector toml should render");
+        let vector_toml =
+            get_vector_toml(&rolegroup_ref, &rg.config.logging).expect("vector toml should render");
 
         build::config_map::build_rolegroup_config_map(
             &validated,
@@ -1768,12 +1760,18 @@ mod tests {
             operator_service_name: "trino-operator".to_string(),
             image_repository: "oci.example.org".to_string(),
         };
-        let validated = validate::validate(&trino, &derefs, &operator_env)
-            .expect("validate should succeed");
+        let validated =
+            validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         let env = &validated.role_group_configs[&TrinoRole::Coordinator]["default"].env_overrides;
-        assert_eq!(env.get("COMMON_VAR").map(String::as_str), Some("group-value"));
-        assert_eq!(env.get("GROUP_VAR").map(String::as_str), Some("group-value"));
+        assert_eq!(
+            env.get("COMMON_VAR").map(String::as_str),
+            Some("group-value")
+        );
+        assert_eq!(
+            env.get("GROUP_VAR").map(String::as_str),
+            Some("group-value")
+        );
         assert_eq!(env.get("ROLE_VAR").map(String::as_str), Some("role-value"));
     }
 }

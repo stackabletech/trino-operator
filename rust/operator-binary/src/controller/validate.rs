@@ -4,9 +4,7 @@
 //! [`super::ValidatedCluster`], consumed by the rest of `reconcile_trino`.
 
 use snafu::{ResultExt, Snafu};
-use stackable_operator::{
-    cli::OperatorEnvironmentOptions, commons::product_image_selection,
-};
+use stackable_operator::{cli::OperatorEnvironmentOptions, commons::product_image_selection};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -78,11 +76,10 @@ pub fn validate(
         )
         .context(ResolveProductImageSnafu)?;
 
-    let product_version = u16::from_str(&resolved_product_image.product_version).context(
-        ParseTrinoVersionSnafu {
+    let product_version =
+        u16::from_str(&resolved_product_image.product_version).context(ParseTrinoVersionSnafu {
             product_version: resolved_product_image.product_version.clone(),
-        },
-    )?;
+        })?;
 
     let trino_authentication_config = TrinoAuthenticationConfig::new(
         &resolved_product_image,
@@ -213,8 +210,7 @@ mod tests {
             image_repository: "oci.example.org".to_string(),
         };
 
-        let validated =
-            validate(&trino, &derefs, &operator_env).expect("validate should succeed");
+        let validated = validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         assert_eq!(validated.name, "simple-trino");
         assert_eq!(validated.namespace, "default");

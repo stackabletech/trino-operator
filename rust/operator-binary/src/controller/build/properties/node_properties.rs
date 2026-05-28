@@ -11,10 +11,7 @@ const NODE_ENVIRONMENT: &str = "node.environment";
 /// `node.environment` is derived from the cluster name: lowercased, with `-`
 /// replaced by `_`. Trino requires `^[a-z][a-z0-9_]*[a-z0-9]$`; cluster names
 /// constrained by Kubernetes naming already satisfy this after the transform.
-pub fn build(
-    cluster: &ValidatedCluster,
-    rg: &TrinoRoleGroupConfig,
-) -> BTreeMap<String, String> {
+pub fn build(cluster: &ValidatedCluster, rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
     let mut props = BTreeMap::new();
 
     // 1. No defaults.

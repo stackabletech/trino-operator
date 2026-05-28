@@ -103,4 +103,3 @@ pub fn get_vector_toml(
         Ok(None)
     }
 }
-

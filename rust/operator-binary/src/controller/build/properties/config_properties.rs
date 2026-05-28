@@ -169,10 +169,7 @@ pub fn build(
     }
 
     // Authentication properties (only contributes when authentication is enabled).
-    for (k, v) in cluster
-        .trino_authentication_config
-        .config_properties(&role)
-    {
+    for (k, v) in cluster.trino_authentication_config.config_properties(&role) {
         props.insert(k, v);
     }
 
@@ -242,9 +239,14 @@ mod tests {
         let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info).unwrap();
         assert_eq!(props.get("coordinator").map(String::as_str), Some("true"));
         assert_eq!(
-            props.get("node-scheduler.include-coordinator").map(String::as_str),
+            props
+                .get("node-scheduler.include-coordinator")
+                .map(String::as_str),
             Some("false"),
         );
-        assert_eq!(props.get("query.max-memory").map(String::as_str), Some("50GB"));
+        assert_eq!(
+            props.get("query.max-memory").map(String::as_str),
+            Some("50GB")
+        );
     }
 }

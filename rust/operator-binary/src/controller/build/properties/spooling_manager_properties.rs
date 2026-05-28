@@ -9,10 +9,7 @@ use crate::controller::{TrinoRoleGroupConfig, ValidatedCluster};
 /// Returns an empty map when client spooling is not configured and no user
 /// overrides are provided — callers should omit the file from the ConfigMap
 /// in that case.
-pub fn build(
-    cluster: &ValidatedCluster,
-    rg: &TrinoRoleGroupConfig,
-) -> BTreeMap<String, String> {
+pub fn build(cluster: &ValidatedCluster, rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
     let mut props = BTreeMap::new();
 
     // 1. No defaults.

@@ -1243,23 +1243,27 @@ mod tests {
         use stackable_operator::config::merge::Merge;
 
         let mut rg = v1alpha1::TrinoConfigOverrides {
-            config_properties: Some(stackable_operator::config_overrides::KeyValueConfigOverrides {
-                overrides: [
-                    ("k_both".to_string(), "rg".to_string()),
-                    ("k_rg_only".to_string(), "rg".to_string()),
-                ]
-                .into(),
-            }),
+            config_properties: Some(
+                stackable_operator::config_overrides::KeyValueConfigOverrides {
+                    overrides: [
+                        ("k_both".to_string(), "rg".to_string()),
+                        ("k_rg_only".to_string(), "rg".to_string()),
+                    ]
+                    .into(),
+                },
+            ),
             ..Default::default()
         };
         let role = v1alpha1::TrinoConfigOverrides {
-            config_properties: Some(stackable_operator::config_overrides::KeyValueConfigOverrides {
-                overrides: [
-                    ("k_both".to_string(), "role".to_string()),
-                    ("k_role_only".to_string(), "role".to_string()),
-                ]
-                .into(),
-            }),
+            config_properties: Some(
+                stackable_operator::config_overrides::KeyValueConfigOverrides {
+                    overrides: [
+                        ("k_both".to_string(), "role".to_string()),
+                        ("k_role_only".to_string(), "role".to_string()),
+                    ]
+                    .into(),
+                },
+            ),
             ..Default::default()
         };
 

@@ -18,9 +18,7 @@ pub enum Error {
 ///
 /// Keys and values are escaped per <https://docs.oracle.com/javase/8/docs/api/java/util/Properties.html>:
 /// `:`, `=`, `#`, `!`, `\\`, leading whitespace, and ` ` (space).
-pub fn to_java_properties_string(
-    props: &BTreeMap<String, String>,
-) -> Result<String, Error> {
+pub fn to_java_properties_string(props: &BTreeMap<String, String>) -> Result<String, Error> {
     use std::fmt::Write;
     let mut out = String::new();
     for (k, v) in props {
@@ -93,7 +91,10 @@ mod tests {
         // From smoke snapshot:
         //   internal-communication.shared-secret=${ENV\:INTERNAL_SECRET}
         assert_eq!(
-            render(&[("internal-communication.shared-secret", "${ENV:INTERNAL_SECRET}")]),
+            render(&[(
+                "internal-communication.shared-secret",
+                "${ENV:INTERNAL_SECRET}"
+            )]),
             "internal-communication.shared-secret=${ENV\\:INTERNAL_SECRET}\n"
         );
     }

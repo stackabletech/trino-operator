@@ -79,8 +79,17 @@ where
             role_group.config.config_overrides.clone(),
         ),
         env_overrides: merged_env_overrides(
-            role.config.env_overrides.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
-            role_group.config.env_overrides.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+            role.config
+                .env_overrides
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
+            role_group
+                .config
+                .env_overrides
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect(),
         ),
         cli_overrides: merged_cli_overrides(
             role.config.cli_overrides.clone(),
@@ -90,10 +99,7 @@ where
             role.config.pod_overrides.clone(),
             role_group.config.pod_overrides.clone(),
         ),
-        product_specific_common_config: role_group
-            .config
-            .product_specific_common_config
-            .clone(),
+        product_specific_common_config: role_group.config.product_specific_common_config.clone(),
     })
 }
 
