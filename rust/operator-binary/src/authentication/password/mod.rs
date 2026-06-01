@@ -8,8 +8,6 @@
 //! - volume and volume mounts
 //! - extra containers and commands
 //!
-use std::collections::BTreeMap;
-
 use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::product_image_selection::ResolvedProductImage;
 use tracing::trace;
@@ -33,11 +31,6 @@ const PASSWORD_AUTHENTICATOR_NAME: &str = "password-authenticator.name";
 pub enum Error {
     #[snafu(display("failed to configure LDAP password authentication"))]
     InvalidLdapAuthenticationConfiguration { source: ldap::Error },
-
-    #[snafu(display("failed to write password authentication config file"))]
-    WritePasswordAuthenticationFile {
-        source: product_config::writer::PropertiesWriterError,
-    },
 
     #[snafu(display("failed to create LDAP Volumes and VolumeMounts"))]
     LdapVolumeAndVolumeMounts { source: ldap::Error },
@@ -93,15 +86,7 @@ impl TrinoPasswordAuthentication {
                     password_authentication_config.add_config_file(
                         TrinoRole::Coordinator,
                         config_file_name,
-                        product_config::writer::to_java_properties_string(
-                            file_authenticator
-                                .config_file_data()
-                                .into_iter()
-                                .map(|(k, v)| (k, Some(v)))
-                                .collect::<BTreeMap<String, Option<String>>>()
-                                .iter(),
-                        )
-                        .context(WritePasswordAuthenticationFileSnafu)?,
+                        file_authenticator.config_file_data(),
                     );
                     // required volumes
                     password_authentication_config.add_volume(file_authenticator.secret_volume());
@@ -133,16 +118,9 @@ impl TrinoPasswordAuthentication {
                     password_authentication_config.add_config_file(
                         TrinoRole::Coordinator,
                         config_file_name,
-                        product_config::writer::to_java_properties_string(
-                            ldap_authenticator
-                                .config_file_data()
-                                .context(InvalidLdapAuthenticationConfigurationSnafu)?
-                                .into_iter()
-                                .map(|(k, v)| (k, Some(v)))
-                                .collect::<BTreeMap<String, Option<String>>>()
-                                .iter(),
-                        )
-                        .context(WritePasswordAuthenticationFileSnafu)?,
+                        ldap_authenticator
+                            .config_file_data()
+                            .context(InvalidLdapAuthenticationConfigurationSnafu)?,
                     );
 
                     // extra commands
@@ -206,6 +184,8 @@ impl TrinoPasswordAuthentication {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use stackable_operator::crd::authentication::{ldap, r#static};
 
     use super::*;
@@ -300,16 +280,24 @@ mod tests {
         // check file auth
         assert_eq!(
             config_files.get(&file_auth_1.config_file_name()).unwrap(),
-            &format!(
-                "file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n"
-            )
+            &BTreeMap::from([
+                (
+                    "file.password-file".to_string(),
+                    format!("/stackable/users/{FILE_AUTH_CLASS_1}.db")
+                ),
+                (
+                    "password-authenticator.name".to_string(),
+                    "file".to_string()
+                ),
+            ])
         );
         // check ldap
-        assert!(
+        assert_eq!(
             config_files
                 .get(&ldap_auth_1.config_file_name())
                 .unwrap()
-                .contains("password-authenticator.name=ldap")
+                .get("password-authenticator.name"),
+            Some(&"ldap".to_string())
         );
 
         // Coordinator

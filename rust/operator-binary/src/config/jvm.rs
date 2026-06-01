@@ -7,9 +7,13 @@ use stackable_operator::{
 };
 
 use crate::crd::{
-    JVM_HEAP_FACTOR, JVM_SECURITY_PROPERTIES, METRICS_PORT, RW_CONFIG_DIR_NAME,
-    STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, TrinoRoleType, v1alpha1,
+    METRICS_PORT, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    TrinoRoleType, v1alpha1,
 };
+
+const JVM_SECURITY_PROPERTIES: &str = "security.properties";
+
+const JVM_HEAP_FACTOR: f32 = 0.8;
 
 #[derive(Snafu, Debug)]
 pub enum Error {

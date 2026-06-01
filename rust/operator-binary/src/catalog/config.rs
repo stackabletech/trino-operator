@@ -11,6 +11,7 @@ use stackable_operator::{
 use super::{FromTrinoCatalogError, ToCatalogConfig};
 use crate::crd::catalog::{TrinoCatalogConnector, v1alpha1};
 
+#[derive(Clone, Debug)]
 pub struct CatalogConfig {
     /// Name of the catalog
     pub name: String,

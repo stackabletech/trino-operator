@@ -19,12 +19,6 @@ pub enum Error {
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
-
-    #[snafu(display("failed to convert data size for [{field}] to bytes"))]
-    QuantityConversion {
-        source: stackable_operator::memory::Error,
-        field: &'static str,
-    },
 }
 
 pub struct ResolvedS3Config {

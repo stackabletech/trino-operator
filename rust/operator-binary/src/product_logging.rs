@@ -55,13 +55,29 @@ impl From<LogLevel> for TrinoLogLevel {
     }
 }
 
-/// Return the `log.properties` configuration
-pub fn get_log_properties(logging: &Logging<Container>) -> Option<String> {
+/// Return the `log.properties` content as a typed `BTreeMap`.
+pub fn get_log_property_map(
+    logging: &Logging<Container>,
+) -> Option<std::collections::BTreeMap<String, String>> {
     if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
     }) = logging.containers.get(&Container::Trino)
     {
-        Some(create_trino_log_properties(log_config))
+        let map = log_config
+            .loggers
+            .iter()
+            .map(|(logger, config)| {
+                let log_level = TrinoLogLevel::from(config.level);
+                let key = if logger == AutomaticContainerLogConfig::ROOT_LOGGER {
+                    // ROOT logger maps to an empty key in log.properties (=LEVEL).
+                    String::new()
+                } else {
+                    logger.clone()
+                };
+                (key, log_level.to_string())
+            })
+            .collect();
+        Some(map)
     } else {
         None
     }
@@ -86,28 +102,4 @@ pub fn get_vector_toml(
     } else {
         Ok(None)
     }
-}
-
-/// Create trino `log.properties` containing loggers and their respective log levels.
-/// The operator-rs framework `LogLevel` offers more choices which are parsed to the available
-/// `TrinoLogLevel`.
-///
-/// The `log.properties` will adhere to the example format:
-/// ```
-/// io.trino=debug
-/// io.trino.server=info
-/// ```
-fn create_trino_log_properties(automatic_container_config: &AutomaticContainerLogConfig) -> String {
-    automatic_container_config
-        .loggers
-        .iter()
-        .map(|(logger, config)| {
-            let log_level = TrinoLogLevel::from(config.level);
-            if logger == AutomaticContainerLogConfig::ROOT_LOGGER {
-                format!("={}\n", log_level)
-            } else {
-                format!("{}={}\n", logger, log_level)
-            }
-        })
-        .collect::<String>()
 }

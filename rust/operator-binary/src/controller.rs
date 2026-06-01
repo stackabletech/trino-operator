@@ -1,22 +1,10 @@
 //! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`]
-use std::{
-    collections::{BTreeMap, HashMap},
-    convert::Infallible,
-    num::ParseIntError,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, convert::Infallible, sync::Arc};
 
 use const_format::concatcp;
-use product_config::{
-    self, ProductConfigManager,
-    types::PropertyNameKind,
-    writer::{PropertiesWriterError, to_java_properties_string},
-};
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
-        self,
         configmap::ConfigMapBuilder,
         meta::ObjectMetaBuilder,
         pod::{
@@ -67,45 +55,39 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
-    utils::cluster_info::KubernetesClusterInfo,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
+mod build;
 mod dereference;
 mod validate;
+
+pub use validate::{TrinoRoleGroupConfig, ValidatedCluster};
 
 use crate::{
     authentication::TrinoAuthenticationConfig,
     authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
     catalog::config::CatalogConfig,
     command,
-    config::{self, client_protocol, fault_tolerant_execution},
+    config::{client_protocol, fault_tolerant_execution},
     crd::{
-        ACCESS_CONTROL_PROPERTIES, APP_NAME, CONFIG_DIR_NAME, CONFIG_PROPERTIES, Container,
-        DISCOVERY_URI, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, EXCHANGE_MANAGER_PROPERTIES,
-        HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, JVM_CONFIG,
-        JVM_SECURITY_PROPERTIES, LOG_PROPERTIES, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
-        METRICS_PORT_NAME, NODE_PROPERTIES, RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES,
-        STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
+        HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
+        METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+        STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole, TrinoRoleType,
-        discovery::{TrinoDiscovery, TrinoDiscoveryProtocol, TrinoPodRef},
-        v1alpha1,
+        TrinoRole, v1alpha1,
     },
     listener::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
         group_listener_name, secret_volume_listener_scope,
     },
-    operations::{
-        add_graceful_shutdown_config, graceful_shutdown_config_properties, pdb::add_pdbs,
-    },
-    product_logging::{get_log_properties, get_vector_toml},
+    operations::{add_graceful_shutdown_config, pdb::add_pdbs},
     service::{build_rolegroup_headless_service, build_rolegroup_metrics_service},
 };
 
 pub struct Ctx {
     pub client: stackable_operator::client::Client,
-    pub product_config: ProductConfigManager,
     pub operator_environment: OperatorEnvironmentOptions,
 }
 
@@ -152,6 +134,12 @@ pub enum Error {
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
     },
 
+    #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
+    BuildRoleGroupConfigMap {
+        source: build::config_map::Error,
+        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+    },
+
     #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
     ApplyRoleGroupConfig {
         source: stackable_operator::cluster_resources::Error,
@@ -170,16 +158,12 @@ pub enum Error {
     },
 
     #[snafu(display("failed to format runtime properties"))]
-    FailedToWriteJavaProperties { source: PropertiesWriterError },
-
-    #[snafu(display("failed to parse role: {source}"))]
-    FailedToParseRole { source: strum::ParseError },
+    FailedToWriteJavaProperties {
+        source: build::properties::writer::Error,
+    },
 
     #[snafu(display("internal operator failure: {source}"))]
     InternalOperatorFailure { source: crate::crd::Error },
-
-    #[snafu(display("no coordinator pods found for discovery"))]
-    MissingCoordinatorPods,
 
     #[snafu(display("illegal container name: [{container_name}]"))]
     IllegalContainerName {
@@ -187,20 +171,11 @@ pub enum Error {
         container_name: String,
     },
 
-    #[snafu(display("failed to resolve and merge config for role and role group"))]
-    FailedToResolveConfig { source: crate::crd::Error },
-
     #[snafu(display("vector agent is enabled but vector aggregator ConfigMap is missing"))]
     VectorAggregatorConfigMapMissing,
 
     #[snafu(display("failed to build vector container"))]
     BuildVectorContainer { source: LoggingError },
-
-    #[snafu(display("failed to add the logging configuration to the ConfigMap [{cm_name}]"))]
-    InvalidLoggingConfig {
-        source: crate::product_logging::Error,
-        cm_name: String,
-    },
 
     #[snafu(display("failed to patch service account"))]
     ApplyServiceAccount {
@@ -220,12 +195,6 @@ pub enum Error {
     #[snafu(display("failed to build RBAC resources"))]
     BuildRbacResources {
         source: stackable_operator::commons::rbac::Error,
-    },
-
-    #[snafu(display("failed to serialize [{JVM_SECURITY_PROPERTIES}] for {}", rolegroup))]
-    JvmSecurityProperties {
-        source: PropertiesWriterError,
-        rolegroup: String,
     },
 
     #[snafu(display("failed to create PodDisruptionBudget"))]
@@ -264,15 +233,14 @@ pub enum Error {
         source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
     },
 
-    #[snafu(display("failed to build JVM config"))]
-    FailedToCreateJvmConfig { source: crate::config::jvm::Error },
-
     #[snafu(display("failed to add needed volume"))]
-    AddVolume { source: builder::pod::Error },
+    AddVolume {
+        source: stackable_operator::builder::pod::Error,
+    },
 
     #[snafu(display("failed to add needed volumeMount"))]
     AddVolumeMount {
-        source: builder::pod::container::Error,
+        source: stackable_operator::builder::pod::container::Error,
     },
 
     #[snafu(display("invalid TrinoCluster object"))]
@@ -286,18 +254,9 @@ pub enum Error {
     #[snafu(display("failed to validate cluster"))]
     ValidateCluster { source: validate::Error },
 
-    #[snafu(display("failed to read role"))]
-    ReadRole { source: crate::crd::Error },
-
     #[snafu(display("invalid Trino authentication"))]
     InvalidAuthenticationConfig {
         source: crate::authentication::Error,
-    },
-
-    #[snafu(display("unable to parse Trino version: {product_version:?}"))]
-    ParseTrinoVersion {
-        source: ParseIntError,
-        product_version: String,
     },
 
     #[snafu(display("failed to apply group listener"))]
@@ -344,13 +303,8 @@ pub async fn reconcile_trino(
         .context(DereferenceSnafu)?;
 
     // validate (no client required)
-    let validated = validate::validate(
-        trino,
-        &dereferenced_objects,
-        &ctx.operator_environment,
-        &ctx.product_config,
-    )
-    .context(ValidateClusterSnafu)?;
+    let validated = validate::validate(trino, &dereferenced_objects, &ctx.operator_environment)
+        .context(ValidateClusterSnafu)?;
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -405,19 +359,10 @@ pub async fn reconcile_trino(
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
-    for (trino_role_str, role_config) in validated.validated_role_config {
-        let trino_role = TrinoRole::from_str(&trino_role_str).context(FailedToParseRoleSnafu)?;
-        let role = trino.role(&trino_role).context(ReadRoleSnafu)?;
-        for (role_group, config) in role_config {
-            let role_group_ref = trino_role.rolegroup_ref(trino, &role_group);
-
-            let merged_config = trino
-                .merged_config(
-                    &trino_role,
-                    &role_group_ref,
-                    &dereferenced_objects.catalog_definitions,
-                )
-                .context(FailedToResolveConfigSnafu)?;
+    for (trino_role, role_group_configs) in &validated.role_group_configs {
+        for (role_group_name, rg) in role_group_configs {
+            let role_group_ref = trino_role.rolegroup_ref(trino, role_group_name);
+            let merged_config = &rg.config;
 
             let role_group_service_recommended_labels = build_recommended_labels(
                 trino,
@@ -437,7 +382,7 @@ pub async fn reconcile_trino(
             let rg_headless_service = build_rolegroup_headless_service(
                 trino,
                 &role_group_ref,
-                role_group_service_recommended_labels.clone(),
+                &role_group_service_recommended_labels,
                 role_group_service_selector.clone().into(),
             )
             .context(ServiceConfigurationSnafu)?;
@@ -445,44 +390,43 @@ pub async fn reconcile_trino(
             let rg_metrics_service = build_rolegroup_metrics_service(
                 trino,
                 &role_group_ref,
-                role_group_service_recommended_labels,
+                &role_group_service_recommended_labels,
                 role_group_service_selector.into(),
             )
             .context(ServiceConfigurationSnafu)?;
 
-            let rg_configmap = build_rolegroup_config_map(
-                trino,
-                &validated.image,
-                &role,
-                &trino_role,
+            let rg_configmap = build::config_map::build_rolegroup_config_map(
+                &validated,
+                trino_role,
                 &role_group_ref,
-                &config,
-                &merged_config,
-                &validated.trino_authentication_config,
-                &dereferenced_objects.trino_opa_config,
                 &client.kubernetes_cluster_info,
-                &dereferenced_objects.resolved_fte_config,
-                &dereferenced_objects.resolved_client_protocol_config,
-            )?;
+                &role_group_service_recommended_labels,
+                trino,
+            )
+            .with_context(|_| BuildRoleGroupConfigMapSnafu {
+                rolegroup: role_group_ref.clone(),
+            })?;
+
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
                 &validated.image,
                 &role_group_ref,
-                &dereferenced_objects.catalogs,
+                &validated.cluster_config.catalogs,
             )?;
+
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
-                &trino_role,
+                trino_role,
                 &validated.image,
                 &role_group_ref,
-                &config,
-                &merged_config,
-                &validated.trino_authentication_config,
-                &dereferenced_objects.catalogs,
+                &rg.env_overrides,
+                merged_config,
+                &validated.cluster_config.authentication,
+                &validated.cluster_config.catalogs,
                 &rbac_sa.name_any(),
-                &dereferenced_objects.resolved_fte_config,
-                &dereferenced_objects.resolved_client_protocol_config,
-                &dereferenced_objects.trino_opa_config,
+                &validated.cluster_config.fault_tolerant_execution,
+                &validated.cluster_config.client_protocol,
+                &validated.cluster_config.authorization,
             )?;
 
             cluster_resources
@@ -527,13 +471,13 @@ pub async fn reconcile_trino(
         }
 
         if let Some(listener_class) = trino_role.listener_class_name(trino) {
-            if let Some(listener_group_name) = group_listener_name(trino, &trino_role) {
+            if let Some(listener_group_name) = group_listener_name(trino, trino_role) {
                 let role_group_listener = build_group_listener(
                     trino,
                     build_recommended_labels(
                         trino,
                         &validated.image.app_version_label_value,
-                        &trino_role_str,
+                        &trino_role.to_string(),
                         "none",
                     ),
                     listener_class.to_string(),
@@ -548,12 +492,12 @@ pub async fn reconcile_trino(
             }
         }
 
-        let role_config = trino.generic_role_config(&trino_role);
+        let role_config = trino.generic_role_config(trino_role);
         if let Some(GenericRoleConfig {
             pod_disruption_budget: pdb,
         }) = role_config
         {
-            add_pdbs(pdb, trino, &trino_role, client, &mut cluster_resources)
+            add_pdbs(pdb, trino, trino_role, client, &mut cluster_resources)
                 .await
                 .context(FailedToCreatePdbSnafu)?;
         }
@@ -579,248 +523,6 @@ pub async fn reconcile_trino(
         .context(ApplyStatusSnafu)?;
 
     Ok(Action::await_change())
-}
-
-/// The rolegroup [`ConfigMap`] configures the rolegroup based on the configuration given by the administrator
-#[allow(clippy::too_many_arguments)]
-fn build_rolegroup_config_map(
-    trino: &v1alpha1::TrinoCluster,
-    resolved_product_image: &ResolvedProductImage,
-    role: &TrinoRoleType,
-    trino_role: &TrinoRole,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
-    merged_config: &v1alpha1::TrinoConfig,
-    trino_authentication_config: &TrinoAuthenticationConfig,
-    trino_opa_config: &Option<TrinoOpaConfig>,
-    cluster_info: &KubernetesClusterInfo,
-    resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
-) -> Result<ConfigMap> {
-    let mut cm_conf_data = BTreeMap::new();
-
-    let product_version = &resolved_product_image.product_version;
-    let product_version =
-        u16::from_str(product_version).context(ParseTrinoVersionSnafu { product_version })?;
-    let jvm_config = config::jvm::jvm_config(
-        product_version,
-        merged_config,
-        role,
-        &rolegroup_ref.role_group,
-    )
-    .context(FailedToCreateJvmConfigSnafu)?;
-
-    // TODO: we support only one coordinator for now
-    let coordinator_ref: TrinoPodRef = trino
-        .coordinator_pods()
-        .context(InternalOperatorFailureSnafu)?
-        .next()
-        .context(MissingCoordinatorPodsSnafu)?;
-
-    // Add additional config files for authentication
-    cm_conf_data.extend(trino_authentication_config.config_files(trino_role));
-
-    for (property_name_kind, config) in config {
-        // We used this temporary map to add all dynamically resolved (e.g. discovery config maps)
-        // properties. This will be extended with the merged role group properties (transformed_config)
-        // to respect all possible override settings.
-        let mut dynamic_resolved_config = BTreeMap::<String, Option<String>>::new();
-
-        let transformed_config: BTreeMap<String, Option<String>> = config
-            .iter()
-            .map(|(k, v)| (k.clone(), Some(v.clone())))
-            .collect();
-
-        match property_name_kind {
-            PropertyNameKind::File(file_name) if file_name == CONFIG_PROPERTIES => {
-                // Add authentication properties (only required for the Coordinator)
-                dynamic_resolved_config.extend(
-                    trino_authentication_config
-                        .config_properties(trino_role)
-                        .into_iter()
-                        .map(|(k, v)| (k, Some(v)))
-                        .collect::<BTreeMap<String, Option<String>>>(),
-                );
-
-                let protocol = if trino.get_internal_tls().is_some() {
-                    TrinoDiscoveryProtocol::Https
-                } else {
-                    TrinoDiscoveryProtocol::Http
-                };
-
-                let discovery = TrinoDiscovery::new(&coordinator_ref, protocol);
-                dynamic_resolved_config.insert(
-                    DISCOVERY_URI.to_string(),
-                    Some(discovery.discovery_uri(cluster_info)),
-                );
-
-                dynamic_resolved_config
-                    .extend(graceful_shutdown_config_properties(trino, trino_role));
-
-                // Add fault tolerant execution properties from resolved configuration
-                if let Some(resolved_fte) = resolved_fte_config {
-                    dynamic_resolved_config.extend(
-                        resolved_fte
-                            .config_properties
-                            .iter()
-                            .map(|(k, v)| (k.clone(), Some(v.clone()))),
-                    );
-                }
-
-                // Add spooling properties from resolved configuration
-                if let Some(resolved_spooling) = resolved_spooling_config {
-                    dynamic_resolved_config.extend(
-                        resolved_spooling
-                            .config_properties
-                            .iter()
-                            .map(|(k, v)| (k.clone(), Some(v.clone()))),
-                    );
-                }
-
-                // Add static properties and overrides
-                dynamic_resolved_config.extend(transformed_config);
-
-                let config_properties = product_config::writer::to_java_properties_string(
-                    dynamic_resolved_config.iter(),
-                )
-                .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                cm_conf_data.insert(file_name.to_string(), config_properties);
-            }
-
-            PropertyNameKind::File(file_name) if file_name == NODE_PROPERTIES => {
-                // Add static properties and overrides
-                dynamic_resolved_config.extend(transformed_config);
-
-                let node_properties = product_config::writer::to_java_properties_string(
-                    dynamic_resolved_config.iter(),
-                )
-                .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                cm_conf_data.insert(file_name.to_string(), node_properties);
-            }
-            PropertyNameKind::File(file_name) if file_name == LOG_PROPERTIES => {
-                // No overrides required here, all settings can be set via logging options
-                if let Some(log_properties) = get_log_properties(&merged_config.logging) {
-                    cm_conf_data.insert(file_name.to_string(), log_properties);
-                }
-
-                if let Some(vector_toml) = get_vector_toml(rolegroup_ref, &merged_config.logging)
-                    .context(InvalidLoggingConfigSnafu {
-                        cm_name: rolegroup_ref.object_name(),
-                    })?
-                {
-                    cm_conf_data.insert(
-                        product_logging::framework::VECTOR_CONFIG_FILE.to_string(),
-                        vector_toml,
-                    );
-                }
-            }
-            PropertyNameKind::File(file_name) if file_name == ACCESS_CONTROL_PROPERTIES => {
-                if let Some(trino_opa_config) = trino_opa_config {
-                    dynamic_resolved_config.extend(trino_opa_config.as_config());
-                }
-
-                // Add static properties and overrides
-                dynamic_resolved_config.extend(transformed_config);
-
-                if !dynamic_resolved_config.is_empty() {
-                    let access_control_properties =
-                        product_config::writer::to_java_properties_string(
-                            dynamic_resolved_config.iter(),
-                        )
-                        .context(FailedToWriteJavaPropertiesSnafu)?;
-
-                    cm_conf_data.insert(file_name.to_string(), access_control_properties);
-                }
-            }
-            PropertyNameKind::File(file_name) if file_name == JVM_CONFIG => {}
-            PropertyNameKind::File(file_name) if file_name == SPOOLING_MANAGER_PROPERTIES => {
-                // Add automatic properties for the spooling protocol
-                if let Some(spooling_config) = resolved_spooling_config {
-                    dynamic_resolved_config = spooling_config
-                        .spooling_manager_properties
-                        .iter()
-                        .map(|(k, v)| (k.clone(), Some(v.clone())))
-                        .collect();
-                }
-
-                // Override automatic properties with user provided configuration for the spooling protocol
-                dynamic_resolved_config.extend(transformed_config);
-
-                if !dynamic_resolved_config.is_empty() {
-                    cm_conf_data.insert(
-                        file_name.to_string(),
-                        to_java_properties_string(dynamic_resolved_config.iter())
-                            .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-                    );
-                }
-            }
-            PropertyNameKind::File(file_name) if file_name == EXCHANGE_MANAGER_PROPERTIES => {
-                // Add exchange manager properties from resolved fault tolerant execution configuration
-                if let Some(resolved_fte) = resolved_fte_config {
-                    dynamic_resolved_config = resolved_fte
-                        .exchange_manager_properties
-                        .iter()
-                        .map(|(k, v)| (k.clone(), Some(v.clone())))
-                        .collect();
-                }
-
-                // Override automatic properties with user provided configuration for the spooling protocol
-                dynamic_resolved_config.extend(transformed_config);
-
-                if !dynamic_resolved_config.is_empty() {
-                    cm_conf_data.insert(
-                        file_name.to_string(),
-                        to_java_properties_string(dynamic_resolved_config.iter())
-                            .with_context(|_| FailedToWriteJavaPropertiesSnafu)?,
-                    );
-                }
-            }
-            _ => {}
-        }
-    }
-
-    cm_conf_data.insert(JVM_CONFIG.to_string(), jvm_config.to_string());
-
-    let jvm_sec_props: BTreeMap<String, Option<String>> = config
-        .get(&PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()))
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
-        .map(|(k, v)| (k, Some(v)))
-        .collect();
-
-    cm_conf_data.insert(
-        JVM_SECURITY_PROPERTIES.to_string(),
-        to_java_properties_string(jvm_sec_props.iter()).with_context(|_| {
-            JvmSecurityPropertiesSnafu {
-                rolegroup: rolegroup_ref.role_group.clone(),
-            }
-        })?,
-    );
-
-    ConfigMapBuilder::new()
-        .metadata(
-            ObjectMetaBuilder::new()
-                .name_and_namespace(trino)
-                .name(rolegroup_ref.object_name())
-                .ownerreference_from_resource(trino, None, Some(true))
-                .context(ObjectMissingMetadataForOwnerRefSnafu)?
-                .with_recommended_labels(&build_recommended_labels(
-                    trino,
-                    &resolved_product_image.app_version_label_value,
-                    &rolegroup_ref.role,
-                    &rolegroup_ref.role_group,
-                ))
-                .context(MetadataBuildSnafu)?
-                .build(),
-        )
-        .data(cm_conf_data)
-        .build()
-        .with_context(|_| BuildRoleGroupConfigSnafu {
-            rolegroup: rolegroup_ref.clone(),
-        })
 }
 
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
@@ -851,21 +553,15 @@ fn build_rolegroup_catalog_config_map(
             catalogs
                 .iter()
                 .map(|catalog| {
-                    let catalog_props = catalog
+                    let catalog_props: BTreeMap<String, String> = catalog
                         .properties
                         .iter()
-                        .map(|(k, v)| (k.to_string(), Some(v.to_string())))
-                        .collect::<Vec<_>>();
+                        .map(|(k, v)| (k.to_string(), v.to_string()))
+                        .collect();
                     Ok((
                         format!("{}.properties", catalog.name),
-                        // false positive https://github.com/rust-lang/rust-clippy/issues/9280
-                        // we need the tuple (&String, &Option<String>) which the extra map is doing.
-                        // Removing the map changes the type to &(String, Option<String>)
-                        #[allow(clippy::map_identity)]
-                        product_config::writer::to_java_properties_string(
-                            catalog_props.iter().map(|(k, v)| (k, v)),
-                        )
-                        .context(FailedToWriteJavaPropertiesSnafu)?,
+                        build::properties::writer::to_java_properties_string(&catalog_props)
+                            .context(FailedToWriteJavaPropertiesSnafu)?,
                     ))
                 })
                 .collect::<Result<_>>()?,
@@ -886,7 +582,7 @@ fn build_rolegroup_statefulset(
     trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+    env_overrides: &BTreeMap<String, String>,
     merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
@@ -970,17 +666,11 @@ fn build_rolegroup_statefulset(
     });
 
     // Finally add the user defined envOverrides properties.
-    env.extend(
-        config
-            .get(&PropertyNameKind::Env)
-            .into_iter()
-            .flatten()
-            .map(|(k, v)| EnvVar {
-                name: k.clone(),
-                value: Some(v.clone()),
-                ..EnvVar::default()
-            }),
-    );
+    env.extend(env_overrides.iter().map(|(k, v)| EnvVar {
+        name: k.clone(),
+        value: Some(v.clone()),
+        ..EnvVar::default()
+    }));
 
     let requested_secret_lifetime = merged_config
         .requested_secret_lifetime
@@ -1628,22 +1318,116 @@ fn tls_volume_mounts(
 #[cfg(test)]
 mod tests {
     use stackable_operator::{
-        commons::networking::DomainName,
-        kube::runtime::reflector::ObjectRef,
-        product_config_utils::{
-            transform_all_roles_to_config, validate_all_roles_and_groups_config,
-        },
+        cli::OperatorEnvironmentOptions, commons::networking::DomainName,
+        k8s_openapi::api::core::v1::ConfigMap, kube::runtime::reflector::ObjectRef,
+        role_utils::RoleGroupRef, utils::cluster_info::KubernetesClusterInfo,
     };
 
     use super::*;
     use crate::{
-        authentication::TrinoAuthenticationTypes,
+        authorization::opa::TrinoOpaConfig,
         config::{
             client_protocol::ResolvedClientProtocolConfig,
             fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         },
-        crd::v1alpha1::TrinoCluster,
+        controller::dereference::DereferencedObjects,
+        crd::{ENV_SPOOLING_SECRET, TrinoRole, v1alpha1},
     };
+
+    async fn build_config_map(trino_yaml: &str) -> ConfigMap {
+        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
+        let mut trino: v1alpha1::TrinoCluster =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+                .expect("invalid test input");
+        trino.metadata.namespace = Some("default".to_owned());
+        trino.metadata.uid = Some("42".to_owned());
+
+        let cluster_info = KubernetesClusterInfo {
+            cluster_domain: DomainName::try_from("cluster.local").unwrap(),
+        };
+
+        let namespace = trino.metadata.namespace.clone().unwrap();
+        let resolved_fte_config = match &trino.spec.cluster_config.fault_tolerant_execution {
+            Some(fte) => Some(
+                ResolvedFaultTolerantExecutionConfig::from_config(fte, None, &namespace)
+                    .await
+                    .unwrap(),
+            ),
+            None => None,
+        };
+        let resolved_client_protocol_config = match &trino.spec.cluster_config.client_protocol {
+            Some(cp) => Some(
+                ResolvedClientProtocolConfig::from_config(cp, None, &namespace)
+                    .await
+                    .unwrap(),
+            ),
+            None => None,
+        };
+        // For OPA, the legacy helper used a hard-coded `TrinoOpaConfig` literal
+        // rather than resolving from cluster config; mirror that here so that
+        // `test_access_control_overrides` does not need a Kubernetes client and
+        // so that `test_config_overrides` keeps observing an
+        // `access-control.properties` entry in the rendered ConfigMap.
+        let trino_opa_config = Some(TrinoOpaConfig {
+            non_batched_connection_string:
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/allow"
+                    .to_string(),
+            batched_connection_string:
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch"
+                    .to_string(),
+            row_filters_connection_string: Some(
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/rowFilters"
+                    .to_string(),
+            ),
+            batched_column_masking_connection_string: Some(
+                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batchColumnMasks"
+                    .to_string(),
+            ),
+            allow_permission_management_operations: true,
+            tls_secret_class: None,
+        });
+
+        let derefs = DereferencedObjects {
+            resolved_authentication_classes: Vec::new(),
+            catalog_definitions: Vec::new(),
+            catalogs: Vec::new(),
+            trino_opa_config,
+            resolved_fte_config,
+            resolved_client_protocol_config,
+        };
+
+        let operator_env = OperatorEnvironmentOptions {
+            operator_namespace: "stackable-operators".to_string(),
+            operator_service_name: "trino-operator".to_string(),
+            image_repository: "oci.example.org".to_string(),
+        };
+
+        let validated =
+            validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
+
+        let trino_role = TrinoRole::Coordinator;
+        let rolegroup_ref = RoleGroupRef {
+            cluster: ObjectRef::from_obj(&trino),
+            role: trino_role.to_string(),
+            role_group: "default".to_string(),
+        };
+        let recommended_labels = build_recommended_labels(
+            &trino,
+            &validated.image.app_version_label_value,
+            &rolegroup_ref.role,
+            &rolegroup_ref.role_group,
+        );
+
+        build::config_map::build_rolegroup_config_map(
+            &validated,
+            &trino_role,
+            &rolegroup_ref,
+            &cluster_info,
+            &recommended_labels,
+            &trino,
+        )
+        .expect("build_rolegroup_config_map should succeed")
+    }
 
     #[tokio::test]
     async fn test_config_overrides() {
@@ -1755,143 +1539,6 @@ mod tests {
         assert!(config.contains("spooling-manager.name=filesystem"));
     }
 
-    async fn build_config_map(trino_yaml: &str) -> ConfigMap {
-        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
-        let mut trino: TrinoCluster =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
-                .expect("invalid test input");
-        trino.metadata.namespace = Some("default".to_owned());
-        trino.metadata.uid = Some("42".to_owned());
-        let cluster_info = KubernetesClusterInfo {
-            cluster_domain: DomainName::try_from("cluster.local").unwrap(),
-        };
-        let resolved_product_image = trino
-            .spec
-            .image
-            .resolve(CONTAINER_IMAGE_BASE_NAME, "oci.example.org", "0.0.0-dev")
-            .expect("test resolved product image is always valid");
-
-        let config_files = vec![
-            PropertyNameKind::File(CONFIG_PROPERTIES.to_string()),
-            PropertyNameKind::File(NODE_PROPERTIES.to_string()),
-            PropertyNameKind::File(JVM_CONFIG.to_string()),
-            PropertyNameKind::File(LOG_PROPERTIES.to_string()),
-            PropertyNameKind::File(JVM_SECURITY_PROPERTIES.to_string()),
-            PropertyNameKind::File(ACCESS_CONTROL_PROPERTIES.to_string()),
-            PropertyNameKind::File(SPOOLING_MANAGER_PROPERTIES.to_string()),
-            PropertyNameKind::File(EXCHANGE_MANAGER_PROPERTIES.to_string()),
-        ];
-        let validated_config = validate_all_roles_and_groups_config(
-            // The Trino version is a single number like 396.
-            // The product config expects semver formatted version strings.
-            // That is why we just add minor and patch version 0 here.
-            &format!("{}.0.0", resolved_product_image.product_version),
-            &transform_all_roles_to_config(
-                &trino,
-                &HashMap::from([
-                    (
-                        TrinoRole::Coordinator.to_string(),
-                        (
-                            config_files.clone(),
-                            trino.role(&TrinoRole::Coordinator).unwrap(),
-                        ),
-                    ),
-                    (
-                        TrinoRole::Worker.to_string(),
-                        (config_files, trino.role(&TrinoRole::Worker).unwrap()),
-                    ),
-                ]),
-            )
-            .unwrap(),
-            // Using this instead of ProductConfigManager::from_yaml_file, as that did not find the file
-            &ProductConfigManager::from_str(include_str!(
-                "../../../deploy/config-spec/properties.yaml"
-            ))
-            .unwrap(),
-            false,
-            false,
-        )
-        .unwrap();
-
-        let trino_role = TrinoRole::Coordinator;
-        let role = trino.role(&trino_role).unwrap();
-        let rolegroup_ref = RoleGroupRef {
-            cluster: ObjectRef::from_obj(&trino),
-            role: trino_role.to_string(),
-            role_group: "default".to_string(),
-        };
-        let trino_authentication_config = TrinoAuthenticationConfig::new(
-            &resolved_product_image,
-            TrinoAuthenticationTypes::try_from(Vec::new()).unwrap(),
-        )
-        .unwrap();
-        let trino_opa_config = Some(TrinoOpaConfig {
-            non_batched_connection_string:
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/allow"
-                    .to_string(),
-            batched_connection_string:
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batch"
-                    .to_string(),
-            row_filters_connection_string: Some(
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/rowFilters"
-                    .to_string(),
-            ),
-            batched_column_masking_connection_string: Some(
-                "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/batchColumnMasks"
-                    .to_string(),
-            ),
-            allow_permission_management_operations: true,
-            tls_secret_class: None,
-        });
-        let resolved_fte_config = match &trino.spec.cluster_config.fault_tolerant_execution {
-            Some(fault_tolerant_execution) => Some(
-                ResolvedFaultTolerantExecutionConfig::from_config(
-                    fault_tolerant_execution,
-                    None,
-                    &trino.namespace().unwrap(),
-                )
-                .await
-                .unwrap(),
-            ),
-            None => None,
-        };
-        let resolved_spooling_config = match &trino.spec.cluster_config.client_protocol {
-            Some(client_protocol) => Some(
-                ResolvedClientProtocolConfig::from_config(
-                    client_protocol,
-                    None,
-                    &trino.namespace().unwrap(),
-                )
-                .await
-                .unwrap(),
-            ),
-            None => None,
-        };
-        let merged_config = trino
-            .merged_config(&trino_role, &rolegroup_ref, &[])
-            .unwrap();
-
-        build_rolegroup_config_map(
-            &trino,
-            &resolved_product_image,
-            &role,
-            &trino_role,
-            &rolegroup_ref,
-            validated_config
-                .get("coordinator")
-                .unwrap()
-                .get("default")
-                .unwrap(),
-            &merged_config,
-            &trino_authentication_config,
-            &trino_opa_config,
-            &cluster_info,
-            &resolved_fte_config,
-            &resolved_spooling_config,
-        )
-        .unwrap()
-    }
-
     #[tokio::test]
     async fn test_access_control_overrides() {
         let trino_yaml = r#"
@@ -1952,6 +1599,8 @@ mod tests {
         kind: TrinoCluster
         metadata:
           name: trino
+          namespace: default
+          uid: "42"
         spec:
           image:
             productVersion: "479"
@@ -1978,24 +1627,26 @@ mod tests {
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
-        let validated_config = validate::validated_product_config(
-            &trino,
-            "455.0.0",
-            &ProductConfigManager::from_yaml_file("../../deploy/config-spec/properties.yaml")
-                .unwrap(),
-        )
-        .unwrap();
+        let derefs = DereferencedObjects {
+            resolved_authentication_classes: Vec::new(),
+            catalog_definitions: Vec::new(),
+            catalogs: Vec::new(),
+            trino_opa_config: None,
+            resolved_fte_config: None,
+            resolved_client_protocol_config: None,
+        };
+        let operator_env = OperatorEnvironmentOptions {
+            operator_namespace: "stackable-operators".to_string(),
+            operator_service_name: "trino-operator".to_string(),
+            image_repository: "oci.example.org".to_string(),
+        };
+        let validated =
+            validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
-        let env = validated_config
-            .get(&TrinoRole::Coordinator.to_string())
-            .unwrap()
-            .get("default")
-            .unwrap()
-            .get(&PropertyNameKind::Env)
-            .unwrap();
-
-        assert_eq!(&"group-value".to_string(), env.get("COMMON_VAR").unwrap());
-        assert_eq!(&"group-value".to_string(), env.get("GROUP_VAR").unwrap());
-        assert_eq!(&"role-value".to_string(), env.get("ROLE_VAR").unwrap());
+        let env = &validated.role_group_configs[&TrinoRole::Coordinator]["default"].env_overrides;
+        let value = |name: &str| env.get(name).cloned();
+        assert_eq!(value("COMMON_VAR").as_deref(), Some("group-value"));
+        assert_eq!(value("GROUP_VAR").as_deref(), Some("group-value"));
+        assert_eq!(value("ROLE_VAR").as_deref(), Some("role-value"));
     }
 }

@@ -1340,9 +1340,15 @@ spec:
                             type: boolean
                         type: object
                       queryMaxMemory:
+                        description: |-
+                          This is the max amount of user memory a query can use across the entire cluster.
+                          See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory>
                         nullable: true
                         type: string
                       queryMaxMemoryPerNode:
+                        description: |-
+                          This is the max amount of user memory a query can use on a worker.
+                          See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory-per-node>
                         nullable: true
                         type: string
                       requestedSecretLifetime:
@@ -1419,73 +1425,80 @@ spec:
                     properties:
                       access-control.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       config.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       exchange-manager.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       log.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       node.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       security.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       spooling-manager.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                     type: object
                   envOverrides:
@@ -1967,9 +1980,15 @@ spec:
                                   type: boolean
                               type: object
                             queryMaxMemory:
+                              description: |-
+                                This is the max amount of user memory a query can use across the entire cluster.
+                                See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory>
                               nullable: true
                               type: string
                             queryMaxMemoryPerNode:
+                              description: |-
+                                This is the max amount of user memory a query can use on a worker.
+                                See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory-per-node>
                               nullable: true
                               type: string
                             requestedSecretLifetime:
@@ -2046,73 +2065,80 @@ spec:
                           properties:
                             access-control.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             config.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             exchange-manager.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             log.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             node.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             security.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             spooling-manager.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                           type: object
                         envOverrides:
@@ -2646,9 +2672,15 @@ spec:
                             type: boolean
                         type: object
                       queryMaxMemory:
+                        description: |-
+                          This is the max amount of user memory a query can use across the entire cluster.
+                          See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory>
                         nullable: true
                         type: string
                       queryMaxMemoryPerNode:
+                        description: |-
+                          This is the max amount of user memory a query can use on a worker.
+                          See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory-per-node>
                         nullable: true
                         type: string
                       requestedSecretLifetime:
@@ -2725,73 +2757,80 @@ spec:
                     properties:
                       access-control.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       config.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       exchange-manager.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       log.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       node.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       security.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                       spooling-manager.properties:
                         additionalProperties:
+                          nullable: true
                           type: string
+                        default: {}
                         description: |-
                           Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                           This is backwards-compatible with the existing flat key-value YAML format
                           used by `HashMap<String, String>`.
-                        nullable: true
                         type: object
                     type: object
                   envOverrides:
@@ -3268,9 +3307,15 @@ spec:
                                   type: boolean
                               type: object
                             queryMaxMemory:
+                              description: |-
+                                This is the max amount of user memory a query can use across the entire cluster.
+                                See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory>
                               nullable: true
                               type: string
                             queryMaxMemoryPerNode:
+                              description: |-
+                                This is the max amount of user memory a query can use on a worker.
+                                See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory-per-node>
                               nullable: true
                               type: string
                             requestedSecretLifetime:
@@ -3347,73 +3392,80 @@ spec:
                           properties:
                             access-control.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             config.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             exchange-manager.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             log.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             node.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             security.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                             spooling-manager.properties:
                               additionalProperties:
+                                nullable: true
                                 type: string
+                              default: {}
                               description: |-
                                 Flat key-value overrides for `*.properties`, Hadoop XML, etc.
 
                                 This is backwards-compatible with the existing flat key-value YAML format
                                 used by `HashMap<String, String>`.
-                              nullable: true
                               type: object
                           type: object
                         envOverrides:

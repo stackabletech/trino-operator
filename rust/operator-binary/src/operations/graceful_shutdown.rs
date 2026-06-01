@@ -7,11 +7,22 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::pod::{PodBuilder, container::ContainerBuilder},
     k8s_openapi::api::core::v1::{ExecAction, LifecycleHandler},
+    shared::time::Duration,
 };
 
-use crate::crd::{
-    TrinoRole, WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD, WORKER_SHUTDOWN_GRACE_PERIOD, v1alpha1,
+use crate::{
+    controller::ValidatedCluster,
+    crd::{DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT, TrinoRole, v1alpha1},
 };
+
+/// Corresponds to "shutdown.grace-period", which defaults to 2 min.
+/// This seems a bit high, as Pod termination - even with no queries running on the worker -
+/// takes at least 4 minutes (see <https://trino.io/docs/current/admin/graceful-shutdown.html>).
+/// So we set it to 30 seconds, so the Pod termination takes at least 1 minute.
+const WORKER_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(30);
+
+/// Safety puffer to guarantee the graceful shutdown works every time.
+const WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -21,25 +32,24 @@ pub enum Error {
     },
 }
 
+/// Computes the graceful-shutdown-related properties for the role's
+/// `config.properties` file from a [`ValidatedCluster`].
 pub fn graceful_shutdown_config_properties(
-    trino: &v1alpha1::TrinoCluster,
-    role: &TrinoRole,
-) -> BTreeMap<String, Option<String>> {
+    cluster: &ValidatedCluster,
+    role: TrinoRole,
+) -> BTreeMap<String, String> {
     match role {
         TrinoRole::Coordinator => {
             // Only set query.max-execution-time if fault tolerant execution is not configured.
             // With fault tolerant execution enabled, queries can be retried and run indefinitely.
-            if trino.spec.cluster_config.fault_tolerant_execution.is_none() {
+            if cluster.cluster_config.fault_tolerant_execution.is_none() {
                 let min_worker_graceful_shutdown_timeout =
-                    trino.min_worker_graceful_shutdown_timeout();
+                    min_worker_graceful_shutdown_timeout(cluster);
                 // We know that queries taking longer than the minimum gracefulShutdownTimeout are subject to failure.
                 // Read operator docs for reasoning.
                 BTreeMap::from([(
                     "query.max-execution-time".to_string(),
-                    Some(format!(
-                        "{}s",
-                        min_worker_graceful_shutdown_timeout.as_secs()
-                    )),
+                    format!("{}s", min_worker_graceful_shutdown_timeout.as_secs()),
                 )])
             } else {
                 BTreeMap::new()
@@ -47,9 +57,26 @@ pub fn graceful_shutdown_config_properties(
         }
         TrinoRole::Worker => BTreeMap::from([(
             "shutdown.grace-period".to_string(),
-            Some(format!("{}s", WORKER_SHUTDOWN_GRACE_PERIOD.as_secs())),
+            format!("{}s", WORKER_SHUTDOWN_GRACE_PERIOD.as_secs()),
         )]),
     }
+}
+
+/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups.
+///
+/// Mirrors [`v1alpha1::TrinoCluster::min_worker_graceful_shutdown_timeout`] but
+/// reads from [`ValidatedCluster::role_group_configs`].
+fn min_worker_graceful_shutdown_timeout(
+    cluster: &ValidatedCluster,
+) -> stackable_operator::shared::time::Duration {
+    cluster
+        .role_group_configs
+        .get(&TrinoRole::Worker)
+        .into_iter()
+        .flat_map(|groups| groups.values())
+        .filter_map(|rg| rg.config.graceful_shutdown_timeout)
+        .min()
+        .unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT)
 }
 
 pub fn add_graceful_shutdown_config(

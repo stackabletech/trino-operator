@@ -5,7 +5,7 @@ pub mod client_protocol;
 pub mod discovery;
 pub mod fault_tolerant_execution;
 
-use std::{collections::BTreeMap, ops::Div, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr};
 
 use affinity::get_affinity;
 use serde::{Deserialize, Serialize};
@@ -25,13 +25,11 @@ use stackable_operator::{
         fragment::{self, Fragment, ValidationError},
         merge::Merge,
     },
-    config_overrides::{KeyValueConfigOverrides, KeyValueOverridesProvider},
     crd::authentication::core,
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt, runtime::reflector::ObjectRef},
     memory::{BinaryMultiple, MemoryQuantity},
-    product_config_utils::{Configuration, Error as ConfigError},
     product_logging::{self, spec::Logging},
     role_utils::{
         CommonConfiguration, GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef,
@@ -40,6 +38,7 @@ use stackable_operator::{
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
     utils::cluster_info::KubernetesClusterInfo,
+    v2::config_overrides::KeyValueConfigOverrides,
     versioned::versioned,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -63,7 +62,6 @@ pub type TrinoRoleType = Role<
 pub type TrinoRoleGroupType =
     RoleGroup<v1alpha1::TrinoConfigFragment, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>;
 
-pub const FIELD_MANAGER: &str = "trino-operator";
 pub const APP_NAME: &str = "trino";
 // ports
 pub const HTTP_PORT: u16 = 8080;
@@ -73,44 +71,6 @@ pub const METRICS_PORT: u16 = 8081;
 pub const HTTP_PORT_NAME: &str = "http";
 pub const HTTPS_PORT_NAME: &str = "https";
 pub const METRICS_PORT_NAME: &str = "metrics";
-// file names
-pub const CONFIG_PROPERTIES: &str = "config.properties";
-pub const JVM_CONFIG: &str = "jvm.config";
-pub const NODE_PROPERTIES: &str = "node.properties";
-pub const LOG_PROPERTIES: &str = "log.properties";
-pub const ACCESS_CONTROL_PROPERTIES: &str = "access-control.properties";
-pub const JVM_SECURITY_PROPERTIES: &str = "security.properties";
-pub const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
-pub const SPOOLING_MANAGER_PROPERTIES: &str = "spooling-manager.properties";
-// node.properties
-pub const NODE_ENVIRONMENT: &str = "node.environment";
-// config.properties
-pub const COORDINATOR: &str = "coordinator";
-pub const DISCOVERY_URI: &str = "discovery.uri";
-pub const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
-pub const QUERY_MAX_MEMORY: &str = "query.max-memory";
-pub const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
-// - server tls
-pub const HTTP_SERVER_HTTPS_PORT: &str = "http-server.https.port";
-pub const HTTP_SERVER_HTTPS_ENABLED: &str = "http-server.https.enabled";
-pub const HTTP_SERVER_HTTPS_KEYSTORE_KEY: &str = "http-server.https.keystore.key";
-pub const HTTP_SERVER_KEYSTORE_PATH: &str = "http-server.https.keystore.path";
-pub const HTTP_SERVER_HTTPS_TRUSTSTORE_KEY: &str = "http-server.https.truststore.key";
-pub const HTTP_SERVER_TRUSTSTORE_PATH: &str = "http-server.https.truststore.path";
-pub const HTTP_SERVER_AUTHENTICATION_ALLOW_INSECURE_OVER_HTTP: &str =
-    "http-server.authentication.allow-insecure-over-http";
-// - internal tls
-pub const INTERNAL_COMMUNICATION_SHARED_SECRET: &str = "internal-communication.shared-secret";
-pub const INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH: &str =
-    "internal-communication.https.keystore.path";
-pub const INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY: &str =
-    "internal-communication.https.keystore.key";
-pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH: &str =
-    "internal-communication.https.truststore.path";
-pub const INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY: &str =
-    "internal-communication.https.truststore.key";
-pub const NODE_INTERNAL_ADDRESS_SOURCE: &str = "node.internal-address-source";
-pub const NODE_INTERNAL_ADDRESS_SOURCE_FQDN: &str = "FQDN";
 // directories
 pub const CONFIG_DIR_NAME: &str = "/stackable/config";
 pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
@@ -126,33 +86,16 @@ pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
 // TLS
-pub const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
+const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
 // Logging
-pub const LOG_FORMAT: &str = "log.format";
-pub const LOG_PATH: &str = "log.path";
-pub const LOG_COMPRESSION: &str = "log.compression";
-pub const LOG_MAX_SIZE: &str = "log.max-size";
-pub const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
-const LOG_FILE_COUNT: u32 = 2;
 pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
     value: 10.0,
     unit: BinaryMultiple::Mebi,
 };
 
-pub const JVM_HEAP_FACTOR: f32 = 0.8;
-
-pub const DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT: Duration =
+const DEFAULT_COORDINATOR_GRACEFUL_SHUTDOWN_TIMEOUT: Duration =
     Duration::from_minutes_unchecked(15);
 pub const DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT: Duration = Duration::from_minutes_unchecked(60);
-
-/// Corresponds to "shutdown.grace-period", which defaults to 2 min.
-/// This seems a bit high, as Pod termination - even with no queries running on the worker -
-/// takes at least 4 minutes (see <https://trino.io/docs/current/admin/graceful-shutdown.html>).
-/// So we set it to 30 seconds, so the Pod termination takes at least 1 minute.
-pub const WORKER_SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(30);
-
-/// Safety puffer to guarantee the graceful shutdown works every time.
-pub const WORKER_GRACEFUL_SHUTDOWN_SAFETY_OVERHEAD: Duration = Duration::from_secs(10);
 
 /// Convert a Kubernetes `Quantity` to a Trino property string in bytes, e.g. `"65536B"`.
 pub(crate) fn quantity_to_trino_bytes(
@@ -237,60 +180,6 @@ pub mod versioned {
         pub workers: Option<super::TrinoRoleType>,
     }
 
-    #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct TrinoConfigOverrides {
-        #[serde(
-            default,
-            rename = "config.properties",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub config_properties: Option<KeyValueConfigOverrides>,
-
-        #[serde(
-            default,
-            rename = "node.properties",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub node_properties: Option<KeyValueConfigOverrides>,
-
-        #[serde(
-            default,
-            rename = "log.properties",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub log_properties: Option<KeyValueConfigOverrides>,
-
-        #[serde(
-            default,
-            rename = "security.properties",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub security_properties: Option<KeyValueConfigOverrides>,
-
-        #[serde(
-            default,
-            rename = "access-control.properties",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub access_control_properties: Option<KeyValueConfigOverrides>,
-
-        #[serde(
-            default,
-            rename = "exchange-manager.properties",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub exchange_manager_properties: Option<KeyValueConfigOverrides>,
-
-        #[serde(
-            default,
-            rename = "spooling-manager.properties",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub spooling_manager_properties: Option<KeyValueConfigOverrides>,
-    }
-
-    // TODO: move generic version to op-rs?
     #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoCoordinatorRoleConfig {
@@ -300,6 +189,38 @@ pub mod versioned {
         /// This field controls which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html) is used to expose the coordinator.
         #[serde(default = "coordinator_default_listener_class")]
         pub listener_class: String,
+    }
+
+    #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, Merge, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoConfigOverrides {
+        // File name defined in [`crate::controller::build::properties::CONFIG_PROPERTIES_FILE_NAME`]
+        #[serde(default, rename = "config.properties")]
+        pub config_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::NODE_PROPERTIES_FILE_NAME`]
+        #[serde(default, rename = "node.properties")]
+        pub node_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::LOG_PROPERTIES_FILE_NAME`]
+        #[serde(default, rename = "log.properties")]
+        pub log_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::SECURITY_PROPERTIES_FILE_NAME`]
+        #[serde(default, rename = "security.properties")]
+        pub security_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::ACCESS_CONTROL_PROPERTIES_FILE_NAME`]
+        #[serde(default, rename = "access-control.properties")]
+        pub access_control_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::EXCHANGE_MANAGER_PROPERTIES_FILE_NAME`]
+        #[serde(default, rename = "exchange-manager.properties")]
+        pub exchange_manager_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::SPOOLING_MANAGER_PROPERTIES_FILE_NAME`]
+        #[serde(default, rename = "spooling-manager.properties")]
+        pub spooling_manager_properties: KeyValueConfigOverrides,
     }
 
     #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
@@ -317,25 +238,28 @@ pub mod versioned {
         serde(rename_all = "camelCase")
     )]
     pub struct TrinoConfig {
-        // config.properties
-        pub query_max_memory: Option<String>,
-
-        pub query_max_memory_per_node: Option<String>,
-
-        #[fragment_attrs(serde(default))]
-        pub logging: Logging<Container>,
-
-        // We need to provide *something* that implements `Fragment`, so we pick an empty struct here.
-        // Note that a unit "()" would not work, as we need something that implements `Fragment`.
-        #[fragment_attrs(serde(default))]
-        pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
-
         #[fragment_attrs(serde(default))]
         pub affinity: StackableAffinity,
 
         /// Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
         #[fragment_attrs(serde(default))]
         pub graceful_shutdown_timeout: Option<Duration>,
+
+        #[fragment_attrs(serde(default))]
+        pub logging: Logging<Container>,
+
+        /// This is the max amount of user memory a query can use across the entire cluster.
+        /// See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory>
+        pub query_max_memory: Option<String>,
+
+        /// This is the max amount of user memory a query can use on a worker.
+        /// See <https://trino.io/docs/current/admin/properties-resource-management.html#query-max-memory-per-node>
+        pub query_max_memory_per_node: Option<String>,
+
+        // We need to provide *something* that implements `Fragment`, so we pick an empty struct here.
+        // Note that a unit "()" would not work, as we need something that implements `Fragment`.
+        #[fragment_attrs(serde(default))]
+        pub resources: Resources<TrinoStorageConfig, NoRuntimeLimits>,
 
         /// Request secret (currently only autoTls certificates) lifetime from the secret operator, e.g. `7d`, or `30d`.
         /// This can be shortened by the `maxCertificateLifetime` setting on the SecretClass issuing the TLS certificate.
@@ -460,24 +384,6 @@ impl v1alpha1::TrinoAuthorizationOpaConfig {
     }
 }
 
-impl KeyValueOverridesProvider for v1alpha1::TrinoConfigOverrides {
-    fn get_key_value_overrides(&self, file: &str) -> BTreeMap<String, Option<String>> {
-        let field = match file {
-            CONFIG_PROPERTIES => self.config_properties.as_ref(),
-            NODE_PROPERTIES => self.node_properties.as_ref(),
-            LOG_PROPERTIES => self.log_properties.as_ref(),
-            JVM_SECURITY_PROPERTIES => self.security_properties.as_ref(),
-            ACCESS_CONTROL_PROPERTIES => self.access_control_properties.as_ref(),
-            EXCHANGE_MANAGER_PROPERTIES => self.exchange_manager_properties.as_ref(),
-            SPOOLING_MANAGER_PROPERTIES => self.spooling_manager_properties.as_ref(),
-            _ => None,
-        };
-        field
-            .map(KeyValueConfigOverrides::as_product_config_overrides)
-            .unwrap_or_default()
-    }
-}
-
 impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
     fn default() -> Self {
         v1alpha1::TrinoCoordinatorRoleConfig {
@@ -513,7 +419,9 @@ fn tls_secret_class_default() -> Option<String> {
     Eq,
     Hash,
     JsonSchema,
+    Ord,
     PartialEq,
+    PartialOrd,
     Serialize,
     EnumString,
 )]
@@ -595,7 +503,7 @@ pub enum Container {
 }
 
 impl v1alpha1::TrinoConfig {
-    fn default_config(
+    pub(crate) fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
         trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],
@@ -635,207 +543,6 @@ impl v1alpha1::TrinoConfig {
             graceful_shutdown_timeout: Some(graceful_shutdown_timeout),
             requested_secret_lifetime: Some(requested_secret_lifetime),
         }
-    }
-}
-
-impl Configuration for v1alpha1::TrinoConfigFragment {
-    type Configurable = v1alpha1::TrinoCluster;
-
-    fn compute_env(
-        &self,
-        _resource: &Self::Configurable,
-        _role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        Ok(BTreeMap::new())
-    }
-
-    fn compute_cli(
-        &self,
-        _resource: &Self::Configurable,
-        _role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        Ok(BTreeMap::new())
-    }
-
-    fn compute_files(
-        &self,
-        resource: &Self::Configurable,
-        role_name: &str,
-        file: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        let mut result = BTreeMap::new();
-        let authentication_enabled = resource.authentication_enabled();
-        let server_tls_enabled: bool = resource.get_server_tls().is_some();
-        let internal_tls_enabled: bool = resource.get_internal_tls().is_some();
-
-        match file {
-            NODE_PROPERTIES => {
-                // The resource name is alphanumeric and may have "-" characters
-                // The Trino node environment is bound to alphanumeric lowercase and "_" characters
-                // and must start with alphanumeric (which is the case for resource names as well?)
-                // see https://trino.io/docs/current/installation/deployment.html
-                let node_env = resource.name_any().to_ascii_lowercase().replace('-', "_");
-                result.insert(NODE_ENVIRONMENT.to_string(), Some(node_env));
-            }
-            CONFIG_PROPERTIES => {
-                // coordinator or worker
-                result.insert(
-                    COORDINATOR.to_string(),
-                    Some((role_name == TrinoRole::Coordinator.to_string()).to_string()),
-                );
-                // TrinoConfig properties
-                if let Some(query_max_memory) = &self.query_max_memory {
-                    result.insert(
-                        QUERY_MAX_MEMORY.to_string(),
-                        Some(query_max_memory.to_string()),
-                    );
-                }
-                if let Some(query_max_memory_per_node) = &self.query_max_memory_per_node {
-                    result.insert(
-                        QUERY_MAX_MEMORY_PER_NODE.to_string(),
-                        Some(query_max_memory_per_node.to_string()),
-                    );
-                }
-
-                // The log format used by Trino
-                result.insert(LOG_FORMAT.to_string(), Some("json".to_string()));
-                // The path to the log file used by Trino
-                result.insert(
-                    LOG_PATH.to_string(),
-                    Some(format!(
-                        "{STACKABLE_LOG_DIR}/{container}/server.airlift.json",
-                        container = Container::Trino
-                    )),
-                );
-
-                // We do not compress. This will result in LOG_MAX_TOTAL_SIZE / LOG_MAX_SIZE files.
-                result.insert(LOG_COMPRESSION.to_string(), Some("none".to_string()));
-
-                // The size of one log file
-                result.insert(
-                    LOG_MAX_SIZE.to_string(),
-                    Some(format!(
-                        // Trino uses the unit "MB" for MiB.
-                        "{}MB",
-                        MAX_TRINO_LOG_FILES_SIZE
-                            .scale_to(BinaryMultiple::Mebi)
-                            .div(LOG_FILE_COUNT as f32)
-                            .ceil()
-                            .value,
-                    )),
-                );
-                // The maximum size of all logfiles combined
-                result.insert(
-                    LOG_MAX_TOTAL_SIZE.to_string(),
-                    Some(format!(
-                        // Trino uses the unit "MB" for MiB.
-                        "{}MB",
-                        MAX_TRINO_LOG_FILES_SIZE
-                            .scale_to(BinaryMultiple::Mebi)
-                            .ceil()
-                            .value,
-                    )),
-                );
-
-                // disable http-request logs
-                result.insert(
-                    "http-server.log.enabled".to_string(),
-                    Some("false".to_string()),
-                );
-
-                // Always use the internal secret (base64)
-                result.insert(
-                    INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-                    Some(format!("${{ENV:{secret}}}", secret = ENV_INTERNAL_SECRET)),
-                );
-
-                // If authentication is enabled and client tls is explicitly deactivated we error out
-                // Therefore from here on we can use resource.get_server_tls() as the only source
-                // of truth when enabling client TLS.
-                if authentication_enabled && !server_tls_enabled {
-                    return Err(ConfigError::InvalidProductSpecificConfiguration {
-                        reason:
-                            "Trino requires client TLS to be enabled if any authentication method is enabled! TLS was set to null. \
-                             Please set 'spec.clusterConfig.tls.secretClass' or use the provided default value.".to_string(),
-                    });
-                }
-
-                if server_tls_enabled || internal_tls_enabled {
-                    // enable TLS
-                    result.insert(
-                        HTTP_SERVER_HTTPS_ENABLED.to_string(),
-                        Some(true.to_string()),
-                    );
-                    // via https port
-                    result.insert(
-                        HTTP_SERVER_HTTPS_PORT.to_string(),
-                        Some(HTTPS_PORT.to_string()),
-                    );
-
-                    let tls_store_dir = if server_tls_enabled {
-                        STACKABLE_SERVER_TLS_DIR
-                    } else {
-                        // allow insecure communication
-                        result.insert(
-                            HTTP_SERVER_AUTHENTICATION_ALLOW_INSECURE_OVER_HTTP.to_string(),
-                            Some("true".to_string()),
-                        );
-                        // via the http port
-                        result.insert(
-                            HTTP_SERVER_HTTP_PORT.to_string(),
-                            Some(HTTP_PORT.to_string()),
-                        );
-
-                        STACKABLE_INTERNAL_TLS_DIR
-                    };
-
-                    result.insert(
-                        HTTP_SERVER_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", tls_store_dir, "keystore.p12")),
-                    );
-                    result.insert(
-                        HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
-                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
-                    );
-                    result.insert(
-                        HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
-                        Some(format!("{}/{}", tls_store_dir, "truststore.p12")),
-                    );
-                    result.insert(
-                        HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
-                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
-                    );
-                }
-
-                if internal_tls_enabled {
-                    result.insert(
-                        INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
-                        Some(format!("{}/keystore.p12", STACKABLE_INTERNAL_TLS_DIR)),
-                    );
-                    result.insert(
-                        INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY.to_string(),
-                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
-                    );
-                    result.insert(
-                        INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH.to_string(),
-                        Some(format!("{}/truststore.p12", STACKABLE_INTERNAL_TLS_DIR)),
-                    );
-                    result.insert(
-                        INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY.to_string(),
-                        Some(STACKABLE_TLS_STORE_PASSWORD.to_string()),
-                    );
-                    result.insert(
-                        NODE_INTERNAL_ADDRESS_SOURCE.to_string(),
-                        Some(NODE_INTERNAL_ADDRESS_SOURCE_FQDN.to_string()),
-                    );
-                }
-            }
-            LOG_PROPERTIES => {}
-            ACCESS_CONTROL_PROPERTIES => {}
-            _ => {}
-        }
-
-        Ok(result)
     }
 }
 

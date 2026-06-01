@@ -50,11 +50,6 @@ pub enum Error {
         authentication_class: ObjectRef<core::v1alpha1::AuthenticationClass>,
     },
 
-    #[snafu(display("failed to format trino authentication java properties"))]
-    FailedToWriteJavaProperties {
-        source: product_config::writer::PropertiesWriterError,
-    },
-
     #[snafu(display("failed to configure trino password authentication"))]
     InvalidPasswordAuthenticationConfig { source: password::Error },
 
@@ -87,7 +82,7 @@ pub struct TrinoAuthenticationConfig {
     /// All config properties that have to be added to the `config.properties` of the given role
     config_properties: HashMap<TrinoRole, BTreeMap<String, String>>,
     /// All extra config files required for authentication for each role.
-    config_files: HashMap<TrinoRole, BTreeMap<String, String>>,
+    config_files: HashMap<TrinoRole, BTreeMap<String, BTreeMap<String, String>>>,
     /// Additional env variables for a certain role and container
     env_vars: HashMap<TrinoRole, BTreeMap<crate::crd::Container, Vec<EnvVar>>>,
     /// All extra container commands for a certain role and container
@@ -211,13 +206,18 @@ impl TrinoAuthenticationConfig {
             .insert(property_name, property_value);
     }
 
-    /// Add config file for a given role. The file_content must already be formatted to its final
-    /// representation in the file.
-    pub fn add_config_file(&mut self, role: TrinoRole, file_name: String, file_content: String) {
+    /// Add config file for a given role. The `properties` are stored as a raw key/value map and
+    /// rendered to their final file representation by the ConfigMap builder when writing.
+    pub fn add_config_file(
+        &mut self,
+        role: TrinoRole,
+        file_name: String,
+        properties: BTreeMap<String, String>,
+    ) {
         self.config_files
             .entry(role)
             .or_default()
-            .insert(file_name, file_content);
+            .insert(file_name, properties);
     }
 
     /// Add env variables for a given role and container.
@@ -318,7 +318,7 @@ impl TrinoAuthenticationConfig {
     }
 
     /// Retrieve additional config files for a given role.
-    pub fn config_files(&self, role: &TrinoRole) -> BTreeMap<String, String> {
+    pub fn config_files(&self, role: &TrinoRole) -> BTreeMap<String, BTreeMap<String, String>> {
         self.config_files.get(role).cloned().unwrap_or_default()
     }
 
@@ -767,23 +767,73 @@ mod tests {
         let config_files = setup_authentication_config().config_files(&TrinoRole::Coordinator);
 
         assert_eq!(
-            config_files.get(&format!("{FILE_AUTH_CLASS_1}-password-file-auth.properties")),
-                Some(format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_1}.db\npassword-authenticator.name=file\n")).as_ref()
-            );
-
-        assert_eq!(
-            config_files.get(&format!("{FILE_AUTH_CLASS_2}-password-file-auth.properties")),
-            Some(format!("file.password-file=/stackable/users/{FILE_AUTH_CLASS_2}.db\npassword-authenticator.name=file\n")).as_ref()
+            config_files.get(&format!(
+                "{FILE_AUTH_CLASS_1}-password-file-auth.properties"
+            )),
+            Some(&BTreeMap::from([
+                (
+                    "file.password-file".to_string(),
+                    format!("/stackable/users/{FILE_AUTH_CLASS_1}.db")
+                ),
+                (
+                    "password-authenticator.name".to_string(),
+                    "file".to_string()
+                ),
+            ]))
         );
 
         assert_eq!(
-            config_files.get(&format!("{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties")),
-            Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
+            config_files.get(&format!(
+                "{FILE_AUTH_CLASS_2}-password-file-auth.properties"
+            )),
+            Some(&BTreeMap::from([
+                (
+                    "file.password-file".to_string(),
+                    format!("/stackable/users/{FILE_AUTH_CLASS_2}.db")
+                ),
+                (
+                    "password-authenticator.name".to_string(),
+                    "file".to_string()
+                ),
+            ]))
         );
 
         assert_eq!(
-            config_files.get(&format!("{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties")),
-                Some(format!("ldap.allow-insecure=true\nldap.group-auth-pattern=(&(uid\\=${{USER}}))\nldap.url=ldap\\://{HOST_NAME}\\:389\nldap.user-base-dn={SEARCH_BASE}\npassword-authenticator.name=ldap\n")).as_ref()
+            config_files.get(&format!(
+                "{LDAP_AUTH_CLASS_1}-password-ldap-auth.properties"
+            )),
+            Some(&BTreeMap::from([
+                ("ldap.allow-insecure".to_string(), "true".to_string()),
+                (
+                    "ldap.group-auth-pattern".to_string(),
+                    "(&(uid=${USER}))".to_string()
+                ),
+                ("ldap.url".to_string(), format!("ldap://{HOST_NAME}:389")),
+                ("ldap.user-base-dn".to_string(), SEARCH_BASE.to_string()),
+                (
+                    "password-authenticator.name".to_string(),
+                    "ldap".to_string()
+                ),
+            ]))
+        );
+
+        assert_eq!(
+            config_files.get(&format!(
+                "{LDAP_AUTH_CLASS_2}-password-ldap-auth.properties"
+            )),
+            Some(&BTreeMap::from([
+                ("ldap.allow-insecure".to_string(), "true".to_string()),
+                (
+                    "ldap.group-auth-pattern".to_string(),
+                    "(&(uid=${USER}))".to_string()
+                ),
+                ("ldap.url".to_string(), format!("ldap://{HOST_NAME}:389")),
+                ("ldap.user-base-dn".to_string(), SEARCH_BASE.to_string()),
+                (
+                    "password-authenticator.name".to_string(),
+                    "ldap".to_string()
+                ),
+            ]))
         );
     }
 

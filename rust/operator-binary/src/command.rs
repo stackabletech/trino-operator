@@ -12,13 +12,17 @@ use crate::{
     config::{client_protocol, fault_tolerant_execution},
     controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
     crd::{
-        CONFIG_DIR_NAME, Container, EXCHANGE_MANAGER_PROPERTIES, LOG_PROPERTIES,
-        RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES, STACKABLE_CLIENT_TLS_DIR,
+        CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
         TrinoRole, v1alpha1,
     },
 };
+
+// File names not exported from crd/mod.rs.
+const LOG_PROPERTIES: &str = "log.properties";
+const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
+const SPOOLING_MANAGER_PROPERTIES: &str = "spooling-manager.properties";
 
 pub fn container_prepare_args(
     trino: &v1alpha1::TrinoCluster,

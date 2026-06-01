@@ -21,11 +21,6 @@ pub enum Error {
     MetadataBuild {
         source: stackable_operator::builder::meta::Error,
     },
-
-    #[snafu(display("failed to build Labels"))]
-    LabelBuild {
-        source: stackable_operator::kvp::LabelError,
-    },
 }
 
 /// The rolegroup headless [`Service`] is a service that allows direct access to the instances of a certain rolegroup
@@ -33,7 +28,7 @@ pub enum Error {
 pub fn build_rolegroup_headless_service(
     trino: &v1alpha1::TrinoCluster,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    object_labels: ObjectLabels<v1alpha1::TrinoCluster>,
+    object_labels: &ObjectLabels<v1alpha1::TrinoCluster>,
     selector: BTreeMap<String, String>,
 ) -> Result<Service, Error> {
     Ok(Service {
@@ -42,7 +37,7 @@ pub fn build_rolegroup_headless_service(
             .name(role_group_ref.rolegroup_headless_service_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(&object_labels)
+            .with_recommended_labels(object_labels)
             .context(MetadataBuildSnafu)?
             .build(),
         spec: Some(ServiceSpec {
@@ -62,7 +57,7 @@ pub fn build_rolegroup_headless_service(
 pub fn build_rolegroup_metrics_service(
     trino: &v1alpha1::TrinoCluster,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    object_labels: ObjectLabels<v1alpha1::TrinoCluster>,
+    object_labels: &ObjectLabels<v1alpha1::TrinoCluster>,
     selector: BTreeMap<String, String>,
 ) -> Result<Service, Error> {
     Ok(Service {
@@ -71,7 +66,7 @@ pub fn build_rolegroup_metrics_service(
             .name(role_group_ref.rolegroup_metrics_service_name())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(&object_labels)
+            .with_recommended_labels(object_labels)
             .context(MetadataBuildSnafu)?
             .with_labels(prometheus_labels())
             .with_annotations(prometheus_annotations())
