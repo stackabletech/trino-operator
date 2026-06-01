@@ -10085,10 +10085,6 @@ rec {
             name = "tracing";
             packageId = "tracing";
           }
-          {
-            name = "uuid";
-            packageId = "uuid";
-          }
         ];
         buildDependencies = [
           {
@@ -12124,9 +12120,9 @@ rec {
       };
       "unicode-segmentation" = rec {
         crateName = "unicode-segmentation";
-        version = "1.13.2";
+        version = "1.13.3";
         edition = "2018";
-        sha256 = "135a26m4a0wj319gcw28j6a5aqvz00jmgwgmcs6szgxjf942facn";
+        sha256 = "1a47zaq83p386r3baq4m018xd5q4q0grdg56i1x042dzn71x7xf6";
         libName = "unicode_segmentation";
         authors = [
           "kwantam <kwantam@gmail.com>"
