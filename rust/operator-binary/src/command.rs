@@ -19,7 +19,8 @@ use crate::{
     },
 };
 
-// File names not exported from crd/mod.rs.
+// TODO: replace with build::properties::ConfigFileName once command.rs moves under build/
+//       (with the StatefulSet builder migration).
 const LOG_PROPERTIES: &str = "log.properties";
 const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
 const SPOOLING_MANAGER_PROPERTIES: &str = "spooling-manager.properties";
