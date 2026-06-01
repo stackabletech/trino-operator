@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Document Helm deployed RBAC permissions and remove unnecessary permissions ([#869]).
 - Bump `stackable-operator` to 0.111.0 and `kube` to 3.1.0 ([#878], [#884]).
 - Internal operator refactoring: introduce dereference() and validate() steps in the reconciler ([#889]).
+- test: Bump vector-aggregator to 0.55.0, replace /graphql call with gRPC call ([#895]).
 - BREAKING: Removed product-config machinery. This is a breaking change in terms of configuration.
   Users relying on the product-config `properties.yaml` file have to set these properties via the CRD ([#897]).
 
@@ -38,6 +39,7 @@ All notable changes to this project will be documented in this file.
 [#883]: https://github.com/stackabletech/trino-operator/pull/883
 [#884]: https://github.com/stackabletech/trino-operator/pull/884
 [#889]: https://github.com/stackabletech/trino-operator/pull/889
+[#895]: https://github.com/stackabletech/trino-operator/pull/895
 [#897]: https://github.com/stackabletech/trino-operator/pull/897
 
 ## [26.3.0] - 2026-03-16
