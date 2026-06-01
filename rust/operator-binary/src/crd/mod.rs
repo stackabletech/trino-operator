@@ -194,31 +194,31 @@ pub mod versioned {
     #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, Merge, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoConfigOverrides {
-        // File name defined in [`crate::controller::build::properties::CONFIG_PROPERTIES_FILE_NAME`]
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "config.properties")]
         pub config_properties: KeyValueConfigOverrides,
 
-        // File name defined in [`crate::controller::build::properties::NODE_PROPERTIES_FILE_NAME`]
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "node.properties")]
         pub node_properties: KeyValueConfigOverrides,
 
-        // File name defined in [`crate::controller::build::properties::LOG_PROPERTIES_FILE_NAME`]
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "log.properties")]
         pub log_properties: KeyValueConfigOverrides,
 
-        // File name defined in [`crate::controller::build::properties::SECURITY_PROPERTIES_FILE_NAME`]
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "security.properties")]
         pub security_properties: KeyValueConfigOverrides,
 
-        // File name defined in [`crate::controller::build::properties::ACCESS_CONTROL_PROPERTIES_FILE_NAME`]
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "access-control.properties")]
         pub access_control_properties: KeyValueConfigOverrides,
 
-        // File name defined in [`crate::controller::build::properties::EXCHANGE_MANAGER_PROPERTIES_FILE_NAME`]
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "exchange-manager.properties")]
         pub exchange_manager_properties: KeyValueConfigOverrides,
 
-        // File name defined in [`crate::controller::build::properties::SPOOLING_MANAGER_PROPERTIES_FILE_NAME`]
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "spooling-manager.properties")]
         pub spooling_manager_properties: KeyValueConfigOverrides,
     }
