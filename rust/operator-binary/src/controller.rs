@@ -82,7 +82,7 @@ use crate::{
         LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
         group_listener_name, secret_volume_listener_scope,
     },
-    operations::{add_graceful_shutdown_config, pdb::add_pdbs},
+    operations::pdb::add_pdbs,
     service::{build_rolegroup_headless_service, build_rolegroup_metrics_service},
 };
 
@@ -204,7 +204,7 @@ pub enum Error {
 
     #[snafu(display("failed to configure graceful shutdown"))]
     GracefulShutdown {
-        source: crate::operations::graceful_shutdown::Error,
+        source: build::graceful_shutdown::Error,
     },
 
     #[snafu(display("failed to get required Labels"))]
@@ -639,7 +639,7 @@ fn build_rolegroup_statefulset(
             &mut cb_trino,
         )
         .context(InvalidAuthenticationConfigSnafu)?;
-    add_graceful_shutdown_config(
+    build::graceful_shutdown::add_graceful_shutdown_config(
         trino,
         trino_role,
         merged_config,

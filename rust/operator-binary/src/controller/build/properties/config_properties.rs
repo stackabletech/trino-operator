@@ -216,7 +216,9 @@ pub fn build(
     }
 
     // Graceful shutdown.
-    for (k, v) in crate::operations::graceful_shutdown_config_properties(cluster, role) {
+    for (k, v) in crate::controller::build::graceful_shutdown::graceful_shutdown_config_properties(
+        cluster, role,
+    ) {
         props.insert(k, v);
     }
 
