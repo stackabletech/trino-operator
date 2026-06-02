@@ -191,7 +191,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "479"
+            productVersion: "481"
           clusterConfig:
             catalogLabelSelector: {}
           coordinators:
@@ -235,7 +235,7 @@ mod tests {
           name: simple-trino
         spec:
           image:
-            productVersion: "479"
+            productVersion: "481"
           clusterConfig:
             catalogLabelSelector: {}
           coordinators:
