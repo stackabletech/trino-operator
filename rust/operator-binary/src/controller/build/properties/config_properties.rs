@@ -55,7 +55,6 @@ const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 const DEFAULT_QUERY_MAX_MEMORY: &str = "50GB";
 const DEFAULT_NODE_SCHEDULER_INCLUDE_COORDINATOR: &str = "false";
 
-// Mirrors the private constant of the same name in `crd/mod.rs`.
 const LOG_FILE_COUNT: u32 = 2;
 
 #[derive(Debug, Snafu)]
