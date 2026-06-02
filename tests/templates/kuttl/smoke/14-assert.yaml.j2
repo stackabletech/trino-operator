@@ -81,8 +81,7 @@ commands:
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
         -Djdk.nio.maxCachedBufferSize=2000000
-        -Dfile.encoding=UTF-8
-        -XX:+EnableDynamicAgentLoading
+        --add-modules=jdk.incubator.vector
         # Arguments from jvmArgumentOverrides
       log.properties: |
         =info
@@ -765,8 +764,7 @@ commands:
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
         -Djdk.nio.maxCachedBufferSize=2000000
-        -Dfile.encoding=UTF-8
-        -XX:+EnableDynamicAgentLoading
+        --add-modules=jdk.incubator.vector
         # Arguments from jvmArgumentOverrides
       log.properties: |
         =info

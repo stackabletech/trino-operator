@@ -80,7 +80,7 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         _catalog_name: &str,
         catalog_namespace: Option<String>,
         client: &Client,
-        trino_version: u16,
+        _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
             .clone()
@@ -97,48 +97,21 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         catalog_config.volumes.extend(volumes);
         catalog_config.volume_mounts.extend(mounts);
 
-        if trino_version >= 469 {
-            // Since Trino 469, S3 native support has to be explicitly enabled
-            // unless using Legacy S3 support (which has been deprecated in 470).
-            catalog_config.add_property("fs.native-s3.enabled", "true");
-        }
-
-        let (endpoint_prop, region_prop, path_style_prop) = match trino_version {
-            ..=468 => (
-                "hive.s3.endpoint",
-                "hive.s3.region",
-                "hive.s3.path-style-access",
-            ),
-            469.. => ("s3.endpoint", "s3.region", "s3.path-style-access"),
-        };
-        catalog_config.add_property(endpoint_prop, s3.endpoint().context(ConfigureS3Snafu)?);
-        catalog_config.add_property(region_prop, &s3.region.name);
+        catalog_config.add_property("fs.native-s3.enabled", "true");
+        catalog_config.add_property("s3.endpoint", s3.endpoint().context(ConfigureS3Snafu)?);
+        catalog_config.add_property("s3.region", &s3.region.name);
         catalog_config.add_property(
-            path_style_prop,
+            "s3.path-style-access",
             (s3.access_style == s3::v1alpha1::S3AccessStyle::Path).to_string(),
         );
 
         if let Some((access_key, secret_key)) = s3.credentials_mount_paths() {
-            let (access_key_prop, secret_key_prop) = match trino_version {
-                ..=468 => ("hive.s3.aws-access-key", "hive.s3.aws-secret-key"),
-                469.. => ("s3.aws-access-key", "s3.aws-secret-key"),
-            };
-            catalog_config.add_env_property_from_file(access_key_prop, access_key);
-            catalog_config.add_env_property_from_file(secret_key_prop, secret_key);
+            catalog_config.add_env_property_from_file("s3.aws-access-key", access_key);
+            catalog_config.add_env_property_from_file("s3.aws-secret-key", secret_key);
         }
 
-        match trino_version {
-            // Older trino versions allowed TLS to be optional
-            ..=468 => {
-                if !s3.tls.uses_tls() {
-                    tracing::warn!("from Trino 460, TLS will be required for S3 connections");
-                }
-                catalog_config.add_property("hive.s3.ssl.enabled", s3.tls.uses_tls().to_string());
-            }
-            // TLS is required when using native S3 implementation.
-            // https://trino.io/docs/469/object-storage/legacy-s3.html#migration-to-s3-file-system
-            469.. => ensure!(s3.tls.uses_tls(), S3TlsRequiredSnafu),
-        };
+        // TLS is required when using native S3 implementation.
+        ensure!(s3.tls.uses_tls(), S3TlsRequiredSnafu);
 
         if let Some(tls) = s3.tls.tls.as_ref() {
             match &tls.verification {
