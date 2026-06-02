@@ -99,7 +99,7 @@ pub fn build_rolegroup_config_map(
     let mut data: BTreeMap<String, String> = BTreeMap::new();
 
     // Auth files (e.g. password-authenticator file contents) — inserted FIRST
-    // to match the legacy ordering in controller.rs:621.
+    // to match the legacy precedence.
     for (file_name, props) in cluster.cluster_config.authentication.config_files(role) {
         let rendered =
             to_java_properties_string(&props).with_context(|_| WritePropertiesSnafu {
