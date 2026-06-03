@@ -303,8 +303,9 @@ pub async fn reconcile_trino(
         .context(DereferenceSnafu)?;
 
     // validate (no client required)
-    let validated = validate::validate(trino, &dereferenced_objects, &ctx.operator_environment)
-        .context(ValidateClusterSnafu)?;
+    let validated_cluster =
+        validate::validate(trino, &dereferenced_objects, &ctx.operator_environment)
+            .context(ValidateClusterSnafu)?;
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -359,14 +360,14 @@ pub async fn reconcile_trino(
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
-    for (trino_role, role_group_configs) in &validated.role_group_configs {
+    for (trino_role, role_group_configs) in &validated_cluster.role_group_configs {
         for (role_group_name, rg) in role_group_configs {
             let role_group_ref = trino_role.rolegroup_ref(trino, role_group_name);
             let merged_config = &rg.config;
 
             let role_group_service_recommended_labels = build_recommended_labels(
                 trino,
-                &validated.image.app_version_label_value,
+                &validated_cluster.image.app_version_label_value,
                 &role_group_ref.role,
                 &role_group_ref.role_group,
             );
@@ -396,7 +397,7 @@ pub async fn reconcile_trino(
             .context(ServiceConfigurationSnafu)?;
 
             let rg_configmap = build::config_map::build_rolegroup_config_map(
-                &validated,
+                &validated_cluster,
                 trino_role,
                 &role_group_ref,
                 &client.kubernetes_cluster_info,
@@ -409,24 +410,24 @@ pub async fn reconcile_trino(
 
             let rg_catalog_configmap = build_rolegroup_catalog_config_map(
                 trino,
-                &validated.image,
+                &validated_cluster.image,
                 &role_group_ref,
-                &validated.cluster_config.catalogs,
+                &validated_cluster.cluster_config.catalogs,
             )?;
 
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
                 trino_role,
-                &validated.image,
+                &validated_cluster.image,
                 &role_group_ref,
                 &rg.env_overrides,
                 merged_config,
-                &validated.cluster_config.authentication,
-                &validated.cluster_config.catalogs,
+                &validated_cluster.cluster_config.authentication,
+                &validated_cluster.cluster_config.catalogs,
                 &rbac_sa.name_any(),
-                &validated.cluster_config.fault_tolerant_execution,
-                &validated.cluster_config.client_protocol,
-                &validated.cluster_config.authorization,
+                &validated_cluster.cluster_config.fault_tolerant_execution,
+                &validated_cluster.cluster_config.client_protocol,
+                &validated_cluster.cluster_config.authorization,
             )?;
 
             cluster_resources
@@ -476,7 +477,7 @@ pub async fn reconcile_trino(
                     trino,
                     build_recommended_labels(
                         trino,
-                        &validated.image.app_version_label_value,
+                        &validated_cluster.image.app_version_label_value,
                         &trino_role.to_string(),
                         "none",
                     ),
@@ -1402,7 +1403,7 @@ mod tests {
             image_repository: "oci.example.org".to_string(),
         };
 
-        let validated =
+        let validated_cluster =
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         let trino_role = TrinoRole::Coordinator;
@@ -1413,13 +1414,13 @@ mod tests {
         };
         let recommended_labels = build_recommended_labels(
             &trino,
-            &validated.image.app_version_label_value,
+            &validated_cluster.image.app_version_label_value,
             &rolegroup_ref.role,
             &rolegroup_ref.role_group,
         );
 
         build::config_map::build_rolegroup_config_map(
-            &validated,
+            &validated_cluster,
             &trino_role,
             &rolegroup_ref,
             &cluster_info,
@@ -1640,10 +1641,11 @@ mod tests {
             operator_service_name: "trino-operator".to_string(),
             image_repository: "oci.example.org".to_string(),
         };
-        let validated =
+        let validated_cluster =
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
-        let env = &validated.role_group_configs[&TrinoRole::Coordinator]["default"].env_overrides;
+        let env =
+            &validated_cluster.role_group_configs[&TrinoRole::Coordinator]["default"].env_overrides;
         let value = |name: &str| env.get(name).cloned();
         assert_eq!(value("COMMON_VAR").as_deref(), Some("group-value"));
         assert_eq!(value("GROUP_VAR").as_deref(), Some("group-value"));
