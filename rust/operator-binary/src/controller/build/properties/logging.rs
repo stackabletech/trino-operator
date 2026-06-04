@@ -1,4 +1,3 @@
-use snafu::Snafu;
 use stackable_operator::{
     product_logging::{
         framework::create_vector_config,
@@ -12,26 +11,6 @@ use stackable_operator::{
 use strum::Display;
 
 use crate::crd::{Container, v1alpha1};
-
-#[derive(Snafu, Debug)]
-pub enum Error {
-    #[snafu(display("object has no namespace"))]
-    ObjectHasNoNamespace,
-
-    #[snafu(display("failed to retrieve the ConfigMap {cm_name}"))]
-    ConfigMapNotFound {
-        source: stackable_operator::client::Error,
-        cm_name: String,
-    },
-
-    #[snafu(display("failed to retrieve the entry {entry} for ConfigMap {cm_name}"))]
-    MissingConfigMapEntry {
-        entry: &'static str,
-        cm_name: String,
-    },
-}
-
-type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Display)]
 #[strum(serialize_all = "lowercase")]
@@ -87,7 +66,7 @@ pub fn get_log_property_map(
 pub fn get_vector_toml(
     rolegroup: &RoleGroupRef<v1alpha1::TrinoCluster>,
     logging: &Logging<Container>,
-) -> Result<Option<String>> {
+) -> Option<String> {
     let vector_log_config = if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
     }) = logging.containers.get(&Container::Vector)
@@ -98,8 +77,8 @@ pub fn get_vector_toml(
     };
 
     if logging.enable_vector_agent {
-        Ok(Some(create_vector_config(rolegroup, vector_log_config)))
+        Some(create_vector_config(rolegroup, vector_log_config))
     } else {
-        Ok(None)
+        None
     }
 }

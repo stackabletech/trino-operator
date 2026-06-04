@@ -18,12 +18,11 @@ use crate::{
         ValidatedCluster,
         build::properties::{
             ConfigFileName, access_control_properties, config_properties,
-            exchange_manager_properties, log_properties, node_properties, security_properties,
-            spooling_manager_properties, writer::to_java_properties_string,
+            exchange_manager_properties, log_properties, logging::get_vector_toml, node_properties,
+            security_properties, spooling_manager_properties, writer::to_java_properties_string,
         },
     },
     crd::{TrinoRole, v1alpha1},
-    product_logging::get_vector_toml,
 };
 
 // File name not exported from crd/mod.rs.
@@ -52,12 +51,6 @@ pub enum Error {
     #[snafu(display("metadata build failure"))]
     Metadata {
         source: stackable_operator::builder::meta::Error,
-    },
-
-    #[snafu(display("failed to build the vector configuration for {cm_name}"))]
-    InvalidLoggingConfig {
-        source: crate::product_logging::Error,
-        cm_name: String,
     },
 
     #[snafu(display("failed to resolve the {role} role"))]
@@ -194,12 +187,7 @@ pub fn build_rolegroup_config_map(
     data.insert(JVM_CONFIG.to_string(), jvm_config);
 
     // 9. Vector sidecar toml if enabled.
-    let vector_toml = get_vector_toml(rolegroup_ref, &rg.config.logging).with_context(|_| {
-        InvalidLoggingConfigSnafu {
-            cm_name: rolegroup_ref.object_name(),
-        }
-    })?;
-    if let Some(vector_toml) = vector_toml {
+    if let Some(vector_toml) = get_vector_toml(rolegroup_ref, &rg.config.logging) {
         data.insert(
             product_logging::framework::VECTOR_CONFIG_FILE.to_string(),
             vector_toml,

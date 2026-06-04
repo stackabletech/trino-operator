@@ -52,7 +52,6 @@ mod crd;
 mod framework;
 mod listener;
 mod operations;
-mod product_logging;
 mod service;
 mod webhooks;
 
