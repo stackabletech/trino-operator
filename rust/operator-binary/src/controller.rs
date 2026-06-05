@@ -159,7 +159,7 @@ pub enum Error {
 
     #[snafu(display("failed to format runtime properties"))]
     FailedToWriteJavaProperties {
-        source: build::properties::writer::Error,
+        source: stackable_operator::v2::config_file_writer::PropertiesWriterError,
     },
 
     #[snafu(display("internal operator failure: {source}"))]
@@ -561,7 +561,7 @@ fn build_rolegroup_catalog_config_map(
                         .collect();
                     Ok((
                         format!("{}.properties", catalog.name),
-                        build::properties::writer::to_java_properties_string(&catalog_props)
+                        build::properties::to_java_properties_string(&catalog_props)
                             .context(FailedToWriteJavaPropertiesSnafu)?,
                     ))
                 })

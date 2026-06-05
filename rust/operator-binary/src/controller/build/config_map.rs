@@ -19,7 +19,7 @@ use crate::{
         build::properties::{
             ConfigFileName, access_control_properties, config_properties,
             exchange_manager_properties, log_properties, logging::get_vector_toml, node_properties,
-            security_properties, spooling_manager_properties, writer::to_java_properties_string,
+            security_properties, spooling_manager_properties, to_java_properties_string,
         },
     },
     crd::{TrinoRole, v1alpha1},
@@ -35,7 +35,7 @@ pub enum Error {
 
     #[snafu(display("failed to write {file} properties"))]
     WriteProperties {
-        source: super::properties::writer::Error,
+        source: stackable_operator::v2::config_file_writer::PropertiesWriterError,
         file: String,
     },
 
