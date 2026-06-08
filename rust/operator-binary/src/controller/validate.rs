@@ -65,9 +65,6 @@ pub enum Error {
         role: String,
     },
 
-    #[snafu(display("failed to enumerate coordinator pods"))]
-    CoordinatorPods { source: crate::crd::Error },
-
     #[snafu(display("failed to validate config fragment"))]
     InvalidConfigFragment {
         source: stackable_operator::config::fragment::ValidationError,
@@ -118,6 +115,8 @@ pub fn validate(
     dereferenced_objects: &DereferencedObjects,
     operator_environment: &OperatorEnvironmentOptions,
 ) -> Result<ValidatedCluster> {
+    let namespace = dereferenced_objects.namespace.clone();
+
     let image = trino
         .spec
         .image
@@ -190,10 +189,7 @@ pub fn validate(
         authorization: dereferenced_objects.trino_opa_config.clone(),
         fault_tolerant_execution: dereferenced_objects.resolved_fte_config.clone(),
         client_protocol: dereferenced_objects.resolved_client_protocol_config.clone(),
-        coordinator_pod_refs: trino
-            .coordinator_pods()
-            .context(CoordinatorPodsSnafu)?
-            .collect(),
+        coordinator_pod_refs: trino.coordinator_pods(&namespace).collect(),
         catalogs: dereferenced_objects.catalogs.clone(),
     };
 
@@ -237,6 +233,7 @@ mod tests {
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(MINIMAL_TRINO_YAML).expect("invalid test input");
         let derefs = DereferencedObjects {
+            namespace: "default".parse().unwrap(),
             resolved_authentication_classes: Vec::new(),
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),

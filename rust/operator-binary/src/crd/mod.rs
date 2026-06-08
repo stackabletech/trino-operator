@@ -37,8 +37,7 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
-    utils::cluster_info::KubernetesClusterInfo,
-    v2::config_overrides::KeyValueConfigOverrides,
+    v2::{config_overrides::KeyValueConfigOverrides, types::kubernetes::NamespaceName},
     versioned::versioned,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -108,12 +107,6 @@ pub(crate) fn quantity_to_trino_bytes(
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("object has no namespace associated"))]
-    NoNamespace,
-
-    #[snafu(display("object has no names"))]
-    NoName,
-
     #[snafu(display("unknown role {role}. Should be one of {roles:?}"))]
     UnknownTrinoRole {
         source: strum::ParseError,
@@ -547,33 +540,6 @@ impl v1alpha1::TrinoConfig {
 }
 
 impl v1alpha1::TrinoCluster {
-    /// Returns the name of the cluster and raises an Error if the name is not set.
-    pub fn name_r(&self) -> Result<String, Error> {
-        self.metadata.name.to_owned().context(NoNameSnafu)
-    }
-
-    /// Returns the namespace of the cluster and raises an Error if the name is not set.
-    pub fn namespace_r(&self) -> Result<String, Error> {
-        self.metadata.namespace.to_owned().context(NoNamespaceSnafu)
-    }
-
-    pub fn role_service_name(&self, role: &TrinoRole) -> Result<String, Error> {
-        Ok(format!("{}-{}", self.name_r()?, role))
-    }
-
-    pub fn role_service_fqdn(
-        &self,
-        role: &TrinoRole,
-        cluster_info: &KubernetesClusterInfo,
-    ) -> Result<String, Error> {
-        Ok(format!(
-            "{role_service_name}.{namespace}.svc.{cluster_domain}",
-            role_service_name = self.role_service_name(role)?,
-            namespace = self.namespace_r()?,
-            cluster_domain = cluster_info.cluster_domain
-        ))
-    }
-
     /// Returns a reference to the role. Raises an error if the role is not defined.
     pub fn role(&self, role_variant: &TrinoRole) -> Result<TrinoRoleType, Error> {
         match role_variant {
@@ -658,10 +624,12 @@ impl v1alpha1::TrinoCluster {
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to
     /// avoid instance churn.
-    pub fn coordinator_pods(&self) -> Result<impl Iterator<Item = TrinoPodRef> + '_, Error> {
-        let ns = self.metadata.namespace.clone().context(NoNamespaceSnafu)?;
-        Ok(self
-            .spec
+    pub fn coordinator_pods(
+        &self,
+        namespace: &NamespaceName,
+    ) -> impl Iterator<Item = TrinoPodRef> + '_ {
+        let ns = namespace.to_string();
+        self.spec
             .coordinators
             .iter()
             .flat_map(|role| &role.role_groups)
@@ -679,7 +647,7 @@ impl v1alpha1::TrinoCluster {
                         role_group = role_group_ref.object_name()
                     ),
                 })
-            }))
+            })
     }
 
     /// Returns user provided authentication settings

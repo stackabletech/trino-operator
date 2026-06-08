@@ -12,16 +12,16 @@ pub mod tpch;
 
 use async_trait::async_trait;
 use snafu::Snafu;
-use stackable_operator::{client::Client, commons::tls_verification::TlsClientDetailsError};
+use stackable_operator::{
+    client::Client, commons::tls_verification::TlsClientDetailsError,
+    v2::types::kubernetes::NamespaceName,
+};
 
 use self::config::CatalogConfig;
 
 #[derive(Debug, Snafu)]
 #[snafu(module)]
 pub enum FromTrinoCatalogError {
-    #[snafu(display("object has no namespace"))]
-    ObjectHasNoNamespace,
-
     #[snafu(display("failed to configure S3 connection"))]
     ConfigureS3 {
         source: stackable_operator::crd::s3::v1alpha1::ConnectionError,
@@ -74,7 +74,7 @@ pub trait ToCatalogConfig {
     async fn to_catalog_config(
         &self,
         catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError>;
@@ -86,7 +86,7 @@ pub trait ExtendCatalogConfig {
         &self,
         catalog_config: &mut CatalogConfig,
         catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError>;

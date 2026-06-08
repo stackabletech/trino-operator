@@ -1385,6 +1385,7 @@ mod tests {
         });
 
         let derefs = DereferencedObjects {
+            namespace: "default".parse().unwrap(),
             resolved_authentication_classes: Vec::new(),
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),
@@ -1625,6 +1626,7 @@ mod tests {
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         let derefs = DereferencedObjects {
+            namespace: "default".parse().unwrap(),
             resolved_authentication_classes: Vec::new(),
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),
