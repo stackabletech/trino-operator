@@ -62,6 +62,7 @@ mod build;
 mod dereference;
 mod validate;
 
+use build::properties::render_java_properties;
 pub use validate::{TrinoRoleGroupConfig, ValidatedCluster};
 
 use crate::{
@@ -554,14 +555,9 @@ fn build_rolegroup_catalog_config_map(
             catalogs
                 .iter()
                 .map(|catalog| {
-                    let catalog_props: BTreeMap<String, String> = catalog
-                        .properties
-                        .iter()
-                        .map(|(k, v)| (k.to_string(), v.to_string()))
-                        .collect();
                     Ok((
                         format!("{}.properties", catalog.name),
-                        build::properties::to_java_properties_string(&catalog_props)
+                        render_java_properties(catalog.properties.clone())
                             .context(FailedToWriteJavaPropertiesSnafu)?,
                     ))
                 })

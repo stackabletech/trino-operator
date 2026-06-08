@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 
 use stackable_operator::v2::{
-    config_file_writer::{self, PropertiesWriterError},
+    config_file_writer::{PropertiesWriterError, to_java_properties_string},
     config_overrides::KeyValueConfigOverrides,
 };
 
@@ -40,6 +40,19 @@ pub enum ConfigFileName {
     SpoolingManager,
 }
 
+/// Render a `key -> value` properties map to the Java `.properties` on-wire format.
+///
+/// The upstream [`to_java_properties_string`] consumes an iterator of
+/// `(&String, &Option<String>)`, so we lift the plain `String` values into
+/// `Some(..)` first.
+pub(crate) fn render_java_properties(
+    props: BTreeMap<String, String>,
+) -> Result<String, PropertiesWriterError> {
+    let props: BTreeMap<String, Option<String>> =
+        props.into_iter().map(|(k, v)| (k, Some(v))).collect();
+    to_java_properties_string(props.iter())
+}
+
 /// Keep only the set (`Some`) entries of a `key -> optional value` map, as `(key, value)` pairs.
 fn defined_entries(
     entries: BTreeMap<String, Option<String>>,
@@ -55,27 +68,6 @@ fn resolved_overrides(
     overrides: KeyValueConfigOverrides,
 ) -> impl Iterator<Item = (String, String)> {
     defined_entries(overrides.overrides)
-}
-
-/// Serialize `props` as a Java-properties string, sorted by key, via the shared
-/// [`config_file_writer`] — the same `product-config`-derived writer used by all
-/// other operators (and by this operator before the product-config refactoring;
-/// a hand-rolled escaper briefly lived here on this branch but accidentally
-/// diverged from it on non-ASCII and control characters, so it was dropped in
-/// favour of the shared implementation).
-///
-/// This adapter maps trino's `String`-valued property maps onto the writer's
-/// `Option<String>`-valued interface. Alternative considered: converting at
-/// each of the nine call sites — rejected as repetitive; the clone here is
-/// negligible for config-sized maps.
-pub fn to_java_properties_string(
-    props: &BTreeMap<String, String>,
-) -> Result<String, PropertiesWriterError> {
-    let props: BTreeMap<String, Option<String>> = props
-        .iter()
-        .map(|(k, v)| (k.clone(), Some(v.clone())))
-        .collect();
-    config_file_writer::to_java_properties_string(props.iter())
 }
 
 #[cfg(test)]
@@ -138,7 +130,7 @@ mod tests {
             .iter()
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect();
-        to_java_properties_string(&props).expect("rendering the test properties should succeed")
+        render_java_properties(props).expect("rendering the test properties should succeed")
     }
 
     /// The escape behaviours pinned by the kuttl smoke snapshot

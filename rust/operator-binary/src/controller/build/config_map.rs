@@ -19,7 +19,7 @@ use crate::{
         build::properties::{
             ConfigFileName, access_control_properties, config_properties,
             exchange_manager_properties, log_properties, logging::get_vector_toml, node_properties,
-            security_properties, spooling_manager_properties, to_java_properties_string,
+            render_java_properties, security_properties, spooling_manager_properties,
         },
     },
     crd::{TrinoRole, v1alpha1},
@@ -65,7 +65,6 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[allow(clippy::too_many_arguments)]
 pub fn build_rolegroup_config_map(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
@@ -94,10 +93,9 @@ pub fn build_rolegroup_config_map(
     // Auth files (e.g. password-authenticator file contents) — inserted FIRST
     // to match the legacy precedence.
     for (file_name, props) in cluster.cluster_config.authentication.config_files(role) {
-        let rendered =
-            to_java_properties_string(&props).with_context(|_| WritePropertiesSnafu {
-                file: file_name.clone(),
-            })?;
+        let rendered = render_java_properties(props).with_context(|_| WritePropertiesSnafu {
+            file: file_name.clone(),
+        })?;
         data.insert(file_name, rendered);
     }
 
@@ -106,7 +104,7 @@ pub fn build_rolegroup_config_map(
         .context(BuildConfigPropertiesSnafu)?;
     data.insert(
         ConfigFileName::Config.to_string(),
-        to_java_properties_string(&cfg).with_context(|_| WritePropertiesSnafu {
+        render_java_properties(cfg).with_context(|_| WritePropertiesSnafu {
             file: ConfigFileName::Config.to_string(),
         })?,
     );
@@ -115,7 +113,7 @@ pub fn build_rolegroup_config_map(
     let node = node_properties::build(cluster, rg);
     data.insert(
         ConfigFileName::Node.to_string(),
-        to_java_properties_string(&node).with_context(|_| WritePropertiesSnafu {
+        render_java_properties(node).with_context(|_| WritePropertiesSnafu {
             file: ConfigFileName::Node.to_string(),
         })?,
     );
@@ -125,7 +123,7 @@ pub fn build_rolegroup_config_map(
     if !log.is_empty() {
         data.insert(
             ConfigFileName::Log.to_string(),
-            to_java_properties_string(&log).with_context(|_| WritePropertiesSnafu {
+            render_java_properties(log).with_context(|_| WritePropertiesSnafu {
                 file: ConfigFileName::Log.to_string(),
             })?,
         );
@@ -135,7 +133,7 @@ pub fn build_rolegroup_config_map(
     let sec = security_properties::build(rg);
     data.insert(
         ConfigFileName::Security.to_string(),
-        to_java_properties_string(&sec).with_context(|_| WritePropertiesSnafu {
+        render_java_properties(sec).with_context(|_| WritePropertiesSnafu {
             file: ConfigFileName::Security.to_string(),
         })?,
     );
@@ -145,7 +143,7 @@ pub fn build_rolegroup_config_map(
     if !ac.is_empty() {
         data.insert(
             ConfigFileName::AccessControl.to_string(),
-            to_java_properties_string(&ac).with_context(|_| WritePropertiesSnafu {
+            render_java_properties(ac).with_context(|_| WritePropertiesSnafu {
                 file: ConfigFileName::AccessControl.to_string(),
             })?,
         );
@@ -156,7 +154,7 @@ pub fn build_rolegroup_config_map(
     if !em.is_empty() {
         data.insert(
             ConfigFileName::ExchangeManager.to_string(),
-            to_java_properties_string(&em).with_context(|_| WritePropertiesSnafu {
+            render_java_properties(em).with_context(|_| WritePropertiesSnafu {
                 file: ConfigFileName::ExchangeManager.to_string(),
             })?,
         );
@@ -167,7 +165,7 @@ pub fn build_rolegroup_config_map(
     if !sm.is_empty() {
         data.insert(
             ConfigFileName::SpoolingManager.to_string(),
-            to_java_properties_string(&sm).with_context(|_| WritePropertiesSnafu {
+            render_java_properties(sm).with_context(|_| WritePropertiesSnafu {
                 file: ConfigFileName::SpoolingManager.to_string(),
             })?,
         );
