@@ -3,14 +3,9 @@
 //! Each `<file>.rs` module produces the rendered key/value pairs for one
 //! Trino config file. The shared
 //! [`stackable_operator::v2::config_file_writer`] serializes the map to the
-//! Java-properties on-wire format (see [`to_java_properties_string`]).
+//! Java-properties on-wire format.
 
-use std::collections::BTreeMap;
-
-use stackable_operator::v2::{
-    config_file_writer::{PropertiesWriterError, to_java_properties_string},
-    config_overrides::KeyValueConfigOverrides,
-};
+use stackable_operator::v2::config_overrides::KeyValueConfigOverrides;
 
 pub mod access_control_properties;
 pub mod config_properties;
@@ -40,34 +35,15 @@ pub enum ConfigFileName {
     SpoolingManager,
 }
 
-/// Render a `key -> value` properties map to the Java `.properties` on-wire format.
-///
-/// The upstream [`to_java_properties_string`] consumes an iterator of
-/// `(&String, &Option<String>)`, so we lift the plain `String` values into
-/// `Some(..)` first.
-pub(crate) fn render_java_properties(
-    props: BTreeMap<String, String>,
-) -> Result<String, PropertiesWriterError> {
-    let props: BTreeMap<String, Option<String>> =
-        props.into_iter().map(|(k, v)| (k, Some(v))).collect();
-    to_java_properties_string(props.iter())
-}
-
-/// Keep only the set (`Some`) entries of a `key -> optional value` map, as `(key, value)` pairs.
-fn defined_entries(
-    entries: BTreeMap<String, Option<String>>,
-) -> impl Iterator<Item = (String, String)> {
-    entries
-        .into_iter()
-        .filter_map(|(key, value)| value.map(|value| (key, value)))
-}
-
 /// Resolve user-provided [`KeyValueConfigOverrides`] into the key/value pairs to merge
 /// into a `.properties` file, dropping entries whose value is unset (`None`).
 fn resolved_overrides(
     overrides: KeyValueConfigOverrides,
 ) -> impl Iterator<Item = (String, String)> {
-    defined_entries(overrides.overrides)
+    overrides
+        .overrides
+        .into_iter()
+        .filter_map(|(key, value)| value.map(|value| (key, value)))
 }
 
 #[cfg(test)]
@@ -124,14 +100,17 @@ pub(crate) mod test_support {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::collections::BTreeMap;
+
+    use stackable_operator::v2::config_file_writer::to_java_properties_string;
 
     fn render(pairs: &[(&str, &str)]) -> String {
         let props: BTreeMap<String, String> = pairs
             .iter()
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect();
-        render_java_properties(props).expect("rendering the test properties should succeed")
+        to_java_properties_string(props.iter())
+            .expect("rendering the test properties should succeed")
     }
 
     /// The escape behaviours pinned by the kuttl smoke snapshot

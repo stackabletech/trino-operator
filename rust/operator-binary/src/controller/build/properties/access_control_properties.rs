@@ -14,7 +14,7 @@ pub fn build(cluster: &ValidatedCluster, rg: &TrinoRoleGroupConfig) -> BTreeMap<
     // 1. No defaults.
     // 2. Automatic OPA config when configured.
     if let Some(opa) = &cluster.cluster_config.authorization {
-        props.extend(super::defined_entries(opa.as_config()));
+        props.extend(opa.as_config());
     }
 
     // 3. No merged_config contribution.

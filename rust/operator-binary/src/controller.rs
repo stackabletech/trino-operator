@@ -62,7 +62,7 @@ mod build;
 mod dereference;
 mod validate;
 
-use build::properties::render_java_properties;
+use stackable_operator::v2::config_file_writer::to_java_properties_string;
 pub use validate::{TrinoRoleGroupConfig, ValidatedCluster};
 
 use crate::{
@@ -557,7 +557,7 @@ fn build_rolegroup_catalog_config_map(
                 .map(|catalog| {
                     Ok((
                         format!("{}.properties", catalog.name),
-                        render_java_properties(catalog.properties.clone())
+                        to_java_properties_string(catalog.properties.iter())
                             .context(FailedToWriteJavaPropertiesSnafu)?,
                     ))
                 })
