@@ -55,6 +55,7 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
+    v2::builder::pod::container::EnvVarSet,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -584,7 +585,7 @@ fn build_rolegroup_statefulset(
     trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    env_overrides: &BTreeMap<String, String>,
+    env_overrides: &EnvVarSet,
     merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
@@ -668,11 +669,7 @@ fn build_rolegroup_statefulset(
     });
 
     // Finally add the user defined envOverrides properties.
-    env.extend(env_overrides.iter().map(|(k, v)| EnvVar {
-        name: k.clone(),
-        value: Some(v.clone()),
-        ..EnvVar::default()
-    }));
+    env.extend(env_overrides.clone());
 
     let requested_secret_lifetime = merged_config
         .requested_secret_lifetime
@@ -1323,6 +1320,7 @@ mod tests {
         cli::OperatorEnvironmentOptions, commons::networking::DomainName,
         k8s_openapi::api::core::v1::ConfigMap, kube::runtime::reflector::ObjectRef,
         role_utils::RoleGroupRef, utils::cluster_info::KubernetesClusterInfo,
+        v2::builder::pod::container::EnvVarName,
     };
 
     use super::*;
@@ -1646,7 +1644,10 @@ mod tests {
 
         let env =
             &validated_cluster.role_group_configs[&TrinoRole::Coordinator]["default"].env_overrides;
-        let value = |name: &str| env.get(name).cloned();
+        let value = |name: &str| {
+            env.get(&EnvVarName::from_str_unsafe(name))
+                .and_then(|env_var| env_var.value.clone())
+        };
         assert_eq!(value("COMMON_VAR").as_deref(), Some("group-value"));
         assert_eq!(value("GROUP_VAR").as_deref(), Some("group-value"));
         assert_eq!(value("ROLE_VAR").as_deref(), Some("role-value"));

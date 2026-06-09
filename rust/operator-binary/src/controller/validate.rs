@@ -81,9 +81,10 @@ pub enum Error {
         role: String,
     },
 
-    #[snafu(display("failed to validate config fragment"))]
-    InvalidConfigFragment {
-        source: stackable_operator::config::fragment::ValidationError,
+    #[snafu(display("failed to resolve and merge config for role group {role_group}"))]
+    FailedToResolveConfig {
+        source: crate::framework::role_utils::Error,
+        role_group: String,
     },
 }
 
@@ -264,7 +265,9 @@ pub fn validate(
                 GenericRoleConfig,
                 v1alpha1::TrinoConfigOverrides,
             >(rg, &role, &default_config)
-            .context(InvalidConfigFragmentSnafu)?;
+            .with_context(|_| FailedToResolveConfigSnafu {
+                role_group: rg_name.clone(),
+            })?;
             groups.insert(rg_name.clone(), validated_rg);
         }
         role_jvm_argument_overrides.insert(
