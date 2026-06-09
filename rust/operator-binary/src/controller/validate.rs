@@ -9,9 +9,15 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     commons::product_image_selection::{self, ResolvedProductImage},
-    kube::ResourceExt as _,
-    role_utils::{GenericRoleConfig, JavaCommonConfig},
-    v2::types::operator::ClusterName,
+    kube::{Resource, ResourceExt as _, api::ObjectMeta},
+    role_utils::{GenericRoleConfig, JavaCommonConfig, JvmArgumentOverrides},
+    v2::{
+        controller_utils::{get_cluster_name, get_namespace, get_uid},
+        types::{
+            kubernetes::{NamespaceName, Uid},
+            operator::ClusterName,
+        },
+    },
 };
 use strum::{EnumDiscriminants, IntoEnumIterator, IntoStaticStr};
 
@@ -37,9 +43,19 @@ pub enum Error {
         source: product_image_selection::Error,
     },
 
-    #[snafu(display("invalid cluster name"))]
-    InvalidClusterName {
-        source: stackable_operator::v2::macros::attributed_string_type::Error,
+    #[snafu(display("failed to get the cluster name"))]
+    GetClusterName {
+        source: stackable_operator::v2::controller_utils::Error,
+    },
+
+    #[snafu(display("failed to get the cluster namespace"))]
+    GetClusterNamespace {
+        source: stackable_operator::v2::controller_utils::Error,
+    },
+
+    #[snafu(display("failed to get the cluster UID"))]
+    GetClusterUid {
+        source: stackable_operator::v2::controller_utils::Error,
     },
 
     #[snafu(display("unable to parse Trino version {product_version:?}"))]
@@ -101,12 +117,85 @@ pub struct ValidatedClusterConfig {
 }
 
 /// The validated TrinoCluster. The output of the validate step.
+#[derive(Clone, Debug)]
 pub struct ValidatedCluster {
+    /// Metadata mirroring the source [`v1alpha1::TrinoCluster`] (name, namespace and UID).
+    ///
+    /// Kept private and only exposed through the [`Resource`] implementation, so that a
+    /// `ValidatedCluster` can be used directly as the owner of generated objects (e.g. to set
+    /// owner references) without threading the raw `TrinoCluster` through the build step.
+    metadata: ObjectMeta,
     pub name: ClusterName,
+    pub namespace: NamespaceName,
+    pub uid: Uid,
     pub image: ResolvedProductImage,
     pub product_version: u16,
     pub cluster_config: ValidatedClusterConfig,
     pub role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
+    /// Role-level JVM argument overrides per role. Required to render `jvm.config` in the build
+    /// step without access to the raw [`v1alpha1::TrinoCluster`] (the role-group level overrides
+    /// are carried by [`TrinoRoleGroupConfig::product_specific_common_config`]).
+    pub role_jvm_argument_overrides: BTreeMap<TrinoRole, JvmArgumentOverrides>,
+}
+
+impl ValidatedCluster {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        name: ClusterName,
+        namespace: NamespaceName,
+        uid: Uid,
+        image: ResolvedProductImage,
+        product_version: u16,
+        cluster_config: ValidatedClusterConfig,
+        role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
+        role_jvm_argument_overrides: BTreeMap<TrinoRole, JvmArgumentOverrides>,
+    ) -> Self {
+        Self {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                namespace: Some(namespace.to_string()),
+                uid: Some(uid.to_string()),
+                ..ObjectMeta::default()
+            },
+            name,
+            namespace,
+            uid,
+            image,
+            product_version,
+            cluster_config,
+            role_group_configs,
+            role_jvm_argument_overrides,
+        }
+    }
+}
+
+impl Resource for ValidatedCluster {
+    type DynamicType = <v1alpha1::TrinoCluster as Resource>::DynamicType;
+    type Scope = <v1alpha1::TrinoCluster as Resource>::Scope;
+
+    fn kind(dt: &Self::DynamicType) -> std::borrow::Cow<'_, str> {
+        v1alpha1::TrinoCluster::kind(dt)
+    }
+
+    fn group(dt: &Self::DynamicType) -> std::borrow::Cow<'_, str> {
+        v1alpha1::TrinoCluster::group(dt)
+    }
+
+    fn version(dt: &Self::DynamicType) -> std::borrow::Cow<'_, str> {
+        v1alpha1::TrinoCluster::version(dt)
+    }
+
+    fn plural(dt: &Self::DynamicType) -> std::borrow::Cow<'_, str> {
+        v1alpha1::TrinoCluster::plural(dt)
+    }
+
+    fn meta(&self) -> &ObjectMeta {
+        &self.metadata
+    }
+
+    fn meta_mut(&mut self) -> &mut ObjectMeta {
+        &mut self.metadata
+    }
 }
 
 /// Validates the cluster spec and dereferenced inputs.
@@ -115,7 +204,7 @@ pub fn validate(
     dereferenced_objects: &DereferencedObjects,
     operator_environment: &OperatorEnvironmentOptions,
 ) -> Result<ValidatedCluster> {
-    let namespace = dereferenced_objects.namespace.clone();
+    let namespace = get_namespace(trino).context(GetClusterNamespaceSnafu)?;
 
     let image = trino
         .spec
@@ -153,6 +242,8 @@ pub fn validate(
 
     let mut role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>> =
         BTreeMap::new();
+    let mut role_jvm_argument_overrides: BTreeMap<TrinoRole, JvmArgumentOverrides> =
+        BTreeMap::new();
     for trino_role in TrinoRole::iter() {
         let role = trino
             .role(&trino_role)
@@ -176,6 +267,13 @@ pub fn validate(
             .context(InvalidConfigFragmentSnafu)?;
             groups.insert(rg_name.clone(), validated_rg);
         }
+        role_jvm_argument_overrides.insert(
+            trino_role.clone(),
+            role.config
+                .product_specific_common_config
+                .jvm_argument_overrides
+                .clone(),
+        );
         role_group_configs.insert(trino_role, groups);
     }
 
@@ -193,13 +291,19 @@ pub fn validate(
         catalogs: dereferenced_objects.catalogs.clone(),
     };
 
-    Ok(ValidatedCluster {
-        name: ClusterName::from_str(&trino.name_any()).context(InvalidClusterNameSnafu)?,
+    let name = get_cluster_name(trino).context(GetClusterNameSnafu)?;
+    let uid = get_uid(trino).context(GetClusterUidSnafu)?;
+
+    Ok(ValidatedCluster::new(
+        name,
+        namespace,
+        uid,
         image,
         product_version,
         cluster_config,
         role_group_configs,
-    })
+        role_jvm_argument_overrides,
+    ))
 }
 
 #[cfg(test)]
@@ -212,7 +316,7 @@ mod tests {
         metadata:
           name: simple-trino
           namespace: default
-          uid: "42"
+          uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
         spec:
           image:
             productVersion: "479"
@@ -233,7 +337,6 @@ mod tests {
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(MINIMAL_TRINO_YAML).expect("invalid test input");
         let derefs = DereferencedObjects {
-            namespace: "default".parse().unwrap(),
             resolved_authentication_classes: Vec::new(),
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),
@@ -250,6 +353,11 @@ mod tests {
         let validated = validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         assert_eq!(validated.name.to_string(), "simple-trino");
+        assert_eq!(validated.namespace.to_string(), "default");
+        assert_eq!(
+            validated.uid.to_string(),
+            "e6ac237d-a6d4-43a1-8135-f36506110912"
+        );
         assert_eq!(validated.product_version, 479);
         assert!(!validated.cluster_config.authentication_enabled);
         assert!(

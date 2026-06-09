@@ -10,9 +10,7 @@ use std::{num::ParseIntError, str::FromStr};
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    client::Client,
-    kube::runtime::reflector::ObjectRef,
-    v2::{controller_utils::get_namespace, types::kubernetes::NamespaceName},
+    client::Client, kube::runtime::reflector::ObjectRef, v2::controller_utils::get_namespace,
 };
 
 use crate::{
@@ -76,9 +74,6 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// Kubernetes objects referenced from the TrinoCluster spec, already fetched (and, for now, partly
 /// validated by the existing helper functions).
 pub struct DereferencedObjects {
-    // Catalogs are dereferenced and require the namespace, so we check
-    // or validate the namespace here once and pass it to validate.
-    pub namespace: NamespaceName,
     pub resolved_authentication_classes: Vec<ResolvedAuthenticationClassRef>,
     pub catalog_definitions: Vec<catalog::v1alpha1::TrinoCatalog>,
     pub catalogs: Vec<CatalogConfig>,
@@ -160,7 +155,6 @@ pub async fn dereference(
     };
 
     Ok(DereferencedObjects {
-        namespace,
         resolved_authentication_classes,
         catalog_definitions,
         catalogs,

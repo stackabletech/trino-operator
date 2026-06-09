@@ -58,7 +58,6 @@ pub(crate) mod test_support {
     pub fn validated_cluster_from_yaml(yaml: &str) -> ValidatedCluster {
         let trino: v1alpha1::TrinoCluster = serde_yaml::from_str(yaml).expect("invalid test YAML");
         let derefs = DereferencedObjects {
-            namespace: "default".parse().unwrap(),
             resolved_authentication_classes: Vec::new(),
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),
@@ -81,7 +80,7 @@ pub(crate) mod test_support {
         metadata:
           name: simple-trino
           namespace: default
-          uid: "42"
+          uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
         spec:
           image:
             productVersion: "479"

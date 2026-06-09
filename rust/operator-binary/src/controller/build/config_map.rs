@@ -54,11 +54,8 @@ pub enum Error {
         source: stackable_operator::builder::meta::Error,
     },
 
-    #[snafu(display("failed to resolve the {role} role"))]
-    ReadRole {
-        source: crate::crd::Error,
-        role: String,
-    },
+    #[snafu(display("missing JVM argument overrides for role {role}"))]
+    MissingRoleJvmArgumentOverrides { role: String },
 
     #[snafu(display("failed to build jvm.config"))]
     BuildJvmConfig { source: crate::config::jvm::Error },
@@ -72,7 +69,6 @@ pub fn build_rolegroup_config_map(
     rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
     cluster_info: &KubernetesClusterInfo,
     recommended_labels: &ObjectLabels<'_, v1alpha1::TrinoCluster>,
-    owner_target: &v1alpha1::TrinoCluster,
 ) -> Result<ConfigMap> {
     let role_group_configs =
         cluster
@@ -174,14 +170,18 @@ pub fn build_rolegroup_config_map(
     }
 
     // 8. jvm.config.
-    let role_obj = owner_target.role(role).with_context(|_| ReadRoleSnafu {
-        role: role.to_string(),
-    })?;
+    let role_jvm_argument_overrides =
+        cluster
+            .role_jvm_argument_overrides
+            .get(role)
+            .with_context(|| MissingRoleJvmArgumentOverridesSnafu {
+                role: role.to_string(),
+            })?;
     let jvm_config = jvm::jvm_config(
         cluster.product_version,
         &rg.config,
-        &role_obj,
-        &rolegroup_ref.role_group,
+        role_jvm_argument_overrides,
+        &rg.product_specific_common_config.jvm_argument_overrides,
     )
     .context(BuildJvmConfigSnafu)?;
     data.insert(JVM_CONFIG.to_string(), jvm_config);
@@ -197,9 +197,9 @@ pub fn build_rolegroup_config_map(
     ConfigMapBuilder::new()
         .metadata(
             ObjectMetaBuilder::new()
-                .name_and_namespace(owner_target)
                 .name(rolegroup_ref.object_name())
-                .ownerreference_from_resource(owner_target, None, Some(true))
+                .namespace(cluster.namespace.to_string())
+                .ownerreference_from_resource(cluster, None, Some(true))
                 .context(MetadataSnafu)?
                 .with_recommended_labels(recommended_labels)
                 .context(MetadataSnafu)?

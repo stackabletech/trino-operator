@@ -307,6 +307,12 @@ pub async fn reconcile_trino(
     let validated_cluster =
         validate::validate(trino, &dereferenced_objects, &ctx.operator_environment)
             .context(ValidateClusterSnafu)?;
+    tracing::debug!(
+        trino.name = %validated_cluster.name,
+        trino.namespace = %validated_cluster.namespace,
+        trino.uid = %validated_cluster.uid,
+        "Validated TrinoCluster"
+    );
 
     let mut cluster_resources = ClusterResources::new(
         APP_NAME,
@@ -403,7 +409,6 @@ pub async fn reconcile_trino(
                 &role_group_ref,
                 &client.kubernetes_cluster_info,
                 &role_group_service_recommended_labels,
-                trino,
             )
             .with_context(|_| BuildRoleGroupConfigMapSnafu {
                 rolegroup: role_group_ref.clone(),
@@ -1337,7 +1342,7 @@ mod tests {
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
                 .expect("invalid test input");
         trino.metadata.namespace = Some("default".to_owned());
-        trino.metadata.uid = Some("42".to_owned());
+        trino.metadata.uid = Some("e6ac237d-a6d4-43a1-8135-f36506110912".to_owned());
 
         let cluster_info = KubernetesClusterInfo {
             cluster_domain: DomainName::try_from("cluster.local").unwrap(),
@@ -1385,7 +1390,6 @@ mod tests {
         });
 
         let derefs = DereferencedObjects {
-            namespace: "default".parse().unwrap(),
             resolved_authentication_classes: Vec::new(),
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),
@@ -1422,7 +1426,6 @@ mod tests {
             &rolegroup_ref,
             &cluster_info,
             &recommended_labels,
-            &trino,
         )
         .expect("build_rolegroup_config_map should succeed")
     }
@@ -1598,7 +1601,7 @@ mod tests {
         metadata:
           name: trino
           namespace: default
-          uid: "42"
+          uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
         spec:
           image:
             productVersion: "479"
@@ -1626,7 +1629,6 @@ mod tests {
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         let derefs = DereferencedObjects {
-            namespace: "default".parse().unwrap(),
             resolved_authentication_classes: Vec::new(),
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),

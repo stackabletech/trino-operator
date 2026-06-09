@@ -8,7 +8,7 @@ use stackable_operator::{
 
 use crate::crd::{
     METRICS_PORT, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-    TrinoRoleType, v1alpha1,
+    v1alpha1,
 };
 
 const JVM_SECURITY_PROPERTIES: &str = "security.properties";
@@ -46,8 +46,8 @@ pub enum Error {
 pub fn jvm_config(
     product_version: u16,
     merged_config: &v1alpha1::TrinoConfig,
-    role: &TrinoRoleType,
-    role_group: &str,
+    role_jvm_argument_overrides: &JvmArgumentOverrides,
+    role_group_jvm_argument_overrides: &JvmArgumentOverrides,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;
     let heap_size = MemoryQuantity::try_from(
@@ -93,8 +93,18 @@ pub fn jvm_config(
     jvm_args.push("# Arguments from jvmArgumentOverrides".to_owned());
 
     let operator_generated = JvmArgumentOverrides::new_with_only_additions(jvm_args);
-    let merged_jvm_argument_overrides = role
-        .get_merged_jvm_argument_overrides(role_group, &operator_generated)
+
+    // Merge order mirrors `Role::get_merged_jvm_argument_overrides`:
+    // 1. operator-generated args are layered on top of the role-level overrides,
+    // 2. the role-group-level overrides are applied last.
+    // Note that this is not a purely additive merge, hence the unusual order.
+    let mut from_role = role_jvm_argument_overrides.clone();
+    from_role
+        .try_merge(&operator_generated)
+        .context(MergeJvmArgumentOverridesSnafu)?;
+    let mut merged_jvm_argument_overrides = role_group_jvm_argument_overrides.clone();
+    merged_jvm_argument_overrides
+        .try_merge(&from_role)
         .context(MergeJvmArgumentOverridesSnafu)?;
 
     Ok(merged_jvm_argument_overrides
@@ -264,13 +274,24 @@ mod tests {
         let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
         let coordinators = trino.role(&role).unwrap();
 
+        let role_jvm_argument_overrides = coordinators
+            .config
+            .product_specific_common_config
+            .jvm_argument_overrides
+            .clone();
+        let role_group_jvm_argument_overrides = coordinators.role_groups["default"]
+            .config
+            .product_specific_common_config
+            .jvm_argument_overrides
+            .clone();
+
         let product_version = trino.spec.image.product_version();
 
         jvm_config(
             u16::from_str(product_version).expect("trino version as u16"),
             &merged_config,
-            &coordinators,
-            "default",
+            &role_jvm_argument_overrides,
+            &role_group_jvm_argument_overrides,
         )
         .unwrap()
     }
