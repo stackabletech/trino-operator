@@ -239,9 +239,7 @@ pub fn build(
     }
 
     // ---- 4. User overrides (highest precedence) ----
-    props.extend(super::resolved_overrides(
-        rg.config_overrides.config_properties.clone(),
-    ));
+    props.extend(rg.config_overrides.config_properties.clone());
 
     Ok(props)
 }

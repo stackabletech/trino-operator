@@ -5,8 +5,6 @@
 //! [`stackable_operator::v2::config_file_writer`] serializes the map to the
 //! Java-properties on-wire format.
 
-use stackable_operator::v2::config_overrides::KeyValueConfigOverrides;
-
 pub mod access_control_properties;
 pub mod config_properties;
 pub mod exchange_manager_properties;
@@ -33,17 +31,6 @@ pub enum ConfigFileName {
     ExchangeManager,
     #[strum(serialize = "spooling-manager.properties")]
     SpoolingManager,
-}
-
-/// Resolve user-provided [`KeyValueConfigOverrides`] into the key/value pairs to merge
-/// into a `.properties` file, dropping entries whose value is unset (`None`).
-fn resolved_overrides(
-    overrides: KeyValueConfigOverrides,
-) -> impl Iterator<Item = (String, String)> {
-    overrides
-        .overrides
-        .into_iter()
-        .filter_map(|(key, value)| value.map(|value| (key, value)))
 }
 
 #[cfg(test)]
