@@ -493,20 +493,21 @@ pub async fn reconcile_trino(
                 )
                 .context(ListenerConfigurationSnafu)?;
 
-            cluster_resources
-                .add(client, role_group_listener)
-                .await
-                .context(ApplyGroupListenerSnafu)?;
-        }
+                cluster_resources
+                    .add(client, role_group_listener)
+                    .await
+                    .context(ApplyGroupListenerSnafu)?;
+            }
 
-        let role_config = trino.generic_role_config(trino_role);
-        if let Some(GenericRoleConfig {
-            pod_disruption_budget: pdb,
-        }) = role_config
-        {
-            add_pdbs(pdb, trino, trino_role, client, &mut cluster_resources)
-                .await
-                .context(FailedToCreatePdbSnafu)?;
+            let role_config = trino.generic_role_config(trino_role);
+            if let Some(GenericRoleConfig {
+                pod_disruption_budget: pdb,
+            }) = role_config
+            {
+                add_pdbs(pdb, trino, trino_role, client, &mut cluster_resources)
+                    .await
+                    .context(FailedToCreatePdbSnafu)?;
+            }
         }
     }
 
