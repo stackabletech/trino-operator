@@ -5,7 +5,6 @@ use const_format::concatcp;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
-        configmap::ConfigMapBuilder,
         meta::ObjectMetaBuilder,
         pod::{
             PodBuilder,
@@ -27,7 +26,7 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMap, ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, ExecAction,
+                ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, ExecAction,
                 HTTPGetAction, Probe, SecretKeySelector, Volume,
             },
         },
@@ -63,7 +62,6 @@ mod build;
 mod dereference;
 mod validate;
 
-use stackable_operator::v2::config_file_writer::to_java_properties_string;
 pub use validate::{TrinoRoleGroupConfig, ValidatedCluster};
 
 use crate::{
@@ -131,12 +129,6 @@ pub enum Error {
     },
 
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
-    BuildRoleGroupConfig {
-        source: stackable_operator::builder::configmap::Error,
-        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
-    },
-
-    #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfigMap {
         source: build::config_map::Error,
         rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
@@ -157,11 +149,6 @@ pub enum Error {
     #[snafu(display("object is missing metadata to build owner reference"))]
     ObjectMissingMetadataForOwnerRef {
         source: stackable_operator::builder::meta::Error,
-    },
-
-    #[snafu(display("failed to format runtime properties"))]
-    FailedToWriteJavaProperties {
-        source: stackable_operator::v2::config_file_writer::PropertiesWriterError,
     },
 
     #[snafu(display("internal operator failure: {source}"))]
@@ -415,12 +402,14 @@ pub async fn reconcile_trino(
                 rolegroup: role_group_ref.clone(),
             })?;
 
-            let rg_catalog_configmap = build_rolegroup_catalog_config_map(
-                trino,
-                &validated_cluster.image,
+            let rg_catalog_configmap = build::config_map::build_rolegroup_catalog_config_map(
+                &validated_cluster,
                 &role_group_ref,
-                &validated_cluster.cluster_config.catalogs,
-            )?;
+                &role_group_service_recommended_labels,
+            )
+            .with_context(|_| BuildRoleGroupConfigMapSnafu {
+                rolegroup: role_group_ref.clone(),
+            })?;
 
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
@@ -531,48 +520,6 @@ pub async fn reconcile_trino(
         .context(ApplyStatusSnafu)?;
 
     Ok(Action::await_change())
-}
-
-/// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
-/// given by the administrator
-fn build_rolegroup_catalog_config_map(
-    trino: &v1alpha1::TrinoCluster,
-    resolved_product_image: &ResolvedProductImage,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    catalogs: &[CatalogConfig],
-) -> Result<ConfigMap> {
-    ConfigMapBuilder::new()
-        .metadata(
-            ObjectMetaBuilder::new()
-                .name_and_namespace(trino)
-                .name(format!("{}-catalog", rolegroup_ref.object_name()))
-                .ownerreference_from_resource(trino, None, Some(true))
-                .context(ObjectMissingMetadataForOwnerRefSnafu)?
-                .with_recommended_labels(&build_recommended_labels(
-                    trino,
-                    &resolved_product_image.app_version_label_value,
-                    &rolegroup_ref.role,
-                    &rolegroup_ref.role_group,
-                ))
-                .context(MetadataBuildSnafu)?
-                .build(),
-        )
-        .data(
-            catalogs
-                .iter()
-                .map(|catalog| {
-                    Ok((
-                        format!("{}.properties", catalog.name),
-                        to_java_properties_string(catalog.properties.iter())
-                            .context(FailedToWriteJavaPropertiesSnafu)?,
-                    ))
-                })
-                .collect::<Result<_>>()?,
-        )
-        .build()
-        .with_context(|_| BuildRoleGroupConfigSnafu {
-            rolegroup: rolegroup_ref.clone(),
-        })
 }
 
 /// The rolegroup [`StatefulSet`] runs the rolegroup, as configured by the administrator.

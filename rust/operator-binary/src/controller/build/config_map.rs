@@ -211,3 +211,40 @@ pub fn build_rolegroup_config_map(
             rolegroup: rolegroup_ref.clone(),
         })
 }
+
+/// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
+/// given by the administrator
+pub fn build_rolegroup_catalog_config_map(
+    cluster: &ValidatedCluster,
+    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    recommended_labels: &ObjectLabels<'_, v1alpha1::TrinoCluster>,
+) -> Result<ConfigMap> {
+    ConfigMapBuilder::new()
+        .metadata(
+            ObjectMetaBuilder::new()
+                .name(format!("{}-catalog", rolegroup_ref.object_name()))
+                .namespace(cluster.namespace.to_string())
+                .ownerreference_from_resource(cluster, None, Some(true))
+                .context(MetadataSnafu)?
+                .with_recommended_labels(recommended_labels)
+                .context(MetadataSnafu)?
+                .build(),
+        )
+        .data(
+            cluster
+                .cluster_config
+                .catalogs
+                .iter()
+                .map(|catalog| {
+                    let file = format!("{}.properties", catalog.name);
+                    let rendered = to_java_properties_string(catalog.properties.iter())
+                        .with_context(|_| WritePropertiesSnafu { file: file.clone() })?;
+                    Ok((file, rendered))
+                })
+                .collect::<Result<_>>()?,
+        )
+        .build()
+        .with_context(|_| AssembleSnafu {
+            rolegroup: rolegroup_ref.clone(),
+        })
+}
