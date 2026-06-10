@@ -493,11 +493,10 @@ pub async fn reconcile_trino(
                 )
                 .context(ListenerConfigurationSnafu)?;
 
-                cluster_resources
-                    .add(client, role_group_listener)
-                    .await
-                    .context(ApplyGroupListenerSnafu)?;
-            }
+            cluster_resources
+                .add(client, role_group_listener)
+                .await
+                .context(ApplyGroupListenerSnafu)?;
         }
 
         let role_config = trino.generic_role_config(trino_role);
