@@ -68,7 +68,7 @@ pub fn build_rolegroup_config_map(
     role: &TrinoRole,
     rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
     cluster_info: &KubernetesClusterInfo,
-    recommended_labels: &ObjectLabels<'_, v1alpha1::TrinoCluster>,
+    recommended_labels: &ObjectLabels<'_, ValidatedCluster>,
 ) -> Result<ConfigMap> {
     let role_group_configs =
         cluster
@@ -217,7 +217,7 @@ pub fn build_rolegroup_config_map(
 pub fn build_rolegroup_catalog_config_map(
     cluster: &ValidatedCluster,
     rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    recommended_labels: &ObjectLabels<'_, v1alpha1::TrinoCluster>,
+    recommended_labels: &ObjectLabels<'_, ValidatedCluster>,
 ) -> Result<ConfigMap> {
     ConfigMapBuilder::new()
         .metadata(

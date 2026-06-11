@@ -8,7 +8,10 @@ use stackable_operator::{
     role_utils::RoleGroupRef,
 };
 
-use crate::crd::{METRICS_PORT, METRICS_PORT_NAME, v1alpha1};
+use crate::{
+    controller::ValidatedCluster,
+    crd::{METRICS_PORT, METRICS_PORT_NAME, v1alpha1},
+};
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -26,16 +29,17 @@ pub enum Error {
 /// The rolegroup headless [`Service`] is a service that allows direct access to the instances of a certain rolegroup
 /// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
 pub fn build_rolegroup_headless_service(
-    trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    object_labels: &ObjectLabels<v1alpha1::TrinoCluster>,
+    object_labels: &ObjectLabels<ValidatedCluster>,
     selector: BTreeMap<String, String>,
+    ports: Vec<ServicePort>,
 ) -> Result<Service, Error> {
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
+            .name_and_namespace(cluster)
             .name(role_group_ref.rolegroup_headless_service_name())
-            .ownerreference_from_resource(trino, None, Some(true))
+            .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(object_labels)
             .context(MetadataBuildSnafu)?
@@ -44,7 +48,7 @@ pub fn build_rolegroup_headless_service(
             // Internal communication does not need to be exposed
             type_: Some("ClusterIP".to_string()),
             cluster_ip: Some("None".to_string()),
-            ports: Some(headless_service_ports(trino)),
+            ports: Some(ports),
             selector: Some(selector),
             publish_not_ready_addresses: Some(true),
             ..ServiceSpec::default()
@@ -55,16 +59,16 @@ pub fn build_rolegroup_headless_service(
 
 /// The rolegroup metrics [`Service`] is a service that exposes metrics and a prometheus scraping label.
 pub fn build_rolegroup_metrics_service(
-    trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-    object_labels: &ObjectLabels<v1alpha1::TrinoCluster>,
+    object_labels: &ObjectLabels<ValidatedCluster>,
     selector: BTreeMap<String, String>,
 ) -> Result<Service, Error> {
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
+            .name_and_namespace(cluster)
             .name(role_group_ref.rolegroup_metrics_service_name())
-            .ownerreference_from_resource(trino, None, Some(true))
+            .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(object_labels)
             .context(MetadataBuildSnafu)?
@@ -84,7 +88,7 @@ pub fn build_rolegroup_metrics_service(
     })
 }
 
-fn headless_service_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ServicePort> {
+pub(crate) fn headless_service_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ServicePort> {
     let name = trino.exposed_protocol().to_string();
     let port = trino.exposed_port().into();
 

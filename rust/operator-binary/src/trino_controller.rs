@@ -58,18 +58,13 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
-mod build;
-mod dereference;
-mod validate;
-
-pub use validate::{TrinoRoleGroupConfig, ValidatedCluster};
-
 use crate::{
     authentication::TrinoAuthenticationConfig,
     authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
     catalog::config::CatalogConfig,
     command,
     config::{client_protocol, fault_tolerant_execution},
+    controller::{build, dereference, validate},
     crd::{
         APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
         HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
@@ -83,7 +78,9 @@ use crate::{
         group_listener_name, secret_volume_listener_scope,
     },
     operations::pdb::add_pdbs,
-    service::{build_rolegroup_headless_service, build_rolegroup_metrics_service},
+    service::{
+        build_rolegroup_headless_service, build_rolegroup_metrics_service, headless_service_ports,
+    },
 };
 
 pub struct Ctx {
@@ -103,7 +100,7 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
-pub(super) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
+pub(crate) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
@@ -361,7 +358,7 @@ pub async fn reconcile_trino(
             let merged_config = &rg.config;
 
             let role_group_service_recommended_labels = build_recommended_labels(
-                trino,
+                &validated_cluster,
                 &validated_cluster.image.app_version_label_value,
                 &role_group_ref.role,
                 &role_group_ref.role_group,
@@ -376,15 +373,16 @@ pub async fn reconcile_trino(
             .context(LabelBuildSnafu)?;
 
             let rg_headless_service = build_rolegroup_headless_service(
-                trino,
+                &validated_cluster,
                 &role_group_ref,
                 &role_group_service_recommended_labels,
                 role_group_service_selector.clone().into(),
+                headless_service_ports(trino),
             )
             .context(ServiceConfigurationSnafu)?;
 
             let rg_metrics_service = build_rolegroup_metrics_service(
-                trino,
+                &validated_cluster,
                 &role_group_ref,
                 &role_group_service_recommended_labels,
                 role_group_service_selector.into(),
@@ -949,12 +947,12 @@ fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &st
     }
 }
 
-fn build_recommended_labels<'a>(
-    owner: &'a v1alpha1::TrinoCluster,
+fn build_recommended_labels<'a, T>(
+    owner: &'a T,
     app_version: &'a str,
     role: &'a str,
     role_group: &'a str,
-) -> ObjectLabels<'a, v1alpha1::TrinoCluster> {
+) -> ObjectLabels<'a, T> {
     ObjectLabels {
         owner,
         app_name: APP_NAME,
@@ -1359,7 +1357,7 @@ mod tests {
             role_group: "default".to_string(),
         };
         let recommended_labels = build_recommended_labels(
-            &trino,
+            &validated_cluster,
             &validated_cluster.image.app_version_label_value,
             &rolegroup_ref.role,
             &rolegroup_ref.role_group,

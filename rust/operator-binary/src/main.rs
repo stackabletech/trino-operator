@@ -33,12 +33,12 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
     crd::{
         TrinoCluster, TrinoClusterVersion,
         catalog::{TrinoCatalog, TrinoCatalogVersion},
         v1alpha1,
     },
+    trino_controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
     webhooks::conversion::create_webhook_server,
 };
 
@@ -53,6 +53,7 @@ mod framework;
 mod listener;
 mod operations;
 mod service;
+mod trino_controller;
 mod webhooks;
 
 mod built_info {
@@ -195,9 +196,9 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .graceful_shutdown_on(sigterm_watcher.handle())
                 .run(
-                    controller::reconcile_trino,
-                    controller::error_policy,
-                    Arc::new(controller::Ctx {
+                    trino_controller::reconcile_trino,
+                    trino_controller::error_policy,
+                    Arc::new(trino_controller::Ctx {
                         client: client.clone(),
                         operator_environment,
                     }),
