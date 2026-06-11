@@ -21,23 +21,21 @@ use stackable_operator::{
             Resources, ResourcesFragment,
         },
     },
-    config::{
-        fragment::{self, Fragment, ValidationError},
-        merge::Merge,
-    },
+    config::{fragment::Fragment, merge::Merge},
     crd::authentication::core,
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
-    kube::{CustomResource, ResourceExt, runtime::reflector::ObjectRef},
+    kube::{CustomResource, runtime::reflector::ObjectRef},
     memory::{BinaryMultiple, MemoryQuantity},
     product_logging::{self, spec::Logging},
-    role_utils::{
-        CommonConfiguration, GenericRoleConfig, JavaCommonConfig, Role, RoleGroup, RoleGroupRef,
-    },
+    role_utils::{CommonConfiguration, GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
     schemars::{self, JsonSchema},
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
-    v2::{config_overrides::KeyValueConfigOverrides, types::kubernetes::NamespaceName},
+    v2::{
+        config_overrides::KeyValueConfigOverrides, role_utils::JavaCommonConfig,
+        types::kubernetes::NamespaceName,
+    },
     versioned::versioned,
 };
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -119,9 +117,6 @@ pub enum Error {
 
     #[snafu(display("the role group {role_group} is not defined"))]
     CannotRetrieveTrinoRoleGroup { role_group: String },
-
-    #[snafu(display("fragment validation failure"))]
-    FragmentValidationFailure { source: ValidationError },
 }
 
 #[versioned(
@@ -710,37 +705,6 @@ impl v1alpha1::TrinoCluster {
     /// Returns if the HTTPS port should be exposed
     pub fn expose_https_port(&self) -> bool {
         self.get_server_tls().is_some()
-    }
-
-    /// Retrieve and merge resource configs for role and role groups
-    pub fn merged_config(
-        &self,
-        role: &TrinoRole,
-        rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
-        trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],
-    ) -> Result<v1alpha1::TrinoConfig, Error> {
-        // Initialize the result with all default values as baseline
-        let conf_defaults =
-            v1alpha1::TrinoConfig::default_config(&self.name_any(), role, trino_catalogs);
-
-        let role = self.role(role)?;
-
-        // Retrieve role resource config
-        let mut conf_role = role.config.config.to_owned();
-
-        // Retrieve rolegroup specific resource config
-        let mut conf_rolegroup = self.rolegroup(rolegroup_ref)?.config.config.clone();
-
-        // Merge more specific configs into default config
-        // Hierarchy is:
-        // 1. RoleGroup
-        // 2. Role
-        // 3. Default
-        conf_role.merge(&conf_defaults);
-        conf_rolegroup.merge(&conf_role);
-
-        tracing::debug!("Merged config: {:?}", conf_rolegroup);
-        fragment::validate(conf_rolegroup).context(FragmentValidationFailureSnafu)
     }
 }
 

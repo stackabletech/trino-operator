@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 use stackable_operator::{
     commons::product_image_selection::ResolvedProductImage,
     kube::{Resource, api::ObjectMeta},
-    role_utils::JvmArgumentOverrides,
     v2::types::{
         kubernetes::{NamespaceName, Uid},
         operator::ClusterName,
@@ -65,10 +64,6 @@ pub struct ValidatedCluster {
     pub product_version: u16,
     pub cluster_config: ValidatedClusterConfig,
     pub role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
-    /// Role-level JVM argument overrides per role. Required to render `jvm.config` in the build
-    /// step without access to the raw [`v1alpha1::TrinoCluster`] (the role-group level overrides
-    /// are carried by [`TrinoRoleGroupConfig::product_specific_common_config`]).
-    pub role_jvm_argument_overrides: BTreeMap<TrinoRole, JvmArgumentOverrides>,
 }
 
 impl ValidatedCluster {
@@ -81,7 +76,6 @@ impl ValidatedCluster {
         product_version: u16,
         cluster_config: ValidatedClusterConfig,
         role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
-        role_jvm_argument_overrides: BTreeMap<TrinoRole, JvmArgumentOverrides>,
     ) -> Self {
         Self {
             metadata: ObjectMeta {
@@ -97,7 +91,6 @@ impl ValidatedCluster {
             product_version,
             cluster_config,
             role_group_configs,
-            role_jvm_argument_overrides,
         }
     }
 }
@@ -129,4 +122,59 @@ impl Resource for ValidatedCluster {
     fn meta_mut(&mut self) -> &mut ObjectMeta {
         &mut self.metadata
     }
+}
+
+/// A minimal, valid TrinoCluster spec shared across unit tests.
+#[cfg(test)]
+pub(crate) const MINIMAL_TRINO_YAML: &str = r#"
+    apiVersion: trino.stackable.tech/v1alpha1
+    kind: TrinoCluster
+    metadata:
+      name: simple-trino
+      namespace: default
+      uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+    spec:
+      image:
+        productVersion: "479"
+      clusterConfig:
+        catalogLabelSelector: {}
+      coordinators:
+        roleGroups:
+          default:
+            replicas: 1
+      workers:
+        roleGroups:
+          default:
+            replicas: 1
+    "#;
+
+/// Parses [`MINIMAL_TRINO_YAML`] into a [`v1alpha1::TrinoCluster`].
+#[cfg(test)]
+pub(crate) fn minimal_trino() -> v1alpha1::TrinoCluster {
+    serde_yaml::from_str(MINIMAL_TRINO_YAML).expect("invalid test TrinoCluster YAML")
+}
+
+/// The validated [`MINIMAL_TRINO_YAML`] cluster with empty dereferenced inputs. The common test
+/// fixture for build-step unit tests.
+#[cfg(test)]
+pub(crate) fn validated_cluster() -> ValidatedCluster {
+    use stackable_operator::cli::OperatorEnvironmentOptions;
+
+    use crate::controller::dereference::DereferencedObjects;
+
+    let derefs = DereferencedObjects {
+        resolved_authentication_classes: Vec::new(),
+        catalog_definitions: Vec::new(),
+        catalogs: Vec::new(),
+        trino_opa_config: None,
+        resolved_fte_config: None,
+        resolved_client_protocol_config: None,
+    };
+    let operator_env = OperatorEnvironmentOptions {
+        operator_namespace: "stackable-operators".to_string(),
+        operator_service_name: "trino-operator".to_string(),
+        image_repository: "oci.example.org".to_string(),
+    };
+
+    validate::validate(&minimal_trino(), &derefs, &operator_env).expect("validate should succeed")
 }

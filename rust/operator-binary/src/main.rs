@@ -49,7 +49,6 @@ mod command;
 mod config;
 mod controller;
 mod crd;
-mod framework;
 mod listener;
 mod operations;
 mod service;

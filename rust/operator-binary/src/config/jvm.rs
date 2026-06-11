@@ -3,7 +3,7 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     memory::{BinaryMultiple, MemoryQuantity},
-    role_utils::{self, JvmArgumentOverrides},
+    v2::jvm_argument_overrides::JvmArgumentOverrides,
 };
 
 use crate::crd::{
@@ -36,9 +36,6 @@ pub enum Error {
         "Trino version {version} is not supported. Only specific versions are handled due to version specific JVM configuration generation"
     ))]
     TrinoVersionNotSupported { version: u16 },
-
-    #[snafu(display("failed to merge jvm argument overrides"))]
-    MergeJvmArgumentOverrides { source: role_utils::Error },
 }
 
 // Currently works for all supported versions (as of 2024-09-04) but maybe be changed
@@ -46,8 +43,7 @@ pub enum Error {
 pub fn jvm_config(
     product_version: u16,
     merged_config: &v1alpha1::TrinoConfig,
-    role_jvm_argument_overrides: &JvmArgumentOverrides,
-    role_group_jvm_argument_overrides: &JvmArgumentOverrides,
+    jvm_argument_overrides: &JvmArgumentOverrides,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;
     let heap_size = MemoryQuantity::try_from(
@@ -92,24 +88,10 @@ pub fn jvm_config(
 
     jvm_args.push("# Arguments from jvmArgumentOverrides".to_owned());
 
-    let operator_generated = JvmArgumentOverrides::new_with_only_additions(jvm_args);
-
-    // Merge order mirrors `Role::get_merged_jvm_argument_overrides`:
-    // 1. operator-generated args are layered on top of the role-level overrides,
-    // 2. the role-group-level overrides are applied last.
-    // Note that this is not a purely additive merge, hence the unusual order.
-    let mut from_role = role_jvm_argument_overrides.clone();
-    from_role
-        .try_merge(&operator_generated)
-        .context(MergeJvmArgumentOverridesSnafu)?;
-    let mut merged_jvm_argument_overrides = role_group_jvm_argument_overrides.clone();
-    merged_jvm_argument_overrides
-        .try_merge(&from_role)
-        .context(MergeJvmArgumentOverridesSnafu)?;
-
-    Ok(merged_jvm_argument_overrides
-        .effective_jvm_config_after_merging()
-        .join("\n"))
+    // `jvm_argument_overrides` already carries the merged role + role-group overrides (merged by
+    // `with_validated_config` in the validate step). Applying them to the operator-generated args
+    // layers the overrides on top, in the order: operator-generated <- role <- role group.
+    Ok(jvm_argument_overrides.apply_to(jvm_args).join("\n"))
 }
 
 /// For tests we don't actually look at the Trino version, and return a single "representative"
@@ -269,29 +251,22 @@ mod tests {
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(trino_cluster).expect("illegal test input");
 
-        let role = TrinoRole::Coordinator;
-        let rolegroup_ref = role.rolegroup_ref(&trino, "default");
-        let merged_config = trino.merged_config(&role, &rolegroup_ref, &[]).unwrap();
-        let coordinators = trino.role(&role).unwrap();
+        // Merge + validate via the shared production path; the role + role-group
+        // `jvmArgumentOverrides` end up merged in `product_specific_common_config`.
+        let rg = crate::controller::validate::merged_role_group_config(
+            &trino,
+            &TrinoRole::Coordinator,
+            "default",
+            &[],
+        );
 
-        let role_jvm_argument_overrides = coordinators
-            .config
-            .product_specific_common_config
-            .jvm_argument_overrides
-            .clone();
-        let role_group_jvm_argument_overrides = coordinators.role_groups["default"]
-            .config
-            .product_specific_common_config
-            .jvm_argument_overrides
-            .clone();
-
-        let product_version = trino.spec.image.product_version();
+        let product_version =
+            u16::from_str(trino.spec.image.product_version()).expect("trino version as u16");
 
         jvm_config(
-            u16::from_str(product_version).expect("trino version as u16"),
-            &merged_config,
-            &role_jvm_argument_overrides,
-            &role_group_jvm_argument_overrides,
+            product_version,
+            &rg.config,
+            &rg.product_specific_common_config.jvm_argument_overrides,
         )
         .unwrap()
     }

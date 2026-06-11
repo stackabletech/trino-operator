@@ -54,9 +54,6 @@ pub enum Error {
         source: stackable_operator::builder::meta::Error,
     },
 
-    #[snafu(display("missing JVM argument overrides for role {role}"))]
-    MissingRoleJvmArgumentOverrides { role: String },
-
     #[snafu(display("failed to build jvm.config"))]
     BuildJvmConfig { source: crate::config::jvm::Error },
 }
@@ -169,18 +166,11 @@ pub fn build_rolegroup_config_map(
         );
     }
 
-    // 8. jvm.config.
-    let role_jvm_argument_overrides =
-        cluster
-            .role_jvm_argument_overrides
-            .get(role)
-            .with_context(|| MissingRoleJvmArgumentOverridesSnafu {
-                role: role.to_string(),
-            })?;
+    // 8. jvm.config. The role + role-group `jvmArgumentOverrides` were already merged in the
+    // validate step and are carried by `product_specific_common_config`.
     let jvm_config = jvm::jvm_config(
         cluster.product_version,
         &rg.config,
-        role_jvm_argument_overrides,
         &rg.product_specific_common_config.jvm_argument_overrides,
     )
     .context(BuildJvmConfigSnafu)?;
