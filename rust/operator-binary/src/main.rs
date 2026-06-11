@@ -33,12 +33,12 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
     crd::{
         TrinoCluster, TrinoClusterVersion,
         catalog::{TrinoCatalog, TrinoCatalogVersion},
         v1alpha1,
     },
+    trino_controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
     webhooks::conversion::create_webhook_server,
 };
 
@@ -51,8 +51,8 @@ mod controller;
 mod crd;
 mod listener;
 mod operations;
-mod product_logging;
 mod service;
+mod trino_controller;
 mod webhooks;
 
 mod built_info {
@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Run(RunArguments {
             operator_environment,
             watch_namespace,
-            product_config,
+            product_config: _,
             maintenance,
             common,
         }) => {
@@ -125,11 +125,6 @@ async fn main() -> anyhow::Result<()> {
             let webhook_server = webhook_server
                 .run(sigterm_watcher.handle())
                 .map_err(|err| anyhow!(err).context("failed to run webhook server"));
-
-            let product_config = product_config.load(&[
-                "deploy/config-spec/properties.yaml",
-                "/etc/stackable/trino-operator/config-spec/properties.yaml",
-            ])?;
 
             let event_recorder = Arc::new(Recorder::new(
                 client.as_kube_client(),
@@ -200,12 +195,11 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .graceful_shutdown_on(sigterm_watcher.handle())
                 .run(
-                    controller::reconcile_trino,
-                    controller::error_policy,
-                    Arc::new(controller::Ctx {
+                    trino_controller::reconcile_trino,
+                    trino_controller::error_policy,
+                    Arc::new(trino_controller::Ctx {
                         client: client.clone(),
                         operator_environment,
-                        product_config,
                     }),
                 )
                 // We can let the reporting happen in the background

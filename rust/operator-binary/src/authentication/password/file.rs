@@ -17,7 +17,9 @@ use stackable_operator::{
     utils::COMMON_BASH_TRAP_FUNCTIONS,
 };
 
-use crate::{authentication::password::PASSWORD_AUTHENTICATOR_NAME, controller::STACKABLE_LOG_DIR};
+use crate::{
+    authentication::password::PASSWORD_AUTHENTICATOR_NAME, trino_controller::STACKABLE_LOG_DIR,
+};
 
 // mounts
 const PASSWORD_DB_VOLUME_NAME: &str = "users";

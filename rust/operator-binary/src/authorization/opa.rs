@@ -9,6 +9,7 @@ use crate::crd::v1alpha1;
 
 pub const OPA_TLS_VOLUME_NAME: &str = "opa-tls";
 
+#[derive(Clone, Debug)]
 pub struct TrinoOpaConfig {
     /// URI for OPA policies, e.g.
     /// `http://localhost:8081/v1/data/trino/allow`
@@ -104,22 +105,22 @@ impl TrinoOpaConfig {
         })
     }
 
-    pub fn as_config(&self) -> BTreeMap<String, Option<String>> {
+    pub fn as_config(&self) -> BTreeMap<String, String> {
         let mut config = BTreeMap::from([
-            ("access-control.name".to_string(), Some("opa".to_string())),
+            ("access-control.name".to_string(), "opa".to_string()),
             (
                 "opa.policy.uri".to_string(),
-                Some(self.non_batched_connection_string.clone()),
+                self.non_batched_connection_string.clone(),
             ),
             (
                 "opa.policy.batched-uri".to_string(),
-                Some(self.batched_connection_string.clone()),
+                self.batched_connection_string.clone(),
             ),
         ]);
         if let Some(row_filters_connection_string) = &self.row_filters_connection_string {
             config.insert(
                 "opa.policy.row-filters-uri".to_string(),
-                Some(row_filters_connection_string.clone()),
+                row_filters_connection_string.clone(),
             );
         }
         if let Some(batched_column_masking_connection_string) =
@@ -127,13 +128,13 @@ impl TrinoOpaConfig {
         {
             config.insert(
                 "opa.policy.batch-column-masking-uri".to_string(),
-                Some(batched_column_masking_connection_string.clone()),
+                batched_column_masking_connection_string.clone(),
             );
         }
         if self.allow_permission_management_operations {
             config.insert(
                 "opa.allow-permission-management-operations".to_string(),
-                Some("true".to_string()),
+                "true".to_string(),
             );
         }
         config

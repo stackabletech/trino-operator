@@ -6,6 +6,7 @@ use stackable_operator::{
     commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     crd::s3,
     k8s_openapi::api::core::v1::ConfigMap,
+    v2::types::kubernetes::NamespaceName,
 };
 
 use super::{
@@ -14,7 +15,7 @@ use super::{
     from_trino_catalog_error::{
         ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
         FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
-        ObjectHasNoNamespaceSnafu, S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
+        S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
     },
 };
 use crate::{
@@ -31,17 +32,12 @@ impl ExtendCatalogConfig for MetastoreConnection {
         &self,
         catalog_config: &mut CatalogConfig,
         catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let hive_cm: ConfigMap = client
-            .get(
-                &self.config_map,
-                catalog_namespace
-                    .as_deref()
-                    .context(ObjectHasNoNamespaceSnafu)?,
-            )
+            .get(&self.config_map, catalog_namespace.as_ref())
             .await
             .with_context(|_| FailedToGetDiscoveryConfigMapSnafu {
                 catalog: catalog_name.to_string(),
@@ -78,18 +74,13 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         &self,
         catalog_config: &mut CatalogConfig,
         _catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
             .clone()
-            .resolve(
-                client,
-                catalog_namespace
-                    .as_deref()
-                    .context(ObjectHasNoNamespaceSnafu)?,
-            )
+            .resolve(client, catalog_namespace.as_ref())
             .await
             .context(ConfigureS3Snafu)?;
 
@@ -168,7 +159,7 @@ impl ExtendCatalogConfig for HdfsConnection {
         &self,
         catalog_config: &mut CatalogConfig,
         catalog_name: &str,
-        _catalog_namespace: Option<String>,
+        _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {

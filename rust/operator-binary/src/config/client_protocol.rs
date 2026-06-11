@@ -20,17 +20,9 @@ use crate::{
 pub enum Error {
     #[snafu(display("failed to resolve S3 connection"))]
     ResolveS3Connection { source: config::s3::Error },
-
-    #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
-    S3TlsNoVerificationNotSupported,
-
-    #[snafu(display("failed to convert data size for [{field}] to bytes"))]
-    QuantityConversion {
-        source: stackable_operator::memory::Error,
-        field: &'static str,
-    },
 }
 
+#[derive(Clone, Debug)]
 pub struct ResolvedClientProtocolConfig {
     /// Properties to add to config.properties
     pub config_properties: BTreeMap<String, String>,
