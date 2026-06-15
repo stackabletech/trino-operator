@@ -1,0 +1,99 @@
+# Run tests with `./test-vector.sh`
+#
+# A downside of these test cases is that they compare the whole event and that the message can
+# contain source code positions in vector.yaml, e.g. "function call error for \"parse_xml\" at
+# (584:643)". Please adapt the tests if you change VRL code in vector.yaml.
+---
+tests:
+  - name: Test stdout log entry
+    inputs:
+      - type: log
+        insert_at: processed_files_stdout
+        log_fields:
+          file: /stackable/log/trino/trino.stdout.log
+          message: Starting Trino
+          pod: trino-coordinator-default-0
+          source_type: file
+          timestamp: 2025-10-02T09:27:28.582Z
+    outputs:
+      - extract_from: extended_logs
+        conditions:
+          - type: vrl
+            source: |
+              expected_log_event = {
+                "cluster": "trino",
+                "container": "trino",
+                "file": "trino.stdout.log",
+                "level": "INFO",
+                "logger": "ROOT",
+                "message": "Starting Trino",
+                "namespace": "default",
+                "pod": "trino-coordinator-default-0",
+                "role": "coordinator",
+                "roleGroup": "default",
+                "timestamp": "2025-10-02T09:27:28.582Z"
+              }
+
+              assert_eq!(expected_log_event, .)
+  - name: Test stderr log entry
+    inputs:
+      - type: log
+        insert_at: processed_files_stderr
+        log_fields:
+          file: /stackable/log/trino/trino.stderr.log
+          message: "Exception in thread \"main\""
+          pod: trino-coordinator-default-0
+          source_type: file
+          timestamp: 2025-10-02T09:27:28.582Z
+    outputs:
+      - extract_from: extended_logs
+        conditions:
+          - type: vrl
+            source: |
+              expected_log_event = {
+                "cluster": "trino",
+                "container": "trino",
+                "file": "trino.stderr.log",
+                "level": "ERROR",
+                "logger": "ROOT",
+                "message": "Exception in thread \"main\"",
+                "namespace": "default",
+                "pod": "trino-coordinator-default-0",
+                "role": "coordinator",
+                "roleGroup": "default",
+                "timestamp": "2025-10-02T09:27:28.582Z"
+              }
+
+              assert_eq!(expected_log_event, .)
+  - name: Test airlift JSON log entry
+    inputs:
+      - type: log
+        insert_at: processed_files_airlift
+        log_fields:
+          file: /stackable/log/trino/server.airlift.json
+          message: '{"timestamp":"2024-01-01T00:00:00.123456789Z","level":"INFO","logger":"io.trino.server.Server","thread":"main","message":"======== SERVER STARTED ========"}'
+          pod: trino-coordinator-default-0
+          source_type: file
+    outputs:
+      - extract_from: extended_logs
+        conditions:
+          - type: vrl
+            source: |
+              expected_log_event = {
+                "cluster": "trino",
+                "container": "trino",
+                "file": "server.airlift.json",
+                "level": "INFO",
+                "logger": "io.trino.server.Server",
+                "message": "======== SERVER STARTED ========",
+                "namespace": "default",
+                "pod": "trino-coordinator-default-0",
+                "role": "coordinator",
+                "roleGroup": "default",
+                "thread": "main",
+                # `timestamp` is the airlift `timestamp` field parsed to a real timestamp value
+                # (nanosecond precision preserved). Asserted as a timestamp literal, not a string.
+                "timestamp": t'2024-01-01T00:00:00.123456789Z'
+              }
+
+              assert_eq!(expected_log_event, .)

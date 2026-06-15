@@ -1,0 +1,163 @@
+---
+data_dir: ${DATA_DIR}
+
+log_schema:
+  host_key: pod
+
+sources:
+  # Reads the internal Vector logs
+  vector:
+    type: internal_logs
+
+  files_stdout:
+    type: file
+    include:
+      - ${LOG_DIR}/*/*.stdout.log
+
+  files_stderr:
+    type: file
+    include:
+      - ${LOG_DIR}/*/*.stderr.log
+
+  # Trino logs in the airlift JSON format (see `log.path` / `server.airlift.json`).
+  files_airlift:
+    type: file
+    include:
+      - ${LOG_DIR}/*/*.airlift.json
+
+transforms:
+  processed_files_stdout:
+    inputs:
+      - files_stdout
+    type: remap
+    source: |
+      .logger = "ROOT"
+      .level = "INFO"
+
+  processed_files_stderr:
+    inputs:
+      - files_stderr
+    type: remap
+    source: |
+      .logger = "ROOT"
+      .level = "ERROR"
+
+  processed_files_airlift:
+    inputs:
+      - files_airlift
+    type: remap
+    source: |
+      raw_message = string!(.message)
+
+      .timestamp = now()
+      .logger = ""
+      .level = "INFO"
+      .message = ""
+      .errors = []
+
+      parsed_event, err = parse_json(raw_message)
+      if err != null {
+        error = "JSON not parsable: " + err
+        .errors = push(.errors, error)
+        log(error, level: "warn")
+        .message = raw_message
+      } else if !is_object(parsed_event) {
+        error = "Parsed event is not a JSON object."
+        .errors = push(.errors, error)
+        log(error, level: "warn")
+        .message = raw_message
+      } else {
+        event = object!(parsed_event)
+
+        timestamp_string, err = string(event.timestamp)
+        if err == null {
+          parsed_timestamp, err = parse_timestamp(timestamp_string, "%Y-%m-%dT%H:%M:%S.%fZ")
+          if err == null {
+            .timestamp = parsed_timestamp
+          } else {
+            .errors = push(.errors, "Timestamp not parsable, using current time instead: " + err)
+          }
+        } else {
+          .errors = push(.errors, "Timestamp not found, using current time instead.")
+        }
+
+        .logger, err = string(event.logger)
+        if err != null || is_empty(.logger) {
+          .errors = push(.errors, "Logger not found.")
+        }
+
+        level, err = string(event.level)
+        if err != null {
+          .errors = push(.errors, "Level not found, using \"" + .level + "\" instead.")
+        } else if !includes(["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"], level) {
+          .errors = push(.errors, "Level \"" + level + "\" unknown, using \"" + .level + "\" instead.")
+        } else {
+          .level = level
+        }
+
+        .thread = string(parsed_event.thread) ?? null
+
+        .message, err = string(event.message)
+        if err != null || is_empty(.message) {
+          .errors = push(.errors, "Message not found.")
+        }
+        stacktrace = string(event.stackTrace) ?? ""
+        .message = join!(compact([.message, stacktrace]), "\n\n")
+      }
+
+  # Extends the processed files with the fields "container" and "file"
+  extended_logs_files:
+    inputs:
+      - processed_files_*
+    type: remap
+    source: |
+      del(.source_type)
+      if .errors == [] {
+        del(.errors)
+      }
+      . |= parse_regex!(.file, r'^${LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
+
+  # Filters the logs of the Vector agent according to the defined log level
+  filtered_logs_vector:
+    inputs:
+      - vector
+    type: filter
+    condition: >
+      (.metadata.level == "TRACE" && "${VECTOR_FILE_LOG_LEVEL}" == "trace") ||
+      (.metadata.level == "DEBUG" && includes(["trace", "debug"], "${VECTOR_FILE_LOG_LEVEL}")) ||
+      (.metadata.level == "INFO" && includes(["trace", "debug", "info"], "${VECTOR_FILE_LOG_LEVEL}")) ||
+      (.metadata.level == "WARN" && includes(["trace", "debug", "info", "warn"], "${VECTOR_FILE_LOG_LEVEL}")) ||
+      (.metadata.level == "ERROR" && includes(["trace", "debug", "info", "warn", "error"], "${VECTOR_FILE_LOG_LEVEL}"))
+
+  # Aligns the logs of the Vector agent with the common format
+  extended_logs_vector:
+    inputs:
+      - filtered_logs_vector
+    type: remap
+    source: |
+      .container = "vector"
+      .level = .metadata.level
+      .logger = .metadata.module_path
+      if exists(.file) { .processed_file = del(.file) }
+      del(.metadata)
+      del(.pid)
+      del(.source_type)
+
+  # Add the fields "namespace", "cluster", "role" and "roleGroup" to all logs
+  extended_logs:
+    inputs:
+      - extended_logs_*
+    type: remap
+    source: |
+      .namespace = "${NAMESPACE}"
+      .cluster = "${CLUSTER_NAME}"
+      .role = "${ROLE_NAME}"
+      .roleGroup = "${ROLE_GROUP_NAME}"
+
+sinks:
+  # Forward the logs to the Vector aggregator
+  aggregator:
+    inputs:
+      - extended_logs
+    type: vector
+    address: ${VECTOR_AGGREGATOR_ADDRESS}
