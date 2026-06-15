@@ -546,15 +546,6 @@ impl v1alpha1::TrinoCluster {
         }
     }
 
-    pub fn num_workers(&self) -> u16 {
-        self.spec
-            .workers
-            .iter()
-            .flat_map(|w| w.role_groups.values())
-            .map(|rg| rg.replicas.unwrap_or(1))
-            .sum()
-    }
-
     /// List all coordinator pods expected to form the cluster
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to

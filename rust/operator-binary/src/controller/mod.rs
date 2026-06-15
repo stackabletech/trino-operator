@@ -12,10 +12,14 @@ use stackable_operator::{
     kube::{Resource, api::ObjectMeta},
     shared::time::Duration,
     v2::{
+        HasName, HasUid, NameIsValidLabelValue,
         role_group_utils::ResourceNames,
         types::{
             kubernetes::{NamespaceName, Uid},
-            operator::{ClusterName, RoleGroupName as RoleGroupNameV2, RoleName},
+            operator::{
+                ClusterName, ControllerName, OperatorName, ProductName,
+                RoleGroupName as RoleGroupNameV2, RoleName,
+            },
         },
     },
 };
@@ -29,9 +33,10 @@ use crate::{
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
     },
     crd::{
-        HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, TrinoRole, discovery::TrinoPodRef,
-        v1alpha1,
+        APP_NAME, HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, TrinoRole,
+        discovery::TrinoPodRef, v1alpha1,
     },
+    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
 };
 
 pub(crate) mod build;
@@ -202,6 +207,39 @@ impl Resource for ValidatedCluster {
     fn meta_mut(&mut self) -> &mut ObjectMeta {
         &mut self.metadata
     }
+}
+
+impl HasName for ValidatedCluster {
+    fn to_name(&self) -> String {
+        self.name.to_string()
+    }
+}
+
+impl HasUid for ValidatedCluster {
+    fn to_uid(&self) -> Uid {
+        self.uid.clone()
+    }
+}
+
+impl NameIsValidLabelValue for ValidatedCluster {
+    fn to_label_value(&self) -> String {
+        self.name.to_label_value()
+    }
+}
+
+/// The product name (`trino`) as a type-safe label value.
+pub(crate) fn product_name() -> ProductName {
+    ProductName::from_str(APP_NAME).expect("'trino' is a valid product name")
+}
+
+/// The operator name as a type-safe label value.
+pub(crate) fn operator_name() -> OperatorName {
+    OperatorName::from_str(OPERATOR_NAME).expect("the operator name is a valid label value")
+}
+
+/// The controller name as a type-safe label value.
+pub(crate) fn controller_name() -> ControllerName {
+    ControllerName::from_str(CONTROLLER_NAME).expect("the controller name is a valid label value")
 }
 
 /// A minimal, valid TrinoCluster spec shared across unit tests.

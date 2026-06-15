@@ -5,10 +5,10 @@ use const_format::concatcp;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
-    cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
+    cluster_resources::ClusterResourceApplyStrategy,
     commons::{random_secret_creation, rbac::build_rbac_resources},
     kube::{
-        Resource, ResourceExt,
+        ResourceExt,
         core::{DeserializeGuard, error_boundary},
         runtime::controller::Action,
     },
@@ -21,6 +21,7 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
+    v2::cluster_resources::cluster_resources_new,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -35,7 +36,7 @@ use crate::{
                 headless_service_ports,
             },
         },
-        dereference, validate,
+        controller_name, dereference, operator_name, product_name, validate,
     },
     crd::{APP_NAME, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1},
 };
@@ -63,11 +64,6 @@ pub(crate) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 #[strum_discriminants(derive(IntoStaticStr))]
 #[allow(clippy::enum_variant_names)]
 pub enum Error {
-    #[snafu(display("failed to create cluster resources"))]
-    CreateClusterResources {
-        source: stackable_operator::cluster_resources::Error,
-    },
-
     #[snafu(display("failed to delete orphaned resources"))]
     DeleteOrphanedResources {
         source: stackable_operator::cluster_resources::Error,
@@ -122,9 +118,6 @@ pub enum Error {
     BuildRbacResources {
         source: stackable_operator::commons::rbac::Error,
     },
-
-    #[snafu(display("failed to create PodDisruptionBudget"))]
-    FailedToCreatePdb { source: build::resource::pdb::Error },
 
     #[snafu(display("failed to apply PodDisruptionBudget"))]
     ApplyPdb {
@@ -211,15 +204,16 @@ pub async fn reconcile_trino(
         "Validated TrinoCluster"
     );
 
-    let mut cluster_resources = ClusterResources::new(
-        APP_NAME,
-        OPERATOR_NAME,
-        CONTROLLER_NAME,
-        &trino.object_ref(&()),
+    let mut cluster_resources = cluster_resources_new(
+        &product_name(),
+        &operator_name(),
+        &controller_name(),
+        &validated_cluster.name,
+        &validated_cluster.namespace,
+        &validated_cluster.uid,
         ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
         &trino.spec.object_overrides,
-    )
-    .context(CreateClusterResourcesSnafu)?;
+    );
 
     let (rbac_sa, rbac_rolebinding) = build_rbac_resources(
         trino,
@@ -407,7 +401,7 @@ pub async fn reconcile_trino(
         if let Some(GenericRoleConfig {
             pod_disruption_budget: pdb,
         }) = role_config
-            && let Some(pdb) = build_pdb(pdb, trino, trino_role).context(FailedToCreatePdbSnafu)?
+            && let Some(pdb) = build_pdb(pdb, &validated_cluster, trino_role)
         {
             cluster_resources
                 .add(client, pdb)

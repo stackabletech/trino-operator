@@ -1,54 +1,55 @@
-use std::cmp::max;
+use std::{cmp::max, str::FromStr};
 
-use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    builder::pdb::PodDisruptionBudgetBuilder, commons::pdb::PdbConfig,
+    commons::pdb::PdbConfig,
     k8s_openapi::api::policy::v1::PodDisruptionBudget,
+    v2::{builder::pdb::pod_disruption_budget_builder_with_role, types::operator::RoleName},
 };
 
 use crate::{
-    crd::{APP_NAME, TrinoRole, v1alpha1},
-    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
+    controller::{ValidatedCluster, controller_name, operator_name, product_name},
+    crd::TrinoRole,
 };
-
-#[derive(Snafu, Debug)]
-pub enum Error {
-    #[snafu(display("cannot create PodDisruptionBudget for role [{role}]"))]
-    CreatePdb {
-        source: stackable_operator::builder::pdb::Error,
-        role: String,
-    },
-}
 
 /// Builds the [`PodDisruptionBudget`] for the given `role`, or `None` if PDBs are disabled.
 ///
 /// The reconciler applies the returned object; this function does not touch the cluster.
 pub fn build_pdb(
     pdb: &PdbConfig,
-    trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     role: &TrinoRole,
-) -> Result<Option<PodDisruptionBudget>, Error> {
+) -> Option<PodDisruptionBudget> {
     if !pdb.enabled {
-        return Ok(None);
+        return None;
     }
     let max_unavailable = pdb.max_unavailable.unwrap_or(match role {
         TrinoRole::Coordinator => max_unavailable_coordinators(),
-        TrinoRole::Worker => max_unavailable_workers(trino.num_workers()),
+        TrinoRole::Worker => max_unavailable_workers(worker_count(cluster)),
     });
-    let pdb = PodDisruptionBudgetBuilder::new_with_role(
-        trino,
-        APP_NAME,
-        &role.to_string(),
-        OPERATOR_NAME,
-        CONTROLLER_NAME,
+    let role_name =
+        RoleName::from_str(&role.to_string()).expect("a TrinoRole is a valid RFC 1123 role name");
+    let pdb = pod_disruption_budget_builder_with_role(
+        cluster,
+        &product_name(),
+        &role_name,
+        &operator_name(),
+        &controller_name(),
     )
-    .with_context(|_| CreatePdbSnafu {
-        role: role.to_string(),
-    })?
     .with_max_unavailable(max_unavailable)
     .build();
 
-    Ok(Some(pdb))
+    Some(pdb)
+}
+
+/// Total number of worker replicas across all worker role groups.
+fn worker_count(cluster: &ValidatedCluster) -> u16 {
+    cluster
+        .role_group_configs
+        .get(&TrinoRole::Worker)
+        .into_iter()
+        .flat_map(|groups| groups.values())
+        .map(|rg| rg.replicas)
+        .sum()
 }
 
 fn max_unavailable_coordinators() -> u16 {
