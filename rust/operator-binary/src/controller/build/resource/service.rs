@@ -4,7 +4,7 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::meta::ObjectMetaBuilder,
     k8s_openapi::api::core::v1::{Service, ServicePort, ServiceSpec},
-    kvp::{Annotations, Labels, ObjectLabels},
+    kvp::{Annotations, Labels},
 };
 
 use crate::{
@@ -18,11 +18,6 @@ pub enum Error {
     ObjectMissingMetadataForOwnerRef {
         source: stackable_operator::builder::meta::Error,
     },
-
-    #[snafu(display("failed to build Metadata"))]
-    MetadataBuild {
-        source: stackable_operator::builder::meta::Error,
-    },
 }
 
 /// The rolegroup headless [`Service`] is a service that allows direct access to the instances of a certain rolegroup
@@ -31,7 +26,7 @@ pub fn build_rolegroup_headless_service(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
     role_group_name: &str,
-    object_labels: &ObjectLabels<ValidatedCluster>,
+    recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
     ports: Vec<ServicePort>,
 ) -> Result<Service, Error> {
@@ -46,8 +41,7 @@ pub fn build_rolegroup_headless_service(
             )
             .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(object_labels)
-            .context(MetadataBuildSnafu)?
+            .with_labels(recommended_labels.clone())
             .build(),
         spec: Some(ServiceSpec {
             // Internal communication does not need to be exposed
@@ -67,7 +61,7 @@ pub fn build_rolegroup_metrics_service(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
     role_group_name: &str,
-    object_labels: &ObjectLabels<ValidatedCluster>,
+    recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
 ) -> Result<Service, Error> {
     Ok(Service {
@@ -81,8 +75,7 @@ pub fn build_rolegroup_metrics_service(
             )
             .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(object_labels)
-            .context(MetadataBuildSnafu)?
+            .with_labels(recommended_labels.clone())
             .with_labels(prometheus_labels())
             .with_annotations(prometheus_annotations())
             .build(),

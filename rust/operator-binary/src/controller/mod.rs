@@ -10,14 +10,16 @@ use stackable_operator::{
         resources::{NoRuntimeLimits, Resources},
     },
     kube::{Resource, api::ObjectMeta},
+    kvp::Labels,
     shared::time::Duration,
     v2::{
         HasName, HasUid, NameIsValidLabelValue,
+        kvp::label::{recommended_labels, role_group_selector},
         role_group_utils::ResourceNames,
         types::{
             kubernetes::{NamespaceName, Uid},
             operator::{
-                ClusterName, ControllerName, OperatorName, ProductName,
+                ClusterName, ControllerName, OperatorName, ProductName, ProductVersion,
                 RoleGroupName as RoleGroupNameV2, RoleName,
             },
         },
@@ -172,11 +174,70 @@ impl ValidatedCluster {
     pub(crate) fn resource_names(&self, role: &TrinoRole, role_group_name: &str) -> ResourceNames {
         ResourceNames {
             cluster_name: self.name.clone(),
-            role_name: RoleName::from_str(&role.to_string())
-                .expect("a TrinoRole is a valid RFC 1123 role name"),
-            role_group_name: RoleGroupNameV2::from_str(role_group_name)
-                .expect("a validated role group name is a valid role group name"),
+            role_name: Self::role_name(role),
+            role_group_name: Self::role_group_name(role_group_name),
         }
+    }
+
+    /// A [`TrinoRole`] as a type-safe [`RoleName`].
+    fn role_name(role: &TrinoRole) -> RoleName {
+        RoleName::from_str(&role.to_string()).expect("a TrinoRole is a valid RFC 1123 role name")
+    }
+
+    /// A role-group name as a type-safe [`RoleGroupName`](RoleGroupNameV2).
+    fn role_group_name(role_group_name: &str) -> RoleGroupNameV2 {
+        RoleGroupNameV2::from_str(role_group_name)
+            .expect("a validated role group name is a valid role group name")
+    }
+
+    /// The version label value (`app.kubernetes.io/version`) as a type-safe [`ProductVersion`].
+    fn version_label(&self) -> ProductVersion {
+        ProductVersion::from_str(&self.image.app_version_label_value)
+            .expect("the app version label value is a valid product version")
+    }
+
+    fn recommended_labels_with_version(
+        &self,
+        version: &ProductVersion,
+        role: &TrinoRole,
+        role_group_name: &str,
+    ) -> Labels {
+        recommended_labels(
+            self,
+            &product_name(),
+            version,
+            &operator_name(),
+            &controller_name(),
+            &Self::role_name(role),
+            &Self::role_group_name(role_group_name),
+        )
+    }
+
+    /// Recommended labels for a role-group resource (using the resolved product version).
+    pub(crate) fn recommended_labels(&self, role: &TrinoRole, role_group_name: &str) -> Labels {
+        self.recommended_labels_with_version(&self.version_label(), role, role_group_name)
+    }
+
+    /// Recommended labels using a fixed `"none"` version, for resources whose labels must not
+    /// change after creation (e.g. listener PVC templates).
+    pub(crate) fn unversioned_recommended_labels(
+        &self,
+        role: &TrinoRole,
+        role_group_name: &str,
+    ) -> Labels {
+        let none = ProductVersion::from_str("none")
+            .expect("\"none\" is a valid product version label value");
+        self.recommended_labels_with_version(&none, role, role_group_name)
+    }
+
+    /// Selector labels matching the pods of a role group.
+    pub(crate) fn role_group_selector(&self, role: &TrinoRole, role_group_name: &str) -> Labels {
+        role_group_selector(
+            self,
+            &product_name(),
+            &Self::role_name(role),
+            &Self::role_group_name(role_group_name),
+        )
     }
 }
 

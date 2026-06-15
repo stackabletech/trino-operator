@@ -6,7 +6,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder},
     k8s_openapi::api::core::v1::ConfigMap,
-    kvp::ObjectLabels,
+    kvp::Labels,
     product_logging::framework::VECTOR_CONFIG_FILE,
     utils::cluster_info::KubernetesClusterInfo,
     v2::config_file_writer::to_java_properties_string,
@@ -64,7 +64,7 @@ pub fn build_rolegroup_config_map(
     role: &TrinoRole,
     role_group_name: &str,
     cluster_info: &KubernetesClusterInfo,
-    recommended_labels: &ObjectLabels<'_, ValidatedCluster>,
+    recommended_labels: &Labels,
 ) -> Result<ConfigMap> {
     let role_group_configs =
         cluster
@@ -196,8 +196,7 @@ pub fn build_rolegroup_config_map(
                 .namespace(cluster.namespace.to_string())
                 .ownerreference_from_resource(cluster, None, Some(true))
                 .context(MetadataSnafu)?
-                .with_recommended_labels(recommended_labels)
-                .context(MetadataSnafu)?
+                .with_labels(recommended_labels.clone())
                 .build(),
         )
         .data(data)
@@ -213,7 +212,7 @@ pub fn build_rolegroup_catalog_config_map(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
     role_group_name: &str,
-    recommended_labels: &ObjectLabels<'_, ValidatedCluster>,
+    recommended_labels: &Labels,
 ) -> Result<ConfigMap> {
     let catalog_config_map_name = format!(
         "{}-catalog",
@@ -228,8 +227,7 @@ pub fn build_rolegroup_catalog_config_map(
                 .namespace(cluster.namespace.to_string())
                 .ownerreference_from_resource(cluster, None, Some(true))
                 .context(MetadataSnafu)?
-                .with_recommended_labels(recommended_labels)
-                .context(MetadataSnafu)?
+                .with_labels(recommended_labels.clone())
                 .build(),
         )
         .data(

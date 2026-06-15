@@ -12,7 +12,6 @@ use stackable_operator::{
         core::{DeserializeGuard, error_boundary},
         runtime::controller::Action,
     },
-    kvp::{Labels, ObjectLabels},
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
     role_utils::GenericRoleConfig,
@@ -260,19 +259,13 @@ pub async fn reconcile_trino(
 
     for (trino_role, role_group_configs) in &validated_cluster.role_group_configs {
         for (role_group_name, rg) in role_group_configs {
-            let role_name = trino_role.to_string();
             let merged_config = &rg.config;
 
-            let role_group_service_recommended_labels = build_recommended_labels(
-                &validated_cluster,
-                &validated_cluster.image.app_version_label_value,
-                &role_name,
-                role_group_name,
-            );
+            let role_group_service_recommended_labels =
+                validated_cluster.recommended_labels(trino_role, role_group_name);
 
             let role_group_service_selector =
-                Labels::role_group_selector(trino, APP_NAME, &role_name, role_group_name)
-                    .context(LabelBuildSnafu)?;
+                validated_cluster.role_group_selector(trino_role, role_group_name);
 
             let rg_headless_service = build_rolegroup_headless_service(
                 &validated_cluster,
@@ -380,12 +373,7 @@ pub async fn reconcile_trino(
         {
             let role_group_listener = build_group_listener(
                 &validated_cluster,
-                build_recommended_labels(
-                    &validated_cluster,
-                    &validated_cluster.image.app_version_label_value,
-                    &trino_role.to_string(),
-                    "none",
-                ),
+                validated_cluster.recommended_labels(trino_role, "none"),
                 listener_class.to_string(),
                 listener_group_name,
             )
@@ -440,23 +428,6 @@ pub fn error_policy(
     match error {
         Error::InvalidTrinoCluster { .. } => Action::await_change(),
         _ => Action::requeue(*Duration::from_secs(5)),
-    }
-}
-
-pub(crate) fn build_recommended_labels<'a, T>(
-    owner: &'a T,
-    app_version: &'a str,
-    role: &'a str,
-    role_group: &'a str,
-) -> ObjectLabels<'a, T> {
-    ObjectLabels {
-        owner,
-        app_name: APP_NAME,
-        app_version,
-        operator_name: OPERATOR_NAME,
-        controller_name: CONTROLLER_NAME,
-        role,
-        role_group,
     }
 }
 
@@ -559,14 +530,8 @@ mod tests {
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         let trino_role = TrinoRole::Coordinator;
-        let role_name = trino_role.to_string();
         let role_group_name = "default";
-        let recommended_labels = build_recommended_labels(
-            &validated_cluster,
-            &validated_cluster.image.app_version_label_value,
-            &role_name,
-            role_group_name,
-        );
+        let recommended_labels = validated_cluster.recommended_labels(&trino_role, role_group_name);
 
         build::resource::config_map::build_rolegroup_config_map(
             &validated_cluster,

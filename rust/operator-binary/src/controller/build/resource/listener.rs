@@ -7,7 +7,7 @@ use stackable_operator::{
     crd::listener::v1alpha1::{Listener, ListenerPort, ListenerSpec},
     k8s_openapi::api::core::v1::PersistentVolumeClaim,
     kube::ResourceExt,
-    kvp::{Labels, ObjectLabels},
+    kvp::Labels,
 };
 
 use crate::{
@@ -25,11 +25,6 @@ pub enum Error {
         source: stackable_operator::builder::meta::Error,
     },
 
-    #[snafu(display("failed to build listener object meta data"))]
-    BuildObjectMeta {
-        source: stackable_operator::builder::meta::Error,
-    },
-
     #[snafu(display("failed to build listener volume"))]
     BuildListenerPersistentVolume {
         source: stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilderError,
@@ -38,7 +33,7 @@ pub enum Error {
 
 pub fn build_group_listener(
     cluster: &ValidatedCluster,
-    object_labels: ObjectLabels<ValidatedCluster>,
+    recommended_labels: Labels,
     listener_class: String,
     listener_group_name: String,
 ) -> Result<Listener, Error> {
@@ -48,8 +43,7 @@ pub fn build_group_listener(
             .name(listener_group_name)
             .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(&object_labels)
-            .context(BuildObjectMetaSnafu)?
+            .with_labels(recommended_labels)
             .build(),
         spec: ListenerSpec {
             class_name: Some(listener_class),

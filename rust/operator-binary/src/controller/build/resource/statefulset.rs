@@ -30,7 +30,7 @@ use stackable_operator::{
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
     },
-    kvp::{Annotation, Annotations, Labels},
+    kvp::{Annotation, Annotations},
     product_logging,
     shared::time::Duration,
     v2::{
@@ -54,7 +54,7 @@ use crate::{
         },
     },
     crd::{
-        APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
+        CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
         HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
         METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
@@ -63,7 +63,7 @@ use crate::{
     },
     trino_controller::{
         MAX_PREPARE_LOG_FILE_SIZE, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
-        build_recommended_labels, shared_internal_secret_name, shared_spooling_secret_name,
+        shared_internal_secret_name, shared_spooling_secret_name,
     },
 };
 
@@ -168,7 +168,6 @@ pub fn build_rolegroup_statefulset(
         .rolegroup(trino_role, role_group_name)
         .context(InternalOperatorFailureSnafu)?;
 
-    let role_name = trino_role.to_string();
     let resource_names = cluster.resource_names(trino_role, role_group_name);
     let config_map_name = resource_names.role_group_config_map().to_string();
 
@@ -326,15 +325,10 @@ pub fn build_rolegroup_statefulset(
             .add_volume_mount(LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
             .context(AddVolumeMountSnafu)?;
 
-        // Used for PVC templates that cannot be modified once they are deployed
-        let unversioned_recommended_labels = Labels::recommended(&build_recommended_labels(
-            trino,
-            // A version value is required, and we do want to use the "recommended" format for the other desired labels
-            "none",
-            &role_name,
-            role_group_name,
-        ))
-        .context(LabelBuildSnafu)?;
+        // Used for PVC templates that cannot be modified once they are deployed, so a fixed
+        // "none" version is used while keeping the other recommended labels.
+        let unversioned_recommended_labels =
+            cluster.unversioned_recommended_labels(trino_role, role_group_name);
 
         persistent_volume_claims.push(
             build_group_listener_pvc(&group_listener_name, &unversioned_recommended_labels)
@@ -407,13 +401,7 @@ pub fn build_rolegroup_statefulset(
     }
 
     let metadata = ObjectMetaBuilder::new()
-        .with_recommended_labels(&build_recommended_labels(
-            trino,
-            &resolved_product_image.app_version_label_value,
-            &role_name,
-            role_group_name,
-        ))
-        .context(MetadataBuildSnafu)?
+        .with_labels(cluster.recommended_labels(trino_role, role_group_name))
         .with_annotation(
             // This is actually used by some kuttl tests (as they don't specify the container explicitly)
             Annotation::try_from(("kubectl.kubernetes.io/default-container", "trino"))
@@ -481,13 +469,7 @@ pub fn build_rolegroup_statefulset(
             .name(resource_names.stateful_set_name().to_string())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
-            .with_recommended_labels(&build_recommended_labels(
-                trino,
-                &resolved_product_image.app_version_label_value,
-                &role_name,
-                role_group_name,
-            ))
-            .context(MetadataBuildSnafu)?
+            .with_labels(cluster.recommended_labels(trino_role, role_group_name))
             .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
             .with_annotations(annotations)
             .build(),
@@ -496,8 +478,8 @@ pub fn build_rolegroup_statefulset(
             replicas: rolegroup.replicas.map(i32::from),
             selector: LabelSelector {
                 match_labels: Some(
-                    Labels::role_group_selector(trino, APP_NAME, &role_name, role_group_name)
-                        .context(LabelBuildSnafu)?
+                    cluster
+                        .role_group_selector(trino_role, role_group_name)
                         .into(),
                 ),
                 ..LabelSelector::default()
