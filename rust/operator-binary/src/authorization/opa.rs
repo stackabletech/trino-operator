@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
 use stackable_operator::{
     client::Client, commons::opa::OpaApiVersion, k8s_openapi::api::core::v1::ConfigMap,
-    kube::ResourceExt,
+    kube::ResourceExt, v2::types::kubernetes::SecretClassName,
 };
 
 use crate::crd::v1alpha1;
@@ -34,7 +34,7 @@ pub struct TrinoOpaConfig {
     /// Optional TLS secret class for OPA communication.
     /// If set, the CA certificate from this secret class will be added
     /// to Trino's truststore to make it trust OPA's TLS certificate.
-    pub(crate) tls_secret_class: Option<String>,
+    pub(crate) tls_secret_class: Option<SecretClassName>,
 }
 
 impl TrinoOpaConfig {
@@ -93,7 +93,8 @@ impl TrinoOpaConfig {
             .await
             .ok()
             .and_then(|cm| cm.data)
-            .and_then(|mut data| data.remove("OPA_SECRET_CLASS"));
+            .and_then(|mut data| data.remove("OPA_SECRET_CLASS"))
+            .and_then(|secret_class| SecretClassName::from_str(&secret_class).ok());
 
         Ok(TrinoOpaConfig {
             non_batched_connection_string,

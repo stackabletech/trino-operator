@@ -743,7 +743,7 @@ fn tls_volume_mounts(
         let opa_tls_volume = VolumeBuilder::new(OPA_TLS_VOLUME_NAME)
             .ephemeral(
                 SecretOperatorVolumeSourceBuilder::new(
-                    tls_secret_class,
+                    tls_secret_class.as_ref(),
                     SecretClassVolumeProvisionParts::PublicPrivate,
                 )
                 .build()
