@@ -39,7 +39,7 @@ pub fn get_affinity(
             .map(|hive_cluster_name| {
                 affinity_between_role_pods(
                     "hive",
-                    hive_cluster_name, // The discovery cm has the same name as the HiveCluster itself
+                    hive_cluster_name.as_ref(), // The discovery cm has the same name as the HiveCluster itself
                     "metastore",
                     50,
                 )
@@ -67,7 +67,7 @@ pub fn get_affinity(
             .map(|hdfs_cluster_name| {
                 affinity_between_role_pods(
                     "hdfs",
-                    hdfs_cluster_name, // The discovery cm has the same name as the HdfsCluster itself
+                    hdfs_cluster_name.as_ref(), // The discovery cm has the same name as the HdfsCluster itself
                     "datanode",
                     50,
                 )

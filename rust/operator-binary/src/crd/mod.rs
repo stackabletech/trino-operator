@@ -37,7 +37,7 @@ use stackable_operator::{
         role_group_utils::ResourceNames,
         role_utils::JavaCommonConfig,
         types::{
-            kubernetes::NamespaceName,
+            kubernetes::{ConfigMapName, ListenerClassName, NamespaceName, SecretClassName},
             operator::{ClusterName, RoleGroupName, RoleName},
         },
     },
@@ -174,7 +174,7 @@ pub mod versioned {
 
         /// This field controls which [ListenerClass](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass.html) is used to expose the coordinator.
         #[serde(default = "coordinator_default_listener_class")]
-        pub listener_class: String,
+        pub listener_class: ListenerClassName,
     }
 
     #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, Merge, PartialEq, Serialize)]
@@ -292,7 +292,7 @@ pub mod versioned {
         /// Follow the [logging tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/logging-vector-aggregator)
         /// to learn how to configure log aggregation with Vector.
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub vector_aggregator_config_map_name: Option<String>,
+        pub vector_aggregator_config_map_name: Option<ConfigMapName>,
     }
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -328,7 +328,7 @@ pub mod versioned {
             default = "tls_secret_class_default",
             skip_serializing_if = "Option::is_none"
         )]
-        pub server_secret_class: Option<String>,
+        pub server_secret_class: Option<SecretClassName>,
         /// Only affects internal communication. Use mutual verification between Trino nodes
         /// This setting controls:
         /// - Which cert the servers should use to authenticate themselves against other servers
@@ -337,7 +337,7 @@ pub mod versioned {
             default = "tls_secret_class_default",
             skip_serializing_if = "Option::is_none"
         )]
-        pub internal_secret_class: Option<String>,
+        pub internal_secret_class: Option<SecretClassName>,
     }
 
     #[derive(Clone, Debug, Default, JsonSchema, PartialEq, Fragment)]
@@ -379,8 +379,9 @@ impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
     }
 }
 
-fn coordinator_default_listener_class() -> String {
-    "cluster-internal".to_string()
+fn coordinator_default_listener_class() -> ListenerClassName {
+    ListenerClassName::from_str("cluster-internal")
+        .expect("the default listener class name must be valid")
 }
 
 impl Default for v1alpha1::TrinoTls {
@@ -392,8 +393,11 @@ impl Default for v1alpha1::TrinoTls {
     }
 }
 
-fn tls_secret_class_default() -> Option<String> {
-    Some(TLS_DEFAULT_SECRET_CLASS.to_string())
+fn tls_secret_class_default() -> Option<SecretClassName> {
+    Some(
+        SecretClassName::from_str(TLS_DEFAULT_SECRET_CLASS)
+            .expect("the default TLS SecretClass name must be valid"),
+    )
 }
 
 #[derive(
@@ -419,7 +423,7 @@ pub enum TrinoRole {
 }
 
 impl TrinoRole {
-    pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<String> {
+    pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<ListenerClassName> {
         match self {
             Self::Coordinator => trino
                 .spec
@@ -606,7 +610,11 @@ impl v1alpha1::TrinoCluster {
     /// Return user provided server TLS settings
     pub fn get_server_tls(&self) -> Option<&str> {
         let spec: &v1alpha1::TrinoClusterSpec = &self.spec;
-        spec.cluster_config.tls.server_secret_class.as_deref()
+        spec.cluster_config
+            .tls
+            .server_secret_class
+            .as_ref()
+            .map(|secret_class| secret_class.as_ref())
     }
 
     /// Return if client TLS should be set depending on settings for authentication and client TLS.
@@ -617,7 +625,11 @@ impl v1alpha1::TrinoCluster {
     /// Return user provided internal TLS settings.
     pub fn get_internal_tls(&self) -> Option<&str> {
         let spec: &v1alpha1::TrinoClusterSpec = &self.spec;
-        spec.cluster_config.tls.internal_secret_class.as_deref()
+        spec.cluster_config
+            .tls
+            .internal_secret_class
+            .as_ref()
+            .map(|secret_class| secret_class.as_ref())
     }
 }
 

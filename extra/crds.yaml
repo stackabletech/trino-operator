@@ -354,6 +354,9 @@ spec:
                                     properties:
                                       configMap:
                                         description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                                        maxLength: 253
+                                        minLength: 1
+                                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                         type: string
                                     required:
                                     - configMap
@@ -638,6 +641,9 @@ spec:
                                     properties:
                                       configMap:
                                         description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                                        maxLength: 253
+                                        minLength: 1
+                                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                         type: string
                                     required:
                                     - configMap
@@ -898,7 +904,10 @@ spec:
                           This setting controls:
                           - Which cert the servers should use to authenticate themselves against other servers
                           - Which ca.crt to use when validating the other server
+                        maxLength: 253
+                        minLength: 1
                         nullable: true
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                         type: string
                       serverSecretClass:
                         default: tls
@@ -907,7 +916,10 @@ spec:
                           This setting controls:
                           - If TLS encryption is used at all
                           - Which cert the servers should use to authenticate themselves against the client
+                        maxLength: 253
+                        minLength: 1
                         nullable: true
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                         type: string
                     type: object
                   vectorAggregatorConfigMapName:
@@ -916,7 +928,10 @@ spec:
                       It must contain the key `ADDRESS` with the address of the Vector aggregator.
                       Follow the [logging tutorial](https://docs.stackable.tech/home/nightly/tutorials/logging-vector-aggregator)
                       to learn how to configure log aggregation with Vector.
+                    maxLength: 253
+                    minLength: 1
                     nullable: true
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                     type: string
                 required:
                 - catalogLabelSelector
@@ -1529,6 +1544,9 @@ spec:
                       listenerClass:
                         default: cluster-internal
                         description: This field controls which [ListenerClass](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass.html) is used to expose the coordinator.
+                        maxLength: 253
+                        minLength: 1
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                         type: string
                       podDisruptionBudget:
                         default:
@@ -3517,6 +3535,9 @@ spec:
                         properties:
                           configMap:
                             description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                            maxLength: 253
+                            minLength: 1
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                         required:
                         - configMap
@@ -3526,6 +3547,9 @@ spec:
                         properties:
                           configMap:
                             description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
+                            maxLength: 253
+                            minLength: 1
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                         required:
                         - configMap
@@ -3787,6 +3811,9 @@ spec:
                         properties:
                           configMap:
                             description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                            maxLength: 253
+                            minLength: 1
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                         required:
                         - configMap
@@ -3796,6 +3823,9 @@ spec:
                         properties:
                           configMap:
                             description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
+                            maxLength: 253
+                            minLength: 1
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                         required:
                         - configMap
@@ -3966,6 +3996,9 @@ spec:
                         properties:
                           configMap:
                             description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the HDFS cluster.
+                            maxLength: 253
+                            minLength: 1
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                         required:
                         - configMap
@@ -3980,6 +4013,9 @@ spec:
                         properties:
                           configMap:
                             description: Name of the [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) providing information about the Hive metastore.
+                            maxLength: 253
+                            minLength: 1
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                         required:
                         - configMap

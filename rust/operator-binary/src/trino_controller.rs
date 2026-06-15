@@ -150,11 +150,6 @@ pub enum Error {
         source: stackable_operator::cluster_resources::Error,
     },
 
-    #[snafu(display("failed to configure listener"))]
-    ListenerConfiguration {
-        source: build::resource::listener::Error,
-    },
-
     #[snafu(display("failed to create internal secret"))]
     CreateInternalSecret {
         source: random_secret_creation::Error,
@@ -369,8 +364,7 @@ pub async fn reconcile_trino(
                 validated_cluster.recommended_labels(trino_role, "none"),
                 listener_class.to_string(),
                 listener_group_name,
-            )
-            .context(ListenerConfigurationSnafu)?;
+            );
 
             cluster_resources
                 .add(client, role_group_listener)

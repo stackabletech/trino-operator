@@ -32,8 +32,8 @@ pub fn build_group_listener(
     recommended_labels: Labels,
     listener_class: String,
     listener_group_name: String,
-) -> Result<Listener, Error> {
-    Ok(Listener {
+) -> Listener {
+    Listener {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(cluster)
             .name(listener_group_name)
@@ -46,7 +46,7 @@ pub fn build_group_listener(
             ..ListenerSpec::default()
         },
         status: None,
-    })
+    }
 }
 
 pub fn build_group_listener_pvc(

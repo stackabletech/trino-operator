@@ -98,11 +98,6 @@ pub enum Error {
         "the Vector aggregator discovery ConfigMap name is required when the Vector agent is enabled"
     ))]
     MissingVectorAggregatorConfigMapName,
-
-    #[snafu(display("invalid Vector aggregator discovery ConfigMap name"))]
-    ParseVectorAggregatorConfigMapName {
-        source: stackable_operator::v2::macros::attributed_string_type::Error,
-    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -208,10 +203,7 @@ pub fn validate(
         .spec
         .cluster_config
         .vector_aggregator_config_map_name
-        .as_deref()
-        .map(ConfigMapName::from_str)
-        .transpose()
-        .context(ParseVectorAggregatorConfigMapNameSnafu)?;
+        .clone();
 
     let mut role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>> =
         BTreeMap::new();

@@ -37,7 +37,7 @@ impl ExtendCatalogConfig for MetastoreConnection {
         _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let hive_cm: ConfigMap = client
-            .get(&self.config_map, catalog_namespace.as_ref())
+            .get(self.config_map.as_ref(), catalog_namespace.as_ref())
             .await
             .with_context(|_| FailedToGetDiscoveryConfigMapSnafu {
                 catalog: catalog_name.to_string(),
