@@ -39,7 +39,7 @@ use stackable_operator::{
             statefulset::restarter_ignore_secret_annotations,
         },
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
-        types::kubernetes::{ContainerName, SecretName, VolumeName},
+        types::kubernetes::{ContainerName, VolumeName},
     },
 };
 
@@ -103,11 +103,6 @@ pub enum Error {
     #[snafu(display("failed to build Annotation"))]
     AnnotationBuild {
         source: stackable_operator::kvp::KeyValuePairError<Infallible>,
-    },
-
-    #[snafu(display("failed to parse hot-reloaded Secret name"))]
-    ParseSecretName {
-        source: stackable_operator::v2::macros::attributed_string_type::Error,
     },
 
     #[snafu(display("failed to build Metadata"))]
@@ -451,14 +446,12 @@ pub fn build_rolegroup_statefulset(
     pod_template.merge_from(role.config.pod_overrides.clone());
     pod_template.merge_from(rolegroup.config.pod_overrides.clone());
 
-    let ignore_secrets = trino_authentication_config
-        .hot_reloaded_secrets()
-        .iter()
-        .map(|secret_name| SecretName::from_str(secret_name))
-        .collect::<std::result::Result<Vec<_>, _>>()
-        .context(ParseSecretNameSnafu)?;
-
-    let annotations = restarter_ignore_secret_annotations(ignore_secrets);
+    let annotations = restarter_ignore_secret_annotations(
+        trino_authentication_config
+            .hot_reloaded_secrets()
+            .iter()
+            .cloned(),
+    );
 
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()

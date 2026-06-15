@@ -19,6 +19,7 @@ use stackable_operator::{
     crd::authentication::core,
     k8s_openapi::api::core::v1::{Container, EnvVar, Volume, VolumeMount},
     kube::{ResourceExt, runtime::reflector::ObjectRef},
+    v2::types::kubernetes::SecretName,
 };
 use strum::EnumDiscriminants;
 use tracing::trace;
@@ -95,7 +96,7 @@ pub struct TrinoAuthenticationConfig {
     /// Additional side car container for the provided role
     sidecar_containers: HashMap<TrinoRole, Vec<Container>>,
     /// Secrets which can be hot-reloaded and should be excluded from the restart controller
-    hot_reloaded_secrets: BTreeSet<String>,
+    hot_reloaded_secrets: BTreeSet<SecretName>,
 }
 
 impl TrinoAuthenticationConfig {
@@ -371,12 +372,12 @@ impl TrinoAuthenticationConfig {
     }
 
     /// Retrieve all Secrets which can be hot-reloaded
-    pub fn hot_reloaded_secrets(&self) -> &BTreeSet<String> {
+    pub fn hot_reloaded_secrets(&self) -> &BTreeSet<SecretName> {
         &self.hot_reloaded_secrets
     }
 
     /// Add a Secret which can be hot-reloaded
-    pub fn add_hot_reloaded_secret(&mut self, secret_name: String) {
+    pub fn add_hot_reloaded_secret(&mut self, secret_name: SecretName) {
         self.hot_reloaded_secrets.insert(secret_name);
     }
 

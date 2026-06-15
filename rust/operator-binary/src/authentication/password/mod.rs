@@ -8,8 +8,12 @@
 //! - volume and volume mounts
 //! - extra containers and commands
 //!
+use std::str::FromStr;
+
 use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::product_image_selection::ResolvedProductImage;
+use stackable_operator::{
+    commons::product_image_selection::ResolvedProductImage, v2::types::kubernetes::SecretName,
+};
 use tracing::trace;
 
 use crate::{
@@ -37,6 +41,11 @@ pub enum Error {
 
     #[snafu(display("failed to create LDAP Volumes and VolumeMounts"))]
     BuildPasswordFileUpdateContainer { source: file::Error },
+
+    #[snafu(display("failed to parse user credentials Secret name"))]
+    ParseSecretName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
+    },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -105,8 +114,10 @@ impl TrinoPasswordAuthentication {
                         FileAuthenticator::password_db_volume_mount(),
                     );
 
-                    password_authentication_config
-                        .add_hot_reloaded_secret(file_authenticator.secret_name());
+                    password_authentication_config.add_hot_reloaded_secret(
+                        SecretName::from_str(&file_authenticator.secret_name())
+                            .context(ParseSecretNameSnafu)?,
+                    );
                 }
                 TrinoPasswordAuthenticator::Ldap(ldap_authenticator) => {
                     let config_file_name = ldap_authenticator.config_file_name();
