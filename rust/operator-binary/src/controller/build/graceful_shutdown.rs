@@ -11,7 +11,7 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::ValidatedCluster,
+    controller::{ValidatedCluster, ValidatedTrinoConfig},
     crd::{DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT, TrinoRole, v1alpha1},
 };
 
@@ -82,7 +82,7 @@ fn min_worker_graceful_shutdown_timeout(
 pub fn add_graceful_shutdown_config(
     trino: &v1alpha1::TrinoCluster,
     role: &TrinoRole,
-    merged_config: &v1alpha1::TrinoConfig,
+    merged_config: &ValidatedTrinoConfig,
     pod_builder: &mut PodBuilder,
     trino_builder: &mut ContainerBuilder,
 ) -> Result<(), Error> {

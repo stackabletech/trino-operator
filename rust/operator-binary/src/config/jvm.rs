@@ -6,9 +6,11 @@ use stackable_operator::{
     v2::jvm_argument_overrides::JvmArgumentOverrides,
 };
 
-use crate::crd::{
-    METRICS_PORT, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-    v1alpha1,
+use crate::{
+    controller::ValidatedTrinoConfig,
+    crd::{
+        METRICS_PORT, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+    },
 };
 
 const JVM_SECURITY_PROPERTIES: &str = "security.properties";
@@ -42,7 +44,7 @@ pub enum Error {
 // in the future depending on the role and version.
 pub fn jvm_config(
     product_version: u16,
-    merged_config: &v1alpha1::TrinoConfig,
+    merged_config: &ValidatedTrinoConfig,
     jvm_argument_overrides: &JvmArgumentOverrides,
 ) -> Result<String, Error> {
     let memory_unit = BinaryMultiple::Mebi;

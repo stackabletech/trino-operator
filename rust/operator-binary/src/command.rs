@@ -10,6 +10,7 @@ use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
     config::{client_protocol, fault_tolerant_execution},
+    controller::ValidatedTrinoConfig,
     crd::{
         CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
@@ -28,7 +29,7 @@ const SPOOLING_MANAGER_PROPERTIES: &str = "spooling-manager.properties";
 pub fn container_prepare_args(
     trino: &v1alpha1::TrinoCluster,
     catalogs: &[CatalogConfig],
-    merged_config: &v1alpha1::TrinoConfig,
+    merged_config: &ValidatedTrinoConfig,
     resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Vec<String> {

@@ -64,7 +64,7 @@ use crate::{
     catalog::config::CatalogConfig,
     command,
     config::{client_protocol, fault_tolerant_execution},
-    controller::{ValidatedCluster, build, dereference, validate},
+    controller::{ValidatedCluster, ValidatedTrinoConfig, build, dereference, validate},
     crd::{
         APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
         HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
@@ -532,7 +532,7 @@ fn build_rolegroup_statefulset(
     resolved_product_image: &ResolvedProductImage,
     role_group_name: &str,
     env_overrides: &EnvVarSet,
-    merged_config: &v1alpha1::TrinoConfig,
+    merged_config: &ValidatedTrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
     catalogs: &[CatalogConfig],
     sa_name: &str,

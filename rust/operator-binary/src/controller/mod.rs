@@ -4,8 +4,14 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use stackable_operator::{
-    commons::product_image_selection::ResolvedProductImage,
+    commons::{
+        affinity::StackableAffinity,
+        product_image_selection::ResolvedProductImage,
+        resources::{NoRuntimeLimits, Resources},
+    },
     kube::{Resource, api::ObjectMeta},
+    product_logging::spec::Logging,
+    shared::time::Duration,
     v2::{
         role_group_utils::ResourceNames,
         types::{
@@ -23,7 +29,7 @@ use crate::{
         client_protocol::ResolvedClientProtocolConfig,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
     },
-    crd::{TrinoRole, discovery::TrinoPodRef, v1alpha1},
+    crd::{Container, TrinoRole, discovery::TrinoPodRef, v1alpha1},
 };
 
 pub(crate) mod build;
@@ -49,6 +55,41 @@ pub struct ValidatedClusterConfig {
     pub client_protocol: Option<ResolvedClientProtocolConfig>,
     pub coordinator_pod_refs: Vec<TrinoPodRef>,
     pub catalogs: Vec<CatalogConfig>,
+}
+
+/// A validated, merged Trino role-group config.
+///
+/// Holds the merged [`v1alpha1::TrinoConfig`] fields so the build steps consume this
+/// controller-owned type instead of the raw CRD struct (mirroring the opensearch- and
+/// hive-operators' `Validated…Config`).
+///
+/// `logging` is still carried as the raw [`Logging`] for now; the up-front validation into a
+/// `ValidatedLogging` (via the `v2` product-logging framework) lands together with the rest of the
+/// logging migration in a later step.
+#[derive(Clone, Debug)]
+pub struct ValidatedTrinoConfig {
+    pub affinity: StackableAffinity,
+    pub graceful_shutdown_timeout: Option<Duration>,
+    pub logging: Logging<Container>,
+    pub query_max_memory: Option<String>,
+    pub query_max_memory_per_node: Option<String>,
+    pub resources: Resources<v1alpha1::TrinoStorageConfig, NoRuntimeLimits>,
+    pub requested_secret_lifetime: Option<Duration>,
+}
+
+impl ValidatedTrinoConfig {
+    /// Builds the validated config from the merged [`v1alpha1::TrinoConfig`].
+    fn from_merged(merged: v1alpha1::TrinoConfig) -> Self {
+        Self {
+            affinity: merged.affinity,
+            graceful_shutdown_timeout: merged.graceful_shutdown_timeout,
+            logging: merged.logging,
+            query_max_memory: merged.query_max_memory,
+            query_max_memory_per_node: merged.query_max_memory_per_node,
+            resources: merged.resources,
+            requested_secret_lifetime: merged.requested_secret_lifetime,
+        }
+    }
 }
 
 /// The validated TrinoCluster. The output of the validate step.

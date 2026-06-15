@@ -20,7 +20,7 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoEnumIterator, IntoStaticStr};
 
-use super::{ValidatedCluster, ValidatedClusterConfig, ValidatedTls};
+use super::{ValidatedCluster, ValidatedClusterConfig, ValidatedTls, ValidatedTrinoConfig};
 use crate::{
     authentication::{self, TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     controller::dereference::DereferencedObjects,
@@ -89,7 +89,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub type RoleGroupName = String;
 
 pub type TrinoRoleGroupConfig =
-    RoleGroupConfig<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>;
+    RoleGroupConfig<ValidatedTrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>;
 
 /// Validates the cluster spec and dereferenced inputs.
 pub fn validate(
@@ -216,7 +216,7 @@ fn into_role_group_config(
 
     Ok(RoleGroupConfig {
         replicas,
-        config: common.config,
+        config: ValidatedTrinoConfig::from_merged(common.config),
         config_overrides: common.config_overrides,
         env_overrides,
         cli_overrides: common.cli_overrides,
