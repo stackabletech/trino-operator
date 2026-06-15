@@ -11,6 +11,7 @@ pub mod exchange_manager_properties;
 pub mod log_properties;
 pub mod logging;
 pub mod node_properties;
+pub mod product_logging;
 pub mod security_properties;
 pub mod spooling_manager_properties;
 

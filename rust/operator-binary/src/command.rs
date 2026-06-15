@@ -1,9 +1,9 @@
 use stackable_operator::{
-    product_logging::{
-        framework::{create_vector_shutdown_file_command, remove_vector_shutdown_file_command},
-        spec::{ContainerLogConfig, ContainerLogConfigChoice},
+    product_logging::framework::{
+        create_vector_shutdown_file_command, remove_vector_shutdown_file_command,
     },
     utils::COMMON_BASH_TRAP_FUNCTIONS,
+    v2::product_logging::framework::ValidatedContainerLogConfigChoice,
 };
 
 use crate::{
@@ -36,10 +36,7 @@ pub fn container_prepare_args(
     let mut args = vec![];
 
     // Copy custom logging provided `log.properties` to rw config
-    if let Some(ContainerLogConfig {
-        choice: Some(ContainerLogConfigChoice::Custom(_)),
-    }) = merged_config.logging.containers.get(&Container::Trino)
-    {
+    if let ValidatedContainerLogConfigChoice::Custom(_) = merged_config.logging.trino_container {
         // copy config files to a writeable empty folder
         args.push(format!(
             "echo copying {STACKABLE_LOG_CONFIG_DIR}/{LOG_PROPERTIES} {rw_conf}/{LOG_PROPERTIES}",

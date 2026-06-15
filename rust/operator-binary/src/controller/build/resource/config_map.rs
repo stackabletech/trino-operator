@@ -7,7 +7,7 @@ use stackable_operator::{
     builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder},
     k8s_openapi::api::core::v1::ConfigMap,
     kvp::ObjectLabels,
-    product_logging,
+    product_logging::framework::VECTOR_CONFIG_FILE,
     utils::cluster_info::KubernetesClusterInfo,
     v2::config_file_writer::to_java_properties_string,
 };
@@ -18,7 +18,7 @@ use crate::{
         ValidatedCluster,
         build::properties::{
             ConfigFileName, access_control_properties, config_properties,
-            exchange_manager_properties, log_properties, logging::get_vector_toml, node_properties,
+            exchange_manager_properties, log_properties, node_properties, product_logging,
             security_properties, spooling_manager_properties,
         },
     },
@@ -180,11 +180,12 @@ pub fn build_rolegroup_config_map(
     .context(BuildJvmConfigSnafu)?;
     data.insert(JVM_CONFIG.to_string(), jvm_config);
 
-    // 9. Vector sidecar toml if enabled.
-    if let Some(vector_toml) = get_vector_toml(cluster, role, role_group_name, &rg.config.logging) {
+    // 9. Vector agent config (`vector.yaml`) if the Vector agent is enabled. The file is templated
+    // with environment variables injected by the v2 Vector container at runtime.
+    if rg.config.logging.enable_vector_agent {
         data.insert(
-            product_logging::framework::VECTOR_CONFIG_FILE.to_string(),
-            vector_toml,
+            VECTOR_CONFIG_FILE.to_string(),
+            product_logging::vector_config_file_content(),
         );
     }
 

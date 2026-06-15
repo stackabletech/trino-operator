@@ -5,17 +5,23 @@
 
 use std::{collections::BTreeMap, str::FromStr};
 
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     commons::product_image_selection,
     config::fragment,
     kube::ResourceExt as _,
+    product_logging::spec::Logging,
     role_utils::{GenericRoleConfig, RoleGroup},
     v2::{
         builder::pod::container::{self, EnvVarName, EnvVarSet},
         controller_utils::{get_cluster_name, get_namespace, get_uid},
+        product_logging::framework::{
+            ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
+            validate_logging_configuration_for_container,
+        },
         role_utils::{JavaCommonConfig, RoleGroupConfig, with_validated_config},
+        types::kubernetes::ConfigMapName,
     },
 };
 use strum::{EnumDiscriminants, IntoEnumIterator, IntoStaticStr};
@@ -24,7 +30,7 @@ use super::{ValidatedCluster, ValidatedClusterConfig, ValidatedTls, ValidatedTri
 use crate::{
     authentication::{self, TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     controller::dereference::DereferencedObjects,
-    crd::{TrinoRole, v1alpha1},
+    crd::{Container, TrinoRole, v1alpha1},
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -82,11 +88,74 @@ pub enum Error {
 
     #[snafu(display("invalid environment variable override name"))]
     ParseEnvVarName { source: container::Error },
+
+    #[snafu(display("failed to validate logging configuration"))]
+    ValidateLoggingConfig {
+        source: stackable_operator::v2::product_logging::framework::Error,
+    },
+
+    #[snafu(display(
+        "the Vector aggregator discovery ConfigMap name is required when the Vector agent is enabled"
+    ))]
+    MissingVectorAggregatorConfigMapName,
+
+    #[snafu(display("invalid Vector aggregator discovery ConfigMap name"))]
+    ParseVectorAggregatorConfigMapName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub type RoleGroupName = String;
+
+/// Validated logging configuration for the Trino, prepare and (optional) Vector containers.
+///
+/// Produced up-front by [`validate_logging`] (mirroring the opensearch- and hive-operators) so
+/// that an invalid custom log ConfigMap name or a missing Vector aggregator discovery ConfigMap
+/// name fails reconciliation during validation rather than at resource-build time.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValidatedLogging {
+    pub prepare_container: ValidatedContainerLogConfigChoice,
+    pub trino_container: ValidatedContainerLogConfigChoice,
+    pub vector_container: Option<VectorContainerLogConfig>,
+    pub enable_vector_agent: bool,
+}
+
+/// Validates the logging configuration for the Trino, prepare and (optional) Vector containers.
+///
+/// `vector_aggregator_config_map_name` is the discovery ConfigMap name of the Vector aggregator;
+/// it is required (and validated) only when the Vector agent is enabled.
+fn validate_logging(
+    logging: &Logging<Container>,
+    vector_aggregator_config_map_name: &Option<ConfigMapName>,
+) -> Result<ValidatedLogging> {
+    let prepare_container =
+        validate_logging_configuration_for_container(logging, &Container::Prepare)
+            .context(ValidateLoggingConfigSnafu)?;
+    let trino_container = validate_logging_configuration_for_container(logging, &Container::Trino)
+        .context(ValidateLoggingConfigSnafu)?;
+
+    let vector_container = if logging.enable_vector_agent {
+        let vector_aggregator_config_map_name = vector_aggregator_config_map_name
+            .clone()
+            .context(MissingVectorAggregatorConfigMapNameSnafu)?;
+        Some(VectorContainerLogConfig {
+            log_config: validate_logging_configuration_for_container(logging, &Container::Vector)
+                .context(ValidateLoggingConfigSnafu)?,
+            vector_aggregator_config_map_name,
+        })
+    } else {
+        None
+    };
+
+    Ok(ValidatedLogging {
+        prepare_container,
+        trino_container,
+        vector_container,
+        enable_vector_agent: logging.enable_vector_agent,
+    })
+}
 
 pub type TrinoRoleGroupConfig =
     RoleGroupConfig<ValidatedTrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>;
@@ -133,6 +202,17 @@ pub fn validate(
         });
     }
 
+    // The Vector aggregator discovery ConfigMap name (validated here so an invalid name fails
+    // up-front). It is only required when the Vector agent is enabled for a role group.
+    let vector_aggregator_config_map_name = trino
+        .spec
+        .cluster_config
+        .vector_aggregator_config_map_name
+        .as_deref()
+        .map(ConfigMapName::from_str)
+        .transpose()
+        .context(ParseVectorAggregatorConfigMapNameSnafu)?;
+
     let mut role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>> =
         BTreeMap::new();
     for trino_role in TrinoRole::iter() {
@@ -161,7 +241,10 @@ pub fn validate(
             .with_context(|_| FailedToResolveConfigSnafu {
                 role_group: rg_name.clone(),
             })?;
-            groups.insert(rg_name.clone(), into_role_group_config(merged)?);
+            groups.insert(
+                rg_name.clone(),
+                into_role_group_config(merged, &vector_aggregator_config_map_name)?,
+            );
         }
         role_group_configs.insert(trino_role, groups);
     }
@@ -202,6 +285,7 @@ pub fn validate(
 /// [`EnvVarSet`] and a concrete replica count (defaulting to 1).
 fn into_role_group_config(
     merged: RoleGroup<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>,
+    vector_aggregator_config_map_name: &Option<ConfigMapName>,
 ) -> Result<TrinoRoleGroupConfig> {
     let replicas = merged.replicas.unwrap_or(1);
     let common = merged.config;
@@ -214,9 +298,11 @@ fn into_role_group_config(
         );
     }
 
+    let logging = validate_logging(&common.config.logging, vector_aggregator_config_map_name)?;
+
     Ok(RoleGroupConfig {
         replicas,
-        config: ValidatedTrinoConfig::from_merged(common.config),
+        config: ValidatedTrinoConfig::from_merged(common.config, logging),
         config_overrides: common.config_overrides,
         env_overrides,
         cli_overrides: common.cli_overrides,
@@ -251,7 +337,9 @@ pub(crate) fn merged_role_group_config(
         v1alpha1::TrinoConfigOverrides,
     >(rg, &role, &default_config)
     .expect("role group config should be valid");
-    into_role_group_config(merged).expect("env overrides should be valid")
+    // The shared test clusters do not enable the Vector agent, so no aggregator ConfigMap name is
+    // required here.
+    into_role_group_config(merged, &None).expect("env overrides should be valid")
 }
 
 #[cfg(test)]

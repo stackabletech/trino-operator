@@ -13,7 +13,9 @@ pub fn build(rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
 
     // 1. No defaults
     // 2. Automatic per-container logger levels
-    if let Some(per_container) = super::logging::get_log_property_map(&rg.config.logging) {
+    if let Some(per_container) =
+        super::logging::get_log_property_map(&rg.config.logging.trino_container)
+    {
         props.extend(per_container);
     }
 

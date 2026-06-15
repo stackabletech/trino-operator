@@ -1,6 +1,6 @@
 //! Builds the per-rolegroup [`StatefulSet`] that runs a Trino role group.
 
-use std::{collections::BTreeMap, convert::Infallible};
+use std::{collections::BTreeMap, convert::Infallible, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -31,16 +31,13 @@ use stackable_operator::{
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
     },
     kvp::{Annotation, Annotations, Labels},
-    product_logging::{
-        self,
-        framework::LoggingError,
-        spec::{
-            ConfigMapLogConfig, ContainerLogConfig, ContainerLogConfigChoice,
-            CustomContainerLogConfig,
-        },
-    },
+    product_logging,
     shared::time::Duration,
-    v2::builder::pod::container::EnvVarSet,
+    v2::{
+        builder::pod::container::EnvVarSet,
+        product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
+        types::kubernetes::{ContainerName, VolumeName},
+    },
 };
 
 use crate::{
@@ -59,15 +56,22 @@ use crate::{
     crd::{
         APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
         HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
-        METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
-        STACKABLE_TLS_STORE_PASSWORD, TrinoRole, v1alpha1,
+        METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+        STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
+        TrinoRole, v1alpha1,
     },
     trino_controller::{
         MAX_PREPARE_LOG_FILE_SIZE, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
         build_recommended_labels, shared_internal_secret_name, shared_spooling_secret_name,
     },
 };
+
+stackable_operator::constant!(VECTOR_CONTAINER_NAME: ContainerName = "vector");
+// The Vector agent reads its `vector.yaml` from the rolegroup ConfigMap (mounted as the "config"
+// volume) and writes its state under the shared "log" volume.
+stackable_operator::constant!(VECTOR_LOG_CONFIG_VOLUME_NAME: VolumeName = "config");
+stackable_operator::constant!(VECTOR_LOG_VOLUME_NAME: VolumeName = "log");
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -87,12 +91,6 @@ pub enum Error {
         source: stackable_operator::builder::pod::container::Error,
         container_name: String,
     },
-
-    #[snafu(display("vector agent is enabled but vector aggregator ConfigMap is missing"))]
-    VectorAggregatorConfigMapMissing,
-
-    #[snafu(display("failed to build vector container"))]
-    BuildVectorContainer { source: LoggingError },
 
     #[snafu(display("failed to configure graceful shutdown"))]
     GracefulShutdown {
@@ -263,9 +261,8 @@ pub fn build_rolegroup_statefulset(
     )?;
 
     let mut prepare_args = vec![];
-    if let Some(ContainerLogConfig {
-        choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
-    }) = merged_config.logging.containers.get(&Container::Prepare)
+    if let ValidatedContainerLogConfigChoice::Automatic(log_config) =
+        &merged_config.logging.prepare_container
     {
         prepare_args.push(product_logging::framework::capture_shell_output(
             STACKABLE_LOG_DIR,
@@ -380,60 +377,33 @@ pub fn build_rolegroup_statefulset(
     // add password-update container if required
     trino_authentication_config.add_authentication_containers(trino_role, &mut pod_builder);
 
-    if let Some(ContainerLogConfig {
-        choice:
-            Some(ContainerLogConfigChoice::Custom(CustomContainerLogConfig {
-                custom: ConfigMapLogConfig { config_map },
-            })),
-    }) = merged_config.logging.containers.get(&Container::Trino)
-    {
-        pod_builder
-            .add_volume(Volume {
-                name: "log-config".to_string(),
-                config_map: Some(ConfigMapVolumeSource {
-                    name: config_map.into(),
-                    ..ConfigMapVolumeSource::default()
-                }),
-                ..Volume::default()
-            })
-            .context(AddVolumeSnafu)?;
-    } else {
-        pod_builder
-            .add_volume(Volume {
-                name: "log-config".to_string(),
-                config_map: Some(ConfigMapVolumeSource {
-                    name: config_map_name.clone(),
-                    ..ConfigMapVolumeSource::default()
-                }),
-                ..Volume::default()
-            })
-            .context(AddVolumeSnafu)?;
-    }
+    // The log-config volume mounts either the rolegroup ConfigMap (which carries the automatic
+    // `log.properties`) or a user-provided custom ConfigMap, depending on the validated choice.
+    let log_config_volume_config_map = match &merged_config.logging.trino_container {
+        ValidatedContainerLogConfigChoice::Custom(config_map) => config_map.to_string(),
+        ValidatedContainerLogConfigChoice::Automatic(_) => config_map_name.clone(),
+    };
+    pod_builder
+        .add_volume(Volume {
+            name: "log-config".to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: log_config_volume_config_map,
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        })
+        .context(AddVolumeSnafu)?;
 
-    if merged_config.logging.enable_vector_agent {
-        match &trino.spec.cluster_config.vector_aggregator_config_map_name {
-            Some(vector_aggregator_config_map_name) => {
-                pod_builder.add_container(
-                    product_logging::framework::vector_container(
-                        resolved_product_image,
-                        "config",
-                        "log",
-                        merged_config.logging.containers.get(&Container::Vector),
-                        ResourceRequirementsBuilder::new()
-                            .with_cpu_request("250m")
-                            .with_cpu_limit("500m")
-                            .with_memory_request("128Mi")
-                            .with_memory_limit("128Mi")
-                            .build(),
-                        vector_aggregator_config_map_name,
-                    )
-                    .context(BuildVectorContainerSnafu)?,
-                );
-            }
-            None => {
-                VectorAggregatorConfigMapMissingSnafu.fail()?;
-            }
-        }
+    if let Some(vector_log_config) = &merged_config.logging.vector_container {
+        pod_builder.add_container(vector_container(
+            &VECTOR_CONTAINER_NAME,
+            resolved_product_image,
+            vector_log_config,
+            &resource_names,
+            &VECTOR_LOG_CONFIG_VOLUME_NAME,
+            &VECTOR_LOG_VOLUME_NAME,
+            EnvVarSet::new(),
+        ));
     }
 
     let metadata = ObjectMetaBuilder::new()

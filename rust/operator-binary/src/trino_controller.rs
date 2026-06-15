@@ -6,10 +6,7 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     cluster_resources::{ClusterResourceApplyStrategy, ClusterResources},
-    commons::{
-        random_secret_creation,
-        rbac::build_rbac_resources,
-    },
+    commons::{random_secret_creation, rbac::build_rbac_resources},
     kube::{
         Resource, ResourceExt,
         core::{DeserializeGuard, error_boundary},
@@ -31,9 +28,7 @@ use crate::{
     controller::{
         build,
         build::resource::{
-            listener::{
-                build_group_listener, group_listener_name,
-            },
+            listener::{build_group_listener, group_listener_name},
             pdb::build_pdb,
             service::{
                 build_rolegroup_headless_service, build_rolegroup_metrics_service,
@@ -42,9 +37,7 @@ use crate::{
         },
         dereference, validate,
     },
-    crd::{
-        APP_NAME, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1,
-    },
+    crd::{APP_NAME, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1},
 };
 
 pub struct Ctx {
