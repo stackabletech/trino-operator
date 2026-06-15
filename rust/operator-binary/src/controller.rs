@@ -526,26 +526,26 @@ pub async fn reconcile_trino(
             );
         }
 
-        if let Some(listener_class) = trino_role.listener_class_name(trino) {
-            if let Some(listener_group_name) = group_listener_name(trino, &trino_role) {
-                let role_group_listener = build_group_listener(
+        if let Some(listener_class) = trino_role.listener_class_name(trino)
+            && let Some(listener_group_name) = group_listener_name(trino, &trino_role)
+        {
+            let role_group_listener = build_group_listener(
+                trino,
+                build_recommended_labels(
                     trino,
-                    build_recommended_labels(
-                        trino,
-                        &validated.image.app_version_label_value,
-                        &trino_role_str,
-                        "none",
-                    ),
-                    listener_class.to_string(),
-                    listener_group_name,
-                )
-                .context(ListenerConfigurationSnafu)?;
+                    &validated.image.app_version_label_value,
+                    &trino_role_str,
+                    "none",
+                ),
+                listener_class.to_string(),
+                listener_group_name,
+            )
+            .context(ListenerConfigurationSnafu)?;
 
-                cluster_resources
-                    .add(client, role_group_listener)
-                    .await
-                    .context(ApplyGroupListenerSnafu)?;
-            }
+            cluster_resources
+                .add(client, role_group_listener)
+                .await
+                .context(ApplyGroupListenerSnafu)?;
         }
 
         let role_config = trino.generic_role_config(&trino_role);

@@ -9996,7 +9996,7 @@ rec {
       "stackable-trino-operator" = rec {
         crateName = "stackable-trino-operator";
         version = "0.0.0-dev";
-        edition = "2021";
+        edition = "2024";
         crateBin = [
           {
             name = "stackable-trino-operator";
