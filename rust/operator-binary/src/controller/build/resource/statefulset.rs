@@ -214,7 +214,7 @@ pub fn build_rolegroup_statefulset(
         )
         .context(InvalidAuthenticationConfigSnafu)?;
     build::graceful_shutdown::add_graceful_shutdown_config(
-        trino,
+        cluster,
         trino_role,
         merged_config,
         &mut pod_builder,
@@ -363,12 +363,12 @@ pub fn build_rolegroup_statefulset(
         .context(AddVolumeMountSnafu)?
         .add_volume_mount("log", STACKABLE_LOG_DIR)
         .context(AddVolumeMountSnafu)?
-        .add_container_ports(container_ports(trino))
+        .add_container_ports(container_ports(cluster))
         .resources(merged_config.resources.clone().into())
         // The probes are set on coordinators and workers
-        .startup_probe(startup_probe(trino))
-        .readiness_probe(readiness_probe(trino))
-        .liveness_probe(liveness_probe(trino))
+        .startup_probe(startup_probe(cluster))
+        .readiness_probe(readiness_probe(cluster))
+        .liveness_probe(liveness_probe(cluster))
         .build();
 
     // add trino container first to better default into that container (e.g. instead of vector)
@@ -529,7 +529,7 @@ fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &st
     }
 }
 
-fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
+fn container_ports(cluster: &ValidatedCluster) -> Vec<ContainerPort> {
     let mut ports = vec![ContainerPort {
         name: Some(METRICS_PORT_NAME.to_string()),
         container_port: METRICS_PORT.into(),
@@ -537,7 +537,14 @@ fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
         ..ContainerPort::default()
     }];
 
-    if trino.expose_http_port() {
+    if cluster.server_tls_enabled() {
+        ports.push(ContainerPort {
+            name: Some(HTTPS_PORT_NAME.to_string()),
+            container_port: HTTPS_PORT.into(),
+            protocol: Some("TCP".to_string()),
+            ..ContainerPort::default()
+        });
+    } else {
         ports.push(ContainerPort {
             name: Some(HTTP_PORT_NAME.to_string()),
             container_port: HTTP_PORT.into(),
@@ -546,21 +553,12 @@ fn container_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ContainerPort> {
         })
     }
 
-    if trino.expose_https_port() {
-        ports.push(ContainerPort {
-            name: Some(HTTPS_PORT_NAME.to_string()),
-            container_port: HTTPS_PORT.into(),
-            protocol: Some("TCP".to_string()),
-            ..ContainerPort::default()
-        });
-    }
-
     ports
 }
 
-fn startup_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
+fn startup_probe(cluster: &ValidatedCluster) -> Probe {
     Probe {
-        exec: Some(finished_starting_probe(trino)),
+        exec: Some(finished_starting_probe(cluster)),
         period_seconds: Some(5),
         // Give the coordinator or worker 10 minutes to start up
         failure_threshold: Some(120),
@@ -569,9 +567,9 @@ fn startup_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
     }
 }
 
-fn readiness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
+fn readiness_probe(cluster: &ValidatedCluster) -> Probe {
     Probe {
-        http_get: Some(http_get_probe(trino)),
+        http_get: Some(http_get_probe(cluster)),
         period_seconds: Some(5),
         failure_threshold: Some(1),
         timeout_seconds: Some(3),
@@ -579,9 +577,9 @@ fn readiness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
     }
 }
 
-fn liveness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
+fn liveness_probe(cluster: &ValidatedCluster) -> Probe {
     Probe {
-        http_get: Some(http_get_probe(trino)),
+        http_get: Some(http_get_probe(cluster)),
         period_seconds: Some(5),
         // Coordinators are currently not highly available, so you always have a singe instance.
         // Restarting it causes all queries to fail, so let's not restart it directly after the first
@@ -597,8 +595,8 @@ fn liveness_probe(trino: &v1alpha1::TrinoCluster) -> Probe {
 ///
 /// This is the same probe as the [upstream helm-chart](https://github.com/trinodb/charts/blob/7cd0a7bff6c52e0ee6ca6d5394cd72c150ad4379/charts/trino/templates/deployment-coordinator.yaml#L214)
 /// is using.
-fn http_get_probe(trino: &v1alpha1::TrinoCluster) -> HTTPGetAction {
-    let (schema, port_name) = if trino.expose_https_port() {
+fn http_get_probe(cluster: &ValidatedCluster) -> HTTPGetAction {
+    let (schema, port_name) = if cluster.server_tls_enabled() {
         ("HTTPS", HTTPS_PORT_NAME)
     } else {
         ("HTTP", HTTP_PORT_NAME)
@@ -615,9 +613,9 @@ fn http_get_probe(trino: &v1alpha1::TrinoCluster) -> HTTPGetAction {
 /// Wait until `/v1/info` returns `"starting":false`.
 ///
 /// This probe works on coordinators and workers.
-fn finished_starting_probe(trino: &v1alpha1::TrinoCluster) -> ExecAction {
-    let port = trino.exposed_port();
-    let schema = if trino.expose_https_port() {
+fn finished_starting_probe(cluster: &ValidatedCluster) -> ExecAction {
+    let port = cluster.exposed_port();
+    let schema = if cluster.server_tls_enabled() {
         "https"
     } else {
         "http"

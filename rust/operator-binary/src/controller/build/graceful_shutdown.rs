@@ -12,7 +12,7 @@ use stackable_operator::{
 
 use crate::{
     controller::{ValidatedCluster, ValidatedTrinoConfig},
-    crd::{DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT, TrinoRole, v1alpha1},
+    crd::{DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT, TrinoRole},
 };
 
 /// Corresponds to "shutdown.grace-period", which defaults to 2 min.
@@ -62,10 +62,8 @@ pub fn graceful_shutdown_config_properties(
     }
 }
 
-/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups.
-///
-/// Mirrors [`v1alpha1::TrinoCluster::min_worker_graceful_shutdown_timeout`] but
-/// reads from [`ValidatedCluster::role_group_configs`].
+/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups, read from the
+/// validated [`ValidatedCluster::role_group_configs`].
 fn min_worker_graceful_shutdown_timeout(
     cluster: &ValidatedCluster,
 ) -> stackable_operator::shared::time::Duration {
@@ -80,7 +78,7 @@ fn min_worker_graceful_shutdown_timeout(
 }
 
 pub fn add_graceful_shutdown_config(
-    trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     role: &TrinoRole,
     merged_config: &ValidatedTrinoConfig,
     pod_builder: &mut PodBuilder,
@@ -127,9 +125,9 @@ pub fn add_graceful_shutdown_config(
                                 echo 'Successfully sent graceful shutdown command' >> /proc/1/fd/1 2>&1
                                 echo 'Sleeping {termination_grace_period_seconds} seconds' >> /proc/1/fd/1 2>&1
                                 sleep {termination_grace_period_seconds}",
-                                protocol = trino.exposed_protocol(),
+                                protocol = cluster.exposed_protocol(),
                                 host = "127.0.0.1",
-                                port = trino.exposed_port(),
+                                port = cluster.exposed_port(),
                             ),
                         ]),
                     }),
@@ -140,4 +138,121 @@ pub fn add_graceful_shutdown_config(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use stackable_operator::shared::time::Duration;
+
+    use super::*;
+    use crate::controller::build::properties::test_support::validated_cluster_from_yaml;
+
+    /// A worker role group without an explicit `gracefulShutdownTimeout` falls back to the
+    /// product default.
+    #[test]
+    fn min_worker_timeout_defaults() {
+        let cluster = validated_cluster_from_yaml(
+            r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#,
+        );
+        assert_eq!(
+            min_worker_graceful_shutdown_timeout(&cluster),
+            DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT
+        );
+    }
+
+    /// A role-level `gracefulShutdownTimeout` is merged into every worker role group.
+    #[test]
+    fn min_worker_timeout_from_role() {
+        let cluster = validated_cluster_from_yaml(
+            r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                config:
+                  gracefulShutdownTimeout: 42h
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#,
+        );
+        assert_eq!(
+            min_worker_graceful_shutdown_timeout(&cluster),
+            Duration::from_hours_unchecked(42)
+        );
+    }
+
+    /// The minimum is taken across all worker role groups (role <- role-group merge applied).
+    #[test]
+    fn min_worker_timeout_across_role_groups() {
+        let cluster = validated_cluster_from_yaml(
+            r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                config:
+                  gracefulShutdownTimeout: 42h
+                roleGroups:
+                  normal:
+                    replicas: 1
+                  short:
+                    replicas: 1
+                    config:
+                      gracefulShutdownTimeout: 5m
+                  long:
+                    replicas: 1
+                    config:
+                      gracefulShutdownTimeout: 7d
+            "#,
+        );
+        assert_eq!(
+            min_worker_graceful_shutdown_timeout(&cluster),
+            Duration::from_minutes_unchecked(5)
+        );
+    }
 }

@@ -28,7 +28,10 @@ use crate::{
         client_protocol::ResolvedClientProtocolConfig,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
     },
-    crd::{TrinoRole, discovery::TrinoPodRef, v1alpha1},
+    crd::{
+        HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, TrinoRole, discovery::TrinoPodRef,
+        v1alpha1,
+    },
 };
 
 pub(crate) mod build;
@@ -131,6 +134,32 @@ impl ValidatedCluster {
             product_version,
             cluster_config,
             role_group_configs,
+        }
+    }
+
+    /// Whether the (client-facing) server TLS is enabled.
+    pub fn server_tls_enabled(&self) -> bool {
+        self.cluster_config.tls.server.is_some()
+    }
+
+    /// The client-facing port Trino exposes: HTTPS when server TLS is enabled, otherwise HTTP.
+    ///
+    /// Replaces `v1alpha1::TrinoCluster::exposed_port`, derived here from the validated TLS config
+    /// so build steps don't re-read the raw cluster.
+    pub fn exposed_port(&self) -> u16 {
+        if self.server_tls_enabled() {
+            HTTPS_PORT
+        } else {
+            HTTP_PORT
+        }
+    }
+
+    /// The name of the client-facing port (see [`Self::exposed_port`]).
+    pub fn exposed_protocol(&self) -> &'static str {
+        if self.server_tls_enabled() {
+            HTTPS_PORT_NAME
+        } else {
+            HTTP_PORT_NAME
         }
     }
 

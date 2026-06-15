@@ -286,7 +286,7 @@ pub async fn reconcile_trino(
                 role_group_name,
                 &role_group_service_recommended_labels,
                 role_group_service_selector.clone().into(),
-                headless_service_ports(trino),
+                headless_service_ports(&validated_cluster),
             )
             .context(ServiceConfigurationSnafu)?;
 
@@ -385,9 +385,9 @@ pub async fn reconcile_trino(
             && let Some(listener_group_name) = group_listener_name(trino, trino_role)
         {
             let role_group_listener = build_group_listener(
-                trino,
+                &validated_cluster,
                 build_recommended_labels(
-                    trino,
+                    &validated_cluster,
                     &validated_cluster.image.app_version_label_value,
                     &trino_role.to_string(),
                     "none",

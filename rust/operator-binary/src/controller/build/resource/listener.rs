@@ -10,7 +10,10 @@ use stackable_operator::{
     kvp::{Labels, ObjectLabels},
 };
 
-use crate::crd::{TrinoRole, v1alpha1};
+use crate::{
+    controller::ValidatedCluster,
+    crd::{TrinoRole, v1alpha1},
+};
 
 pub const LISTENER_VOLUME_NAME: &str = "listener";
 pub const LISTENER_VOLUME_DIR: &str = "/stackable/listener";
@@ -34,23 +37,23 @@ pub enum Error {
 }
 
 pub fn build_group_listener(
-    trino: &v1alpha1::TrinoCluster,
-    object_labels: ObjectLabels<v1alpha1::TrinoCluster>,
+    cluster: &ValidatedCluster,
+    object_labels: ObjectLabels<ValidatedCluster>,
     listener_class: String,
     listener_group_name: String,
 ) -> Result<Listener, Error> {
     Ok(Listener {
         metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
+            .name_and_namespace(cluster)
             .name(listener_group_name)
-            .ownerreference_from_resource(trino, None, Some(true))
+            .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(&object_labels)
             .context(BuildObjectMetaSnafu)?
             .build(),
         spec: ListenerSpec {
             class_name: Some(listener_class),
-            ports: Some(listener_ports(trino)),
+            ports: Some(listener_ports(cluster)),
             ..ListenerSpec::default()
         },
         status: None,
@@ -91,9 +94,9 @@ pub fn secret_volume_listener_scope(role: &TrinoRole) -> Option<String> {
 }
 
 /// We only use the http/https port here and intentionally omit the metrics one.
-fn listener_ports(trino: &v1alpha1::TrinoCluster) -> Vec<ListenerPort> {
-    let name = trino.exposed_protocol().to_string();
-    let port = trino.exposed_port().into();
+fn listener_ports(cluster: &ValidatedCluster) -> Vec<ListenerPort> {
+    let name = cluster.exposed_protocol().to_string();
+    let port = cluster.exposed_port().into();
 
     vec![ListenerPort {
         name,

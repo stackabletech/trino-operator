@@ -555,29 +555,6 @@ impl v1alpha1::TrinoCluster {
             .sum()
     }
 
-    /// Returns the minimal gracefulShutdownTimeout of all the worker rolegroups.
-    pub fn min_worker_graceful_shutdown_timeout(&self) -> Duration {
-        let role_timeout = self
-            .spec
-            .workers
-            .as_ref()
-            .and_then(|w| w.config.config.graceful_shutdown_timeout);
-        self.spec
-            .workers
-            .as_ref()
-            .iter()
-            .flat_map(|worker| worker.role_groups.values())
-            .map(|role_group| {
-                role_group
-                    .config
-                    .config
-                    .graceful_shutdown_timeout
-                    .unwrap_or(role_timeout.unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT))
-            })
-            .min()
-            .unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT)
-    }
-
     /// List all coordinator pods expected to form the cluster
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to
@@ -650,30 +627,6 @@ impl v1alpha1::TrinoCluster {
     pub fn get_internal_tls(&self) -> Option<&str> {
         let spec: &v1alpha1::TrinoClusterSpec = &self.spec;
         spec.cluster_config.tls.internal_secret_class.as_deref()
-    }
-
-    pub fn exposed_port(&self) -> u16 {
-        match self.get_server_tls() {
-            Some(_) => HTTPS_PORT,
-            None => HTTP_PORT,
-        }
-    }
-
-    pub fn exposed_protocol(&self) -> &str {
-        match self.get_server_tls() {
-            Some(_) => HTTPS_PORT_NAME,
-            None => HTTP_PORT_NAME,
-        }
-    }
-
-    /// Returns if the HTTP port should be exposed
-    pub fn expose_http_port(&self) -> bool {
-        self.get_server_tls().is_none()
-    }
-
-    /// Returns if the HTTPS port should be exposed
-    pub fn expose_https_port(&self) -> bool {
-        self.get_server_tls().is_some()
     }
 }
 
@@ -854,89 +807,6 @@ mod tests {
             serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(trino.get_internal_tls(), None);
         assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
-    }
-
-    #[test]
-    fn test_graceful_shutdown_timeout_default() {
-        let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: simple-trino
-        spec:
-          image:
-            productVersion: "479"
-          clusterConfig:
-            catalogLabelSelector: {}
-        "#;
-        let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.min_worker_graceful_shutdown_timeout(),
-            DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT
-        );
-    }
-
-    #[test]
-    fn test_graceful_shutdown_timeout_on_role() {
-        let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: simple-trino
-        spec:
-          image:
-            productVersion: "479"
-          clusterConfig:
-            catalogLabelSelector: {}
-          workers:
-            config:
-              gracefulShutdownTimeout: 42h
-            roleGroups:
-              default:
-                replicas: 1
-        "#;
-        let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.min_worker_graceful_shutdown_timeout(),
-            Duration::from_hours_unchecked(42)
-        );
-    }
-
-    #[test]
-    fn test_graceful_shutdown_timeout_on_role_and_rolegroup() {
-        let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
-        kind: TrinoCluster
-        metadata:
-          name: simple-trino
-        spec:
-          image:
-            productVersion: "479"
-          clusterConfig:
-            catalogLabelSelector: {}
-          workers:
-            config:
-              gracefulShutdownTimeout: 42h
-            roleGroups:
-              normal:
-                replicas: 1
-              short:
-                replicas: 1
-                config:
-                  gracefulShutdownTimeout: 5m
-              long:
-                replicas: 1
-                config:
-                  gracefulShutdownTimeout: 7d
-        "#;
-        let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(
-            trino.min_worker_graceful_shutdown_timeout(),
-            Duration::from_minutes_unchecked(5)
-        );
     }
 
     impl RoundtripTestData for v1alpha1::TrinoClusterSpec {
