@@ -249,8 +249,6 @@ pub async fn reconcile_trino(
 
     for (trino_role, role_group_configs) in &validated_cluster.role_group_configs {
         for (role_group_name, rg) in role_group_configs {
-            let merged_config = &rg.config;
-
             let role_group_service_recommended_labels =
                 validated_cluster.recommended_labels(trino_role, role_group_name);
 
@@ -300,16 +298,9 @@ pub async fn reconcile_trino(
                 trino,
                 &validated_cluster,
                 trino_role,
-                &validated_cluster.image,
                 role_group_name,
-                &rg.env_overrides,
-                merged_config,
-                &validated_cluster.cluster_config.authentication,
-                &validated_cluster.cluster_config.catalogs,
+                rg,
                 &rbac_sa.name_any(),
-                &validated_cluster.cluster_config.fault_tolerant_execution,
-                &validated_cluster.cluster_config.client_protocol,
-                &validated_cluster.cluster_config.authorization,
             )
             .with_context(|_| BuildRoleGroupStatefulSetSnafu {
                 rolegroup: role_group_name.clone(),

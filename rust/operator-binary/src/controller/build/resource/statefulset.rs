@@ -14,10 +14,7 @@ use stackable_operator::{
             volume::{SecretFormat, SecretOperatorVolumeSourceBuilder, VolumeBuilder},
         },
     },
-    commons::{
-        product_image_selection::ResolvedProductImage,
-        secret_class::SecretClassVolumeProvisionParts,
-    },
+    commons::secret_class::SecretClassVolumeProvisionParts,
     constants::RESTART_CONTROLLER_ENABLED_LABEL,
     k8s_openapi::{
         DeepMerge,
@@ -44,13 +41,12 @@ use stackable_operator::{
 };
 
 use crate::{
-    authentication::TrinoAuthenticationConfig,
     authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
     catalog::config::CatalogConfig,
     command,
     config::{client_protocol, fault_tolerant_execution},
     controller::{
-        ValidatedCluster, ValidatedTrinoConfig, build,
+        TrinoRoleGroupConfig, ValidatedCluster, build,
         build::resource::listener::{
             LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener_pvc,
             group_listener_name, secret_volume_listener_scope,
@@ -143,22 +139,25 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// The [`Pod`](`stackable_operator::k8s_openapi::api::core::v1::Pod`)s are accessible through the
 /// corresponding [`stackable_operator::k8s_openapi::api::core::v1::Service`] (from
 /// [`build_rolegroup_headless_service`](super::service::build_rolegroup_headless_service)).
-#[allow(clippy::too_many_arguments)]
 pub fn build_rolegroup_statefulset(
     trino: &v1alpha1::TrinoCluster,
     cluster: &ValidatedCluster,
     trino_role: &TrinoRole,
-    resolved_product_image: &ResolvedProductImage,
     role_group_name: &str,
-    env_overrides: &EnvVarSet,
-    merged_config: &ValidatedTrinoConfig,
-    trino_authentication_config: &TrinoAuthenticationConfig,
-    catalogs: &[CatalogConfig],
+    role_group_config: &TrinoRoleGroupConfig,
     sa_name: &str,
-    resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
-    trino_opa_config: &Option<TrinoOpaConfig>,
 ) -> Result<StatefulSet> {
+    // Everything below is derived from the validated cluster and the validated role-group config,
+    // so the caller only needs to pass those (plus the applied ServiceAccount name).
+    let resolved_product_image = &cluster.image;
+    let trino_authentication_config = &cluster.cluster_config.authentication;
+    let catalogs = cluster.cluster_config.catalogs.as_slice();
+    let resolved_fte_config = &cluster.cluster_config.fault_tolerant_execution;
+    let resolved_spooling_config = &cluster.cluster_config.client_protocol;
+    let trino_opa_config = &cluster.cluster_config.authorization;
+    let env_overrides = &role_group_config.env_overrides;
+    let merged_config = &role_group_config.config;
+
     let role = trino
         .role(trino_role)
         .context(InternalOperatorFailureSnafu)?;
