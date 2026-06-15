@@ -49,7 +49,7 @@ pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
 pub const FULL_CONTROLLER_NAME: &str = concatcp!(CONTROLLER_NAME, '.', OPERATOR_NAME);
 
-pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
+pub use stackable_operator::v2::product_logging::framework::STACKABLE_LOG_DIR;
 pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
 
 pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {

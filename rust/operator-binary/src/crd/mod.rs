@@ -79,7 +79,7 @@ pub const RW_CONFIG_DIR_NAME: &str = "/stackable/rwconfig";
 pub const STACKABLE_SERVER_TLS_DIR: &str = "/stackable/server_tls";
 pub const STACKABLE_CLIENT_TLS_DIR: &str = "/stackable/client_tls";
 pub const STACKABLE_INTERNAL_TLS_DIR: &str = "/stackable/internal_tls";
-pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
+pub use stackable_operator::v2::product_logging::framework::STACKABLE_LOG_DIR;
 pub const STACKABLE_MOUNT_SERVER_TLS_DIR: &str = "/stackable/mount_server_tls";
 pub const STACKABLE_MOUNT_INTERNAL_TLS_DIR: &str = "/stackable/mount_internal_tls";
 // store pws
