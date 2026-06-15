@@ -34,7 +34,7 @@ use stackable_operator::{
     product_logging,
     shared::time::Duration,
     v2::{
-        builder::pod::container::EnvVarSet,
+        builder::{meta::ownerreference_from_resource, pod::container::EnvVarSet},
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
         types::kubernetes::{ContainerName, VolumeName},
     },
@@ -77,11 +77,6 @@ stackable_operator::constant!(VECTOR_LOG_VOLUME_NAME: VolumeName = "log");
 pub enum Error {
     #[snafu(display("missing secret lifetime"))]
     MissingSecretLifetime,
-
-    #[snafu(display("object is missing metadata to build owner reference"))]
-    ObjectMissingMetadataForOwnerRef {
-        source: stackable_operator::builder::meta::Error,
-    },
 
     #[snafu(display("internal operator failure: {source}"))]
     InternalOperatorFailure { source: crate::crd::Error },
@@ -467,8 +462,7 @@ pub fn build_rolegroup_statefulset(
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
             .name(resource_names.stateful_set_name().to_string())
-            .ownerreference_from_resource(trino, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
             .with_labels(cluster.recommended_labels(trino_role, role_group_name))
             .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
             .with_annotations(annotations)

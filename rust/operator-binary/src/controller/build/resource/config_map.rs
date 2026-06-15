@@ -9,7 +9,9 @@ use stackable_operator::{
     kvp::Labels,
     product_logging::framework::VECTOR_CONFIG_FILE,
     utils::cluster_info::KubernetesClusterInfo,
-    v2::config_file_writer::to_java_properties_string,
+    v2::{
+        builder::meta::ownerreference_from_resource, config_file_writer::to_java_properties_string,
+    },
 };
 
 use crate::{
@@ -46,11 +48,6 @@ pub enum Error {
     Assemble {
         source: stackable_operator::builder::configmap::Error,
         rolegroup: String,
-    },
-
-    #[snafu(display("metadata build failure"))]
-    Metadata {
-        source: stackable_operator::builder::meta::Error,
     },
 
     #[snafu(display("failed to build jvm.config"))]
@@ -194,8 +191,7 @@ pub fn build_rolegroup_config_map(
             ObjectMetaBuilder::new()
                 .name(&config_map_name)
                 .namespace(cluster.namespace.to_string())
-                .ownerreference_from_resource(cluster, None, Some(true))
-                .context(MetadataSnafu)?
+                .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
                 .with_labels(recommended_labels.clone())
                 .build(),
         )
@@ -225,8 +221,7 @@ pub fn build_rolegroup_catalog_config_map(
             ObjectMetaBuilder::new()
                 .name(&catalog_config_map_name)
                 .namespace(cluster.namespace.to_string())
-                .ownerreference_from_resource(cluster, None, Some(true))
-                .context(MetadataSnafu)?
+                .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
                 .with_labels(recommended_labels.clone())
                 .build(),
         )

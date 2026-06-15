@@ -1,24 +1,16 @@
 use std::collections::BTreeMap;
 
-use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::meta::ObjectMetaBuilder,
     k8s_openapi::api::core::v1::{Service, ServicePort, ServiceSpec},
     kvp::{Annotations, Labels},
+    v2::builder::meta::ownerreference_from_resource,
 };
 
 use crate::{
     controller::ValidatedCluster,
     crd::{METRICS_PORT, METRICS_PORT_NAME, TrinoRole},
 };
-
-#[derive(Snafu, Debug)]
-pub enum Error {
-    #[snafu(display("object is missing metadata to build owner reference"))]
-    ObjectMissingMetadataForOwnerRef {
-        source: stackable_operator::builder::meta::Error,
-    },
-}
 
 /// The rolegroup headless [`Service`] is a service that allows direct access to the instances of a certain rolegroup
 /// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
@@ -29,8 +21,8 @@ pub fn build_rolegroup_headless_service(
     recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
     ports: Vec<ServicePort>,
-) -> Result<Service, Error> {
-    Ok(Service {
+) -> Service {
+    Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(cluster)
             .name(
@@ -39,8 +31,7 @@ pub fn build_rolegroup_headless_service(
                     .headless_service_name()
                     .to_string(),
             )
-            .ownerreference_from_resource(cluster, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
             .with_labels(recommended_labels.clone())
             .build(),
         spec: Some(ServiceSpec {
@@ -53,7 +44,7 @@ pub fn build_rolegroup_headless_service(
             ..ServiceSpec::default()
         }),
         status: None,
-    })
+    }
 }
 
 /// The rolegroup metrics [`Service`] is a service that exposes metrics and a prometheus scraping label.
@@ -63,8 +54,8 @@ pub fn build_rolegroup_metrics_service(
     role_group_name: &str,
     recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
-) -> Result<Service, Error> {
-    Ok(Service {
+) -> Service {
+    Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(cluster)
             .name(
@@ -73,8 +64,7 @@ pub fn build_rolegroup_metrics_service(
                     .metrics_service_name()
                     .to_string(),
             )
-            .ownerreference_from_resource(cluster, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
             .with_labels(recommended_labels.clone())
             .with_labels(prometheus_labels())
             .with_annotations(prometheus_annotations())
@@ -89,7 +79,7 @@ pub fn build_rolegroup_metrics_service(
             ..ServiceSpec::default()
         }),
         status: None,
-    })
+    }
 }
 
 pub(crate) fn headless_service_ports(cluster: &ValidatedCluster) -> Vec<ServicePort> {

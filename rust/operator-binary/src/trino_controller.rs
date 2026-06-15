@@ -155,11 +155,6 @@ pub enum Error {
         source: build::resource::listener::Error,
     },
 
-    #[snafu(display("failed to configure service"))]
-    ServiceConfiguration {
-        source: build::resource::service::Error,
-    },
-
     #[snafu(display("failed to create internal secret"))]
     CreateInternalSecret {
         source: random_secret_creation::Error,
@@ -274,8 +269,7 @@ pub async fn reconcile_trino(
                 &role_group_service_recommended_labels,
                 role_group_service_selector.clone().into(),
                 headless_service_ports(&validated_cluster),
-            )
-            .context(ServiceConfigurationSnafu)?;
+            );
 
             let rg_metrics_service = build_rolegroup_metrics_service(
                 &validated_cluster,
@@ -283,8 +277,7 @@ pub async fn reconcile_trino(
                 role_group_name,
                 &role_group_service_recommended_labels,
                 role_group_service_selector.into(),
-            )
-            .context(ServiceConfigurationSnafu)?;
+            );
 
             let rg_configmap = build::resource::config_map::build_rolegroup_config_map(
                 &validated_cluster,

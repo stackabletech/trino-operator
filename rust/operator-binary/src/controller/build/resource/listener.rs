@@ -8,6 +8,7 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::PersistentVolumeClaim,
     kube::ResourceExt,
     kvp::Labels,
+    v2::builder::meta::ownerreference_from_resource,
 };
 
 use crate::{
@@ -20,11 +21,6 @@ pub const LISTENER_VOLUME_DIR: &str = "/stackable/listener";
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("listener object is missing metadata to build owner reference"))]
-    ObjectMissingMetadataForOwnerRef {
-        source: stackable_operator::builder::meta::Error,
-    },
-
     #[snafu(display("failed to build listener volume"))]
     BuildListenerPersistentVolume {
         source: stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilderError,
@@ -41,8 +37,7 @@ pub fn build_group_listener(
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(cluster)
             .name(listener_group_name)
-            .ownerreference_from_resource(cluster, None, Some(true))
-            .context(ObjectMissingMetadataForOwnerRefSnafu)?
+            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
             .with_labels(recommended_labels)
             .build(),
         spec: ListenerSpec {
