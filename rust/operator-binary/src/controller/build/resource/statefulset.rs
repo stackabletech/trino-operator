@@ -41,10 +41,8 @@ use stackable_operator::{
 };
 
 use crate::{
-    authorization::opa::{OPA_TLS_VOLUME_NAME, TrinoOpaConfig},
-    catalog::config::CatalogConfig,
+    authorization::opa::OPA_TLS_VOLUME_NAME,
     command,
-    config::{client_protocol, fault_tolerant_execution},
     controller::{
         TrinoRoleGroupConfig, ValidatedCluster, build,
         build::resource::listener::{
@@ -58,7 +56,7 @@ use crate::{
         METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole, v1alpha1,
+        TrinoRole,
     },
     trino_controller::{
         MAX_PREPARE_LOG_FILE_SIZE, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
@@ -76,9 +74,6 @@ stackable_operator::constant!(VECTOR_LOG_VOLUME_NAME: VolumeName = "log");
 pub enum Error {
     #[snafu(display("missing secret lifetime"))]
     MissingSecretLifetime,
-
-    #[snafu(display("internal operator failure: {source}"))]
-    InternalOperatorFailure { source: crate::crd::Error },
 
     #[snafu(display("illegal container name: [{container_name}]"))]
     IllegalContainerName {
@@ -140,7 +135,6 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// corresponding [`stackable_operator::k8s_openapi::api::core::v1::Service`] (from
 /// [`build_rolegroup_headless_service`](super::service::build_rolegroup_headless_service)).
 pub fn build_rolegroup_statefulset(
-    trino: &v1alpha1::TrinoCluster,
     cluster: &ValidatedCluster,
     trino_role: &TrinoRole,
     role_group_name: &str,
@@ -157,13 +151,6 @@ pub fn build_rolegroup_statefulset(
     let trino_opa_config = &cluster.cluster_config.authorization;
     let env_overrides = &role_group_config.env_overrides;
     let merged_config = &role_group_config.config;
-
-    let role = trino
-        .role(trino_role)
-        .context(InternalOperatorFailureSnafu)?;
-    let rolegroup = trino
-        .rolegroup(trino_role, role_group_name)
-        .context(InternalOperatorFailureSnafu)?;
 
     let resource_names = cluster.resource_names(trino_role, role_group_name);
     let config_map_name = resource_names.role_group_config_map().to_string();
@@ -187,14 +174,14 @@ pub fn build_rolegroup_statefulset(
     // additional authentication env vars
     let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
 
-    let internal_secret_name = shared_internal_secret_name(trino);
+    let internal_secret_name = shared_internal_secret_name(&cluster.name);
     env.push(env_var_from_secret(
         &internal_secret_name,
         None,
         ENV_INTERNAL_SECRET,
     ));
 
-    let spooling_secret_name = shared_spooling_secret_name(trino);
+    let spooling_secret_name = shared_spooling_secret_name(&cluster.name);
     env.push(env_var_from_secret(
         &spooling_secret_name,
         None,
@@ -244,16 +231,12 @@ pub fn build_rolegroup_statefulset(
 
     // add volume mounts depending on the client tls, internal tls, catalogs and authentication
     tls_volume_mounts(
-        trino,
+        cluster,
         trino_role,
         &mut pod_builder,
         &mut cb_prepare,
         &mut cb_trino,
-        catalogs,
         &requested_secret_lifetime,
-        resolved_fte_config,
-        resolved_spooling_config,
-        trino_opa_config,
     )?;
 
     let mut prepare_args = vec![];
@@ -268,7 +251,7 @@ pub fn build_rolegroup_statefulset(
     }
 
     prepare_args.extend(command::container_prepare_args(
-        trino,
+        cluster,
         catalogs,
         merged_config,
         resolved_fte_config,
@@ -317,7 +300,7 @@ pub fn build_rolegroup_statefulset(
 
     let mut persistent_volume_claims = vec![];
     // Add listener
-    if let Some(group_listener_name) = group_listener_name(trino, trino_role) {
+    if let Some(group_listener_name) = group_listener_name(cluster, trino_role) {
         cb_trino
             .add_volume_mount(LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
             .context(AddVolumeMountSnafu)?;
@@ -442,8 +425,10 @@ pub fn build_rolegroup_statefulset(
         .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
 
     let mut pod_template = pod_builder.build_template();
-    pod_template.merge_from(role.config.pod_overrides.clone());
-    pod_template.merge_from(rolegroup.config.pod_overrides.clone());
+    // `pod_overrides` already carries the merged role + role-group overrides (see
+    // `with_validated_config`), so a single merge here is equivalent to the previous
+    // role-then-role-group sequence.
+    pod_template.merge_from(role_group_config.pod_overrides.clone());
 
     let annotations = restarter_ignore_secret_annotations(
         trino_authentication_config
@@ -454,7 +439,7 @@ pub fn build_rolegroup_statefulset(
 
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(trino)
+            .name_and_namespace(cluster)
             .name(resource_names.stateful_set_name().to_string())
             .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
             .with_labels(cluster.recommended_labels(trino_role, role_group_name))
@@ -463,7 +448,7 @@ pub fn build_rolegroup_statefulset(
             .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
-            replicas: rolegroup.replicas.map(i32::from),
+            replicas: Some(i32::from(role_group_config.replicas)),
             selector: LabelSelector {
                 match_labels: Some(
                     cluster
@@ -635,20 +620,20 @@ fn create_tls_volume(
         .build())
 }
 
-#[allow(clippy::too_many_arguments)]
 fn tls_volume_mounts(
-    trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     trino_role: &TrinoRole,
     pod_builder: &mut PodBuilder,
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
-    catalogs: &[CatalogConfig],
     requested_secret_lifetime: &Duration,
-    resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
-    resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
-    trino_opa_config: &Option<TrinoOpaConfig>,
 ) -> Result<()> {
-    if let Some(server_tls) = trino.get_server_tls() {
+    let catalogs = cluster.cluster_config.catalogs.as_slice();
+    let resolved_fte_config = &cluster.cluster_config.fault_tolerant_execution;
+    let resolved_spooling_config = &cluster.cluster_config.client_protocol;
+    let trino_opa_config = &cluster.cluster_config.authorization;
+
+    if let Some(server_tls) = cluster.get_server_tls() {
         cb_prepare
             .add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR)
             .context(AddVolumeMountSnafu)?;
@@ -686,7 +671,7 @@ fn tls_volume_mounts(
         .add_empty_dir_volume("client-tls", None)
         .context(AddVolumeSnafu)?;
 
-    if let Some(internal_tls) = trino.get_internal_tls() {
+    if let Some(internal_tls) = cluster.get_internal_tls() {
         cb_prepare
             .add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR)
             .context(AddVolumeMountSnafu)?;

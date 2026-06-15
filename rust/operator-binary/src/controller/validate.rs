@@ -241,10 +241,11 @@ pub fn validate(
         role_group_configs.insert(trino_role, groups);
     }
 
+    let tls = &trino.spec.cluster_config.tls;
     let cluster_config = ValidatedClusterConfig {
         tls: ValidatedTls {
-            server: trino.get_server_tls().map(String::from),
-            internal: trino.get_internal_tls().map(String::from),
+            server: tls.server_secret_class.as_ref().map(ToString::to_string),
+            internal: tls.internal_secret_class.as_ref().map(ToString::to_string),
         },
         authentication,
         authentication_enabled: trino.authentication_enabled(),

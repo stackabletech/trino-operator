@@ -10,12 +10,12 @@ use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
     config::{client_protocol, fault_tolerant_execution},
-    controller::ValidatedTrinoConfig,
+    controller::{ValidatedCluster, ValidatedTrinoConfig},
     crd::{
         CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole, v1alpha1,
+        TrinoRole,
     },
     trino_controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
 };
@@ -27,7 +27,7 @@ const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
 const SPOOLING_MANAGER_PROPERTIES: &str = "spooling-manager.properties";
 
 pub fn container_prepare_args(
-    trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     catalogs: &[CatalogConfig],
     merged_config: &ValidatedTrinoConfig,
     resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
@@ -54,15 +54,15 @@ pub fn container_prepare_args(
     // S3, LDAP, OIDC, FTE or whatnot.
     args.push(format!("cert-tools generate-pkcs12-truststore --pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem --out {STACKABLE_CLIENT_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
 
-    if trino.tls_enabled() {
+    if cluster.tls_enabled() {
         args.push(format!("cp {STACKABLE_MOUNT_SERVER_TLS_DIR}/truststore.p12 {STACKABLE_SERVER_TLS_DIR}/truststore.p12"));
         args.push(format!("cp {STACKABLE_MOUNT_SERVER_TLS_DIR}/keystore.p12 {STACKABLE_SERVER_TLS_DIR}/keystore.p12"));
     }
 
-    if trino.get_internal_tls().is_some() {
+    if cluster.get_internal_tls().is_some() {
         args.push(format!("cp {STACKABLE_MOUNT_INTERNAL_TLS_DIR}/truststore.p12 {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12"));
         args.push(format!("cp {STACKABLE_MOUNT_INTERNAL_TLS_DIR}/keystore.p12 {STACKABLE_INTERNAL_TLS_DIR}/keystore.p12"));
-        if trino.tls_enabled() {
+        if cluster.tls_enabled() {
             args.push(format!("cert-tools generate-pkcs12-truststore --pkcs12 {STACKABLE_MOUNT_SERVER_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --pkcs12 {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --out {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
         }
     }

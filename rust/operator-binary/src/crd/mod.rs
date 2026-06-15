@@ -61,9 +61,6 @@ pub type TrinoRoleType = Role<
     JavaCommonConfig,
 >;
 
-pub type TrinoRoleGroupType =
-    RoleGroup<v1alpha1::TrinoConfigFragment, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>;
-
 pub const APP_NAME: &str = "trino";
 // ports
 pub const HTTP_PORT: u16 = 8080;
@@ -112,9 +109,6 @@ pub(crate) fn quantity_to_trino_bytes(
 pub enum Error {
     #[snafu(display("the role {role} is not defined"))]
     CannotRetrieveTrinoRole { role: String },
-
-    #[snafu(display("the role group {role_group} is not defined"))]
-    CannotRetrieveTrinoRoleGroup { role_group: String },
 }
 
 #[versioned(
@@ -522,23 +516,6 @@ impl v1alpha1::TrinoCluster {
         })
     }
 
-    /// Returns a reference to the role group. Raises an error if the role or role group are not defined.
-    pub fn rolegroup(
-        &self,
-        role: &TrinoRole,
-        role_group: &str,
-    ) -> Result<TrinoRoleGroupType, Error> {
-        let role_variant = self.role(role)?;
-
-        role_variant
-            .role_groups
-            .get(role_group)
-            .cloned()
-            .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
-                role_group: role_group.to_owned(),
-            })
-    }
-
     pub fn generic_role_config(&self, role: &TrinoRole) -> Option<&GenericRoleConfig> {
         match role {
             TrinoRole::Coordinator => self
@@ -606,31 +583,6 @@ impl v1alpha1::TrinoCluster {
                 v1alpha1::TrinoAuthorization::Opa { config } => config,
             })
     }
-
-    /// Return user provided server TLS settings
-    pub fn get_server_tls(&self) -> Option<&str> {
-        let spec: &v1alpha1::TrinoClusterSpec = &self.spec;
-        spec.cluster_config
-            .tls
-            .server_secret_class
-            .as_ref()
-            .map(|secret_class| secret_class.as_ref())
-    }
-
-    /// Return if client TLS should be set depending on settings for authentication and client TLS.
-    pub fn tls_enabled(&self) -> bool {
-        self.authentication_enabled() || self.get_server_tls().is_some()
-    }
-
-    /// Return user provided internal TLS settings.
-    pub fn get_internal_tls(&self) -> Option<&str> {
-        let spec: &v1alpha1::TrinoClusterSpec = &self.spec;
-        spec.cluster_config
-            .tls
-            .internal_secret_class
-            .as_ref()
-            .map(|secret_class| secret_class.as_ref())
-    }
 }
 
 fn extract_role_from_coordinator_config(fragment: TrinoCoordinatorRoleType) -> TrinoRoleType {
@@ -682,6 +634,29 @@ mod tests {
 
     use super::*;
 
+    /// The user-provided server TLS SecretClass as `Option<&str>` (mirrors the former
+    /// `TrinoCluster::get_server_tls`, kept here only for these CRD-defaulting assertions).
+    fn server_secret_class(trino: &v1alpha1::TrinoCluster) -> Option<&str> {
+        trino
+            .spec
+            .cluster_config
+            .tls
+            .server_secret_class
+            .as_ref()
+            .map(|secret_class| secret_class.as_ref())
+    }
+
+    /// The user-provided internal TLS SecretClass as `Option<&str>`.
+    fn internal_secret_class(trino: &v1alpha1::TrinoCluster) -> Option<&str> {
+        trino
+            .spec
+            .cluster_config
+            .tls
+            .internal_secret_class
+            .as_ref()
+            .map(|secret_class| secret_class.as_ref())
+    }
+
     #[test]
     fn test_server_tls() {
         let input = r#"
@@ -697,8 +672,11 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
-        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            internal_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS)
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -715,8 +693,11 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
-        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
+        assert_eq!(
+            internal_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS)
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -734,8 +715,8 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_server_tls(), None);
-        assert_eq!(trino.get_internal_tls(), None);
+        assert_eq!(server_secret_class(&trino), None);
+        assert_eq!(internal_secret_class(&trino), None);
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -752,8 +733,11 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
-        assert_eq!(trino.get_internal_tls(), Some("simple-trino-internal-tls"));
+        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            internal_secret_class(&trino),
+            Some("simple-trino-internal-tls")
+        );
     }
 
     #[test]
@@ -771,8 +755,11 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_internal_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
-        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            internal_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS)
+        );
+        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -789,8 +776,11 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_internal_tls(), Some("simple-trino-internal-tls"));
-        assert_eq!(trino.get_server_tls(), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            internal_secret_class(&trino),
+            Some("simple-trino-internal-tls")
+        );
+        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -808,8 +798,8 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(trino.get_internal_tls(), None);
-        assert_eq!(trino.get_server_tls(), Some("simple-trino-server-tls"));
+        assert_eq!(internal_secret_class(&trino), None);
+        assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
     }
 
     impl RoundtripTestData for v1alpha1::TrinoClusterSpec {

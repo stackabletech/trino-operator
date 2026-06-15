@@ -6,15 +6,11 @@ use stackable_operator::{
     },
     crd::listener::v1alpha1::{Listener, ListenerPort, ListenerSpec},
     k8s_openapi::api::core::v1::PersistentVolumeClaim,
-    kube::ResourceExt,
     kvp::Labels,
     v2::builder::meta::ownerreference_from_resource,
 };
 
-use crate::{
-    controller::ValidatedCluster,
-    crd::{TrinoRole, v1alpha1},
-};
+use crate::{controller::ValidatedCluster, crd::TrinoRole};
 
 pub const LISTENER_VOLUME_NAME: &str = "listener";
 pub const LISTENER_VOLUME_DIR: &str = "/stackable/listener";
@@ -64,11 +60,11 @@ pub fn build_group_listener_pvc(
 /// The name of the group-listener provided for a specific role-group.
 /// Coordinator(s) will use this group listener so that only one load balancer
 /// is needed (per role group).
-pub fn group_listener_name(trino: &v1alpha1::TrinoCluster, role: &TrinoRole) -> Option<String> {
+pub fn group_listener_name(cluster: &ValidatedCluster, role: &TrinoRole) -> Option<String> {
     match role {
         TrinoRole::Coordinator => Some(format!(
             "{cluster_name}-{role}",
-            cluster_name = trino.name_any()
+            cluster_name = cluster.name
         )),
         TrinoRole::Worker => None,
     }

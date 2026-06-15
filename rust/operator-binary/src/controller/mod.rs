@@ -149,6 +149,24 @@ impl ValidatedCluster {
         self.cluster_config.tls.server.is_some()
     }
 
+    /// The user-provided server TLS SecretClass, if any.
+    ///
+    /// Mirrors [`v1alpha1::TrinoCluster::get_server_tls`] but reads from the validated config so
+    /// build steps don't need the raw cluster.
+    pub fn get_server_tls(&self) -> Option<&str> {
+        self.cluster_config.tls.server.as_deref()
+    }
+
+    /// The user-provided internal TLS SecretClass, if any.
+    pub fn get_internal_tls(&self) -> Option<&str> {
+        self.cluster_config.tls.internal.as_deref()
+    }
+
+    /// Whether client TLS should be set, depending on authentication and server TLS settings.
+    pub fn tls_enabled(&self) -> bool {
+        self.cluster_config.authentication_enabled || self.server_tls_enabled()
+    }
+
     /// The client-facing port Trino exposes: HTTPS when server TLS is enabled, otherwise HTTP.
     ///
     /// Replaces `v1alpha1::TrinoCluster::exposed_port`, derived here from the validated TLS config

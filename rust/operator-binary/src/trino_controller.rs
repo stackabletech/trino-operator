@@ -20,7 +20,7 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
-    v2::cluster_resources::cluster_resources_new,
+    v2::{cluster_resources::cluster_resources_new, types::operator::ClusterName},
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -224,10 +224,10 @@ pub async fn reconcile_trino(
         .context(ApplyRoleBindingSnafu)?;
 
     random_secret_creation::create_random_secret_if_not_exists(
-        &shared_internal_secret_name(trino),
+        &shared_internal_secret_name(&validated_cluster.name),
         ENV_INTERNAL_SECRET,
         512,
-        trino,
+        &validated_cluster,
         client,
     )
     .await
@@ -236,10 +236,10 @@ pub async fn reconcile_trino(
     // This secret is created even if spooling is not configured.
     // Trino currently requires the secret to be exactly 256 bits long.
     random_secret_creation::create_random_secret_if_not_exists(
-        &shared_spooling_secret_name(trino),
+        &shared_spooling_secret_name(&validated_cluster.name),
         ENV_SPOOLING_SECRET,
         32,
-        trino,
+        &validated_cluster,
         client,
     )
     .await
@@ -295,7 +295,6 @@ pub async fn reconcile_trino(
                 })?;
 
             let rg_stateful_set = build::resource::statefulset::build_rolegroup_statefulset(
-                trino,
                 &validated_cluster,
                 trino_role,
                 role_group_name,
@@ -348,7 +347,7 @@ pub async fn reconcile_trino(
         }
 
         if let Some(listener_class) = trino_role.listener_class_name(trino)
-            && let Some(listener_group_name) = group_listener_name(trino, trino_role)
+            && let Some(listener_group_name) = group_listener_name(&validated_cluster, trino_role)
         {
             let role_group_listener = build_group_listener(
                 &validated_cluster,
@@ -409,12 +408,12 @@ pub fn error_policy(
     }
 }
 
-pub(crate) fn shared_internal_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
-    format!("{}-internal-secret", trino.name_any())
+pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> String {
+    format!("{cluster_name}-internal-secret")
 }
 
-pub(crate) fn shared_spooling_secret_name(trino: &v1alpha1::TrinoCluster) -> String {
-    format!("{}-spooling-secret", trino.name_any())
+pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String {
+    format!("{cluster_name}-spooling-secret")
 }
 
 #[cfg(test)]
