@@ -64,7 +64,21 @@ use crate::{
     catalog::config::CatalogConfig,
     command,
     config::{client_protocol, fault_tolerant_execution},
-    controller::{ValidatedCluster, ValidatedTrinoConfig, build, dereference, validate},
+    controller::{
+        ValidatedCluster, ValidatedTrinoConfig, build,
+        build::resource::{
+            listener::{
+                LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener,
+                build_group_listener_pvc, group_listener_name, secret_volume_listener_scope,
+            },
+            pdb::build_pdb,
+            service::{
+                build_rolegroup_headless_service, build_rolegroup_metrics_service,
+                headless_service_ports,
+            },
+        },
+        dereference, validate,
+    },
     crd::{
         APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
         HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
@@ -72,14 +86,6 @@ use crate::{
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
         TrinoRole, v1alpha1,
-    },
-    listener::{
-        LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener, build_group_listener_pvc,
-        group_listener_name, secret_volume_listener_scope,
-    },
-    operations::pdb::add_pdbs,
-    service::{
-        build_rolegroup_headless_service, build_rolegroup_metrics_service, headless_service_ports,
     },
 };
 
@@ -127,7 +133,7 @@ pub enum Error {
 
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfigMap {
-        source: build::config_map::Error,
+        source: build::resource::config_map::Error,
         rolegroup: String,
     },
 
@@ -184,8 +190,11 @@ pub enum Error {
     },
 
     #[snafu(display("failed to create PodDisruptionBudget"))]
-    FailedToCreatePdb {
-        source: crate::operations::pdb::Error,
+    FailedToCreatePdb { source: build::resource::pdb::Error },
+
+    #[snafu(display("failed to apply PodDisruptionBudget"))]
+    ApplyPdb {
+        source: stackable_operator::cluster_resources::Error,
     },
 
     #[snafu(display("failed to configure graceful shutdown"))]
@@ -251,10 +260,14 @@ pub enum Error {
     },
 
     #[snafu(display("failed to configure listener"))]
-    ListenerConfiguration { source: crate::listener::Error },
+    ListenerConfiguration {
+        source: build::resource::listener::Error,
+    },
 
     #[snafu(display("failed to configure service"))]
-    ServiceConfiguration { source: crate::service::Error },
+    ServiceConfiguration {
+        source: build::resource::service::Error,
+    },
 
     #[snafu(display("failed to create internal secret"))]
     CreateInternalSecret {
@@ -387,7 +400,7 @@ pub async fn reconcile_trino(
             )
             .context(ServiceConfigurationSnafu)?;
 
-            let rg_configmap = build::config_map::build_rolegroup_config_map(
+            let rg_configmap = build::resource::config_map::build_rolegroup_config_map(
                 &validated_cluster,
                 trino_role,
                 role_group_name,
@@ -398,15 +411,16 @@ pub async fn reconcile_trino(
                 rolegroup: role_group_name.clone(),
             })?;
 
-            let rg_catalog_configmap = build::config_map::build_rolegroup_catalog_config_map(
-                &validated_cluster,
-                trino_role,
-                role_group_name,
-                &role_group_service_recommended_labels,
-            )
-            .with_context(|_| BuildRoleGroupConfigMapSnafu {
-                rolegroup: role_group_name.clone(),
-            })?;
+            let rg_catalog_configmap =
+                build::resource::config_map::build_rolegroup_catalog_config_map(
+                    &validated_cluster,
+                    trino_role,
+                    role_group_name,
+                    &role_group_service_recommended_labels,
+                )
+                .with_context(|_| BuildRoleGroupConfigMapSnafu {
+                    rolegroup: role_group_name.clone(),
+                })?;
 
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
@@ -491,10 +505,12 @@ pub async fn reconcile_trino(
         if let Some(GenericRoleConfig {
             pod_disruption_budget: pdb,
         }) = role_config
+            && let Some(pdb) = build_pdb(pdb, trino, trino_role).context(FailedToCreatePdbSnafu)?
         {
-            add_pdbs(pdb, trino, trino_role, client, &mut cluster_resources)
+            cluster_resources
+                .add(client, pdb)
                 .await
-                .context(FailedToCreatePdbSnafu)?;
+                .context(ApplyPdbSnafu)?;
         }
     }
 
@@ -1359,7 +1375,7 @@ mod tests {
             role_group_name,
         );
 
-        build::config_map::build_rolegroup_config_map(
+        build::resource::config_map::build_rolegroup_config_map(
             &validated_cluster,
             &trino_role,
             role_group_name,

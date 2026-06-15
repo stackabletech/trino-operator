@@ -49,9 +49,6 @@ mod command;
 mod config;
 mod controller;
 mod crd;
-mod listener;
-mod operations;
-mod service;
 mod trino_controller;
 mod webhooks;
 
