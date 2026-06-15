@@ -1,14 +1,17 @@
 //! Controller-level vocabulary: the [`ValidatedCluster`] type produced by the [`validate`] step
 //! and consumed by the [`build`] steps, plus the `dereference` / `validate` / `build` sub-modules.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
 use stackable_operator::{
     commons::product_image_selection::ResolvedProductImage,
     kube::{Resource, api::ObjectMeta},
-    v2::types::{
-        kubernetes::{NamespaceName, Uid},
-        operator::ClusterName,
+    v2::{
+        role_group_utils::ResourceNames,
+        types::{
+            kubernetes::{NamespaceName, Uid},
+            operator::{ClusterName, RoleGroupName as RoleGroupNameV2, RoleName},
+        },
     },
 };
 
@@ -91,6 +94,17 @@ impl ValidatedCluster {
             product_version,
             cluster_config,
             role_group_configs,
+        }
+    }
+
+    /// Type-safe names for the resources of a given role group.
+    pub(crate) fn resource_names(&self, role: &TrinoRole, role_group_name: &str) -> ResourceNames {
+        ResourceNames {
+            cluster_name: self.name.clone(),
+            role_name: RoleName::from_str(&role.to_string())
+                .expect("a TrinoRole is a valid RFC 1123 role name"),
+            role_group_name: RoleGroupNameV2::from_str(role_group_name)
+                .expect("a validated role group name is a valid role group name"),
         }
     }
 }

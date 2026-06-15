@@ -48,7 +48,7 @@ use stackable_operator::{
             CustomContainerLogConfig,
         },
     },
-    role_utils::{GenericRoleConfig, RoleGroupRef},
+    role_utils::GenericRoleConfig,
     shared::time::Duration,
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
@@ -64,7 +64,7 @@ use crate::{
     catalog::config::CatalogConfig,
     command,
     config::{client_protocol, fault_tolerant_execution},
-    controller::{build, dereference, validate},
+    controller::{ValidatedCluster, build, dereference, validate},
     crd::{
         APP_NAME, CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
         HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
@@ -122,25 +122,25 @@ pub enum Error {
     #[snafu(display("failed to apply Service for {}", rolegroup))]
     ApplyRoleGroupService {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+        rolegroup: String,
     },
 
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfigMap {
         source: build::config_map::Error,
-        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+        rolegroup: String,
     },
 
     #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
     ApplyRoleGroupConfig {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+        rolegroup: String,
     },
 
     #[snafu(display("failed to apply StatefulSet for {}", rolegroup))]
     ApplyRoleGroupStatefulSet {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+        rolegroup: String,
     },
 
     #[snafu(display("object is missing metadata to build owner reference"))]
@@ -354,27 +354,24 @@ pub async fn reconcile_trino(
 
     for (trino_role, role_group_configs) in &validated_cluster.role_group_configs {
         for (role_group_name, rg) in role_group_configs {
-            let role_group_ref = trino_role.rolegroup_ref(trino, role_group_name);
+            let role_name = trino_role.to_string();
             let merged_config = &rg.config;
 
             let role_group_service_recommended_labels = build_recommended_labels(
                 &validated_cluster,
                 &validated_cluster.image.app_version_label_value,
-                &role_group_ref.role,
-                &role_group_ref.role_group,
+                &role_name,
+                role_group_name,
             );
 
-            let role_group_service_selector = Labels::role_group_selector(
-                trino,
-                APP_NAME,
-                &role_group_ref.role,
-                &role_group_ref.role_group,
-            )
-            .context(LabelBuildSnafu)?;
+            let role_group_service_selector =
+                Labels::role_group_selector(trino, APP_NAME, &role_name, role_group_name)
+                    .context(LabelBuildSnafu)?;
 
             let rg_headless_service = build_rolegroup_headless_service(
                 &validated_cluster,
-                &role_group_ref,
+                trino_role,
+                role_group_name,
                 &role_group_service_recommended_labels,
                 role_group_service_selector.clone().into(),
                 headless_service_ports(trino),
@@ -383,7 +380,8 @@ pub async fn reconcile_trino(
 
             let rg_metrics_service = build_rolegroup_metrics_service(
                 &validated_cluster,
-                &role_group_ref,
+                trino_role,
+                role_group_name,
                 &role_group_service_recommended_labels,
                 role_group_service_selector.into(),
             )
@@ -392,28 +390,30 @@ pub async fn reconcile_trino(
             let rg_configmap = build::config_map::build_rolegroup_config_map(
                 &validated_cluster,
                 trino_role,
-                &role_group_ref,
+                role_group_name,
                 &client.kubernetes_cluster_info,
                 &role_group_service_recommended_labels,
             )
             .with_context(|_| BuildRoleGroupConfigMapSnafu {
-                rolegroup: role_group_ref.clone(),
+                rolegroup: role_group_name.clone(),
             })?;
 
             let rg_catalog_configmap = build::config_map::build_rolegroup_catalog_config_map(
                 &validated_cluster,
-                &role_group_ref,
+                trino_role,
+                role_group_name,
                 &role_group_service_recommended_labels,
             )
             .with_context(|_| BuildRoleGroupConfigMapSnafu {
-                rolegroup: role_group_ref.clone(),
+                rolegroup: role_group_name.clone(),
             })?;
 
             let rg_stateful_set = build_rolegroup_statefulset(
                 trino,
+                &validated_cluster,
                 trino_role,
                 &validated_cluster.image,
-                &role_group_ref,
+                role_group_name,
                 &rg.env_overrides,
                 merged_config,
                 &validated_cluster.cluster_config.authentication,
@@ -428,28 +428,28 @@ pub async fn reconcile_trino(
                 .add(client, rg_headless_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
-                    rolegroup: role_group_ref.clone(),
+                    rolegroup: role_group_name.clone(),
                 })?;
 
             cluster_resources
                 .add(client, rg_metrics_service)
                 .await
                 .with_context(|_| ApplyRoleGroupServiceSnafu {
-                    rolegroup: role_group_ref.clone(),
+                    rolegroup: role_group_name.clone(),
                 })?;
 
             cluster_resources
                 .add(client, rg_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
-                    rolegroup: role_group_ref.clone(),
+                    rolegroup: role_group_name.clone(),
                 })?;
 
             cluster_resources
                 .add(client, rg_catalog_configmap)
                 .await
                 .with_context(|_| ApplyRoleGroupConfigSnafu {
-                    rolegroup: role_group_ref.clone(),
+                    rolegroup: role_group_name.clone(),
                 })?;
 
             // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
@@ -460,7 +460,7 @@ pub async fn reconcile_trino(
                     .add(client, rg_stateful_set)
                     .await
                     .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
-                        rolegroup: role_group_ref.clone(),
+                        rolegroup: role_group_name.clone(),
                     })?,
             );
         }
@@ -527,9 +527,10 @@ pub async fn reconcile_trino(
 #[allow(clippy::too_many_arguments)]
 fn build_rolegroup_statefulset(
     trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     trino_role: &TrinoRole,
     resolved_product_image: &ResolvedProductImage,
-    role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role_group_name: &str,
     env_overrides: &EnvVarSet,
     merged_config: &v1alpha1::TrinoConfig,
     trino_authentication_config: &TrinoAuthenticationConfig,
@@ -543,8 +544,12 @@ fn build_rolegroup_statefulset(
         .role(trino_role)
         .context(InternalOperatorFailureSnafu)?;
     let rolegroup = trino
-        .rolegroup(role_group_ref)
+        .rolegroup(trino_role, role_group_name)
         .context(InternalOperatorFailureSnafu)?;
+
+    let role_name = trino_role.to_string();
+    let resource_names = cluster.resource_names(trino_role, role_group_name);
+    let config_map_name = resource_names.role_group_config_map().to_string();
 
     let mut pod_builder = PodBuilder::new();
 
@@ -706,8 +711,8 @@ fn build_rolegroup_statefulset(
             trino,
             // A version value is required, and we do want to use the "recommended" format for the other desired labels
             "none",
-            &role_group_ref.role,
-            &role_group_ref.role_group,
+            &role_name,
+            role_group_name,
         ))
         .context(LabelBuildSnafu)?;
 
@@ -774,7 +779,7 @@ fn build_rolegroup_statefulset(
             .add_volume(Volume {
                 name: "log-config".to_string(),
                 config_map: Some(ConfigMapVolumeSource {
-                    name: role_group_ref.object_name(),
+                    name: config_map_name.clone(),
                     ..ConfigMapVolumeSource::default()
                 }),
                 ..Volume::default()
@@ -812,8 +817,8 @@ fn build_rolegroup_statefulset(
         .with_recommended_labels(&build_recommended_labels(
             trino,
             &resolved_product_image.app_version_label_value,
-            &role_group_ref.role,
-            &role_group_ref.role_group,
+            &role_name,
+            role_group_name,
         ))
         .context(MetadataBuildSnafu)?
         .with_annotation(
@@ -831,7 +836,7 @@ fn build_rolegroup_statefulset(
         .add_volume(Volume {
             name: "config".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: role_group_ref.object_name(),
+                name: config_map_name.clone(),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -842,7 +847,7 @@ fn build_rolegroup_statefulset(
         .add_volume(Volume {
             name: "catalog".to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: format!("{}-catalog", role_group_ref.object_name()),
+                name: format!("{config_map_name}-catalog"),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()
@@ -880,14 +885,14 @@ fn build_rolegroup_statefulset(
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(trino)
-            .name(role_group_ref.object_name())
+            .name(resource_names.stateful_set_name().to_string())
             .ownerreference_from_resource(trino, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(&build_recommended_labels(
                 trino,
                 &resolved_product_image.app_version_label_value,
-                &role_group_ref.role,
-                &role_group_ref.role_group,
+                &role_name,
+                role_group_name,
             ))
             .context(MetadataBuildSnafu)?
             .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
@@ -898,18 +903,13 @@ fn build_rolegroup_statefulset(
             replicas: rolegroup.replicas.map(i32::from),
             selector: LabelSelector {
                 match_labels: Some(
-                    Labels::role_group_selector(
-                        trino,
-                        APP_NAME,
-                        &role_group_ref.role,
-                        &role_group_ref.role_group,
-                    )
-                    .context(LabelBuildSnafu)?
-                    .into(),
+                    Labels::role_group_selector(trino, APP_NAME, &role_name, role_group_name)
+                        .context(LabelBuildSnafu)?
+                        .into(),
                 ),
                 ..LabelSelector::default()
             },
-            service_name: Some(role_group_ref.rolegroup_headless_service_name()),
+            service_name: Some(resource_names.headless_service_name().to_string()),
             template: pod_template,
             volume_claim_templates: Some(persistent_volume_claims),
             ..StatefulSetSpec::default()
@@ -1263,8 +1263,7 @@ fn tls_volume_mounts(
 mod tests {
     use stackable_operator::{
         cli::OperatorEnvironmentOptions, commons::networking::DomainName,
-        k8s_openapi::api::core::v1::ConfigMap, kube::runtime::reflector::ObjectRef,
-        role_utils::RoleGroupRef, utils::cluster_info::KubernetesClusterInfo,
+        k8s_openapi::api::core::v1::ConfigMap, utils::cluster_info::KubernetesClusterInfo,
         v2::builder::pod::container::EnvVarName,
     };
 
@@ -1351,22 +1350,19 @@ mod tests {
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         let trino_role = TrinoRole::Coordinator;
-        let rolegroup_ref = RoleGroupRef {
-            cluster: ObjectRef::from_obj(&trino),
-            role: trino_role.to_string(),
-            role_group: "default".to_string(),
-        };
+        let role_name = trino_role.to_string();
+        let role_group_name = "default";
         let recommended_labels = build_recommended_labels(
             &validated_cluster,
             &validated_cluster.image.app_version_label_value,
-            &rolegroup_ref.role,
-            &rolegroup_ref.role_group,
+            &role_name,
+            role_group_name,
         );
 
         build::config_map::build_rolegroup_config_map(
             &validated_cluster,
             &trino_role,
-            &rolegroup_ref,
+            role_group_name,
             &cluster_info,
             &recommended_labels,
         )

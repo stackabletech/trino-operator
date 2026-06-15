@@ -1,4 +1,5 @@
 use stackable_operator::{
+    kube::runtime::reflector::ObjectRef,
     product_logging::{
         framework::create_vector_config,
         spec::{
@@ -10,7 +11,10 @@ use stackable_operator::{
 };
 use strum::Display;
 
-use crate::crd::{Container, v1alpha1};
+use crate::{
+    controller::ValidatedCluster,
+    crd::{Container, TrinoRole},
+};
 
 #[derive(Display)]
 #[strum(serialize_all = "lowercase")]
@@ -64,7 +68,9 @@ pub fn get_log_property_map(
 
 /// Return the vector toml configuration
 pub fn get_vector_toml(
-    rolegroup: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    cluster: &ValidatedCluster,
+    role: &TrinoRole,
+    role_group_name: &str,
     logging: &Logging<Container>,
 ) -> Option<String> {
     let vector_log_config = if let Some(ContainerLogConfig {
@@ -77,7 +83,17 @@ pub fn get_vector_toml(
     };
 
     if logging.enable_vector_agent {
-        Some(create_vector_config(rolegroup, vector_log_config))
+        // The legacy `create_vector_config` still requires a `RoleGroupRef`, but ignores it
+        // entirely when rendering the config. We construct a throwaway one here so the rest of the
+        // operator no longer has to thread `RoleGroupRef` around.
+        // TODO(step-5): drop this once logging moves to the `v2` framework (`include_str!`-based
+        // `vector.yaml`), which does not need a `RoleGroupRef`.
+        let rolegroup_ref = RoleGroupRef {
+            cluster: ObjectRef::from_obj(cluster),
+            role: role.to_string(),
+            role_group: role_group_name.to_owned(),
+        };
+        Some(create_vector_config(&rolegroup_ref, vector_log_config))
     } else {
         None
     }

@@ -9,7 +9,7 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use affinity::get_affinity;
 use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{OptionExt, Snafu};
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
@@ -25,20 +25,25 @@ use stackable_operator::{
     crd::authentication::core,
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
-    kube::{CustomResource, runtime::reflector::ObjectRef},
+    kube::{CustomResource, ResourceExt},
     memory::{BinaryMultiple, MemoryQuantity},
     product_logging::{self, spec::Logging},
-    role_utils::{CommonConfiguration, GenericRoleConfig, Role, RoleGroup, RoleGroupRef},
+    role_utils::{CommonConfiguration, GenericRoleConfig, Role, RoleGroup},
     schemars::{self, JsonSchema},
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
     v2::{
-        config_overrides::KeyValueConfigOverrides, role_utils::JavaCommonConfig,
-        types::kubernetes::NamespaceName,
+        config_overrides::KeyValueConfigOverrides,
+        role_group_utils::ResourceNames,
+        role_utils::JavaCommonConfig,
+        types::{
+            kubernetes::NamespaceName,
+            operator::{ClusterName, RoleGroupName, RoleName},
+        },
     },
     versioned::versioned,
 };
-use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
+use strum::{Display, EnumIter, EnumString};
 
 use crate::crd::discovery::TrinoPodRef;
 
@@ -105,13 +110,6 @@ pub(crate) fn quantity_to_trino_bytes(
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("unknown role {role}. Should be one of {roles:?}"))]
-    UnknownTrinoRole {
-        source: strum::ParseError,
-        role: String,
-        roles: Vec<String>,
-    },
-
     #[snafu(display("the role {role} is not defined"))]
     CannotRetrieveTrinoRole { role: String },
 
@@ -421,36 +419,6 @@ pub enum TrinoRole {
 }
 
 impl TrinoRole {
-    /// Returns the container start command for a Trino node.
-    pub fn get_command(&self) -> Vec<String> {
-        vec![
-            "bin/launcher".to_string(),
-            "run".to_string(),
-            format!("--etc-dir={}", CONFIG_DIR_NAME),
-        ]
-    }
-
-    /// Metadata about a rolegroup
-    pub fn rolegroup_ref(
-        &self,
-        trino: &v1alpha1::TrinoCluster,
-        group_name: impl Into<String>,
-    ) -> RoleGroupRef<v1alpha1::TrinoCluster> {
-        RoleGroupRef {
-            cluster: ObjectRef::from_obj(trino),
-            role: self.to_string(),
-            role_group: group_name.into(),
-        }
-    }
-
-    pub fn roles() -> Vec<String> {
-        let mut roles = vec![];
-        for role in Self::iter() {
-            roles.push(role.to_string())
-        }
-        roles
-    }
-
     pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<String> {
         match self {
             Self::Coordinator => trino
@@ -553,22 +521,17 @@ impl v1alpha1::TrinoCluster {
     /// Returns a reference to the role group. Raises an error if the role or role group are not defined.
     pub fn rolegroup(
         &self,
-        rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+        role: &TrinoRole,
+        role_group: &str,
     ) -> Result<TrinoRoleGroupType, Error> {
-        let trino_role =
-            TrinoRole::from_str(&rolegroup_ref.role).with_context(|_| UnknownTrinoRoleSnafu {
-                role: rolegroup_ref.role.to_owned(),
-                roles: TrinoRole::roles(),
-            })?;
-
-        let role_variant = self.role(&trino_role)?;
+        let role_variant = self.role(role)?;
 
         role_variant
             .role_groups
-            .get(&rolegroup_ref.role_group)
+            .get(role_group)
             .cloned()
             .with_context(|| CannotRetrieveTrinoRoleGroupSnafu {
-                role_group: rolegroup_ref.role_group.to_owned(),
+                role_group: role_group.to_owned(),
             })
     }
 
@@ -624,6 +587,10 @@ impl v1alpha1::TrinoCluster {
         namespace: &NamespaceName,
     ) -> impl Iterator<Item = TrinoPodRef> + '_ {
         let ns = namespace.to_string();
+        let cluster_name = ClusterName::from_str(&self.name_any())
+            .expect("a TrinoCluster name is a valid cluster name");
+        let role_name = RoleName::from_str(&TrinoRole::Coordinator.to_string())
+            .expect("the coordinator role name is a valid role name");
         self.spec
             .coordinators
             .iter()
@@ -632,15 +599,17 @@ impl v1alpha1::TrinoCluster {
             .collect::<BTreeMap<_, _>>()
             .into_iter()
             .flat_map(move |(rolegroup_name, rolegroup)| {
-                let role_group_ref = TrinoRole::Coordinator.rolegroup_ref(self, rolegroup_name);
+                let resource_names = ResourceNames {
+                    cluster_name: cluster_name.clone(),
+                    role_name: role_name.clone(),
+                    role_group_name: RoleGroupName::from_str(rolegroup_name)
+                        .expect("a role group name is a valid role group name"),
+                };
                 let ns = ns.clone();
                 (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
-                    role_group_service_name: role_group_ref.rolegroup_headless_service_name(),
-                    pod_name: format!(
-                        "{role_group}-{i}",
-                        role_group = role_group_ref.object_name()
-                    ),
+                    role_group_service_name: resource_names.headless_service_name().to_string(),
+                    pod_name: format!("{}-{i}", resource_names.stateful_set_name()),
                 })
             })
     }

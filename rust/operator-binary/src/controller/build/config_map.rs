@@ -8,7 +8,6 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::ConfigMap,
     kvp::ObjectLabels,
     product_logging,
-    role_utils::RoleGroupRef,
     utils::cluster_info::KubernetesClusterInfo,
     v2::config_file_writer::to_java_properties_string,
 };
@@ -23,7 +22,7 @@ use crate::{
             security_properties, spooling_manager_properties,
         },
     },
-    crd::{TrinoRole, v1alpha1},
+    crd::TrinoRole,
 };
 
 // File name not exported from crd/mod.rs.
@@ -46,7 +45,7 @@ pub enum Error {
     #[snafu(display("failed to assemble ConfigMap for {rolegroup}"))]
     Assemble {
         source: stackable_operator::builder::configmap::Error,
-        rolegroup: RoleGroupRef<v1alpha1::TrinoCluster>,
+        rolegroup: String,
     },
 
     #[snafu(display("metadata build failure"))]
@@ -63,7 +62,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub fn build_rolegroup_config_map(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role_group_name: &str,
     cluster_info: &KubernetesClusterInfo,
     recommended_labels: &ObjectLabels<'_, ValidatedCluster>,
 ) -> Result<ConfigMap> {
@@ -73,14 +72,19 @@ pub fn build_rolegroup_config_map(
             .get(role)
             .with_context(|| MissingRoleGroupSnafu {
                 role: role.to_string(),
-                role_group: rolegroup_ref.role_group.clone(),
+                role_group: role_group_name.to_owned(),
             })?;
     let rg = role_group_configs
-        .get(&rolegroup_ref.role_group)
+        .get(role_group_name)
         .with_context(|| MissingRoleGroupSnafu {
             role: role.to_string(),
-            role_group: rolegroup_ref.role_group.clone(),
+            role_group: role_group_name.to_owned(),
         })?;
+
+    let config_map_name = cluster
+        .resource_names(role, role_group_name)
+        .role_group_config_map()
+        .to_string();
 
     let mut data: BTreeMap<String, String> = BTreeMap::new();
 
@@ -177,7 +181,7 @@ pub fn build_rolegroup_config_map(
     data.insert(JVM_CONFIG.to_string(), jvm_config);
 
     // 9. Vector sidecar toml if enabled.
-    if let Some(vector_toml) = get_vector_toml(rolegroup_ref, &rg.config.logging) {
+    if let Some(vector_toml) = get_vector_toml(cluster, role, role_group_name, &rg.config.logging) {
         data.insert(
             product_logging::framework::VECTOR_CONFIG_FILE.to_string(),
             vector_toml,
@@ -187,7 +191,7 @@ pub fn build_rolegroup_config_map(
     ConfigMapBuilder::new()
         .metadata(
             ObjectMetaBuilder::new()
-                .name(rolegroup_ref.object_name())
+                .name(&config_map_name)
                 .namespace(cluster.namespace.to_string())
                 .ownerreference_from_resource(cluster, None, Some(true))
                 .context(MetadataSnafu)?
@@ -198,7 +202,7 @@ pub fn build_rolegroup_config_map(
         .data(data)
         .build()
         .with_context(|_| AssembleSnafu {
-            rolegroup: rolegroup_ref.clone(),
+            rolegroup: config_map_name.clone(),
         })
 }
 
@@ -206,13 +210,20 @@ pub fn build_rolegroup_config_map(
 /// given by the administrator
 pub fn build_rolegroup_catalog_config_map(
     cluster: &ValidatedCluster,
-    rolegroup_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role: &TrinoRole,
+    role_group_name: &str,
     recommended_labels: &ObjectLabels<'_, ValidatedCluster>,
 ) -> Result<ConfigMap> {
+    let catalog_config_map_name = format!(
+        "{}-catalog",
+        cluster
+            .resource_names(role, role_group_name)
+            .role_group_config_map()
+    );
     ConfigMapBuilder::new()
         .metadata(
             ObjectMetaBuilder::new()
-                .name(format!("{}-catalog", rolegroup_ref.object_name()))
+                .name(&catalog_config_map_name)
                 .namespace(cluster.namespace.to_string())
                 .ownerreference_from_resource(cluster, None, Some(true))
                 .context(MetadataSnafu)?
@@ -235,6 +246,6 @@ pub fn build_rolegroup_catalog_config_map(
         )
         .build()
         .with_context(|_| AssembleSnafu {
-            rolegroup: rolegroup_ref.clone(),
+            rolegroup: catalog_config_map_name.clone(),
         })
 }

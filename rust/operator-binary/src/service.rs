@@ -5,12 +5,11 @@ use stackable_operator::{
     builder::meta::ObjectMetaBuilder,
     k8s_openapi::api::core::v1::{Service, ServicePort, ServiceSpec},
     kvp::{Annotations, Labels, ObjectLabels},
-    role_utils::RoleGroupRef,
 };
 
 use crate::{
     controller::ValidatedCluster,
-    crd::{METRICS_PORT, METRICS_PORT_NAME, v1alpha1},
+    crd::{METRICS_PORT, METRICS_PORT_NAME, TrinoRole, v1alpha1},
 };
 
 #[derive(Snafu, Debug)]
@@ -30,7 +29,8 @@ pub enum Error {
 /// This is mostly useful for internal communication between peers, or for clients that perform client-side load balancing.
 pub fn build_rolegroup_headless_service(
     cluster: &ValidatedCluster,
-    role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role: &TrinoRole,
+    role_group_name: &str,
     object_labels: &ObjectLabels<ValidatedCluster>,
     selector: BTreeMap<String, String>,
     ports: Vec<ServicePort>,
@@ -38,7 +38,12 @@ pub fn build_rolegroup_headless_service(
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(cluster)
-            .name(role_group_ref.rolegroup_headless_service_name())
+            .name(
+                cluster
+                    .resource_names(role, role_group_name)
+                    .headless_service_name()
+                    .to_string(),
+            )
             .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(object_labels)
@@ -60,14 +65,20 @@ pub fn build_rolegroup_headless_service(
 /// The rolegroup metrics [`Service`] is a service that exposes metrics and a prometheus scraping label.
 pub fn build_rolegroup_metrics_service(
     cluster: &ValidatedCluster,
-    role_group_ref: &RoleGroupRef<v1alpha1::TrinoCluster>,
+    role: &TrinoRole,
+    role_group_name: &str,
     object_labels: &ObjectLabels<ValidatedCluster>,
     selector: BTreeMap<String, String>,
 ) -> Result<Service, Error> {
     Ok(Service {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(cluster)
-            .name(role_group_ref.rolegroup_metrics_service_name())
+            .name(
+                cluster
+                    .resource_names(role, role_group_name)
+                    .metrics_service_name()
+                    .to_string(),
+            )
             .ownerreference_from_resource(cluster, None, Some(true))
             .context(ObjectMissingMetadataForOwnerRefSnafu)?
             .with_recommended_labels(object_labels)
