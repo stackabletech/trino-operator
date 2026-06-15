@@ -1,6 +1,6 @@
 //! Builds the per-rolegroup [`StatefulSet`] that runs a Trino role group.
 
-use std::{collections::BTreeMap, convert::Infallible, str::FromStr};
+use std::{convert::Infallible, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -30,13 +30,16 @@ use stackable_operator::{
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
     },
-    kvp::{Annotation, Annotations},
+    kvp::Annotation,
     product_logging,
     shared::time::Duration,
     v2::{
-        builder::{meta::ownerreference_from_resource, pod::container::EnvVarSet},
+        builder::{
+            meta::ownerreference_from_resource, pod::container::EnvVarSet,
+            statefulset::restarter_ignore_secret_annotations,
+        },
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
-        types::kubernetes::{ContainerName, VolumeName},
+        types::kubernetes::{ContainerName, SecretName, VolumeName},
     },
 };
 
@@ -100,6 +103,11 @@ pub enum Error {
     #[snafu(display("failed to build Annotation"))]
     AnnotationBuild {
         source: stackable_operator::kvp::KeyValuePairError<Infallible>,
+    },
+
+    #[snafu(display("failed to parse hot-reloaded Secret name"))]
+    ParseSecretName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
     },
 
     #[snafu(display("failed to build Metadata"))]
@@ -443,20 +451,14 @@ pub fn build_rolegroup_statefulset(
     pod_template.merge_from(role.config.pod_overrides.clone());
     pod_template.merge_from(rolegroup.config.pod_overrides.clone());
 
-    let ignore_secret_annotations = trino_authentication_config
+    let ignore_secrets = trino_authentication_config
         .hot_reloaded_secrets()
         .iter()
-        .enumerate()
-        .map(|(i, secret_name)| {
-            (
-                format!("restarter.stackable.tech/ignore-secret.{i}"),
-                secret_name,
-            )
-        })
-        .collect::<BTreeMap<_, _>>();
+        .map(|secret_name| SecretName::from_str(secret_name))
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .context(ParseSecretNameSnafu)?;
 
-    let annotations =
-        Annotations::try_from(ignore_secret_annotations).context(AnnotationBuildSnafu)?;
+    let annotations = restarter_ignore_secret_annotations(ignore_secrets);
 
     Ok(StatefulSet {
         metadata: ObjectMetaBuilder::new()
