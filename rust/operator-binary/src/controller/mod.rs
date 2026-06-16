@@ -17,7 +17,7 @@ use stackable_operator::{
         kvp::label::{recommended_labels, role_group_selector},
         role_group_utils::ResourceNames,
         types::{
-            kubernetes::{NamespaceName, Uid},
+            kubernetes::{ListenerClassName, NamespaceName, Uid},
             operator::{
                 ClusterName, ControllerName, OperatorName, ProductName, ProductVersion,
                 RoleGroupName as RoleGroupNameV2, RoleName,
@@ -98,6 +98,17 @@ impl ValidatedTrinoConfig {
     }
 }
 
+/// Per-role configuration extracted during validation.
+///
+/// Lets the reconciler and build steps consume this controller-owned type instead of re-reading
+/// the raw [`v1alpha1::TrinoCluster`] (mirroring the hive-operator's `ValidatedRoleConfig`).
+#[derive(Clone, Debug)]
+pub struct ValidatedRoleConfig {
+    pub pdb: stackable_operator::commons::pdb::PdbConfig,
+    /// The listener class for the role's group listener, if it has one (coordinator only).
+    pub listener_class: Option<ListenerClassName>,
+}
+
 /// The validated TrinoCluster. The output of the validate step.
 #[derive(Clone, Debug)]
 pub struct ValidatedCluster {
@@ -113,6 +124,7 @@ pub struct ValidatedCluster {
     pub image: ResolvedProductImage,
     pub product_version: u16,
     pub cluster_config: ValidatedClusterConfig,
+    pub role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
     pub role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
 }
 
@@ -125,6 +137,7 @@ impl ValidatedCluster {
         image: ResolvedProductImage,
         product_version: u16,
         cluster_config: ValidatedClusterConfig,
+        role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
         role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
     ) -> Self {
         Self {
@@ -140,8 +153,14 @@ impl ValidatedCluster {
             image,
             product_version,
             cluster_config,
+            role_configs,
             role_group_configs,
         }
+    }
+
+    /// The validated per-role config for `role`, if the role is defined.
+    pub(crate) fn role_config(&self, role: &TrinoRole) -> Option<&ValidatedRoleConfig> {
+        self.role_configs.get(role)
     }
 
     /// Whether the (client-facing) server TLS is enabled.

@@ -14,7 +14,6 @@ use stackable_operator::{
     },
     logging::controller::ReconcilerError,
     memory::{BinaryMultiple, MemoryQuantity},
-    role_utils::GenericRoleConfig,
     shared::time::Duration,
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
@@ -346,7 +345,11 @@ pub async fn reconcile_trino(
             );
         }
 
-        if let Some(listener_class) = trino_role.listener_class_name(trino)
+        let Some(role_config) = validated_cluster.role_config(trino_role) else {
+            continue;
+        };
+
+        if let Some(listener_class) = &role_config.listener_class
             && let Some(listener_group_name) = group_listener_name(&validated_cluster, trino_role)
         {
             let role_group_listener = build_group_listener(
@@ -362,12 +365,7 @@ pub async fn reconcile_trino(
                 .context(ApplyGroupListenerSnafu)?;
         }
 
-        let role_config = trino.generic_role_config(trino_role);
-        if let Some(GenericRoleConfig {
-            pod_disruption_budget: pdb,
-        }) = role_config
-            && let Some(pdb) = build_pdb(pdb, &validated_cluster, trino_role)
-        {
+        if let Some(pdb) = build_pdb(&role_config.pdb, &validated_cluster, trino_role) {
             cluster_resources
                 .add(client, pdb)
                 .await

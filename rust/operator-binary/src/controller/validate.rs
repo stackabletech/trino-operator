@@ -26,7 +26,10 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoEnumIterator, IntoStaticStr};
 
-use super::{ValidatedCluster, ValidatedClusterConfig, ValidatedTls, ValidatedTrinoConfig};
+use super::{
+    ValidatedCluster, ValidatedClusterConfig, ValidatedRoleConfig, ValidatedTls,
+    ValidatedTrinoConfig,
+};
 use crate::{
     authentication::{self, TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     controller::dereference::DereferencedObjects,
@@ -205,6 +208,7 @@ pub fn validate(
         .vector_aggregator_config_map_name
         .clone();
 
+    let mut role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig> = BTreeMap::new();
     let mut role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>> =
         BTreeMap::new();
     for trino_role in TrinoRole::iter() {
@@ -213,6 +217,20 @@ pub fn validate(
             .with_context(|_| MissingTrinoRoleSnafu {
                 role: trino_role.to_string(),
             })?;
+
+        // Extract the per-role PDB and (optional) listener class up-front, so the reconciler and
+        // build steps consume the validated config instead of re-reading the raw cluster.
+        role_configs.insert(
+            trino_role.clone(),
+            ValidatedRoleConfig {
+                pdb: trino
+                    .generic_role_config(&trino_role)
+                    .map(|rc| rc.pod_disruption_budget.clone())
+                    .unwrap_or_default(),
+                listener_class: trino_role.listener_class_name(trino),
+            },
+        );
+
         let default_config = v1alpha1::TrinoConfig::default_config(
             &trino.name_any(),
             &trino_role,
@@ -266,6 +284,7 @@ pub fn validate(
         image,
         product_version,
         cluster_config,
+        role_configs,
         role_group_configs,
     ))
 }
