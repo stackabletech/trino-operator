@@ -31,10 +31,7 @@ use stackable_operator::{
     product_logging,
     shared::time::Duration,
     v2::{
-        builder::{
-            meta::ownerreference_from_resource, pod::container::EnvVarSet,
-            statefulset::restarter_ignore_secret_annotations,
-        },
+        builder::{pod::container::EnvVarSet, statefulset::restarter_ignore_secret_annotations},
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
         types::kubernetes::{ContainerName, VolumeName},
     },
@@ -438,11 +435,11 @@ pub fn build_rolegroup_statefulset(
     );
 
     Ok(StatefulSet {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(cluster)
-            .name(resource_names.stateful_set_name().to_string())
-            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
-            .with_labels(cluster.recommended_labels(trino_role, role_group_name))
+        metadata: cluster
+            .object_meta(
+                resource_names.stateful_set_name().to_string(),
+                cluster.recommended_labels(trino_role, role_group_name),
+            )
             .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
             .with_annotations(annotations)
             .build(),

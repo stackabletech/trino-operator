@@ -4,6 +4,7 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use stackable_operator::{
+    builder::meta::ObjectMetaBuilder,
     commons::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
@@ -14,6 +15,7 @@ use stackable_operator::{
     shared::time::Duration,
     v2::{
         HasName, HasUid, NameIsValidLabelValue,
+        builder::meta::ownerreference_from_resource,
         kvp::label::{recommended_labels, role_group_selector},
         role_group_utils::ResourceNames,
         types::{
@@ -214,6 +216,25 @@ impl ValidatedCluster {
             role_name: Self::role_name(role),
             role_group_name: Self::role_group_name(role_group_name),
         }
+    }
+
+    /// Returns an [`ObjectMetaBuilder`] pre-filled with this cluster's namespace, an owner
+    /// reference back to the cluster, the resource `name` and the given `recommended_labels`.
+    ///
+    /// Consolidates the metadata chain repeated by the child-resource builders. Call sites that
+    /// need extra labels/annotations chain them onto the returned builder.
+    pub(crate) fn object_meta(
+        &self,
+        name: impl Into<String>,
+        recommended_labels: Labels,
+    ) -> ObjectMetaBuilder {
+        let mut builder = ObjectMetaBuilder::new();
+        builder
+            .name_and_namespace(self)
+            .name(name)
+            .ownerreference(ownerreference_from_resource(self, None, Some(true)))
+            .with_labels(recommended_labels);
+        builder
     }
 
     /// A [`TrinoRole`] as a type-safe [`RoleName`].

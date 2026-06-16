@@ -1,13 +1,9 @@
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    builder::{
-        meta::ObjectMetaBuilder,
-        pod::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference},
-    },
+    builder::pod::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference},
     crd::listener::v1alpha1::{Listener, ListenerPort, ListenerSpec},
     k8s_openapi::api::core::v1::PersistentVolumeClaim,
     kvp::Labels,
-    v2::builder::meta::ownerreference_from_resource,
 };
 
 use crate::{controller::ValidatedCluster, crd::TrinoRole};
@@ -30,11 +26,8 @@ pub fn build_group_listener(
     listener_group_name: String,
 ) -> Listener {
     Listener {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(cluster)
-            .name(listener_group_name)
-            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
-            .with_labels(recommended_labels)
+        metadata: cluster
+            .object_meta(listener_group_name, recommended_labels)
             .build(),
         spec: ListenerSpec {
             class_name: Some(listener_class),

@@ -4,14 +4,9 @@ use std::collections::BTreeMap;
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder},
-    k8s_openapi::api::core::v1::ConfigMap,
-    kvp::Labels,
-    product_logging::framework::VECTOR_CONFIG_FILE,
-    utils::cluster_info::KubernetesClusterInfo,
-    v2::{
-        builder::meta::ownerreference_from_resource, config_file_writer::to_java_properties_string,
-    },
+    builder::configmap::ConfigMapBuilder, k8s_openapi::api::core::v1::ConfigMap, kvp::Labels,
+    product_logging::framework::VECTOR_CONFIG_FILE, utils::cluster_info::KubernetesClusterInfo,
+    v2::config_file_writer::to_java_properties_string,
 };
 
 use crate::{
@@ -188,11 +183,8 @@ pub fn build_rolegroup_config_map(
 
     ConfigMapBuilder::new()
         .metadata(
-            ObjectMetaBuilder::new()
-                .name(&config_map_name)
-                .namespace(cluster.namespace.to_string())
-                .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
-                .with_labels(recommended_labels.clone())
+            cluster
+                .object_meta(&config_map_name, recommended_labels.clone())
                 .build(),
         )
         .data(data)
@@ -218,11 +210,8 @@ pub fn build_rolegroup_catalog_config_map(
     );
     ConfigMapBuilder::new()
         .metadata(
-            ObjectMetaBuilder::new()
-                .name(&catalog_config_map_name)
-                .namespace(cluster.namespace.to_string())
-                .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
-                .with_labels(recommended_labels.clone())
+            cluster
+                .object_meta(&catalog_config_map_name, recommended_labels.clone())
                 .build(),
         )
         .data(

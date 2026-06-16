@@ -1,10 +1,8 @@
 use std::collections::BTreeMap;
 
 use stackable_operator::{
-    builder::meta::ObjectMetaBuilder,
     k8s_openapi::api::core::v1::{Service, ServicePort, ServiceSpec},
     kvp::{Annotations, Labels},
-    v2::builder::meta::ownerreference_from_resource,
 };
 
 use crate::{
@@ -23,16 +21,14 @@ pub fn build_rolegroup_headless_service(
     ports: Vec<ServicePort>,
 ) -> Service {
     Service {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(cluster)
-            .name(
+        metadata: cluster
+            .object_meta(
                 cluster
                     .resource_names(role, role_group_name)
                     .headless_service_name()
                     .to_string(),
+                recommended_labels.clone(),
             )
-            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
-            .with_labels(recommended_labels.clone())
             .build(),
         spec: Some(ServiceSpec {
             // Internal communication does not need to be exposed
@@ -56,16 +52,14 @@ pub fn build_rolegroup_metrics_service(
     selector: BTreeMap<String, String>,
 ) -> Service {
     Service {
-        metadata: ObjectMetaBuilder::new()
-            .name_and_namespace(cluster)
-            .name(
+        metadata: cluster
+            .object_meta(
                 cluster
                     .resource_names(role, role_group_name)
                     .metrics_service_name()
                     .to_string(),
+                recommended_labels.clone(),
             )
-            .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
-            .with_labels(recommended_labels.clone())
             .with_labels(prometheus_labels())
             .with_annotations(prometheus_annotations())
             .build(),
