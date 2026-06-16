@@ -97,3 +97,63 @@ tests:
               }
 
               assert_eq!(expected_log_event, .)
+  - name: Test Vector internal logs
+    inputs:
+      - type: log
+        insert_at: filtered_logs_vector
+        log_fields:
+          arch: x86_64
+          message: Vector has started.
+          metadata:
+            kind: event
+            level: INFO
+            module_path: vector::internal_events::process
+            target: vector
+          pid: 14
+          pod: trino-coordinator-default-0
+          source_type: internal_logs
+          timestamp: 2025-10-02T09:46:14.479381097Z
+          version: 0.49.0
+    outputs:
+      - extract_from: extended_logs
+        conditions:
+          - type: vrl
+            source: |
+              expected_log_event = {
+                "arch": "x86_64",
+                "cluster": "trino",
+                "container": "vector",
+                "level": "INFO",
+                "logger": "vector::internal_events::process",
+                "message": "Vector has started.",
+                "namespace": "default",
+                "pod": "trino-coordinator-default-0",
+                "role": "coordinator",
+                "roleGroup": "default",
+                "timestamp": "2025-10-02T09:46:14.479381097Z",
+                "version": "0.49.0"
+              }
+
+              assert_eq!(expected_log_event, .)
+  - name: Test Vector internal log level filtering - INFO passes
+    inputs:
+      - type: log
+        insert_at: filtered_logs_vector
+        log_fields:
+          metadata:
+            level: INFO
+    outputs:
+      - extract_from: filtered_logs_vector
+        conditions:
+          - type: vrl
+            source: |
+              assert_eq!("INFO", .metadata.level)
+  - name: Test Vector internal log level filtering - DEBUG dropped
+    inputs:
+      - type: log
+        insert_at: filtered_logs_vector
+        log_fields:
+          metadata:
+            level: DEBUG
+    no_outputs_from:
+      - filtered_logs_vector
