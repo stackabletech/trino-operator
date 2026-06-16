@@ -62,10 +62,21 @@ use crate::{
 };
 
 stackable_operator::constant!(VECTOR_CONTAINER_NAME: ContainerName = "vector");
-// The Vector agent reads its `vector.yaml` from the rolegroup ConfigMap (mounted as the "config"
-// volume) and writes its state under the shared "log" volume.
-stackable_operator::constant!(VECTOR_LOG_CONFIG_VOLUME_NAME: VolumeName = "config");
-stackable_operator::constant!(VECTOR_LOG_VOLUME_NAME: VolumeName = "log");
+
+// Typed names for the Pod's volumes, so each volume definition and its matching volume mounts
+// stay in sync. The Vector agent reads its `vector.yaml` from the rolegroup ConfigMap (mounted as
+// the `config` volume) and writes its state under the shared `log` volume.
+stackable_operator::constant!(CONFIG_VOLUME_NAME: VolumeName = "config");
+stackable_operator::constant!(RW_CONFIG_VOLUME_NAME: VolumeName = "rwconfig");
+stackable_operator::constant!(CATALOG_VOLUME_NAME: VolumeName = "catalog");
+stackable_operator::constant!(LOG_CONFIG_VOLUME_NAME: VolumeName = "log-config");
+// `log` is also mounted by the password-file-updater container built in the authentication module.
+stackable_operator::constant!(pub LOG_VOLUME_NAME: VolumeName = "log");
+stackable_operator::constant!(SERVER_TLS_MOUNT_VOLUME_NAME: VolumeName = "server-tls-mount");
+stackable_operator::constant!(SERVER_TLS_VOLUME_NAME: VolumeName = "server-tls");
+stackable_operator::constant!(CLIENT_TLS_VOLUME_NAME: VolumeName = "client-tls");
+stackable_operator::constant!(INTERNAL_TLS_MOUNT_VOLUME_NAME: VolumeName = "internal-tls-mount");
+stackable_operator::constant!(INTERNAL_TLS_VOLUME_NAME: VolumeName = "internal-tls");
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -279,11 +290,11 @@ pub fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![prepare_args.join("\n")])
-        .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
+        .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
         .context(AddVolumeMountSnafu)?
-        .add_volume_mount("log-config", STACKABLE_LOG_CONFIG_DIR)
+        .add_volume_mount(&*LOG_CONFIG_VOLUME_NAME, STACKABLE_LOG_CONFIG_DIR)
         .context(AddVolumeMountSnafu)?
-        .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
         .context(AddVolumeMountSnafu)?
         .resources(
             ResourceRequirementsBuilder::new()
@@ -326,13 +337,16 @@ pub fn build_rolegroup_statefulset(
             command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
         ])
         .add_env_vars(env)
-        .add_volume_mount("config", CONFIG_DIR_NAME)
+        .add_volume_mount(&*CONFIG_VOLUME_NAME, CONFIG_DIR_NAME)
         .context(AddVolumeMountSnafu)?
-        .add_volume_mount("rwconfig", RW_CONFIG_DIR_NAME)
+        .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
         .context(AddVolumeMountSnafu)?
-        .add_volume_mount("catalog", format!("{}/catalog", CONFIG_DIR_NAME))
+        .add_volume_mount(
+            &*CATALOG_VOLUME_NAME,
+            format!("{}/catalog", CONFIG_DIR_NAME),
+        )
         .context(AddVolumeMountSnafu)?
-        .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
         .context(AddVolumeMountSnafu)?
         .add_container_ports(container_ports(cluster))
         .resources(merged_config.resources.clone().into())
@@ -356,7 +370,7 @@ pub fn build_rolegroup_statefulset(
     };
     pod_builder
         .add_volume(Volume {
-            name: "log-config".to_string(),
+            name: LOG_CONFIG_VOLUME_NAME.to_string(),
             config_map: Some(ConfigMapVolumeSource {
                 name: log_config_volume_config_map,
                 ..ConfigMapVolumeSource::default()
@@ -371,8 +385,8 @@ pub fn build_rolegroup_statefulset(
             resolved_product_image,
             vector_log_config,
             &resource_names,
-            &VECTOR_LOG_CONFIG_VOLUME_NAME,
-            &VECTOR_LOG_VOLUME_NAME,
+            &CONFIG_VOLUME_NAME,
+            &LOG_VOLUME_NAME,
             EnvVarSet::new(),
         ));
     }
@@ -392,7 +406,7 @@ pub fn build_rolegroup_statefulset(
         .affinity(&merged_config.affinity)
         .add_init_container(container_prepare)
         .add_volume(Volume {
-            name: "config".to_string(),
+            name: CONFIG_VOLUME_NAME.to_string(),
             config_map: Some(ConfigMapVolumeSource {
                 name: config_map_name.clone(),
                 ..ConfigMapVolumeSource::default()
@@ -400,10 +414,10 @@ pub fn build_rolegroup_statefulset(
             ..Volume::default()
         })
         .context(AddVolumeSnafu)?
-        .add_empty_dir_volume("rwconfig", None)
+        .add_empty_dir_volume(&*RW_CONFIG_VOLUME_NAME, None)
         .context(AddVolumeSnafu)?
         .add_volume(Volume {
-            name: "catalog".to_string(),
+            name: CATALOG_VOLUME_NAME.to_string(),
             config_map: Some(ConfigMapVolumeSource {
                 name: format!("{config_map_name}-catalog"),
                 ..ConfigMapVolumeSource::default()
@@ -412,7 +426,7 @@ pub fn build_rolegroup_statefulset(
         })
         .context(AddVolumeSnafu)?
         .add_empty_dir_volume(
-            "log",
+            &*LOG_VOLUME_NAME,
             Some(product_logging::framework::calculate_log_volume_size_limit(
                 &[MAX_TRINO_LOG_FILES_SIZE, MAX_PREPARE_LOG_FILE_SIZE],
             )),
@@ -588,7 +602,7 @@ fn finished_starting_probe(cluster: &ValidatedCluster) -> ExecAction {
 }
 
 fn create_tls_volume(
-    volume_name: &str,
+    volume_name: impl Into<String>,
     tls_secret_class: &str,
     requested_secret_lifetime: &Duration,
     listener_scope: Option<String>,
@@ -632,14 +646,20 @@ fn tls_volume_mounts(
 
     if let Some(server_tls) = cluster.get_server_tls() {
         cb_prepare
-            .add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR)
+            .add_volume_mount(
+                &*SERVER_TLS_MOUNT_VOLUME_NAME,
+                STACKABLE_MOUNT_SERVER_TLS_DIR,
+            )
             .context(AddVolumeMountSnafu)?;
         cb_trino
-            .add_volume_mount("server-tls-mount", STACKABLE_MOUNT_SERVER_TLS_DIR)
+            .add_volume_mount(
+                &*SERVER_TLS_MOUNT_VOLUME_NAME,
+                STACKABLE_MOUNT_SERVER_TLS_DIR,
+            )
             .context(AddVolumeMountSnafu)?;
         pod_builder
             .add_volume(create_tls_volume(
-                "server-tls-mount",
+                &*SERVER_TLS_MOUNT_VOLUME_NAME,
                 server_tls,
                 requested_secret_lifetime,
                 // add listener
@@ -649,35 +669,41 @@ fn tls_volume_mounts(
     }
 
     cb_prepare
-        .add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR)
+        .add_volume_mount(&*SERVER_TLS_VOLUME_NAME, STACKABLE_SERVER_TLS_DIR)
         .context(AddVolumeMountSnafu)?;
     cb_trino
-        .add_volume_mount("server-tls", STACKABLE_SERVER_TLS_DIR)
+        .add_volume_mount(&*SERVER_TLS_VOLUME_NAME, STACKABLE_SERVER_TLS_DIR)
         .context(AddVolumeMountSnafu)?;
     pod_builder
-        .add_empty_dir_volume("server-tls", None)
+        .add_empty_dir_volume(&*SERVER_TLS_VOLUME_NAME, None)
         .context(AddVolumeSnafu)?;
 
     cb_prepare
-        .add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR)
+        .add_volume_mount(&*CLIENT_TLS_VOLUME_NAME, STACKABLE_CLIENT_TLS_DIR)
         .context(AddVolumeMountSnafu)?;
     cb_trino
-        .add_volume_mount("client-tls", STACKABLE_CLIENT_TLS_DIR)
+        .add_volume_mount(&*CLIENT_TLS_VOLUME_NAME, STACKABLE_CLIENT_TLS_DIR)
         .context(AddVolumeMountSnafu)?;
     pod_builder
-        .add_empty_dir_volume("client-tls", None)
+        .add_empty_dir_volume(&*CLIENT_TLS_VOLUME_NAME, None)
         .context(AddVolumeSnafu)?;
 
     if let Some(internal_tls) = cluster.get_internal_tls() {
         cb_prepare
-            .add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR)
+            .add_volume_mount(
+                &*INTERNAL_TLS_MOUNT_VOLUME_NAME,
+                STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+            )
             .context(AddVolumeMountSnafu)?;
         cb_trino
-            .add_volume_mount("internal-tls-mount", STACKABLE_MOUNT_INTERNAL_TLS_DIR)
+            .add_volume_mount(
+                &*INTERNAL_TLS_MOUNT_VOLUME_NAME,
+                STACKABLE_MOUNT_INTERNAL_TLS_DIR,
+            )
             .context(AddVolumeMountSnafu)?;
         pod_builder
             .add_volume(create_tls_volume(
-                "internal-tls-mount",
+                &*INTERNAL_TLS_MOUNT_VOLUME_NAME,
                 internal_tls,
                 requested_secret_lifetime,
                 None,
@@ -685,13 +711,13 @@ fn tls_volume_mounts(
             .context(AddVolumeSnafu)?;
 
         cb_prepare
-            .add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR)
+            .add_volume_mount(&*INTERNAL_TLS_VOLUME_NAME, STACKABLE_INTERNAL_TLS_DIR)
             .context(AddVolumeMountSnafu)?;
         cb_trino
-            .add_volume_mount("internal-tls", STACKABLE_INTERNAL_TLS_DIR)
+            .add_volume_mount(&*INTERNAL_TLS_VOLUME_NAME, STACKABLE_INTERNAL_TLS_DIR)
             .context(AddVolumeMountSnafu)?;
         pod_builder
-            .add_empty_dir_volume("internal-tls", None)
+            .add_empty_dir_volume(&*INTERNAL_TLS_VOLUME_NAME, None)
             .context(AddVolumeSnafu)?;
     }
 

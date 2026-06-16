@@ -18,7 +18,8 @@ use stackable_operator::{
 };
 
 use crate::{
-    authentication::password::PASSWORD_AUTHENTICATOR_NAME, trino_controller::STACKABLE_LOG_DIR,
+    authentication::password::PASSWORD_AUTHENTICATOR_NAME,
+    controller::build::resource::statefulset::LOG_VOLUME_NAME, trino_controller::STACKABLE_LOG_DIR,
 };
 
 // mounts
@@ -189,7 +190,7 @@ wait_for_termination $!
         .add_volume_mounts(volume_mounts)
         .context(AddVolumeMountsSnafu)?
         // fixed
-        .add_volume_mount("log", STACKABLE_LOG_DIR)
+        .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
         .context(AddVolumeMountsSnafu)?
         .resources(
             ResourceRequirementsBuilder::new()
