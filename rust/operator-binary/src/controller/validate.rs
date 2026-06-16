@@ -109,9 +109,9 @@ pub type RoleGroupName = String;
 
 /// Validated logging configuration for the Trino, prepare and (optional) Vector containers.
 ///
-/// Produced up-front by [`validate_logging`] (mirroring the opensearch- and hive-operators) so
-/// that an invalid custom log ConfigMap name or a missing Vector aggregator discovery ConfigMap
-/// name fails reconciliation during validation rather than at resource-build time.
+/// Produced up-front by [`validate_logging`] so that an invalid custom log ConfigMap name or a
+/// missing Vector aggregator discovery ConfigMap name fails reconciliation during validation
+/// rather than at resource-build time.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValidatedLogging {
     pub prepare_container: ValidatedContainerLogConfigChoice,

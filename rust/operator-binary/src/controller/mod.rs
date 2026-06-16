@@ -71,8 +71,7 @@ pub struct ValidatedClusterConfig {
 /// A validated, merged Trino role-group config.
 ///
 /// Holds the merged [`v1alpha1::TrinoConfig`] fields so the build steps consume this
-/// controller-owned type instead of the raw CRD struct (mirroring the opensearch- and
-/// hive-operators' `Validated…Config`).
+/// controller-owned type instead of the raw CRD struct.
 #[derive(Clone, Debug)]
 pub struct ValidatedTrinoConfig {
     pub affinity: StackableAffinity,
@@ -103,7 +102,7 @@ impl ValidatedTrinoConfig {
 /// Per-role configuration extracted during validation.
 ///
 /// Lets the reconciler and build steps consume this controller-owned type instead of re-reading
-/// the raw [`v1alpha1::TrinoCluster`] (mirroring the hive-operator's `ValidatedRoleConfig`).
+/// the raw [`v1alpha1::TrinoCluster`].
 #[derive(Clone, Debug)]
 pub struct ValidatedRoleConfig {
     pub pdb: stackable_operator::commons::pdb::PdbConfig,

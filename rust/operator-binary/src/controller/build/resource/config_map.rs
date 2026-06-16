@@ -173,7 +173,7 @@ pub fn build_rolegroup_config_map(
     data.insert(JVM_CONFIG.to_string(), jvm_config);
 
     // 9. Vector agent config (`vector.yaml`) if the Vector agent is enabled. The file is templated
-    // with environment variables injected by the v2 Vector container at runtime.
+    // with environment variables injected by the Vector container at runtime.
     if rg.config.logging.enable_vector_agent {
         data.insert(
             VECTOR_CONFIG_FILE.to_string(),
