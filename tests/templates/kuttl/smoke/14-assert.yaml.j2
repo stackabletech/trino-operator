@@ -81,8 +81,16 @@ commands:
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
         -Djdk.nio.maxCachedBufferSize=2000000
+{% if test_scenario['values']['trino'].startswith("477") %}
         -Dfile.encoding=UTF-8
         -XX:+EnableDynamicAgentLoading
+{% elif test_scenario['values']['trino'].startswith("479") %}
+        -Dfile.encoding=UTF-8
+        -XX:+EnableDynamicAgentLoading
+        --add-modules=jdk.incubator.vector
+{% elif test_scenario['values']['trino'].startswith("481") %}
+        --add-modules=jdk.incubator.vector
+{% endif %}
         # Arguments from jvmArgumentOverrides
       log.properties: |
         =info
@@ -765,8 +773,16 @@ commands:
         -XX:PerBytecodeRecompilationCutoff=10000
         -Djdk.attach.allowAttachSelf=true
         -Djdk.nio.maxCachedBufferSize=2000000
+{% if test_scenario['values']['trino'].startswith("477") %}
         -Dfile.encoding=UTF-8
         -XX:+EnableDynamicAgentLoading
+{% elif test_scenario['values']['trino'].startswith("479") %}
+        -Dfile.encoding=UTF-8
+        -XX:+EnableDynamicAgentLoading
+        --add-modules=jdk.incubator.vector
+{% elif test_scenario['values']['trino'].startswith("481") %}
+        --add-modules=jdk.incubator.vector
+{% endif %}
         # Arguments from jvmArgumentOverrides
       log.properties: |
         =info
