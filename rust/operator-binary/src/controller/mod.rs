@@ -1,6 +1,3 @@
-//! Controller-level vocabulary: the [`ValidatedCluster`] type produced by the [`validate`] step
-//! and consumed by the [`build`] steps, plus the `dereference` / `validate` / `build` sub-modules.
-
 use std::{collections::BTreeMap, str::FromStr};
 
 use stackable_operator::{
@@ -178,9 +175,6 @@ impl ValidatedCluster {
     }
 
     /// The user-provided server TLS SecretClass, if any.
-    ///
-    /// Mirrors [`v1alpha1::TrinoCluster::get_server_tls`] but reads from the validated config so
-    /// build steps don't need the raw cluster.
     pub fn get_server_tls(&self) -> Option<&str> {
         self.cluster_config.tls.server.as_deref()
     }
