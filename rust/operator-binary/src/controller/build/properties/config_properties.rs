@@ -132,8 +132,8 @@ pub fn build(
 
     // TLS gating — mirrors the existing compute_files logic, including the
     // authentication-requires-TLS check.
-    let server_tls_enabled = cluster.cluster_config.tls.server.is_some();
-    let internal_tls_enabled = cluster.cluster_config.tls.internal.is_some();
+    let server_tls_enabled = cluster.server_tls_enabled();
+    let internal_tls_enabled = cluster.internal_tls_enabled();
     if cluster.cluster_config.authentication_enabled() && !server_tls_enabled {
         return Err(Error::AuthenticationRequiresTls);
     }

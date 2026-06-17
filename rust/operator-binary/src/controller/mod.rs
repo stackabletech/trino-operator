@@ -172,6 +172,11 @@ impl ValidatedCluster {
         self.cluster_config.tls.server.is_some()
     }
 
+    /// Whether internal (inter-node) TLS is enabled.
+    pub fn internal_tls_enabled(&self) -> bool {
+        self.cluster_config.tls.internal.is_some()
+    }
+
     /// The user-provided server TLS SecretClass, if any.
     ///
     /// Mirrors [`v1alpha1::TrinoCluster::get_server_tls`] but reads from the validated config so
