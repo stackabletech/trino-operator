@@ -42,13 +42,16 @@ pub fn build_pdb(
 }
 
 /// Total number of worker replicas across all worker role groups.
+///
+/// Role groups without an explicit replica count (i.e. those left to a HorizontalPodAutoscaler)
+/// contribute nothing, as their size is not known at reconcile time.
 fn worker_count(cluster: &ValidatedCluster) -> u16 {
     cluster
         .role_group_configs
         .get(&TrinoRole::Worker)
         .into_iter()
         .flat_map(|groups| groups.values())
-        .map(|rg| rg.replicas)
+        .filter_map(|rg| rg.replicas)
         .sum()
 }
 

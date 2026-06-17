@@ -291,15 +291,11 @@ pub fn validate(
 
 /// Adapts the validated [`RoleGroup`] produced by [`with_validated_config`] into the flattened
 /// [`TrinoRoleGroupConfig`] consumed by the build steps.
-///
-/// Upstream `with_validated_config` returns a [`RoleGroup`] with a `HashMap` of env overrides and an
-/// optional replica count; this converts it to the ergonomic [`RoleGroupConfig`] with an
-/// [`EnvVarSet`] and a concrete replica count (defaulting to 1).
 fn into_role_group_config(
     merged: RoleGroup<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>,
     vector_aggregator_config_map_name: &Option<ConfigMapName>,
 ) -> Result<TrinoRoleGroupConfig> {
-    let replicas = merged.replicas.unwrap_or(1);
+    let replicas = merged.replicas;
     let common = merged.config;
 
     let mut env_overrides = EnvVarSet::new();
@@ -383,7 +379,7 @@ mod tests {
         );
         assert_eq!(
             validated.role_group_configs[&TrinoRole::Coordinator]["default"].replicas,
-            1
+            Some(1)
         );
     }
 }
