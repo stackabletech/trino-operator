@@ -6,7 +6,7 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::ValidatedCluster,
+    controller::{ValidatedCluster, build::ports},
     crd::{METRICS_PORT, METRICS_PORT_NAME, TrinoRole},
 };
 
@@ -77,8 +77,8 @@ pub fn build_rolegroup_metrics_service(
 }
 
 pub(crate) fn headless_service_ports(cluster: &ValidatedCluster) -> Vec<ServicePort> {
-    let name = cluster.exposed_protocol().to_string();
-    let port = cluster.exposed_port().into();
+    let name = ports::exposed_protocol(cluster).to_string();
+    let port = ports::exposed_port(cluster).into();
 
     vec![ServicePort {
         name: Some(name),

@@ -6,7 +6,10 @@ use stackable_operator::{
     kvp::Labels,
 };
 
-use crate::{controller::ValidatedCluster, crd::TrinoRole};
+use crate::{
+    controller::{ValidatedCluster, build::ports},
+    crd::TrinoRole,
+};
 
 pub const LISTENER_VOLUME_NAME: &str = "listener";
 pub const LISTENER_VOLUME_DIR: &str = "/stackable/listener";
@@ -73,8 +76,8 @@ pub fn secret_volume_listener_scope(role: &TrinoRole) -> Option<String> {
 
 /// We only use the http/https port here and intentionally omit the metrics one.
 fn listener_ports(cluster: &ValidatedCluster) -> Vec<ListenerPort> {
-    let name = cluster.exposed_protocol().to_string();
-    let port = cluster.exposed_port().into();
+    let name = ports::exposed_protocol(cluster).to_string();
+    let port = ports::exposed_port(cluster).into();
 
     vec![ListenerPort {
         name,

@@ -582,7 +582,7 @@ fn http_get_probe(cluster: &ValidatedCluster) -> HTTPGetAction {
 ///
 /// This probe works on coordinators and workers.
 fn finished_starting_probe(cluster: &ValidatedCluster) -> ExecAction {
-    let port = cluster.exposed_port();
+    let port = build::ports::exposed_port(cluster);
     let schema = if cluster.server_tls_enabled() {
         "https"
     } else {

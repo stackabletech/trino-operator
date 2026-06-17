@@ -125,9 +125,9 @@ pub fn add_graceful_shutdown_config(
                                 echo 'Successfully sent graceful shutdown command' >> /proc/1/fd/1 2>&1
                                 echo 'Sleeping {termination_grace_period_seconds} seconds' >> /proc/1/fd/1 2>&1
                                 sleep {termination_grace_period_seconds}",
-                                protocol = cluster.exposed_protocol(),
+                                protocol = super::ports::exposed_protocol(cluster),
                                 host = "127.0.0.1",
-                                port = cluster.exposed_port(),
+                                port = super::ports::exposed_port(cluster),
                             ),
                         ]),
                     }),
