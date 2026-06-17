@@ -80,6 +80,9 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// may be in parts reused in other operators.
 #[derive(Clone, Debug, Default)]
 pub struct TrinoAuthenticationConfig {
+    /// The enabled `http-server.authentication.type` values, in evaluation order. Empty when no
+    /// authentication is configured.
+    authentication_types: Vec<String>,
     /// All config properties that have to be added to the `config.properties` of the given role
     config_properties: HashMap<TrinoRole, BTreeMap<String, String>>,
     /// All extra config files required for authentication for each role.
@@ -136,6 +139,7 @@ impl TrinoAuthenticationConfig {
                 http_server_authentication_types.join(","),
             );
         }
+        authentication_config.authentication_types = http_server_authentication_types;
 
         trace!(
             "Final Trino authentication config: {:?}",
@@ -143,6 +147,11 @@ impl TrinoAuthenticationConfig {
         );
 
         Ok(authentication_config)
+    }
+
+    /// Whether no authentication is configured.
+    pub fn is_empty(&self) -> bool {
+        self.authentication_types.is_empty()
     }
 
     /// Automatically add volumes, volume mounts, commands and containers to

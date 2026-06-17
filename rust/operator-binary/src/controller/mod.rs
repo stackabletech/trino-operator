@@ -60,12 +60,18 @@ pub struct ValidatedTls {
 pub struct ValidatedClusterConfig {
     pub tls: ValidatedTls,
     pub authentication: TrinoAuthenticationConfig,
-    pub authentication_enabled: bool,
     pub authorization: Option<TrinoOpaConfig>,
     pub fault_tolerant_execution: Option<ResolvedFaultTolerantExecutionConfig>,
     pub client_protocol: Option<ResolvedClientProtocolConfig>,
     pub coordinator_pod_refs: Vec<TrinoPodRef>,
     pub catalogs: Vec<CatalogConfig>,
+}
+
+impl ValidatedClusterConfig {
+    /// Whether any authentication is configured.
+    pub fn authentication_enabled(&self) -> bool {
+        !self.authentication.is_empty()
+    }
 }
 
 /// A validated, merged Trino role-group config.
@@ -184,7 +190,7 @@ impl ValidatedCluster {
 
     /// Whether client TLS should be set, depending on authentication and server TLS settings.
     pub fn tls_enabled(&self) -> bool {
-        self.cluster_config.authentication_enabled || self.server_tls_enabled()
+        self.cluster_config.authentication_enabled() || self.server_tls_enabled()
     }
 
     /// The client-facing port Trino exposes: HTTPS when server TLS is enabled, otherwise HTTP.

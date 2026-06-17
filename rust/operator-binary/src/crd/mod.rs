@@ -568,12 +568,6 @@ impl v1alpha1::TrinoCluster {
         &self.spec.cluster_config.authentication
     }
 
-    /// Check if any authentication settings are provided
-    pub fn authentication_enabled(&self) -> bool {
-        let spec: &v1alpha1::TrinoClusterSpec = &self.spec;
-        !spec.cluster_config.authentication.is_empty()
-    }
-
     pub fn get_opa_config(&self) -> Option<&v1alpha1::TrinoAuthorizationOpaConfig> {
         self.spec
             .cluster_config

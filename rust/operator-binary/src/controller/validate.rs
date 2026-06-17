@@ -266,7 +266,6 @@ pub fn validate(
             internal: tls.internal_secret_class.as_ref().map(ToString::to_string),
         },
         authentication,
-        authentication_enabled: trino.authentication_enabled(),
         authorization: dereferenced_objects.trino_opa_config.clone(),
         fault_tolerant_execution: dereferenced_objects.resolved_fte_config.clone(),
         client_protocol: dereferenced_objects.resolved_client_protocol_config.clone(),
@@ -366,7 +365,7 @@ mod tests {
             "e6ac237d-a6d4-43a1-8135-f36506110912"
         );
         assert_eq!(validated.product_version, 479);
-        assert!(!validated.cluster_config.authentication_enabled);
+        assert!(!validated.cluster_config.authentication_enabled());
         assert!(
             validated
                 .role_group_configs

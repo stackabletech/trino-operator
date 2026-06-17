@@ -134,7 +134,7 @@ pub fn build(
     // authentication-requires-TLS check.
     let server_tls_enabled = cluster.cluster_config.tls.server.is_some();
     let internal_tls_enabled = cluster.cluster_config.tls.internal.is_some();
-    if cluster.cluster_config.authentication_enabled && !server_tls_enabled {
+    if cluster.cluster_config.authentication_enabled() && !server_tls_enabled {
         return Err(Error::AuthenticationRequiresTls);
     }
     if server_tls_enabled || internal_tls_enabled {
