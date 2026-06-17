@@ -44,7 +44,7 @@ dimensions:
       - 1.16.2
   - name: hdfs
     values:
-      - 3.4.2
+      - 3.5.0
   - name: zookeeper
     values:
       - 3.9.4
