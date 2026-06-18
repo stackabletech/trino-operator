@@ -1,11 +1,12 @@
 //! Builders that turn a `ValidatedCluster` into Kubernetes resource contents.
-//!
-//! `properties` renders the Trino `.properties` files; `resource` builds the individual
-//! Kubernetes resources (ConfigMap, Service, Listener, PDB, …); `graceful_shutdown`
-//! contributes graceful-shutdown `config.properties` entries and Pod lifecycle configuration;
-//! `ports` derives the client-facing port from the validated TLS configuration.
 
 pub mod graceful_shutdown;
 pub mod ports;
 pub mod properties;
 pub mod resource;
+
+/// Placeholder role-group name used for the recommended labels of a role's group listener.
+///
+/// The group listener is owned by the role (not a single role-group), so there is no real
+/// role-group to attribute it to.
+pub(crate) const PLACEHOLDER_LISTENER_ROLE_GROUP: &str = "none";

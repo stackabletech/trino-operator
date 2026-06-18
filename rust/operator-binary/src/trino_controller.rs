@@ -354,7 +354,8 @@ pub async fn reconcile_trino(
         {
             let role_group_listener = build_group_listener(
                 &validated_cluster,
-                validated_cluster.recommended_labels(trino_role, "none"),
+                validated_cluster
+                    .recommended_labels(trino_role, build::PLACEHOLDER_LISTENER_ROLE_GROUP),
                 listener_class.to_string(),
                 listener_group_name,
             );
