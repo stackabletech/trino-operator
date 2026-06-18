@@ -192,13 +192,12 @@ pub fn build(
     }
 
     // Authentication properties (only contributes when authentication is enabled).
-    for (k, v) in cluster
-        .cluster_config
-        .authentication
-        .config_properties(&role)
-    {
-        props.insert(k, v);
-    }
+    props.extend(
+        cluster
+            .cluster_config
+            .authentication
+            .config_properties(&role),
+    );
 
     // Discovery URI.
     if let Some(coordinator_ref) = cluster.cluster_config.coordinator_pod_refs.first() {
@@ -215,11 +214,11 @@ pub fn build(
     }
 
     // Graceful shutdown.
-    for (k, v) in crate::controller::build::graceful_shutdown::graceful_shutdown_config_properties(
-        cluster, role,
-    ) {
-        props.insert(k, v);
-    }
+    props.extend(
+        crate::controller::build::graceful_shutdown::graceful_shutdown_config_properties(
+            cluster, role,
+        ),
+    );
 
     // Fault-tolerant execution.
     if let Some(fte) = &cluster.cluster_config.fault_tolerant_execution {
