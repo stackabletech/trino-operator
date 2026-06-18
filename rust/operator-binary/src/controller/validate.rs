@@ -361,10 +361,67 @@ pub(crate) fn merged_role_group_config(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{collections::BTreeMap, str::FromStr};
 
-    use super::{super::validated_cluster, RoleGroupName};
-    use crate::crd::TrinoRole;
+    use stackable_operator::cli::OperatorEnvironmentOptions;
+
+    use super::{Error, RoleGroupName, validate};
+    use crate::{
+        config::client_protocol::ResolvedClientProtocolConfig,
+        controller::{ValidatedCluster, dereference::DereferencedObjects, validated_cluster},
+        crd::{TrinoRole, v1alpha1},
+    };
+
+    fn empty_derefs() -> DereferencedObjects {
+        DereferencedObjects {
+            resolved_authentication_classes: Vec::new(),
+            catalog_definitions: Vec::new(),
+            catalogs: Vec::new(),
+            trino_opa_config: None,
+            resolved_fte_config: None,
+            resolved_client_protocol_config: None,
+        }
+    }
+
+    fn validate_yaml(
+        yaml: &str,
+        derefs: &DereferencedObjects,
+    ) -> std::result::Result<ValidatedCluster, Error> {
+        let trino: v1alpha1::TrinoCluster = serde_yaml::from_str(yaml).expect("invalid test YAML");
+        let operator_env = OperatorEnvironmentOptions {
+            operator_namespace: "stackable-operators".to_string(),
+            operator_service_name: "trino-operator".to_string(),
+            image_repository: "oci.example.org".to_string(),
+        };
+        validate(&trino, derefs, &operator_env)
+    }
+
+    /// Minimal cluster YAML with both roles defined, parameterised on the product version.
+    fn minimal_yaml(product_version: &str) -> String {
+        format!(
+            r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "{product_version}"
+              clusterConfig:
+                catalogLabelSelector: {{}}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#
+        )
+    }
 
     #[test]
     fn validate_minimal_cluster() {
@@ -394,5 +451,161 @@ mod tests {
                 .replicas,
             Some(1)
         );
+    }
+
+    #[test]
+    fn validate_logging_rejects_invalid_custom_config_map_name() {
+        let yaml = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                config:
+                  logging:
+                    containers:
+                      trino:
+                        custom:
+                          configMap: "invalid ConfigMap name"
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#;
+
+        let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
+        assert!(matches!(err, Error::ValidateLoggingConfig { .. }));
+    }
+
+    #[test]
+    fn validate_logging_requires_vector_aggregator_when_agent_enabled() {
+        // The Vector agent is enabled but no aggregator discovery ConfigMap name is provided.
+        let yaml = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                config:
+                  logging:
+                    enableVectorAgent: true
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#;
+
+        let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
+        assert!(matches!(err, Error::MissingVectorAggregatorConfigMapName));
+    }
+
+    #[test]
+    fn spooling_protocol_rejected_on_trino_45() {
+        let mut derefs = empty_derefs();
+        derefs.resolved_client_protocol_config = Some(ResolvedClientProtocolConfig {
+            config_properties: BTreeMap::new(),
+            spooling_manager_properties: BTreeMap::new(),
+            volumes: Vec::new(),
+            volume_mounts: Vec::new(),
+            init_container_extra_start_commands: Vec::new(),
+        });
+
+        let err = validate_yaml(&minimal_yaml("451"), &derefs).unwrap_err();
+        assert!(matches!(
+            err,
+            Error::ClientSpoolingProtocolTrinoVersion { .. }
+        ));
+    }
+
+    #[test]
+    fn spooling_protocol_accepted_on_newer_trino() {
+        let mut derefs = empty_derefs();
+        derefs.resolved_client_protocol_config = Some(ResolvedClientProtocolConfig {
+            config_properties: BTreeMap::new(),
+            spooling_manager_properties: BTreeMap::new(),
+            volumes: Vec::new(),
+            volume_mounts: Vec::new(),
+            init_container_extra_start_commands: Vec::new(),
+        });
+
+        assert!(validate_yaml(&minimal_yaml("479"), &derefs).is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_env_override_name() {
+        let yaml = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+                    envOverrides:
+                      "BAD=NAME": "value"
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#;
+
+        let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
+        assert!(matches!(err, Error::ParseEnvVarName { .. }));
+    }
+
+    #[test]
+    fn rejects_invalid_role_group_name() {
+        let yaml = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  "Invalid_Name":
+                    replicas: 1
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#;
+
+        let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
+        assert!(matches!(err, Error::ParseRoleGroupName { .. }));
     }
 }

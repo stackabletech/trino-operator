@@ -42,8 +42,20 @@ pub(crate) mod test_support {
         crd::{authentication::ResolvedAuthenticationClassRef, v1alpha1},
     };
 
+    /// Dereferenced objects with no external resources resolved.
+    pub fn empty_derefs() -> DereferencedObjects {
+        DereferencedObjects {
+            resolved_authentication_classes: Vec::new(),
+            catalog_definitions: Vec::new(),
+            catalogs: Vec::new(),
+            trino_opa_config: None,
+            resolved_fte_config: None,
+            resolved_client_protocol_config: None,
+        }
+    }
+
     pub fn validated_cluster_from_yaml(yaml: &str) -> ValidatedCluster {
-        validated_cluster_from_yaml_with_auth(yaml, Vec::new())
+        validated_cluster_from_yaml_with_derefs(yaml, empty_derefs())
     }
 
     /// Like [`validated_cluster_from_yaml`], but injects already-resolved AuthenticationClasses so
@@ -52,15 +64,18 @@ pub(crate) mod test_support {
         yaml: &str,
         resolved_authentication_classes: Vec<ResolvedAuthenticationClassRef>,
     ) -> ValidatedCluster {
+        let mut derefs = empty_derefs();
+        derefs.resolved_authentication_classes = resolved_authentication_classes;
+        validated_cluster_from_yaml_with_derefs(yaml, derefs)
+    }
+
+    /// Validates `yaml` against the given (test-supplied) dereferenced objects, letting tests
+    /// exercise branches that depend on resolved inputs (e.g. fault-tolerant execution).
+    pub fn validated_cluster_from_yaml_with_derefs(
+        yaml: &str,
+        derefs: DereferencedObjects,
+    ) -> ValidatedCluster {
         let trino: v1alpha1::TrinoCluster = serde_yaml::from_str(yaml).expect("invalid test YAML");
-        let derefs = DereferencedObjects {
-            resolved_authentication_classes,
-            catalog_definitions: Vec::new(),
-            catalogs: Vec::new(),
-            trino_opa_config: None,
-            resolved_fte_config: None,
-            resolved_client_protocol_config: None,
-        };
         let operator_env = OperatorEnvironmentOptions {
             operator_namespace: "stackable-operators".to_string(),
             operator_service_name: "trino-operator".to_string(),

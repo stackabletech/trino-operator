@@ -130,3 +130,47 @@ impl ResolvedS3Config {
         Ok(resolved_config)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use stackable_operator::commons::tls_verification::Tls;
+
+    use super::*;
+
+    fn tls_details(verification: Option<TlsVerification>) -> TlsClientDetails {
+        TlsClientDetails {
+            tls: verification.map(|verification| Tls { verification }),
+        }
+    }
+
+    #[test]
+    fn no_tls_yields_no_truststore_commands() {
+        assert!(
+            s3_tls_truststore_commands(&tls_details(None))
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn webpki_verification_yields_no_truststore_commands() {
+        let details = tls_details(Some(TlsVerification::Server(TlsServerVerification {
+            ca_cert: CaCert::WebPki {},
+        })));
+        assert!(s3_tls_truststore_commands(&details).unwrap().is_empty());
+    }
+
+    #[test]
+    fn secret_class_verification_yields_truststore_commands() {
+        let details = tls_details(Some(TlsVerification::Server(TlsServerVerification {
+            ca_cert: CaCert::SecretClass("tls".to_string()),
+        })));
+        assert!(!s3_tls_truststore_commands(&details).unwrap().is_empty());
+    }
+
+    #[test]
+    fn disabled_verification_is_rejected() {
+        let details = tls_details(Some(TlsVerification::None {}));
+        assert!(s3_tls_truststore_commands(&details).is_err());
+    }
+}

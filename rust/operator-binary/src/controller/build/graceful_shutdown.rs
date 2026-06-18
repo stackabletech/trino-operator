@@ -145,7 +145,13 @@ mod tests {
     use stackable_operator::shared::time::Duration;
 
     use super::*;
-    use crate::controller::build::properties::test_support::validated_cluster_from_yaml;
+    use crate::{
+        config::fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
+        controller::build::properties::test_support::{
+            MINIMAL_TRINO_YAML, empty_derefs, validated_cluster_from_yaml,
+            validated_cluster_from_yaml_with_derefs,
+        },
+    };
 
     /// A worker role group without an explicit `gracefulShutdownTimeout` falls back to the
     /// product default.
@@ -254,5 +260,108 @@ mod tests {
             min_worker_graceful_shutdown_timeout(&cluster),
             Duration::from_minutes_unchecked(5)
         );
+    }
+
+    fn fte_derefs() -> crate::controller::dereference::DereferencedObjects {
+        let mut derefs = empty_derefs();
+        derefs.resolved_fte_config = Some(ResolvedFaultTolerantExecutionConfig {
+            config_properties: BTreeMap::new(),
+            exchange_manager_properties: BTreeMap::new(),
+            volumes: Vec::new(),
+            volume_mounts: Vec::new(),
+            init_container_extra_start_commands: Vec::new(),
+        });
+        derefs
+    }
+
+    #[test]
+    fn coordinator_props_set_query_max_execution_time_without_fte() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let props = graceful_shutdown_config_properties(&cluster, TrinoRole::Coordinator);
+        // The default worker graceful-shutdown timeout is 60 minutes (3600s).
+        assert_eq!(
+            props.get("query.max-execution-time").map(String::as_str),
+            Some("3600s")
+        );
+    }
+
+    #[test]
+    fn coordinator_props_empty_with_fault_tolerant_execution() {
+        let cluster = validated_cluster_from_yaml_with_derefs(MINIMAL_TRINO_YAML, fte_derefs());
+        let props = graceful_shutdown_config_properties(&cluster, TrinoRole::Coordinator);
+        // With fault-tolerant execution, queries may be retried, so no max-execution-time is set.
+        assert!(props.is_empty());
+    }
+
+    #[test]
+    fn worker_props_set_shutdown_grace_period() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let props = graceful_shutdown_config_properties(&cluster, TrinoRole::Worker);
+        assert_eq!(
+            props.get("shutdown.grace-period").map(String::as_str),
+            Some("30s")
+        );
+    }
+
+    #[test]
+    fn worker_termination_grace_period_adds_overhead_and_sets_pre_stop() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let merged = &cluster.role_group_configs[&TrinoRole::Worker]
+            .values()
+            .next()
+            .unwrap()
+            .config;
+        let mut pod_builder = PodBuilder::new();
+        let mut trino_builder = ContainerBuilder::new("trino").unwrap();
+        add_graceful_shutdown_config(
+            &cluster,
+            &TrinoRole::Worker,
+            merged,
+            &mut pod_builder,
+            &mut trino_builder,
+        )
+        .unwrap();
+
+        // Default worker timeout 3600s + 2 * 30s grace + 10s safety = 3670s.
+        let spec = pod_builder.build_template().spec.unwrap();
+        assert_eq!(spec.termination_grace_period_seconds, Some(3670));
+
+        let command = trino_builder
+            .build()
+            .lifecycle
+            .unwrap()
+            .pre_stop
+            .unwrap()
+            .exec
+            .unwrap()
+            .command
+            .unwrap();
+        assert!(command.iter().any(|arg| arg.contains("sleep 3670")));
+    }
+
+    #[test]
+    fn coordinator_termination_grace_period_has_no_overhead_or_pre_stop() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let merged = &cluster.role_group_configs[&TrinoRole::Coordinator]
+            .values()
+            .next()
+            .unwrap()
+            .config;
+        let mut pod_builder = PodBuilder::new();
+        let mut trino_builder = ContainerBuilder::new("trino").unwrap();
+        add_graceful_shutdown_config(
+            &cluster,
+            &TrinoRole::Coordinator,
+            merged,
+            &mut pod_builder,
+            &mut trino_builder,
+        )
+        .unwrap();
+
+        // The coordinator default timeout (900s) is used verbatim, with no overhead.
+        let spec = pod_builder.build_template().spec.unwrap();
+        assert_eq!(spec.termination_grace_period_seconds, Some(900));
+        // Coordinators do not get a graceful-shutdown pre-stop hook.
+        assert!(trino_builder.build().lifecycle.is_none());
     }
 }

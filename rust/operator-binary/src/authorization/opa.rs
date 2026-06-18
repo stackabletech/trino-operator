@@ -150,3 +150,70 @@ impl TrinoOpaConfig {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn minimal_opa() -> TrinoOpaConfig {
+        TrinoOpaConfig {
+            non_batched_connection_string: "http://opa/allow".to_string(),
+            batched_connection_string: "http://opa/batch".to_string(),
+            row_filters_connection_string: None,
+            batched_column_masking_connection_string: None,
+            allow_permission_management_operations: false,
+            tls_secret_class: None,
+        }
+    }
+
+    #[test]
+    fn as_config_renders_only_required_keys_when_optionals_are_unset() {
+        let config = minimal_opa().as_config();
+
+        assert_eq!(
+            config.get("access-control.name").map(String::as_str),
+            Some("opa")
+        );
+        assert_eq!(
+            config.get("opa.policy.uri").map(String::as_str),
+            Some("http://opa/allow")
+        );
+        assert_eq!(
+            config.get("opa.policy.batched-uri").map(String::as_str),
+            Some("http://opa/batch")
+        );
+        assert!(!config.contains_key("opa.policy.row-filters-uri"));
+        assert!(!config.contains_key("opa.policy.batch-column-masking-uri"));
+        assert!(!config.contains_key("opa.allow-permission-management-operations"));
+    }
+
+    #[test]
+    fn as_config_renders_optional_keys_when_set() {
+        let config = TrinoOpaConfig {
+            row_filters_connection_string: Some("http://opa/rowFilters".to_string()),
+            batched_column_masking_connection_string: Some(
+                "http://opa/batchColumnMasks".to_string(),
+            ),
+            allow_permission_management_operations: true,
+            ..minimal_opa()
+        }
+        .as_config();
+
+        assert_eq!(
+            config.get("opa.policy.row-filters-uri").map(String::as_str),
+            Some("http://opa/rowFilters")
+        );
+        assert_eq!(
+            config
+                .get("opa.policy.batch-column-masking-uri")
+                .map(String::as_str),
+            Some("http://opa/batchColumnMasks")
+        );
+        assert_eq!(
+            config
+                .get("opa.allow-permission-management-operations")
+                .map(String::as_str),
+            Some("true")
+        );
+    }
+}

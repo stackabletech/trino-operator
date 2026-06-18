@@ -44,19 +44,74 @@ mod tests {
         crd::TrinoRole,
     };
 
-    #[test]
-    fn default_renders_networkaddress_cache_settings() {
-        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+    fn coordinator_rg(
+        cluster: &crate::controller::ValidatedCluster,
+    ) -> crate::controller::TrinoRoleGroupConfig {
+        cluster.role_group_configs[&TrinoRole::Coordinator]
             .values()
             .next()
             .unwrap()
-            .clone();
-        let props = build(&rg);
+            .clone()
+    }
+
+    #[test]
+    fn default_renders_networkaddress_cache_settings() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let props = build(&coordinator_rg(&cluster));
         assert_eq!(
             props.get("networkaddress.cache.ttl").map(String::as_str),
             Some("30")
         );
+        assert_eq!(
+            props
+                .get("networkaddress.cache.negative.ttl")
+                .map(String::as_str),
+            Some("0")
+        );
+    }
+
+    #[test]
+    fn user_override_wins_and_extra_key_is_added() {
+        let cluster = validated_cluster_from_yaml(
+            r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "479"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+                    configOverrides:
+                      security.properties:
+                        networkaddress.cache.ttl: "99"
+                        custom.extra.key: "myvalue"
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#,
+        );
+        let props = build(&coordinator_rg(&cluster));
+
+        // User override wins over the default.
+        assert_eq!(
+            props.get("networkaddress.cache.ttl").map(String::as_str),
+            Some("99")
+        );
+        // Extra (non-default) override key is added.
+        assert_eq!(
+            props.get("custom.extra.key").map(String::as_str),
+            Some("myvalue")
+        );
+        // Untouched default remains.
         assert_eq!(
             props
                 .get("networkaddress.cache.negative.ttl")
