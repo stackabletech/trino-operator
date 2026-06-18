@@ -86,6 +86,8 @@ pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
 // TLS
 const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
+// Listener
+pub const DEFAULT_LISTENER_CLASS: &str = "cluster-internal";
 // Logging
 pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
     value: 10.0,
@@ -374,7 +376,7 @@ impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
 }
 
 fn coordinator_default_listener_class() -> ListenerClassName {
-    ListenerClassName::from_str("cluster-internal")
+    ListenerClassName::from_str(DEFAULT_LISTENER_CLASS)
         .expect("the default listener class name must be valid")
 }
 

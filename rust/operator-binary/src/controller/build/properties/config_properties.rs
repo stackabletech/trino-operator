@@ -57,6 +57,10 @@ const DEFAULT_NODE_SCHEDULER_INCLUDE_COORDINATOR: &str = "false";
 
 const LOG_FILE_COUNT: u32 = 2;
 
+// TLS keystore/truststore file names (PKCS#12).
+const KEYSTORE_P12: &str = "keystore.p12";
+const TRUSTSTORE_P12: &str = "truststore.p12";
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display(
@@ -153,7 +157,7 @@ pub fn build(
         };
         props.insert(
             HTTP_SERVER_KEYSTORE_PATH.to_string(),
-            format!("{tls_store_dir}/keystore.p12"),
+            format!("{tls_store_dir}/{KEYSTORE_P12}"),
         );
         props.insert(
             HTTP_SERVER_HTTPS_KEYSTORE_KEY.to_string(),
@@ -161,7 +165,7 @@ pub fn build(
         );
         props.insert(
             HTTP_SERVER_TRUSTSTORE_PATH.to_string(),
-            format!("{tls_store_dir}/truststore.p12"),
+            format!("{tls_store_dir}/{TRUSTSTORE_P12}"),
         );
         props.insert(
             HTTP_SERVER_HTTPS_TRUSTSTORE_KEY.to_string(),
@@ -171,7 +175,7 @@ pub fn build(
     if internal_tls_enabled {
         props.insert(
             INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_PATH.to_string(),
-            format!("{STACKABLE_INTERNAL_TLS_DIR}/keystore.p12"),
+            format!("{STACKABLE_INTERNAL_TLS_DIR}/{KEYSTORE_P12}"),
         );
         props.insert(
             INTERNAL_COMMUNICATION_HTTPS_KEYSTORE_KEY.to_string(),
@@ -179,7 +183,7 @@ pub fn build(
         );
         props.insert(
             INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_PATH.to_string(),
-            format!("{STACKABLE_INTERNAL_TLS_DIR}/truststore.p12"),
+            format!("{STACKABLE_INTERNAL_TLS_DIR}/{TRUSTSTORE_P12}"),
         );
         props.insert(
             INTERNAL_COMMUNICATION_HTTPS_TRUSTSTORE_KEY.to_string(),

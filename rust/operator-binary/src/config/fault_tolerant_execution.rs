@@ -21,6 +21,9 @@ use crate::{
     },
 };
 
+/// Sub-directory of [`CONFIG_DIR_NAME`] holding the HDFS exchange config.
+const EXCHANGE_HDFS_CONFIG: &str = "exchange-hdfs-config";
+
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("failed to resolve S3 connection"))]
@@ -240,7 +243,7 @@ impl ResolvedFaultTolerantExecutionConfig {
                         hdfs_config.skip_directory_scheme_validation,
                     );
 
-                    let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/exchange-hdfs-config");
+                    let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/{EXCHANGE_HDFS_CONFIG}");
                     exchange_manager_properties.insert(
                         "hdfs.config.resources".to_string(),
                         format!("{hdfs_config_dir}/core-site.xml,{hdfs_config_dir}/hdfs-site.xml"),
@@ -308,8 +311,8 @@ impl ResolvedFaultTolerantExecutionConfig {
     }
 
     fn resolve_hdfs_backend(&mut self, hdfs_config: &HdfsExchangeConfig) {
-        let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/exchange-hdfs-config");
-        let volume_name = "exchange-hdfs-config".to_string();
+        let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/{EXCHANGE_HDFS_CONFIG}");
+        let volume_name = EXCHANGE_HDFS_CONFIG.to_string();
 
         self.volumes.push(
             VolumeBuilder::new(&volume_name)
