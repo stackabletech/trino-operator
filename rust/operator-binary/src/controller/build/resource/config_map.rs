@@ -202,12 +202,7 @@ pub fn build_rolegroup_catalog_config_map(
     role_group_name: &str,
     recommended_labels: &Labels,
 ) -> Result<ConfigMap> {
-    let catalog_config_map_name = format!(
-        "{}-catalog",
-        cluster
-            .resource_names(role, role_group_name)
-            .role_group_config_map()
-    );
+    let catalog_config_map_name = cluster.role_group_catalog_config_map_name(role, role_group_name);
     ConfigMapBuilder::new()
         .metadata(
             cluster

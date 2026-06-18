@@ -409,7 +409,7 @@ pub fn build_rolegroup_statefulset(
         .add_volume(Volume {
             name: CATALOG_VOLUME_NAME.to_string(),
             config_map: Some(ConfigMapVolumeSource {
-                name: format!("{config_map_name}-catalog"),
+                name: cluster.role_group_catalog_config_map_name(trino_role, role_group_name),
                 ..ConfigMapVolumeSource::default()
             }),
             ..Volume::default()

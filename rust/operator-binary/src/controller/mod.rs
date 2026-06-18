@@ -198,6 +198,20 @@ impl ValidatedCluster {
         }
     }
 
+    /// Name of the rolegroup's catalog [`ConfigMap`], derived from the rolegroup config map name
+    /// by appending the `-catalog` suffix.
+    pub(crate) fn role_group_catalog_config_map_name(
+        &self,
+        role: &TrinoRole,
+        role_group_name: &str,
+    ) -> String {
+        format!(
+            "{}-catalog",
+            self.resource_names(role, role_group_name)
+                .role_group_config_map()
+        )
+    }
+
     /// Returns an [`ObjectMetaBuilder`] pre-filled with this cluster's namespace, an owner
     /// reference back to the cluster, the resource `name` and the given `recommended_labels`.
     ///
