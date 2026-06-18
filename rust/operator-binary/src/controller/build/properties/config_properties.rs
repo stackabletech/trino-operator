@@ -250,8 +250,74 @@ pub fn build(
 mod tests {
     use super::*;
     use crate::controller::build::properties::test_support::{
-        MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
+        MINIMAL_TRINO_YAML, file_auth_class, validated_cluster_from_yaml,
+        validated_cluster_from_yaml_with_auth,
     };
+
+    const SERVER_TLS_ONLY_YAML: &str = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+          namespace: default
+          uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+        spec:
+          image:
+            productVersion: "479"
+          clusterConfig:
+            catalogLabelSelector: {}
+            tls:
+              internalSecretClass: null
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+
+    const INTERNAL_TLS_ONLY_YAML: &str = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+          namespace: default
+          uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+        spec:
+          image:
+            productVersion: "479"
+          clusterConfig:
+            catalogLabelSelector: {}
+            tls:
+              serverSecretClass: null
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+        "#;
+
+    fn cluster_info() -> stackable_operator::utils::cluster_info::KubernetesClusterInfo {
+        stackable_operator::utils::cluster_info::KubernetesClusterInfo {
+            cluster_domain: stackable_operator::commons::networking::DomainName::try_from(
+                "cluster.local",
+            )
+            .unwrap(),
+        }
+    }
+
+    fn rg(cluster: &ValidatedCluster, role: &TrinoRole) -> TrinoRoleGroupConfig {
+        cluster.role_group_configs[role]
+            .values()
+            .next()
+            .expect("the fixture defines a role group")
+            .clone()
+    }
 
     #[test]
     fn default_renders_includes_coordinator_default_and_query_max_memory_default() {
@@ -279,5 +345,126 @@ mod tests {
             props.get("query.max-memory").map(String::as_str),
             Some("50GB")
         );
+    }
+
+    #[test]
+    fn server_tls_only_uses_server_keystore_dir_and_http_discovery() {
+        let cluster = validated_cluster_from_yaml(SERVER_TLS_ONLY_YAML);
+        let props = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            props.get("http-server.https.enabled").map(String::as_str),
+            Some("true")
+        );
+        assert_eq!(
+            props.get("http-server.https.port").map(String::as_str),
+            Some("8443")
+        );
+        assert_eq!(
+            props
+                .get("http-server.https.keystore.path")
+                .map(String::as_str),
+            Some("/stackable/server_tls/keystore.p12"),
+        );
+        // Server TLS is on, so insecure HTTP access must not be allowed.
+        assert_eq!(
+            props.get("http-server.authentication.allow-insecure-over-http"),
+            None
+        );
+        // Internal TLS is off: no internal-communication keystore or FQDN address source.
+        assert_eq!(
+            props.get("internal-communication.https.keystore.path"),
+            None
+        );
+        assert_eq!(props.get("node.internal-address-source"), None);
+        // Discovery uses http when internal TLS is disabled.
+        assert!(props.get("discovery.uri").unwrap().starts_with("http://"));
+    }
+
+    #[test]
+    fn internal_tls_only_allows_insecure_http_and_uses_internal_keystore_dir() {
+        let cluster = validated_cluster_from_yaml(INTERNAL_TLS_ONLY_YAML);
+        let props = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            props.get("http-server.https.enabled").map(String::as_str),
+            Some("true")
+        );
+        assert_eq!(
+            props
+                .get("http-server.authentication.allow-insecure-over-http")
+                .map(String::as_str),
+            Some("true"),
+        );
+        assert_eq!(
+            props.get("http-server.http.port").map(String::as_str),
+            Some("8080")
+        );
+        assert_eq!(
+            props
+                .get("http-server.https.keystore.path")
+                .map(String::as_str),
+            Some("/stackable/internal_tls/keystore.p12"),
+        );
+        // Internal TLS block is present.
+        assert_eq!(
+            props
+                .get("internal-communication.https.keystore.path")
+                .map(String::as_str),
+            Some("/stackable/internal_tls/keystore.p12"),
+        );
+        assert_eq!(
+            props
+                .get("node.internal-address-source")
+                .map(String::as_str),
+            Some("FQDN")
+        );
+        // Discovery uses https when internal TLS is enabled.
+        assert!(props.get("discovery.uri").unwrap().starts_with("https://"));
+    }
+
+    #[test]
+    fn worker_omits_include_coordinator() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let props = build(
+            &cluster,
+            TrinoRole::Worker,
+            &rg(&cluster, &TrinoRole::Worker),
+            &cluster_info(),
+        )
+        .unwrap();
+
+        assert_eq!(props.get("coordinator").map(String::as_str), Some("false"));
+        assert_eq!(props.get("node-scheduler.include-coordinator"), None);
+    }
+
+    #[test]
+    fn authentication_without_server_tls_errors() {
+        // Server TLS off (only internal) plus an enabled authenticator must be rejected.
+        let cluster = validated_cluster_from_yaml_with_auth(
+            INTERNAL_TLS_ONLY_YAML,
+            vec![file_auth_class("file-auth")],
+        );
+        let err = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(err, Error::AuthenticationRequiresTls));
     }
 }

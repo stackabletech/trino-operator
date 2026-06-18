@@ -39,13 +39,22 @@ pub(crate) mod test_support {
 
     use crate::{
         controller::{ValidatedCluster, dereference::DereferencedObjects},
-        crd::v1alpha1,
+        crd::{authentication::ResolvedAuthenticationClassRef, v1alpha1},
     };
 
     pub fn validated_cluster_from_yaml(yaml: &str) -> ValidatedCluster {
+        validated_cluster_from_yaml_with_auth(yaml, Vec::new())
+    }
+
+    /// Like [`validated_cluster_from_yaml`], but injects already-resolved AuthenticationClasses so
+    /// tests can exercise authentication-dependent branches.
+    pub fn validated_cluster_from_yaml_with_auth(
+        yaml: &str,
+        resolved_authentication_classes: Vec<ResolvedAuthenticationClassRef>,
+    ) -> ValidatedCluster {
         let trino: v1alpha1::TrinoCluster = serde_yaml::from_str(yaml).expect("invalid test YAML");
         let derefs = DereferencedObjects {
-            resolved_authentication_classes: Vec::new(),
+            resolved_authentication_classes,
             catalog_definitions: Vec::new(),
             catalogs: Vec::new(),
             trino_opa_config: None,
@@ -58,7 +67,32 @@ pub(crate) mod test_support {
             image_repository: "oci.example.org".to_string(),
         };
         crate::controller::validate::validate(&trino, &derefs, &operator_env)
-            .expect("validate should succeed for the minimal fixture")
+            .expect("validate should succeed for the test fixture")
+    }
+
+    /// A resolved `static` (file) AuthenticationClass, enough to make
+    /// [`ValidatedClusterConfig::authentication_enabled`](crate::controller::ValidatedClusterConfig)
+    /// return `true`.
+    pub fn file_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
+        let yaml = format!(
+            r#"
+            metadata:
+              name: {name}
+            spec:
+              provider:
+                static:
+                  userCredentialsSecret:
+                    name: {name}
+            "#
+        );
+        let deserializer = serde_yaml::Deserializer::from_str(&yaml);
+        let authentication_class =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+                .expect("invalid test AuthenticationClass");
+        ResolvedAuthenticationClassRef {
+            authentication_class,
+            client_auth_options: None,
+        }
     }
 
     pub const MINIMAL_TRINO_YAML: &str = r#"
