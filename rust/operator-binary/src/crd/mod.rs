@@ -28,7 +28,7 @@ use stackable_operator::{
     kube::{CustomResource, ResourceExt},
     memory::{BinaryMultiple, MemoryQuantity},
     product_logging::{self, spec::Logging},
-    role_utils::{CommonConfiguration, GenericRoleConfig, Role, RoleGroup},
+    role_utils::{GenericRoleConfig, Role},
     schemars::{self, JsonSchema},
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
@@ -581,37 +581,14 @@ impl v1alpha1::TrinoCluster {
     }
 }
 
+/// Converts the coordinator role (which carries the coordinator-specific `role_config`) into the
+/// generic [`TrinoRoleType`]. Only the `role_config` type parameter differs between the two; the
+/// `config` and `role_groups` carry over unchanged.
 fn extract_role_from_coordinator_config(fragment: TrinoCoordinatorRoleType) -> TrinoRoleType {
     Role {
-        config: CommonConfiguration {
-            config: fragment.config.config,
-            config_overrides: fragment.config.config_overrides,
-            env_overrides: fragment.config.env_overrides,
-            cli_overrides: fragment.config.cli_overrides,
-            pod_overrides: fragment.config.pod_overrides,
-            product_specific_common_config: fragment.config.product_specific_common_config,
-        },
+        config: fragment.config,
         role_config: fragment.role_config.common,
-        role_groups: fragment
-            .role_groups
-            .into_iter()
-            .map(|(k, v)| {
-                (
-                    k,
-                    RoleGroup {
-                        config: CommonConfiguration {
-                            config: v.config.config,
-                            config_overrides: v.config.config_overrides,
-                            env_overrides: v.config.env_overrides,
-                            cli_overrides: v.config.cli_overrides,
-                            pod_overrides: v.config.pod_overrides,
-                            product_specific_common_config: v.config.product_specific_common_config,
-                        },
-                        replicas: v.replicas,
-                    },
-                )
-            })
-            .collect(),
+        role_groups: fragment.role_groups,
     }
 }
 
