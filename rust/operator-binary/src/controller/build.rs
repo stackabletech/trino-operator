@@ -1,5 +1,6 @@
 //! Builders that turn a `ValidatedCluster` into Kubernetes resource contents.
 
+pub mod command;
 pub mod graceful_shutdown;
 pub mod ports;
 pub mod properties;

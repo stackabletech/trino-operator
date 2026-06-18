@@ -1,8 +1,7 @@
 //! Per-file builders for Trino `.properties` files.
 //!
 //! Each `<file>.rs` module produces the rendered key/value pairs for one
-//! Trino config file. The shared
-//! [`stackable_operator::v2::config_file_writer`] serializes the map to the
+//! Trino config file. The shared config-file writer serializes the map to the
 //! Java-properties on-wire format.
 
 pub mod access_control_properties;
@@ -101,8 +100,7 @@ mod tests {
     }
 
     /// The escape behaviours pinned by the kuttl smoke snapshot
-    /// (`tests/templates/kuttl/smoke/14-assert.yaml.j2`); previously asserted
-    /// against the hand-rolled writer, now against the shared one.
+    /// (`tests/templates/kuttl/smoke/14-assert.yaml.j2`).
     #[test]
     fn kuttl_pinned_escapes_are_stable() {
         assert_eq!(

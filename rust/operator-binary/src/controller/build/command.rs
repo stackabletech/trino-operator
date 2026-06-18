@@ -10,7 +10,7 @@ use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
     config::{client_protocol, fault_tolerant_execution},
-    controller::{ValidatedCluster, ValidatedTrinoConfig},
+    controller::{ValidatedCluster, ValidatedTrinoConfig, build::properties::ConfigFileName},
     crd::{
         CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
@@ -19,12 +19,6 @@ use crate::{
     },
     trino_controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
 };
-
-// TODO: replace with build::properties::ConfigFileName once command.rs moves under build/
-//       (with the StatefulSet builder migration).
-const LOG_PROPERTIES: &str = "log.properties";
-const EXCHANGE_MANAGER_PROPERTIES: &str = "exchange-manager.properties";
-const SPOOLING_MANAGER_PROPERTIES: &str = "spooling-manager.properties";
 
 pub fn container_prepare_args(
     cluster: &ValidatedCluster,
@@ -37,13 +31,14 @@ pub fn container_prepare_args(
 
     // Copy custom logging provided `log.properties` to rw config
     if let ValidatedContainerLogConfigChoice::Custom(_) = merged_config.logging.trino_container {
+        let log_properties = ConfigFileName::Log;
         // copy config files to a writeable empty folder
         args.push(format!(
-            "echo copying {STACKABLE_LOG_CONFIG_DIR}/{LOG_PROPERTIES} {rw_conf}/{LOG_PROPERTIES}",
+            "echo copying {STACKABLE_LOG_CONFIG_DIR}/{log_properties} {rw_conf}/{log_properties}",
             rw_conf = RW_CONFIG_DIR_NAME
         ));
         args.push(format!(
-            "cp -RL {STACKABLE_LOG_CONFIG_DIR}/{LOG_PROPERTIES} {rw_conf}/{LOG_PROPERTIES}",
+            "cp -RL {STACKABLE_LOG_CONFIG_DIR}/{log_properties} {rw_conf}/{log_properties}",
             rw_conf = RW_CONFIG_DIR_NAME
         ));
     }
@@ -118,13 +113,19 @@ pub fn container_trino_args(
     // Resolve credentials for fault tolerant execution exchange manager if needed
     args.push(format!(
         "test -f {rw_exchange_manager_config_file} && config-utils template {rw_exchange_manager_config_file}",
-        rw_exchange_manager_config_file = format!("{RW_CONFIG_DIR_NAME}/{EXCHANGE_MANAGER_PROPERTIES}")
+        rw_exchange_manager_config_file = format!(
+            "{RW_CONFIG_DIR_NAME}/{exchange_manager}",
+            exchange_manager = ConfigFileName::ExchangeManager
+        )
     ));
 
     // Resolve credentials for spooling manager if needed
     args.push(format!(
         "test -f {rw_spooling_config_file} && config-utils template {rw_spooling_config_file}",
-        rw_spooling_config_file = format!("{RW_CONFIG_DIR_NAME}/{SPOOLING_MANAGER_PROPERTIES}")
+        rw_spooling_config_file = format!(
+            "{RW_CONFIG_DIR_NAME}/{spooling_manager}",
+            spooling_manager = ConfigFileName::SpoolingManager
+        )
     ));
 
     args.push("set -x".to_string());

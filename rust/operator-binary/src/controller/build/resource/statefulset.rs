@@ -39,12 +39,14 @@ use stackable_operator::{
 
 use crate::{
     authorization::opa::OPA_TLS_VOLUME_NAME,
-    command,
     controller::{
         TrinoRoleGroupConfig, ValidatedCluster, build,
-        build::resource::listener::{
-            LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener_pvc,
-            group_listener_name, secret_volume_listener_scope,
+        build::{
+            command,
+            resource::listener::{
+                LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener_pvc,
+                group_listener_name, secret_volume_listener_scope,
+            },
         },
     },
     crd::{
@@ -426,9 +428,8 @@ pub fn build_rolegroup_statefulset(
         .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
 
     let mut pod_template = pod_builder.build_template();
-    // `pod_overrides` already carries the merged role + role-group overrides (see
-    // `with_validated_config`), so a single merge here is equivalent to the previous
-    // role-then-role-group sequence.
+    // `pod_overrides` already carries the merged role + role-group overrides, so a single merge
+    // here applies both.
     pod_template.merge_from(role_group_config.pod_overrides.clone());
 
     let annotations = restarter_ignore_secret_annotations(

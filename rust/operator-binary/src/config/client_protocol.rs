@@ -1,4 +1,4 @@
-// Consolidate Trino S3 properties in a single reusable struct.
+//! Resolves the Trino client (spooling) protocol configuration.
 
 use std::collections::BTreeMap;
 

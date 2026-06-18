@@ -51,7 +51,7 @@ const LOG_COMPRESSION: &str = "log.compression";
 const LOG_MAX_SIZE: &str = "log.max-size";
 const LOG_MAX_TOTAL_SIZE: &str = "log.max-total-size";
 
-// Defaults migrated from deploy/config-spec/properties.yaml.
+// Default values for `config.properties`.
 const DEFAULT_QUERY_MAX_MEMORY: &str = "50GB";
 const DEFAULT_NODE_SCHEDULER_INCLUDE_COORDINATOR: &str = "false";
 
@@ -134,8 +134,7 @@ pub fn build(
         format!("${{ENV:{ENV_INTERNAL_SECRET}}}"),
     );
 
-    // TLS gating — mirrors the existing compute_files logic, including the
-    // authentication-requires-TLS check.
+    // TLS gating, including the authentication-requires-TLS check.
     let server_tls_enabled = cluster.server_tls_enabled();
     let internal_tls_enabled = cluster.internal_tls_enabled();
     if cluster.cluster_config.authentication_enabled() && !server_tls_enabled {

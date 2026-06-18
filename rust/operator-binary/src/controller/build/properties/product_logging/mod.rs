@@ -3,7 +3,7 @@
 /// The Vector agent configuration (`vector.yaml`).
 ///
 /// It is templated with environment variables (`${LOG_DIR}`, `${NAMESPACE}`, …) that the
-/// `v2` Vector container injects at runtime, so the same file content is used for every
+/// Vector container injects at runtime, so the same file content is used for every
 /// rolegroup.
 const VECTOR_CONFIG: &str = include_str!("vector.yaml");
 

@@ -1,10 +1,7 @@
 //! The dereference step in the TrinoCluster controller
 //!
 //! Fetches all Kubernetes objects referenced by the TrinoCluster spec and returns them in
-//! [`DereferencedObjects`]. The functions called here (`CatalogConfig::from_catalog`,
-//! `TrinoOpaConfig::from_opa_config`, `ResolvedFaultTolerantExecutionConfig::from_config`,
-//! `ResolvedClientProtocolConfig::from_config`) currently mix fetching and validation; their
-//! outputs are treated as "dereferenced" for now. Splitting those helpers is a follow-up.
+//! [`DereferencedObjects`].
 
 use std::{num::ParseIntError, str::FromStr};
 
@@ -71,8 +68,7 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// Kubernetes objects referenced from the TrinoCluster spec, already fetched (and, for now, partly
-/// validated by the existing helper functions).
+/// Kubernetes objects referenced from the TrinoCluster spec, fetched from the cluster.
 pub struct DereferencedObjects {
     pub resolved_authentication_classes: Vec<ResolvedAuthenticationClassRef>,
     pub catalog_definitions: Vec<catalog::v1alpha1::TrinoCatalog>,

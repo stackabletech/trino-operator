@@ -607,8 +607,8 @@ mod tests {
 
     use super::*;
 
-    /// The user-provided server TLS SecretClass as `Option<&str>` (mirrors the former
-    /// `TrinoCluster::get_server_tls`, kept here only for these CRD-defaulting assertions).
+    /// The user-provided server TLS SecretClass as `Option<&str>`, used by these CRD-defaulting
+    /// assertions.
     fn server_secret_class(trino: &v1alpha1::TrinoCluster) -> Option<&str> {
         trino
             .spec

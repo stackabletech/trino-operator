@@ -1,5 +1,4 @@
 // TODO: Look into how to properly resolve `clippy::result_large_err`.
-// This will need changes in our and upstream error types.
 #![allow(clippy::result_large_err)]
 
 use std::sync::Arc;
@@ -45,7 +44,6 @@ use crate::{
 mod authentication;
 mod authorization;
 mod catalog;
-mod command;
 mod config;
 mod controller;
 mod crd;

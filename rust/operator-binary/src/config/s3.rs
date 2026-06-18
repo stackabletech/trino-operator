@@ -8,7 +8,7 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 
-use crate::{command, crd::STACKABLE_CLIENT_TLS_DIR};
+use crate::{controller::build::command, crd::STACKABLE_CLIENT_TLS_DIR};
 
 #[derive(Snafu, Debug)]
 pub enum Error {

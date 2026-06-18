@@ -463,11 +463,10 @@ mod tests {
             ),
             None => None,
         };
-        // For OPA, the legacy helper used a hard-coded `TrinoOpaConfig` literal
-        // rather than resolving from cluster config; mirror that here so that
-        // `test_access_control_overrides` does not need a Kubernetes client and
-        // so that `test_config_overrides` keeps observing an
-        // `access-control.properties` entry in the rendered ConfigMap.
+        // Build a `TrinoOpaConfig` literal directly instead of resolving it from cluster config,
+        // so that `test_access_control_overrides` does not need a Kubernetes client and
+        // `test_config_overrides` still observes an `access-control.properties` entry in the
+        // rendered ConfigMap.
         let trino_opa_config = Some(TrinoOpaConfig {
             non_batched_connection_string:
                 "http://simple-opa.default.svc.cluster.local:8081/v1/data/my-product/allow"
