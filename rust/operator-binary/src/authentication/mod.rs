@@ -336,9 +336,7 @@ impl TrinoAuthenticationConfig {
     pub fn env_vars(&self, role: &TrinoRole, container: &crate::crd::Container) -> Vec<EnvVar> {
         self.env_vars
             .get(role)
-            .cloned()
-            .unwrap_or_default()
-            .get(container)
+            .and_then(|by_container| by_container.get(container))
             .cloned()
             .unwrap_or_default()
     }
@@ -347,9 +345,7 @@ impl TrinoAuthenticationConfig {
     pub fn commands(&self, role: &TrinoRole, container: &crate::crd::Container) -> Vec<String> {
         self.commands
             .get(role)
-            .cloned()
-            .unwrap_or_default()
-            .get(container)
+            .and_then(|by_container| by_container.get(container))
             .cloned()
             .unwrap_or_default()
     }

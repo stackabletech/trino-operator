@@ -3,7 +3,6 @@ use snafu::{OptionExt, ResultExt, ensure};
 use stackable_operator::{
     builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
-    commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     crd::s3,
     k8s_openapi::api::core::v1::ConfigMap,
     v2::types::kubernetes::NamespaceName,
@@ -19,9 +18,9 @@ use super::{
     },
 };
 use crate::{
-    command,
+    config,
     crd::{
-        CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+        CONFIG_DIR_NAME,
         catalog::commons::{HdfsConnection, MetastoreConnection},
     },
 };
@@ -131,23 +130,10 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
             469.. => ensure!(s3.tls.uses_tls(), S3TlsRequiredSnafu),
         };
 
-        if let Some(tls) = s3.tls.tls.as_ref() {
-            match &tls.verification {
-                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::WebPki {},
-                }) => {}
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(_),
-                }) => {
-                    if let Some(ca_cert) = s3.tls.tls_ca_cert_mount_path() {
-                        catalog_config.init_container_extra_start_commands.extend(
-                            command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR),
-                        );
-                    }
-                }
-            }
-        }
+        catalog_config.init_container_extra_start_commands.extend(
+            config::s3::s3_tls_truststore_commands(&s3.tls)
+                .map_err(|_| S3TlsNoVerificationNotSupportedSnafu.build())?,
+        );
 
         Ok(())
     }

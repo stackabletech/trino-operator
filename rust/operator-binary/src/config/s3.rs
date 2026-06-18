@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     client::Client,
-    commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
+    commons::tls_verification::{CaCert, TlsClientDetails, TlsServerVerification, TlsVerification},
     crd::s3,
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
@@ -19,6 +19,37 @@ pub enum Error {
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
+}
+
+/// Returned by [`s3_tls_truststore_commands`] when an S3 connection disables TLS verification,
+/// which Trino does not support.
+#[derive(Debug)]
+pub struct S3TlsVerificationDisabled;
+
+/// Build the init-container commands that add an S3 server's CA certificate to the client
+/// truststore.
+///
+/// Returns an empty list when no extra trust setup is needed (TLS disabled, or WebPKI
+/// verification), and [`S3TlsVerificationDisabled`] when TLS verification is turned off (which
+/// Trino rejects). Shared by the spooling/exchange S3 config and the S3 catalog connection.
+pub fn s3_tls_truststore_commands(
+    tls: &TlsClientDetails,
+) -> Result<Vec<String>, S3TlsVerificationDisabled> {
+    let Some(tls_config) = tls.tls.as_ref() else {
+        return Ok(Vec::new());
+    };
+    match &tls_config.verification {
+        TlsVerification::None {} => Err(S3TlsVerificationDisabled),
+        TlsVerification::Server(TlsServerVerification {
+            ca_cert: CaCert::WebPki {},
+        }) => Ok(Vec::new()),
+        TlsVerification::Server(TlsServerVerification {
+            ca_cert: CaCert::SecretClass(_),
+        }) => Ok(tls
+            .tls_ca_cert_mount_path()
+            .map(|ca_cert| command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR))
+            .unwrap_or_default()),
+    }
 }
 
 pub struct ResolvedS3Config {
@@ -91,23 +122,10 @@ impl ResolvedS3Config {
             ]);
         }
 
-        if let Some(tls) = s3_connection.tls.tls.as_ref() {
-            match &tls.verification {
-                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::WebPki {},
-                }) => {}
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(_),
-                }) => {
-                    if let Some(ca_cert) = s3_connection.tls.tls_ca_cert_mount_path() {
-                        resolved_config.init_container_extra_start_commands.extend(
-                            command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR),
-                        );
-                    }
-                }
-            }
-        }
+        resolved_config.init_container_extra_start_commands.extend(
+            s3_tls_truststore_commands(&s3_connection.tls)
+                .map_err(|_| Error::S3TlsNoVerificationNotSupported)?,
+        );
 
         Ok(resolved_config)
     }

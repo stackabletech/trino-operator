@@ -186,8 +186,8 @@ async fn main() -> anyhow::Result<()> {
                         config_map_cluster_store
                             .state()
                             .into_iter()
-                            .filter(move |druid| references_config_map(druid, &config_map))
-                            .map(|druid| ObjectRef::from_obj(&*druid))
+                            .filter(move |trino| references_config_map(trino, &config_map))
+                            .map(|trino| ObjectRef::from_obj(&*trino))
                     },
                 )
                 .graceful_shutdown_on(sigterm_watcher.handle())
