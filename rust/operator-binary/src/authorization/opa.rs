@@ -1,8 +1,10 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use stackable_operator::{
-    client::Client, commons::opa::OpaApiVersion, k8s_openapi::api::core::v1::ConfigMap,
-    kube::ResourceExt, v2::types::kubernetes::SecretClassName,
+    client::Client,
+    commons::opa::OpaApiVersion,
+    k8s_openapi::api::core::v1::ConfigMap,
+    v2::types::kubernetes::{NamespaceName, SecretClassName},
 };
 
 use crate::crd::v1alpha1;
@@ -41,6 +43,7 @@ impl TrinoOpaConfig {
     pub async fn from_opa_config(
         client: &Client,
         trino: &v1alpha1::TrinoCluster,
+        namespace: &NamespaceName,
         opa_config: &v1alpha1::TrinoAuthorizationOpaConfig,
     ) -> Result<Self, stackable_operator::commons::opa::Error> {
         let non_batched_connection_string = opa_config
@@ -86,10 +89,7 @@ impl TrinoOpaConfig {
         };
 
         let tls_secret_class = client
-            .get::<ConfigMap>(
-                &opa_config.opa.config_map_name,
-                trino.namespace().as_deref().unwrap_or("default"),
-            )
+            .get::<ConfigMap>(&opa_config.opa.config_map_name, namespace.as_ref())
             .await
             .ok()
             .and_then(|cm| cm.data)
