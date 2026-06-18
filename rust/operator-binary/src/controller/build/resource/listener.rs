@@ -1,9 +1,12 @@
+use std::str::FromStr;
+
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::pod::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference},
     crd::listener::v1alpha1::{Listener, ListenerPort, ListenerSpec},
     k8s_openapi::api::core::v1::PersistentVolumeClaim,
     kvp::Labels,
+    v2::types::kubernetes::{ListenerClassName, VolumeName},
 };
 
 use crate::{
@@ -11,7 +14,7 @@ use crate::{
     crd::TrinoRole,
 };
 
-pub const LISTENER_VOLUME_NAME: &str = "listener";
+stackable_operator::constant!(pub LISTENER_VOLUME_NAME: VolumeName = "listener");
 pub const LISTENER_VOLUME_DIR: &str = "/stackable/listener";
 
 #[derive(Snafu, Debug)]
@@ -25,7 +28,7 @@ pub enum Error {
 pub fn build_group_listener(
     cluster: &ValidatedCluster,
     recommended_labels: Labels,
-    listener_class: String,
+    listener_class: &ListenerClassName,
     listener_group_name: String,
 ) -> Listener {
     Listener {
@@ -33,7 +36,7 @@ pub fn build_group_listener(
             .object_meta(listener_group_name, recommended_labels)
             .build(),
         spec: ListenerSpec {
-            class_name: Some(listener_class),
+            class_name: Some(listener_class.to_string()),
             ports: Some(listener_ports(cluster)),
             ..ListenerSpec::default()
         },

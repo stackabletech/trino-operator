@@ -37,6 +37,7 @@ use stackable_operator::{
         role_group_utils::ResourceNames,
         role_utils::JavaCommonConfig,
         types::{
+            common::Port,
             kubernetes::{ConfigMapName, ListenerClassName, NamespaceName, SecretClassName},
             operator::{ClusterName, RoleGroupName, RoleName},
         },
@@ -63,9 +64,9 @@ pub type TrinoRoleType = Role<
 
 pub const APP_NAME: &str = "trino";
 // ports
-pub const HTTP_PORT: u16 = 8080;
-pub const HTTPS_PORT: u16 = 8443;
-pub const METRICS_PORT: u16 = 8081;
+pub const HTTP_PORT: Port = Port(8080);
+pub const HTTPS_PORT: Port = Port(8443);
+pub const METRICS_PORT: Port = Port(8081);
 // port names
 pub const HTTP_PORT_NAME: &str = "http";
 pub const HTTPS_PORT_NAME: &str = "https";

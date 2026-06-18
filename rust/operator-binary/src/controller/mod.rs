@@ -16,10 +16,9 @@ use stackable_operator::{
         kvp::label::{recommended_labels, role_group_selector},
         role_group_utils::ResourceNames,
         types::{
-            kubernetes::{ListenerClassName, NamespaceName, Uid},
+            kubernetes::{ListenerClassName, NamespaceName, SecretClassName, Uid},
             operator::{
-                ClusterName, ControllerName, OperatorName, ProductName, ProductVersion,
-                RoleGroupName as RoleGroupNameV2, RoleName,
+                ClusterName, ControllerName, OperatorName, ProductName, ProductVersion, RoleName,
             },
         },
     },
@@ -45,8 +44,8 @@ pub use validate::{RoleGroupName, TrinoRoleGroupConfig};
 
 #[derive(Clone, Debug)]
 pub struct ValidatedTls {
-    pub server: Option<String>,
-    pub internal: Option<String>,
+    pub server: Option<SecretClassName>,
+    pub internal: Option<SecretClassName>,
 }
 
 /// Cluster-wide settings, grouped to parallel `spec.clusterConfig` CRD.
@@ -175,13 +174,13 @@ impl ValidatedCluster {
     }
 
     /// The user-provided server TLS SecretClass, if any.
-    pub fn get_server_tls(&self) -> Option<&str> {
-        self.cluster_config.tls.server.as_deref()
+    pub fn get_server_tls(&self) -> Option<&SecretClassName> {
+        self.cluster_config.tls.server.as_ref()
     }
 
     /// The user-provided internal TLS SecretClass, if any.
-    pub fn get_internal_tls(&self) -> Option<&str> {
-        self.cluster_config.tls.internal.as_deref()
+    pub fn get_internal_tls(&self) -> Option<&SecretClassName> {
+        self.cluster_config.tls.internal.as_ref()
     }
 
     /// Whether client TLS should be set, depending on authentication and server TLS settings.
@@ -190,11 +189,15 @@ impl ValidatedCluster {
     }
 
     /// Type-safe names for the resources of a given role group.
-    pub(crate) fn resource_names(&self, role: &TrinoRole, role_group_name: &str) -> ResourceNames {
+    pub(crate) fn resource_names(
+        &self,
+        role: &TrinoRole,
+        role_group_name: &RoleGroupName,
+    ) -> ResourceNames {
         ResourceNames {
             cluster_name: self.name.clone(),
             role_name: Self::role_name(role),
-            role_group_name: Self::role_group_name(role_group_name),
+            role_group_name: role_group_name.clone(),
         }
     }
 
@@ -203,7 +206,7 @@ impl ValidatedCluster {
     pub(crate) fn role_group_catalog_config_map_name(
         &self,
         role: &TrinoRole,
-        role_group_name: &str,
+        role_group_name: &RoleGroupName,
     ) -> String {
         format!(
             "{}-catalog",
@@ -236,12 +239,6 @@ impl ValidatedCluster {
         RoleName::from_str(&role.to_string()).expect("a TrinoRole is a valid RFC 1123 role name")
     }
 
-    /// A role-group name as a type-safe [`RoleGroupName`](RoleGroupNameV2).
-    fn role_group_name(role_group_name: &str) -> RoleGroupNameV2 {
-        RoleGroupNameV2::from_str(role_group_name)
-            .expect("a validated role group name is a valid role group name")
-    }
-
     /// The version label value (`app.kubernetes.io/version`) as a type-safe [`ProductVersion`].
     fn version_label(&self) -> ProductVersion {
         ProductVersion::from_str(&self.image.app_version_label_value)
@@ -252,7 +249,7 @@ impl ValidatedCluster {
         &self,
         version: &ProductVersion,
         role: &TrinoRole,
-        role_group_name: &str,
+        role_group_name: &RoleGroupName,
     ) -> Labels {
         recommended_labels(
             self,
@@ -261,12 +258,16 @@ impl ValidatedCluster {
             &operator_name(),
             &controller_name(),
             &Self::role_name(role),
-            &Self::role_group_name(role_group_name),
+            role_group_name,
         )
     }
 
     /// Recommended labels for a role-group resource (using the resolved product version).
-    pub(crate) fn recommended_labels(&self, role: &TrinoRole, role_group_name: &str) -> Labels {
+    pub(crate) fn recommended_labels(
+        &self,
+        role: &TrinoRole,
+        role_group_name: &RoleGroupName,
+    ) -> Labels {
         self.recommended_labels_with_version(&self.version_label(), role, role_group_name)
     }
 
@@ -275,7 +276,7 @@ impl ValidatedCluster {
     pub(crate) fn unversioned_recommended_labels(
         &self,
         role: &TrinoRole,
-        role_group_name: &str,
+        role_group_name: &RoleGroupName,
     ) -> Labels {
         let none = ProductVersion::from_str("none")
             .expect("\"none\" is a valid product version label value");
@@ -283,12 +284,16 @@ impl ValidatedCluster {
     }
 
     /// Selector labels matching the pods of a role group.
-    pub(crate) fn role_group_selector(&self, role: &TrinoRole, role_group_name: &str) -> Labels {
+    pub(crate) fn role_group_selector(
+        &self,
+        role: &TrinoRole,
+        role_group_name: &RoleGroupName,
+    ) -> Labels {
         role_group_selector(
             self,
             &product_name(),
             &Self::role_name(role),
-            &Self::role_group_name(role_group_name),
+            role_group_name,
         )
     }
 }

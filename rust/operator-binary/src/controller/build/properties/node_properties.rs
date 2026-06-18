@@ -36,7 +36,11 @@ mod tests {
     #[test]
     fn default_renders_node_environment_from_cluster_name() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&crate::crd::TrinoRole::Coordinator]["default"].clone();
+        let rg = cluster.role_group_configs[&crate::crd::TrinoRole::Coordinator]
+            .values()
+            .next()
+            .unwrap()
+            .clone();
         let props = build(&cluster, &rg);
         assert_eq!(
             props.get("node.environment").map(String::as_str),

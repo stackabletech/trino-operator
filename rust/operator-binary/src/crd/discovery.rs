@@ -1,4 +1,4 @@
-use stackable_operator::utils::cluster_info::KubernetesClusterInfo;
+use stackable_operator::{utils::cluster_info::KubernetesClusterInfo, v2::types::common::Port};
 
 use crate::crd::{HTTP_PORT, HTTPS_PORT};
 
@@ -55,7 +55,7 @@ pub enum TrinoDiscoveryProtocol {
 }
 
 impl TrinoDiscoveryProtocol {
-    pub fn port(&self) -> u16 {
+    pub fn port(&self) -> Port {
         match self {
             TrinoDiscoveryProtocol::Http => HTTP_PORT,
             TrinoDiscoveryProtocol::Https => HTTPS_PORT,

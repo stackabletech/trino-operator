@@ -12,7 +12,7 @@ use stackable_operator::{
 use crate::{
     config::jvm,
     controller::{
-        ValidatedCluster,
+        RoleGroupName, ValidatedCluster,
         build::properties::{
             ConfigFileName, access_control_properties, config_properties,
             exchange_manager_properties, log_properties, node_properties, product_logging,
@@ -54,7 +54,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub fn build_rolegroup_config_map(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
-    role_group_name: &str,
+    role_group_name: &RoleGroupName,
     cluster_info: &KubernetesClusterInfo,
     recommended_labels: &Labels,
 ) -> Result<ConfigMap> {
@@ -64,13 +64,13 @@ pub fn build_rolegroup_config_map(
             .get(role)
             .with_context(|| MissingRoleGroupSnafu {
                 role: role.to_string(),
-                role_group: role_group_name.to_owned(),
+                role_group: role_group_name.to_string(),
             })?;
     let rg = role_group_configs
         .get(role_group_name)
         .with_context(|| MissingRoleGroupSnafu {
             role: role.to_string(),
-            role_group: role_group_name.to_owned(),
+            role_group: role_group_name.to_string(),
         })?;
 
     let config_map_name = cluster
@@ -198,7 +198,7 @@ pub fn build_rolegroup_config_map(
 pub fn build_rolegroup_catalog_config_map(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
-    role_group_name: &str,
+    role_group_name: &RoleGroupName,
     recommended_labels: &Labels,
 ) -> Result<ConfigMap> {
     let catalog_config_map_name = cluster.role_group_catalog_config_map_name(role, role_group_name);

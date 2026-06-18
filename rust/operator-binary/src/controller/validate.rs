@@ -83,10 +83,16 @@ pub enum Error {
         role: String,
     },
 
+    #[snafu(display("invalid role group name {role_group}"))]
+    ParseRoleGroupName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
+        role_group: String,
+    },
+
     #[snafu(display("failed to resolve and merge config for role group {role_group}"))]
     FailedToResolveConfig {
         source: fragment::ValidationError,
-        role_group: String,
+        role_group: RoleGroupName,
     },
 
     #[snafu(display("invalid environment variable override name"))]
@@ -105,7 +111,7 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub type RoleGroupName = String;
+pub use stackable_operator::v2::types::operator::RoleGroupName;
 
 /// Validated logging configuration for the Trino, prepare and (optional) Vector containers.
 ///
@@ -238,6 +244,10 @@ pub fn validate(
         );
         let mut groups = BTreeMap::new();
         for (rg_name, rg) in &role.role_groups {
+            let role_group_name =
+                RoleGroupName::from_str(rg_name).with_context(|_| ParseRoleGroupNameSnafu {
+                    role_group: rg_name.clone(),
+                })?;
             // Merges and validates the role group config (default <- role <- role group). Because
             // `JavaCommonConfig` implements `Merge`, the role and role-group `jvmArgumentOverrides`
             // are merged here too and carried by `product_specific_common_config`.
@@ -249,10 +259,10 @@ pub fn validate(
                 v1alpha1::TrinoConfigOverrides,
             >(rg, &role, &default_config)
             .with_context(|_| FailedToResolveConfigSnafu {
-                role_group: rg_name.clone(),
+                role_group: role_group_name.clone(),
             })?;
             groups.insert(
-                rg_name.clone(),
+                role_group_name,
                 into_role_group_config(merged, &vector_aggregator_config_map_name)?,
             );
         }
@@ -262,8 +272,8 @@ pub fn validate(
     let tls = &trino.spec.cluster_config.tls;
     let cluster_config = ValidatedClusterConfig {
         tls: ValidatedTls {
-            server: tls.server_secret_class.as_ref().map(ToString::to_string),
-            internal: tls.internal_secret_class.as_ref().map(ToString::to_string),
+            server: tls.server_secret_class.clone(),
+            internal: tls.internal_secret_class.clone(),
         },
         authentication,
         authorization: dereferenced_objects.trino_opa_config.clone(),
@@ -351,7 +361,9 @@ pub(crate) fn merged_role_group_config(
 
 #[cfg(test)]
 mod tests {
-    use super::super::validated_cluster;
+    use std::str::FromStr;
+
+    use super::{super::validated_cluster, RoleGroupName};
     use crate::crd::TrinoRole;
 
     #[test]
@@ -377,7 +389,9 @@ mod tests {
                 .contains_key(&TrinoRole::Worker)
         );
         assert_eq!(
-            validated.role_group_configs[&TrinoRole::Coordinator]["default"].replicas,
+            validated.role_group_configs[&TrinoRole::Coordinator]
+                [&RoleGroupName::from_str("default").unwrap()]
+                .replicas,
             Some(1)
         );
     }

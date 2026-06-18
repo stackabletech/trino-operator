@@ -4,12 +4,12 @@ use stackable_operator::{
     client::Client,
     commons::opa::OpaApiVersion,
     k8s_openapi::api::core::v1::ConfigMap,
-    v2::types::kubernetes::{NamespaceName, SecretClassName},
+    v2::types::kubernetes::{NamespaceName, SecretClassName, VolumeName},
 };
 
 use crate::crd::v1alpha1;
 
-pub const OPA_TLS_VOLUME_NAME: &str = "opa-tls";
+stackable_operator::constant!(pub OPA_TLS_VOLUME_NAME: VolumeName = "opa-tls");
 
 #[derive(Clone, Debug)]
 pub struct TrinoOpaConfig {
@@ -142,8 +142,11 @@ impl TrinoOpaConfig {
     }
 
     pub fn tls_mount_path(&self) -> Option<String> {
-        self.tls_secret_class
-            .as_ref()
-            .map(|_| format!("/stackable/secrets/{OPA_TLS_VOLUME_NAME}"))
+        self.tls_secret_class.as_ref().map(|_| {
+            format!(
+                "/stackable/secrets/{opa_tls_volume_name}",
+                opa_tls_volume_name = &*OPA_TLS_VOLUME_NAME
+            )
+        })
     }
 }

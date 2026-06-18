@@ -37,7 +37,11 @@ mod tests {
     #[test]
     fn default_renders_empty_when_no_opa() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]["default"].clone();
+        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+            .values()
+            .next()
+            .unwrap()
+            .clone();
         let props = build(&cluster, &rg);
         assert!(props.is_empty());
     }

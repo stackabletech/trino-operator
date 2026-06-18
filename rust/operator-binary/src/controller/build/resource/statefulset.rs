@@ -33,14 +33,14 @@ use stackable_operator::{
     v2::{
         builder::{pod::container::EnvVarSet, statefulset::restarter_ignore_secret_annotations},
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
-        types::kubernetes::{ContainerName, VolumeName},
+        types::kubernetes::{ContainerName, SecretClassName, VolumeName},
     },
 };
 
 use crate::{
     authorization::opa::OPA_TLS_VOLUME_NAME,
     controller::{
-        TrinoRoleGroupConfig, ValidatedCluster, build,
+        RoleGroupName, TrinoRoleGroupConfig, ValidatedCluster, build,
         build::{
             command,
             resource::listener::{
@@ -137,7 +137,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub fn build_rolegroup_statefulset(
     cluster: &ValidatedCluster,
     trino_role: &TrinoRole,
-    role_group_name: &str,
+    role_group_name: &RoleGroupName,
     role_group_config: &TrinoRoleGroupConfig,
     sa_name: &str,
 ) -> Result<StatefulSet> {
@@ -302,7 +302,7 @@ pub fn build_rolegroup_statefulset(
     // Add listener
     if let Some(group_listener_name) = group_listener_name(cluster, trino_role) {
         cb_trino
-            .add_volume_mount(LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
+            .add_volume_mount(&*LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
             .context(AddVolumeMountSnafu)?;
 
         // Used for PVC templates that cannot be modified once they are deployed, so a fixed
@@ -596,12 +596,12 @@ fn finished_starting_probe(cluster: &ValidatedCluster) -> ExecAction {
 
 fn create_tls_volume(
     volume_name: impl Into<String>,
-    tls_secret_class: &str,
+    tls_secret_class: &SecretClassName,
     requested_secret_lifetime: &Duration,
     listener_scope: Option<String>,
 ) -> Result<Volume> {
     let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(
-        tls_secret_class,
+        tls_secret_class.as_ref(),
         SecretClassVolumeProvisionParts::PublicPrivate,
     );
 
@@ -737,10 +737,10 @@ fn tls_volume_mounts(
         })
     {
         cb_prepare
-            .add_volume_mount(OPA_TLS_VOLUME_NAME, &tls_mount_path)
+            .add_volume_mount(&*OPA_TLS_VOLUME_NAME, &tls_mount_path)
             .context(AddVolumeMountSnafu)?;
 
-        let opa_tls_volume = VolumeBuilder::new(OPA_TLS_VOLUME_NAME)
+        let opa_tls_volume = VolumeBuilder::new(&*OPA_TLS_VOLUME_NAME)
             .ephemeral(
                 SecretOperatorVolumeSourceBuilder::new(
                     tls_secret_class.as_ref(),

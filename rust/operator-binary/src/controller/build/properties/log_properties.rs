@@ -39,7 +39,11 @@ mod tests {
     #[test]
     fn default_renders_root_logger_only() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]["default"].clone();
+        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+            .values()
+            .next()
+            .unwrap()
+            .clone();
         let props = build(&rg);
         assert_eq!(props.get("").map(String::as_str), Some("info"));
         assert!(!props.contains_key("io.trino"));

@@ -256,7 +256,11 @@ mod tests {
     #[test]
     fn default_renders_includes_coordinator_default_and_query_max_memory_default() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]["default"].clone();
+        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+            .values()
+            .next()
+            .unwrap()
+            .clone();
         let cluster_info = stackable_operator::utils::cluster_info::KubernetesClusterInfo {
             cluster_domain: stackable_operator::commons::networking::DomainName::try_from(
                 "cluster.local",

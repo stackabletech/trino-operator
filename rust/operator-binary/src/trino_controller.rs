@@ -25,7 +25,7 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     controller::{
-        build,
+        RoleGroupName, build,
         build::resource::{
             listener::{build_group_listener, group_listener_name},
             pdb::build_pdb,
@@ -70,31 +70,31 @@ pub enum Error {
     #[snafu(display("failed to apply Service for {}", rolegroup))]
     ApplyRoleGroupService {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: String,
+        rolegroup: RoleGroupName,
     },
 
     #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
     BuildRoleGroupConfigMap {
         source: build::resource::config_map::Error,
-        rolegroup: String,
+        rolegroup: RoleGroupName,
     },
 
     #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
     ApplyRoleGroupConfig {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: String,
+        rolegroup: RoleGroupName,
     },
 
     #[snafu(display("failed to build StatefulSet for {}", rolegroup))]
     BuildRoleGroupStatefulSet {
         source: build::resource::statefulset::Error,
-        rolegroup: String,
+        rolegroup: RoleGroupName,
     },
 
     #[snafu(display("failed to apply StatefulSet for {}", rolegroup))]
     ApplyRoleGroupStatefulSet {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: String,
+        rolegroup: RoleGroupName,
     },
 
     #[snafu(display("failed to patch service account"))]
@@ -355,8 +355,8 @@ pub async fn reconcile_trino(
             let role_group_listener = build_group_listener(
                 &validated_cluster,
                 validated_cluster
-                    .recommended_labels(trino_role, build::PLACEHOLDER_LISTENER_ROLE_GROUP),
-                listener_class.to_string(),
+                    .recommended_labels(trino_role, &build::PLACEHOLDER_LISTENER_ROLE_GROUP),
+                listener_class,
                 listener_group_name,
             );
 
@@ -417,6 +417,8 @@ pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String 
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use stackable_operator::{
         cli::OperatorEnvironmentOptions, commons::networking::DomainName,
         k8s_openapi::api::core::v1::ConfigMap, utils::cluster_info::KubernetesClusterInfo,
@@ -505,13 +507,14 @@ mod tests {
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
         let trino_role = TrinoRole::Coordinator;
-        let role_group_name = "default";
-        let recommended_labels = validated_cluster.recommended_labels(&trino_role, role_group_name);
+        let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
+        let recommended_labels =
+            validated_cluster.recommended_labels(&trino_role, &role_group_name);
 
         build::resource::config_map::build_rolegroup_config_map(
             &validated_cluster,
             &trino_role,
-            role_group_name,
+            &role_group_name,
             &cluster_info,
             &recommended_labels,
         )
@@ -732,8 +735,11 @@ mod tests {
         let validated_cluster =
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
-        let env =
-            &validated_cluster.role_group_configs[&TrinoRole::Coordinator]["default"].env_overrides;
+        let env = &validated_cluster.role_group_configs[&TrinoRole::Coordinator]
+            .values()
+            .next()
+            .unwrap()
+            .env_overrides;
         let value = |name: &str| {
             env.get(&EnvVarName::from_str_unsafe(name))
                 .and_then(|env_var| env_var.value.clone())

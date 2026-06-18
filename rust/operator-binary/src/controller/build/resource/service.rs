@@ -6,7 +6,7 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{ValidatedCluster, build::ports},
+    controller::{RoleGroupName, ValidatedCluster, build::ports},
     crd::{METRICS_PORT, METRICS_PORT_NAME, TrinoRole},
 };
 
@@ -15,7 +15,7 @@ use crate::{
 pub fn build_rolegroup_headless_service(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
-    role_group_name: &str,
+    role_group_name: &RoleGroupName,
     recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
     ports: Vec<ServicePort>,
@@ -47,7 +47,7 @@ pub fn build_rolegroup_headless_service(
 pub fn build_rolegroup_metrics_service(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
-    role_group_name: &str,
+    role_group_name: &RoleGroupName,
     recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
 ) -> Service {

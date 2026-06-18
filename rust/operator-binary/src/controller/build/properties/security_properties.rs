@@ -47,7 +47,11 @@ mod tests {
     #[test]
     fn default_renders_networkaddress_cache_settings() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]["default"].clone();
+        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+            .values()
+            .next()
+            .unwrap()
+            .clone();
         let props = build(&rg);
         assert_eq!(
             props.get("networkaddress.cache.ttl").map(String::as_str),

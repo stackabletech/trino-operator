@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
@@ -15,6 +15,7 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     product_logging::{self, spec::AutomaticContainerLogConfig},
     utils::COMMON_BASH_TRAP_FUNCTIONS,
+    v2::types::kubernetes::{SecretName, VolumeName},
 };
 
 use crate::{
@@ -23,7 +24,7 @@ use crate::{
 };
 
 // mounts
-const PASSWORD_DB_VOLUME_NAME: &str = "users";
+stackable_operator::constant!(PASSWORD_DB_VOLUME_NAME: VolumeName = "users");
 pub const PASSWORD_DB_VOLUME_MOUNT_PATH: &str = "/stackable/users";
 pub const PASSWORD_AUTHENTICATOR_SECRET_MOUNT_PATH: &str = "/stackable/auth-secrets";
 // trino properties
@@ -35,6 +36,11 @@ pub enum Error {
     #[snafu(display("failed to add needed volumeMounts"))]
     AddVolumeMounts {
         source: builder::pod::container::Error,
+    },
+
+    #[snafu(display("failed to parse user credentials Secret name"))]
+    ParseSecretName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
     },
 }
 
@@ -69,15 +75,15 @@ impl FileAuthenticator {
     }
 
     /// Return the name of the Secret providing the usernames and passwords
-    pub fn secret_name(&self) -> String {
-        self.file.user_credentials_secret.name.clone()
+    pub fn secret_name(&self) -> Result<SecretName, Error> {
+        SecretName::from_str(&self.file.user_credentials_secret.name).context(ParseSecretNameSnafu)
     }
 
     /// Build the volume for the user secret
-    pub fn secret_volume(&self) -> Volume {
-        VolumeBuilder::new(self.secret_volume_name())
-            .with_secret(self.secret_name(), false)
-            .build()
+    pub fn secret_volume(&self) -> Result<Volume, Error> {
+        Ok(VolumeBuilder::new(self.secret_volume_name())
+            .with_secret(self.secret_name()?, false)
+            .build())
     }
 
     /// Build the volume mount for the user secret
@@ -87,14 +93,14 @@ impl FileAuthenticator {
 
     /// Build the volume for the user password db
     pub fn password_db_volume() -> Volume {
-        VolumeBuilder::new(PASSWORD_DB_VOLUME_NAME)
+        VolumeBuilder::new(&*PASSWORD_DB_VOLUME_NAME)
             .with_empty_dir(None::<String>, None)
             .build()
     }
 
     /// Build the volume mount for the user password db
     pub fn password_db_volume_mount() -> VolumeMount {
-        VolumeMountBuilder::new(PASSWORD_DB_VOLUME_NAME, PASSWORD_DB_VOLUME_MOUNT_PATH).build()
+        VolumeMountBuilder::new(&*PASSWORD_DB_VOLUME_NAME, PASSWORD_DB_VOLUME_MOUNT_PATH).build()
     }
 
     fn password_file_name(&self) -> String {

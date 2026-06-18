@@ -3,13 +3,15 @@
 //! Mapping the server-TLS flag onto a concrete port number / name is a resource-shaping decision,
 //! so it lives in the build step rather than on [`ValidatedCluster`].
 
+use stackable_operator::v2::types::common::Port;
+
 use crate::{
     controller::ValidatedCluster,
     crd::{HTTP_PORT, HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME},
 };
 
 /// The client-facing port Trino exposes: HTTPS when server TLS is enabled, otherwise HTTP.
-pub(crate) fn exposed_port(cluster: &ValidatedCluster) -> u16 {
+pub(crate) fn exposed_port(cluster: &ValidatedCluster) -> Port {
     if cluster.server_tls_enabled() {
         HTTPS_PORT
     } else {
