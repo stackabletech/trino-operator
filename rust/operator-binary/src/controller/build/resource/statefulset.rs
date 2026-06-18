@@ -94,19 +94,9 @@ pub enum Error {
         source: build::graceful_shutdown::Error,
     },
 
-    #[snafu(display("failed to build Labels"))]
-    LabelBuild {
-        source: stackable_operator::kvp::LabelError,
-    },
-
     #[snafu(display("failed to build Annotation"))]
     AnnotationBuild {
         source: stackable_operator::kvp::KeyValuePairError<Infallible>,
-    },
-
-    #[snafu(display("failed to build Metadata"))]
-    MetadataBuild {
-        source: stackable_operator::builder::meta::Error,
     },
 
     #[snafu(display("failed to build TLS certificate SecretClass Volume"))]
