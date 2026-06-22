@@ -14,7 +14,7 @@ use stackable_operator::{
     product_logging::spec::Logging,
     role_utils::{GenericRoleConfig, RoleGroup},
     v2::{
-        builder::pod::container::{self, EnvVarName, EnvVarSet},
+        builder::pod::container::{EnvVarName, EnvVarSet},
         controller_utils::{get_cluster_name, get_namespace, get_uid},
         product_logging::framework::{
             ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
@@ -96,7 +96,9 @@ pub enum Error {
     },
 
     #[snafu(display("invalid environment variable override name"))]
-    ParseEnvVarName { source: container::Error },
+    ParseEnvVarName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
+    },
 
     #[snafu(display("failed to validate logging configuration"))]
     ValidateLoggingConfig {

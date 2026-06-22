@@ -10,7 +10,7 @@ publish = false
 build = "build.rs"
 
 [dependencies]
-stackable-operator.workspace = true
+stackable-operator = { workspace = true, features = ["test-support"] }
 
 anyhow.workspace = true
 async-trait.workspace = true

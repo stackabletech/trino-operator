@@ -201,7 +201,7 @@ impl ValidatedCluster {
         }
     }
 
-    /// Name of the rolegroup's catalog [`ConfigMap`], derived from the rolegroup config map name
+    /// Name of the rolegroup's catalog `ConfigMap`, derived from the rolegroup config map name
     /// by appending the `-catalog` suffix.
     pub(crate) fn role_group_catalog_config_map_name(
         &self,

@@ -265,6 +265,12 @@ checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitflags"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
+
+[[package]]
+name = "bitflags"
 version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
@@ -532,6 +538,38 @@ dependencies = [
  "darling_core",
  "quote",
  "syn 2.0.118",
+]
+
+[[package]]
+name = "defmt"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6e524506490a1953d237cb87b1cfc1e46f88c18f10a22dfe0f507dc6bfc7f7f"
+dependencies = [
+ "bitflags 1.3.2",
+ "defmt-macros",
+]
+
+[[package]]
+name = "defmt-macros"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0a27770e9c8f719a79d8b638281f4d828f77d8fd61e0bd94451b9b85e576a0b"
+dependencies = [
+ "defmt-parser",
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
+name = "defmt-parser"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10d60334b3b2e7c9d91ef8150abfb6fa4c1c39ebbcf4a81c2e346aad939fee3e"
+dependencies = [
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -984,7 +1022,7 @@ version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddddbf932745a6be37109b6112d3ee09696106f848449069d3a57bba937ab82e"
 dependencies = [
- "bitflags",
+ "bitflags 2.13.0",
  "libc",
  "libgit2-sys",
  "log",
@@ -1399,10 +1437,11 @@ dependencies = [
 
 [[package]]
 name = "jiff"
-version = "0.2.28"
+version = "0.2.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4603d3033e49e2b0e31229fcab20a5d40089c607d975cd9c80551dc69eed9102"
+checksum = "34f877a98676d2fb664698d74cc6a51ce6c484ce8c770f05d0108ec9090aeb46"
 dependencies = [
+ "defmt",
  "jiff-static",
  "jiff-tzdb-platform",
  "log",
@@ -1414,9 +1453,9 @@ dependencies = [
 
 [[package]]
 name = "jiff-static"
-version = "0.2.28"
+version = "0.2.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "782d32378dddf207193ac91cefb848ad41abb58195c95168e1291227a0832b47"
+checksum = "0666b5ab5ecaca213fc2a85b8c0083d9004e84ee2d5f9a7e0017aaf50986f25f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1511,7 +1550,7 @@ dependencies = [
 [[package]]
 name = "k8s-version"
 version = "0.1.3"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "darling",
  "regex",
@@ -2158,6 +2197,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2293,7 +2354,7 @@ version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
 dependencies = [
- "bitflags",
+ "bitflags 2.13.0",
 ]
 
 [[package]]
@@ -2467,9 +2528,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.40"
+version = "0.23.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef86cd5876211988985292b91c96a8f2d298df24e75989a43a3c73f2d4d8168b"
+checksum = "6b92b125634d9b795e7beca796cc790df15a7fb38323bf3196fda83292d06b1f"
 dependencies = [
  "log",
  "once_cell",
@@ -2594,7 +2655,7 @@ version = "3.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7f4bc775c73d9a02cde8bf7b2ec4c9d12743edf609006c7facc23998404cd1d"
 dependencies = [
- "bitflags",
+ "bitflags 2.13.0",
  "core-foundation",
  "core-foundation-sys",
  "libc",
@@ -2890,7 +2951,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 [[package]]
 name = "stackable-certs"
 version = "0.4.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "const-oid",
  "ecdsa",
@@ -2913,8 +2974,8 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.111.1"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+version = "0.112.0"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "base64",
  "clap",
@@ -2959,7 +3020,7 @@ dependencies = [
 [[package]]
 name = "stackable-operator-derive"
 version = "0.3.1"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -2970,7 +3031,7 @@ dependencies = [
 [[package]]
 name = "stackable-shared"
 version = "0.1.1"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "jiff",
  "k8s-openapi",
@@ -2987,7 +3048,7 @@ dependencies = [
 [[package]]
 name = "stackable-telemetry"
 version = "0.6.4"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "axum",
  "clap",
@@ -3033,7 +3094,7 @@ dependencies = [
 [[package]]
 name = "stackable-versioned"
 version = "0.10.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "kube",
  "schemars",
@@ -3047,7 +3108,7 @@ dependencies = [
 [[package]]
 name = "stackable-versioned-macros"
 version = "0.10.0"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "convert_case",
  "convert_case_extras",
@@ -3065,7 +3126,7 @@ dependencies = [
 [[package]]
 name = "stackable-webhook"
 version = "0.9.1"
-source = "git+https://github.com/stackabletech//operator-rs.git?branch=smooth-operator#bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3"
+source = "git+https://github.com/stackabletech/operator-rs.git?tag=stackable-operator-0.112.0#cef9e663f86846d175049cc1e2406efc4b542040"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -3226,9 +3287,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.49"
+version = "0.3.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "711a53c2d47bbd818258c498c8dbfe186a2526c631495cfe7e078567f86b8469"
+checksum = "85c17d80feb7334b40c484e45ed1a5273dfd8bfda537c3be2e74a06a6686f327"
 dependencies = [
  "deranged",
  "num-conv",
@@ -3246,9 +3307,9 @@ checksum = "9e1c906769ad99c88eaa54e728060edef082f8e358ff32030cb7c7d315e81109"
 
 [[package]]
 name = "time-macros"
-version = "0.2.29"
+version = "0.2.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71c652a3727a9cbb9a02f707f530b618ce00d0ccd762009c8c23bd191df3c17d"
+checksum = "dcef1a61bdb119096e153208ec5cbec23944ce8bca13be5c7f60c634f7403935"
 dependencies = [
  "num-conv",
  "time-core",
@@ -3453,7 +3514,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cfcf7e2740e6fc6d4d688b4ef00650406bb94adf4731e43c096c3a19fe40840"
 dependencies = [
  "base64",
- "bitflags",
+ "bitflags 2.13.0",
  "bytes",
  "futures-util",
  "http",

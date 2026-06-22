@@ -864,7 +864,22 @@ rec {
         };
         resolvedDefaultFeatures = [ "std" ];
       };
-      "bitflags" = rec {
+      "bitflags 1.3.2" = rec {
+        crateName = "bitflags";
+        version = "1.3.2";
+        edition = "2018";
+        sha256 = "12ki6w8gn1ldq7yz9y680llwk5gmrhrzszaa17g1sbrw2r2qvwxy";
+        authors = [
+          "The Rust Project Developers"
+        ];
+        features = {
+          "compiler_builtins" = [ "dep:compiler_builtins" ];
+          "core" = [ "dep:core" ];
+          "rustc-dep-of-std" = [ "core" "compiler_builtins" ];
+        };
+        resolvedDefaultFeatures = [ "default" ];
+      };
+      "bitflags 2.13.0" = rec {
         crateName = "bitflags";
         version = "2.13.0";
         edition = "2021";
@@ -1627,6 +1642,84 @@ rec {
           }
         ];
 
+      };
+      "defmt" = rec {
+        crateName = "defmt";
+        version = "1.1.0";
+        edition = "2021";
+        links = "defmt";
+        sha256 = "0zvzzimxq1zmw3gj42pi326ghihyzhf7pf3w4cyrb8chci829rd6";
+        authors = [
+          "The Knurling-rs developers"
+        ];
+        dependencies = [
+          {
+            name = "bitflags";
+            packageId = "bitflags 1.3.2";
+          }
+          {
+            name = "defmt-macros";
+            packageId = "defmt-macros";
+          }
+        ];
+        features = {
+          "unstable-test" = [ "defmt-macros/unstable-test" ];
+        };
+        resolvedDefaultFeatures = [ "alloc" ];
+      };
+      "defmt-macros" = rec {
+        crateName = "defmt-macros";
+        version = "1.1.0";
+        edition = "2021";
+        sha256 = "02vaaxgbifai8kchn7nnixyzfa6qyj0q4qwbknkikxy8x5q7g8ph";
+        procMacro = true;
+        libName = "defmt_macros";
+        authors = [
+          "The Knurling-rs developers"
+        ];
+        dependencies = [
+          {
+            name = "defmt-parser";
+            packageId = "defmt-parser";
+          }
+          {
+            name = "proc-macro-error2";
+            packageId = "proc-macro-error2";
+          }
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "syn";
+            packageId = "syn 2.0.118";
+            features = [ "full" "extra-traits" ];
+          }
+        ];
+        features = {
+        };
+      };
+      "defmt-parser" = rec {
+        crateName = "defmt-parser";
+        version = "1.0.0";
+        edition = "2021";
+        sha256 = "0gpfky9sssil5qfaix5wxcwiqk7snszhl5gq3vcwkrxjncs07mhh";
+        libName = "defmt_parser";
+        authors = [
+          "The Knurling-rs developers"
+        ];
+        dependencies = [
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.18";
+          }
+        ];
+        features = {
+        };
       };
       "delegate" = rec {
         crateName = "delegate";
@@ -3090,7 +3183,7 @@ rec {
         dependencies = [
           {
             name = "bitflags";
-            packageId = "bitflags";
+            packageId = "bitflags 2.13.0";
           }
           {
             name = "libc";
@@ -4448,13 +4541,18 @@ rec {
       };
       "jiff" = rec {
         crateName = "jiff";
-        version = "0.2.28";
+        version = "0.2.29";
         edition = "2021";
-        sha256 = "00lixngcc7amh2fcsxfr0z38j06lllhapz192biv1qj97q1x60s6";
+        sha256 = "0ipb184wk3hhs02hyxwcrs2c9rhwlp34rmwq8rkgplknhslpgy1l";
         authors = [
           "Andrew Gallant <jamslam@gmail.com>"
         ];
         dependencies = [
+          {
+            name = "defmt";
+            packageId = "defmt";
+            optional = true;
+          }
           {
             name = "jiff-static";
             packageId = "jiff-static";
@@ -4509,8 +4607,9 @@ rec {
           }
         ];
         features = {
-          "alloc" = [ "serde_core?/alloc" "portable-atomic-util/alloc" ];
+          "alloc" = [ "serde_core?/alloc" "portable-atomic-util/alloc" "defmt?/alloc" ];
           "default" = [ "std" "tz-system" "tz-fat" "tzdb-bundle-platform" "tzdb-zoneinfo" "tzdb-concatenated" "perf-inline" ];
+          "defmt" = [ "dep:defmt" ];
           "js" = [ "dep:wasm-bindgen" "dep:js-sys" ];
           "logging" = [ "dep:log" ];
           "serde" = [ "dep:serde_core" ];
@@ -4528,9 +4627,9 @@ rec {
       };
       "jiff-static" = rec {
         crateName = "jiff-static";
-        version = "0.2.28";
+        version = "0.2.29";
         edition = "2021";
-        sha256 = "0irbhfh2f4i9w5l53jcmh6ssnhdd92wfy76978chgwnxilvk4bbq";
+        sha256 = "0pzjhq4zbahp01z9lprdxs24w06rhc08qnx8q8zj3jnabsmvarh6";
         procMacro = true;
         libName = "jiff_static";
         authors = [
@@ -4817,9 +4916,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         libName = "k8s_version";
         authors = [
@@ -7105,6 +7204,72 @@ rec {
         ];
 
       };
+      "proc-macro-error-attr2" = rec {
+        crateName = "proc-macro-error-attr2";
+        version = "2.0.0";
+        edition = "2021";
+        sha256 = "1ifzi763l7swl258d8ar4wbpxj4c9c2im7zy89avm6xv6vgl5pln";
+        procMacro = true;
+        libName = "proc_macro_error_attr2";
+        authors = [
+          "CreepySkeleton <creepy-skeleton@yandex.ru>"
+          "GnomedDev <david2005thomas@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+        ];
+
+      };
+      "proc-macro-error2" = rec {
+        crateName = "proc-macro-error2";
+        version = "2.0.1";
+        edition = "2021";
+        sha256 = "00lq21vgh7mvyx51nwxwf822w2fpww1x0z8z0q47p8705g2hbv0i";
+        libName = "proc_macro_error2";
+        authors = [
+          "CreepySkeleton <creepy-skeleton@yandex.ru>"
+          "GnomedDev <david2005thomas@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro-error-attr2";
+            packageId = "proc-macro-error-attr2";
+          }
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "syn";
+            packageId = "syn 2.0.118";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+        ];
+        devDependencies = [
+          {
+            name = "syn";
+            packageId = "syn 2.0.118";
+            features = [ "full" ];
+          }
+        ];
+        features = {
+          "default" = [ "syn-error" ];
+          "syn-error" = [ "dep:syn" ];
+        };
+        resolvedDefaultFeatures = [ "default" "syn-error" ];
+      };
       "proc-macro2" = rec {
         crateName = "proc-macro2";
         version = "1.0.106";
@@ -7500,7 +7665,7 @@ rec {
         dependencies = [
           {
             name = "bitflags";
-            packageId = "bitflags";
+            packageId = "bitflags 2.13.0";
           }
         ];
         features = {
@@ -8214,9 +8379,9 @@ rec {
       };
       "rustls" = rec {
         crateName = "rustls";
-        version = "0.23.40";
+        version = "0.23.41";
         edition = "2021";
-        sha256 = "12qnv3ag4wrw7aj8jng74kgrilpjm2b1rfcjaac8h691frccv1pg";
+        sha256 = "07vbs2935a7xjqqvy8w3ndzmmw8dg769d9zcgdg7k6sdccjv34kb";
         dependencies = [
           {
             name = "log";
@@ -8638,7 +8803,7 @@ rec {
         dependencies = [
           {
             name = "bitflags";
-            packageId = "bitflags";
+            packageId = "bitflags 2.13.0";
           }
           {
             name = "core-foundation";
@@ -9500,9 +9665,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         libName = "stackable_certs";
         authors = [
@@ -9599,13 +9764,13 @@ rec {
       };
       "stackable-operator" = rec {
         crateName = "stackable-operator";
-        version = "0.111.1";
+        version = "0.112.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         libName = "stackable_operator";
         authors = [
@@ -9789,12 +9954,12 @@ rec {
           "client-feature-gates" = [ "dep:winnow" ];
           "crds" = [ "dep:stackable-versioned" ];
           "default" = [ "crds" ];
-          "full" = [ "client-feature-gates" "crds" "certs" "time" "webhook" "kube-ws" ];
+          "full" = [ "client-feature-gates" "crds" "certs" "test-support" "time" "webhook" "kube-ws" ];
           "kube-ws" = [ "kube/ws" ];
           "time" = [ "stackable-shared/time" ];
           "webhook" = [ "dep:stackable-webhook" ];
         };
-        resolvedDefaultFeatures = [ "crds" "default" "webhook" ];
+        resolvedDefaultFeatures = [ "crds" "default" "test-support" "webhook" ];
       };
       "stackable-operator-derive" = rec {
         crateName = "stackable-operator-derive";
@@ -9802,9 +9967,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         procMacro = true;
         libName = "stackable_operator_derive";
@@ -9837,9 +10002,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         libName = "stackable_shared";
         authors = [
@@ -9918,9 +10083,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         libName = "stackable_telemetry";
         authors = [
@@ -10083,7 +10248,7 @@ rec {
           {
             name = "stackable-operator";
             packageId = "stackable-operator";
-            features = [ "webhook" ];
+            features = [ "webhook" "test-support" ];
           }
           {
             name = "strum";
@@ -10125,9 +10290,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         libName = "stackable_versioned";
         authors = [
@@ -10175,9 +10340,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         procMacro = true;
         libName = "stackable_versioned_macros";
@@ -10243,9 +10408,9 @@ rec {
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
-          url = "https://github.com/stackabletech//operator-rs.git";
-          rev = "bde231132cd604c12d69ffb9f3d16b6dc0e5c0c3";
-          sha256 = "1j0mx81r6ki3paw40gs69p4wbnfbzw1iykz8b45mmryxg8naxihp";
+          url = "https://github.com/stackabletech/operator-rs.git";
+          rev = "cef9e663f86846d175049cc1e2406efc4b542040";
+          sha256 = "054p2mcinq3x4iykmc72nhga7kapc8ihkx9mnzqq3qdm2bk2qcps";
         };
         libName = "stackable_webhook";
         authors = [
@@ -10684,9 +10849,9 @@ rec {
       };
       "time" = rec {
         crateName = "time";
-        version = "0.3.49";
+        version = "0.3.51";
         edition = "2024";
-        sha256 = "0sc4dgw6g187gvz5qj9iqqk2ashqzvdwi664b2183gbvsk1566ki";
+        sha256 = "09zkhrk6m83l5szc6dx5zn5zsg97lp8mxr44qi04ncxpzs07vhc5";
         authors = [
           "Jacob Pratt <open-source@jhpratt.dev>"
           "Time contributors"
@@ -10767,9 +10932,9 @@ rec {
       };
       "time-macros" = rec {
         crateName = "time-macros";
-        version = "0.2.29";
+        version = "0.2.30";
         edition = "2024";
-        sha256 = "0zf1ycfikg93ijf00qnprk801khqnqqga1zp0adbp73sfaim5iki";
+        sha256 = "0d9r83vk9ik0gxfbw4yaig748ff2prffq21j2mp0j6dipmhimvyw";
         procMacro = true;
         libName = "time_macros";
         authors = [
@@ -11566,7 +11731,7 @@ rec {
           }
           {
             name = "bitflags";
-            packageId = "bitflags";
+            packageId = "bitflags 2.13.0";
           }
           {
             name = "bytes";
