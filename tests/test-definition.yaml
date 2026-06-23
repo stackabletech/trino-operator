@@ -21,13 +21,14 @@ dimensions:
     values:
       - "477"
       - "479"
+      - "481"
       # To use a custom image, add a comma and the full name after the product version
-      # - 477,oci.stackable.tech/sdp/trino:477-stackable0.0.0-dev
+      # - 481,oci.stackable.tech/sdp/trino:481-stackable0.0.0-dev
   - name: trino-latest
     values:
-      - "479"
+      - "481"
       # To use a custom image, add a comma and the full name after the product version
-      # - 470,oci.stackable.tech/sdp/trino:470-stackable0.0.0-dev
+      # - 481,oci.stackable.tech/sdp/trino:481-stackable0.0.0-dev
   - name: trino-delta
     values:
       - "477"
@@ -43,7 +44,7 @@ dimensions:
       - 1.16.2
   - name: hdfs
     values:
-      - 3.4.2
+      - 3.5.0
   - name: zookeeper
     values:
       - 3.9.4
