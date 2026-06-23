@@ -435,7 +435,7 @@ mod tests {
             validated.uid.to_string(),
             "e6ac237d-a6d4-43a1-8135-f36506110912"
         );
-        assert_eq!(validated.product_version, 479);
+        assert_eq!(validated.product_version, 481);
         assert!(!validated.cluster_config.authentication_enabled());
         assert!(
             validated
@@ -466,7 +466,7 @@ mod tests {
               uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
             spec:
               image:
-                productVersion: "479"
+                productVersion: "481"
               clusterConfig:
                 catalogLabelSelector: {}
               coordinators:
@@ -501,7 +501,7 @@ mod tests {
               uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
             spec:
               image:
-                productVersion: "479"
+                productVersion: "481"
               clusterConfig:
                 catalogLabelSelector: {}
               coordinators:
@@ -550,7 +550,7 @@ mod tests {
             init_container_extra_start_commands: Vec::new(),
         });
 
-        assert!(validate_yaml(&minimal_yaml("479"), &derefs).is_ok());
+        assert!(validate_yaml(&minimal_yaml("481"), &derefs).is_ok());
     }
 
     #[test]
@@ -564,7 +564,7 @@ mod tests {
               uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
             spec:
               image:
-                productVersion: "479"
+                productVersion: "481"
               clusterConfig:
                 catalogLabelSelector: {}
               coordinators:
@@ -594,7 +594,7 @@ mod tests {
               uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
             spec:
               image:
-                productVersion: "479"
+                productVersion: "481"
               clusterConfig:
                 catalogLabelSelector: {}
               coordinators:
