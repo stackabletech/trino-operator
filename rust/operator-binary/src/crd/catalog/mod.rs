@@ -48,6 +48,10 @@ pub mod versioned {
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoCatalogSpec {
+        /// The name of the catalog
+        #[serde(default)]
+        pub name: TrinoCatalogNameSpec,
+
         /// The `connector` defines which connector is used.
         pub connector: TrinoCatalogConnector,
 
@@ -64,6 +68,47 @@ pub mod versioned {
         /// This field is experimental, and might be replaced by a more generic mechanism to edit config properties
         #[serde(default, rename = "experimentalConfigRemovals")]
         pub config_removals: Vec<String>,
+    }
+
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub enum TrinoCatalogNameSpec {
+        /// Infer the catalog name from the `.metadata.name` of the TrinoCatalog resource.
+        ///
+        /// This ensures that no catalog names clash, as their can only be one TrinoCatalog with a
+        /// given name.
+        #[serde(rename_all = "camelCase")]
+        Inferred {
+            /// Wether hyphens (`-`) in the name of the catalog should be replaced by underscores (`_`).
+            ///
+            /// This is recommended because Kubernetes only allows `a-z` and `-`, while Trino
+            /// requires quoting for catalogs containing `-` characters, but not for `_`. This mechanism
+            /// allows you to use valid Kubernetes names, but keeps the convenience of `_` in catalog
+            /// names.
+            //
+            // /// In case you need complete flexibility over the catalog name, you can use
+            // /// `name.custom`.
+            #[serde(default)]
+            replace_hyphens_with_underscores: bool,
+        },
+        // As requested in https://github.com/stackabletech/trino-operator/issues/891 we are not
+        // implementing the custom variant yet. Please re-open or create a new decision before
+        // implementing this.
+        //
+        // /// Specify the name of the catalog as it shows up in Trino.
+        // ///
+        // /// It is your responsibility to make sure that no catalog names clash, the operator will
+        // /// raise an error in that case.
+        // ///
+        // /// TIP: If you only want to replace `-` with `_` use
+        // /// `name.inferred.replaceHyphensWithUnderscores` instead.
+        // Custom(String),
+    }
+}
+
+impl Default for v1alpha1::TrinoCatalogNameSpec {
+    fn default() -> Self {
+        Self::Inferred { replace_hyphens_with_underscores: false }
     }
 }
 
@@ -172,7 +217,10 @@ mod tests {
                       secretClass: minio-credentials
           - connector:
               tpcds: {}
-          - connector:
+          - name:
+              inferred:
+                replaceHyphensWithUnderscores: true
+            connector:
               tpch: {}
         "})
             .expect("Failed to parse TrinoCatalogSpec YAML")

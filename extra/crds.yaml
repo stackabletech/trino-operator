@@ -4279,6 +4279,34 @@ spec:
                 items:
                   type: string
                 type: array
+              name:
+                default:
+                  inferred:
+                    replaceHyphensWithUnderscores: false
+                description: The name of the catalog
+                oneOf:
+                - required:
+                  - inferred
+                properties:
+                  inferred:
+                    description: |-
+                      Infer the catalog name from the `.metadata.name` of the TrinoCatalog resource.
+
+                      This ensures that no catalog names clash, as their can only be one TrinoCatalog with a
+                      given name.
+                    properties:
+                      replaceHyphensWithUnderscores:
+                        default: false
+                        description: |-
+                          Wether hyphens (`-`) in the name of the catalog should be replaced by underscores (`_`).
+
+                          This is recommended because Kubernetes only allows `a-z` and `-`, while Trino
+                          requires quoting for catalogs containing `-` characters, but not for `_`. This mechanism
+                          allows you to use valid Kubernetes names, but keeps the convenience of `_` in catalog
+                          names.
+                        type: boolean
+                    type: object
+                type: object
             required:
             - connector
             type: object

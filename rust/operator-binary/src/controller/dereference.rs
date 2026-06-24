@@ -6,10 +6,13 @@
 //! `ResolvedClientProtocolConfig::from_config`) currently mix fetching and validation; their
 //! outputs are treated as "dereferenced" for now. Splitting those helpers is a follow-up.
 
-use std::{num::ParseIntError, str::FromStr};
+use std::{collections::HashSet, num::ParseIntError, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{client::Client, kube::runtime::reflector::ObjectRef};
+use stackable_operator::{
+    client::Client,
+    kube::{Resource, runtime::reflector::ObjectRef},
+};
 
 use crate::{
     authorization::opa::TrinoOpaConfig,
@@ -28,6 +31,9 @@ use crate::{
 pub enum Error {
     #[snafu(display("object defines no namespace"))]
     ObjectHasNoNamespace,
+
+    #[snafu(display("object defines no name"))]
+    ObjectHasNoName,
 
     #[snafu(display("failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
@@ -63,6 +69,11 @@ pub enum Error {
     InvalidOpaConfig {
         source: stackable_operator::commons::opa::Error,
     },
+
+    #[snafu(display(
+        "The catalog name {catalog_name:?} clashes (there are multiple catalogs with this name). Please make sure there is exactly one catalog for any given name"
+    ))]
+    ClashingCatalogName { catalog_name: String },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -108,13 +119,32 @@ pub async fn dereference(
     })?;
 
     let mut catalogs = Vec::with_capacity(catalog_definitions.len());
+    let mut catalog_names: HashSet<String> = HashSet::new();
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
-            .await
-            .context(ParseCatalogSnafu {
-                catalog: catalog_ref,
-            })?;
+        // We are using a match here, as we might support other ways of naming (e.g. custom) later
+        let catalog_name = match catalog.spec.name {
+            catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+                replace_hyphens_with_underscores,
+            } => {
+                let mut catalog_name = catalog.meta().name.clone().context(ObjectHasNoNameSnafu)?;
+                if replace_hyphens_with_underscores {
+                    catalog_name = catalog_name.replace('-', "_");
+                }
+                catalog_name
+            }
+        };
+
+        if catalog_names.insert(catalog_name.clone()) {
+            return ClashingCatalogNameSnafu { catalog_name }.fail();
+        }
+
+        let catalog_config =
+            CatalogConfig::from_catalog(&catalog_name, catalog, client, product_version)
+                .await
+                .context(ParseCatalogSnafu {
+                    catalog: catalog_ref,
+                })?;
         catalogs.push(catalog_config);
     }
 
