@@ -5,7 +5,7 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{
         ConfigMapKeySelector, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
     },
-    kube::{Resource, ResourceExt},
+    kube::ResourceExt,
 };
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
@@ -103,15 +103,11 @@ impl CatalogConfig {
     }
 
     pub async fn from_catalog(
+        catalog_name: &str,
         catalog: &v1alpha1::TrinoCatalog,
         client: &Client,
         trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let catalog_name = catalog
-            .meta()
-            .name
-            .clone()
-            .ok_or(FromTrinoCatalogError::InvalidCatalogSpec)?;
         let catalog_namespace = catalog.namespace();
 
         let to_catalog_config: &dyn ToCatalogConfig = match &catalog.spec.connector {
@@ -126,7 +122,7 @@ impl CatalogConfig {
             TrinoCatalogConnector::Tpch(tpch_connector) => tpch_connector,
         };
         let mut catalog_config = to_catalog_config
-            .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
+            .to_catalog_config(catalog_name, catalog_namespace, client, trino_version)
             .await?;
 
         catalog_config
