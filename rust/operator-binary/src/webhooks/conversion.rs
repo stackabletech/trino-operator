@@ -9,9 +9,11 @@ use stackable_operator::{
 };
 
 use crate::crd::{
-    FIELD_MANAGER, TrinoCluster, TrinoClusterVersion,
+    TrinoCluster, TrinoClusterVersion,
     catalog::{TrinoCatalog, TrinoCatalogVersion},
 };
+
+const FIELD_MANAGER: &str = "trino-operator";
 
 /// Contains errors which can be encountered when creating the conversion webhook server and the
 /// CRD maintainer.

@@ -1,46 +1,44 @@
 use stackable_operator::{
-    product_logging::{
-        framework::{create_vector_shutdown_file_command, remove_vector_shutdown_file_command},
-        spec::{ContainerLogConfig, ContainerLogConfigChoice},
+    product_logging::framework::{
+        create_vector_shutdown_file_command, remove_vector_shutdown_file_command,
     },
     utils::COMMON_BASH_TRAP_FUNCTIONS,
+    v2::product_logging::framework::ValidatedContainerLogConfigChoice,
 };
 
 use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
     config::{client_protocol, fault_tolerant_execution},
-    controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
+    controller::{ValidatedCluster, ValidatedTrinoConfig, build::properties::ConfigFileName},
     crd::{
-        CONFIG_DIR_NAME, Container, EXCHANGE_MANAGER_PROPERTIES, LOG_PROPERTIES,
-        RW_CONFIG_DIR_NAME, SPOOLING_MANAGER_PROPERTIES, STACKABLE_CLIENT_TLS_DIR,
+        CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole, v1alpha1,
+        TrinoRole,
     },
+    trino_controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
 };
 
 pub fn container_prepare_args(
-    trino: &v1alpha1::TrinoCluster,
+    cluster: &ValidatedCluster,
     catalogs: &[CatalogConfig],
-    merged_config: &v1alpha1::TrinoConfig,
+    merged_config: &ValidatedTrinoConfig,
     resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
 ) -> Vec<String> {
     let mut args = vec![];
 
     // Copy custom logging provided `log.properties` to rw config
-    if let Some(ContainerLogConfig {
-        choice: Some(ContainerLogConfigChoice::Custom(_)),
-    }) = merged_config.logging.containers.get(&Container::Trino)
-    {
+    if let ValidatedContainerLogConfigChoice::Custom(_) = merged_config.logging.trino_container {
+        let log_properties = ConfigFileName::Log;
         // copy config files to a writeable empty folder
         args.push(format!(
-            "echo copying {STACKABLE_LOG_CONFIG_DIR}/{LOG_PROPERTIES} {rw_conf}/{LOG_PROPERTIES}",
+            "echo copying {STACKABLE_LOG_CONFIG_DIR}/{log_properties} {rw_conf}/{log_properties}",
             rw_conf = RW_CONFIG_DIR_NAME
         ));
         args.push(format!(
-            "cp -RL {STACKABLE_LOG_CONFIG_DIR}/{LOG_PROPERTIES} {rw_conf}/{LOG_PROPERTIES}",
+            "cp -RL {STACKABLE_LOG_CONFIG_DIR}/{log_properties} {rw_conf}/{log_properties}",
             rw_conf = RW_CONFIG_DIR_NAME
         ));
     }
@@ -51,15 +49,15 @@ pub fn container_prepare_args(
     // S3, LDAP, OIDC, FTE or whatnot.
     args.push(format!("cert-tools generate-pkcs12-truststore --pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem --out {STACKABLE_CLIENT_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
 
-    if trino.tls_enabled() {
+    if cluster.tls_enabled() {
         args.push(format!("cp {STACKABLE_MOUNT_SERVER_TLS_DIR}/truststore.p12 {STACKABLE_SERVER_TLS_DIR}/truststore.p12"));
         args.push(format!("cp {STACKABLE_MOUNT_SERVER_TLS_DIR}/keystore.p12 {STACKABLE_SERVER_TLS_DIR}/keystore.p12"));
     }
 
-    if trino.get_internal_tls().is_some() {
+    if cluster.get_internal_tls().is_some() {
         args.push(format!("cp {STACKABLE_MOUNT_INTERNAL_TLS_DIR}/truststore.p12 {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12"));
         args.push(format!("cp {STACKABLE_MOUNT_INTERNAL_TLS_DIR}/keystore.p12 {STACKABLE_INTERNAL_TLS_DIR}/keystore.p12"));
-        if trino.tls_enabled() {
+        if cluster.tls_enabled() {
             args.push(format!("cert-tools generate-pkcs12-truststore --pkcs12 {STACKABLE_MOUNT_SERVER_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --pkcs12 {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12:{STACKABLE_TLS_STORE_PASSWORD} --out {STACKABLE_INTERNAL_TLS_DIR}/truststore.p12 --out-password {STACKABLE_TLS_STORE_PASSWORD}"));
         }
     }
@@ -115,13 +113,19 @@ pub fn container_trino_args(
     // Resolve credentials for fault tolerant execution exchange manager if needed
     args.push(format!(
         "test -f {rw_exchange_manager_config_file} && config-utils template {rw_exchange_manager_config_file}",
-        rw_exchange_manager_config_file = format!("{RW_CONFIG_DIR_NAME}/{EXCHANGE_MANAGER_PROPERTIES}")
+        rw_exchange_manager_config_file = format!(
+            "{RW_CONFIG_DIR_NAME}/{exchange_manager}",
+            exchange_manager = ConfigFileName::ExchangeManager
+        )
     ));
 
     // Resolve credentials for spooling manager if needed
     args.push(format!(
         "test -f {rw_spooling_config_file} && config-utils template {rw_spooling_config_file}",
-        rw_spooling_config_file = format!("{RW_CONFIG_DIR_NAME}/{SPOOLING_MANAGER_PROPERTIES}")
+        rw_spooling_config_file = format!(
+            "{RW_CONFIG_DIR_NAME}/{spooling_manager}",
+            spooling_manager = ConfigFileName::SpoolingManager
+        )
     ));
 
     args.push("set -x".to_string());

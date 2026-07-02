@@ -12,23 +12,17 @@ pub mod tpch;
 
 use async_trait::async_trait;
 use snafu::Snafu;
-use stackable_operator::{client::Client, commons::tls_verification::TlsClientDetailsError};
+use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
 use self::config::CatalogConfig;
 
 #[derive(Debug, Snafu)]
 #[snafu(module)]
 pub enum FromTrinoCatalogError {
-    #[snafu(display("object has no namespace"))]
-    ObjectHasNoNamespace,
-
     #[snafu(display("failed to configure S3 connection"))]
     ConfigureS3 {
         source: stackable_operator::crd::s3::v1alpha1::ConnectionError,
     },
-
-    #[snafu(display("failed to configure S3 TLS client details"))]
-    ConfigureS3TlsClientDetails { source: TlsClientDetailsError },
 
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
@@ -58,11 +52,6 @@ pub enum FromTrinoCatalogError {
         data_key: String,
     },
 
-    #[snafu(display("failed to create the Secret Volume for the S3 credentials"))]
-    CreateS3CredentialsSecretOperatorVolume {
-        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
-    },
-
     #[snafu(display("failed to get PostgreSQL connection details"))]
     GetPostgresConnectionDetails {
         source: stackable_operator::database_connections::Error,
@@ -74,7 +63,7 @@ pub trait ToCatalogConfig {
     async fn to_catalog_config(
         &self,
         catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError>;
@@ -86,7 +75,7 @@ pub trait ExtendCatalogConfig {
         &self,
         catalog_config: &mut CatalogConfig,
         catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError>;
