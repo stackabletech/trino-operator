@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use stackable_operator::client::Client;
+use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
 use super::{ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
 use crate::crd::catalog::hive::HiveConnector;
@@ -11,7 +11,7 @@ impl ToCatalogConfig for HiveConnector {
     async fn to_catalog_config(
         &self,
         catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
@@ -28,7 +28,7 @@ impl ToCatalogConfig for HiveConnector {
             .extend_catalog_config(
                 &mut config,
                 catalog_name,
-                catalog_namespace.clone(),
+                catalog_namespace,
                 client,
                 trino_version,
             )
@@ -38,7 +38,7 @@ impl ToCatalogConfig for HiveConnector {
             s3.extend_catalog_config(
                 &mut config,
                 catalog_name,
-                catalog_namespace.clone(),
+                catalog_namespace,
                 client,
                 trino_version,
             )
@@ -49,7 +49,7 @@ impl ToCatalogConfig for HiveConnector {
             hdfs.extend_catalog_config(
                 &mut config,
                 catalog_name,
-                catalog_namespace.clone(),
+                catalog_namespace,
                 client,
                 trino_version,
             )

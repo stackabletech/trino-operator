@@ -8,7 +8,7 @@ use stackable_operator::{
 
 use crate::{
     authentication::TrinoAuthenticationConfig,
-    command,
+    controller::build::command,
     crd::{STACKABLE_CLIENT_TLS_DIR, TrinoRole},
 };
 

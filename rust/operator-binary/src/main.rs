@@ -1,5 +1,4 @@
 // TODO: Look into how to properly resolve `clippy::result_large_err`.
-// This will need changes in our and upstream error types.
 #![allow(clippy::result_large_err)]
 
 use std::sync::Arc;
@@ -33,26 +32,22 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
     crd::{
         TrinoCluster, TrinoClusterVersion,
         catalog::{TrinoCatalog, TrinoCatalogVersion},
         v1alpha1,
     },
+    trino_controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
     webhooks::conversion::create_webhook_server,
 };
 
 mod authentication;
 mod authorization;
 mod catalog;
-mod command;
 mod config;
 mod controller;
 mod crd;
-mod listener;
-mod operations;
-mod product_logging;
-mod service;
+mod trino_controller;
 mod webhooks;
 
 mod built_info {
@@ -79,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Run(RunArguments {
             operator_environment,
             watch_namespace,
-            product_config,
+            product_config: _,
             maintenance,
             common,
         }) => {
@@ -125,11 +120,6 @@ async fn main() -> anyhow::Result<()> {
             let webhook_server = webhook_server
                 .run(sigterm_watcher.handle())
                 .map_err(|err| anyhow!(err).context("failed to run webhook server"));
-
-            let product_config = product_config.load(&[
-                "deploy/config-spec/properties.yaml",
-                "/etc/stackable/trino-operator/config-spec/properties.yaml",
-            ])?;
 
             let event_recorder = Arc::new(Recorder::new(
                 client.as_kube_client(),
@@ -194,18 +184,17 @@ async fn main() -> anyhow::Result<()> {
                         config_map_cluster_store
                             .state()
                             .into_iter()
-                            .filter(move |druid| references_config_map(druid, &config_map))
-                            .map(|druid| ObjectRef::from_obj(&*druid))
+                            .filter(move |trino| references_config_map(trino, &config_map))
+                            .map(|trino| ObjectRef::from_obj(&*trino))
                     },
                 )
                 .graceful_shutdown_on(sigterm_watcher.handle())
                 .run(
-                    controller::reconcile_trino,
-                    controller::error_policy,
-                    Arc::new(controller::Ctx {
+                    trino_controller::reconcile_trino,
+                    trino_controller::error_policy,
+                    Arc::new(trino_controller::Ctx {
                         client: client.clone(),
                         operator_environment,
-                        product_config,
                     }),
                 )
                 // We can let the reporting happen in the background

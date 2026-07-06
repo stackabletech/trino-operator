@@ -39,7 +39,7 @@ pub fn get_affinity(
             .map(|hive_cluster_name| {
                 affinity_between_role_pods(
                     "hive",
-                    hive_cluster_name, // The discovery cm has the same name as the HiveCluster itself
+                    hive_cluster_name.as_ref(), // The discovery cm has the same name as the HiveCluster itself
                     "metastore",
                     50,
                 )
@@ -67,7 +67,7 @@ pub fn get_affinity(
             .map(|hdfs_cluster_name| {
                 affinity_between_role_pods(
                     "hdfs",
-                    hdfs_cluster_name, // The discovery cm has the same name as the HdfsCluster itself
+                    hdfs_cluster_name.as_ref(), // The discovery cm has the same name as the HdfsCluster itself
                     "datanode",
                     50,
                 )
@@ -136,9 +136,9 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        let merged_config = trino
-            .merged_config(&role, &role.rolegroup_ref(&trino, "default"), &[])
-            .unwrap();
+        let merged_config =
+            crate::controller::validate::merged_role_group_config(&trino, &role, "default", &[])
+                .config;
 
         assert_eq!(
             merged_config.affinity,
@@ -278,13 +278,13 @@ mod tests {
         let hive_catalog_2: catalog::v1alpha1::TrinoCatalog =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
-        let merged_config = trino
-            .merged_config(
-                &role,
-                &role.rolegroup_ref(&trino, "default"),
-                &[hive_catalog_1, tpch_catalog, hive_catalog_2],
-            )
-            .unwrap();
+        let merged_config = crate::controller::validate::merged_role_group_config(
+            &trino,
+            &role,
+            "default",
+            &[hive_catalog_1, tpch_catalog, hive_catalog_2],
+        )
+        .config;
 
         let mut expected_affinities = vec![WeightedPodAffinityTerm {
             pod_affinity_term: PodAffinityTerm {

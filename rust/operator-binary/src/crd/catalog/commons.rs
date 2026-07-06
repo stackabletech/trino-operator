@@ -1,16 +1,19 @@
 use serde::{Deserialize, Serialize};
-use stackable_operator::schemars::{self, JsonSchema};
+use stackable_operator::{
+    schemars::{self, JsonSchema},
+    v2::types::kubernetes::ConfigMapName,
+};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetastoreConnection {
     /// Name of the [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery) providing information about the Hive metastore.
-    pub config_map: String,
+    pub config_map: ConfigMapName,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HdfsConnection {
     /// Name of the [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery) providing information about the HDFS cluster.
-    pub config_map: String,
+    pub config_map: ConfigMapName,
 }

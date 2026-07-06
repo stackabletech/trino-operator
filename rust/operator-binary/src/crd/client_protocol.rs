@@ -1,5 +1,5 @@
-/// This module manages the client protocol properties, especially the for spooling.
-/// Trino documentation is available here: https://trino.io/docs/current/client/client-protocol.html
+//! This module manages the client protocol properties, especially for spooling.
+//! Trino documentation is available here: <https://trino.io/docs/current/client/client-protocol.html>
 use serde::{Deserialize, Serialize};
 use stackable_operator::schemars::{self, JsonSchema};
 

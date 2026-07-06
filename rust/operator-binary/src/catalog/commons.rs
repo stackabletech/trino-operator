@@ -3,9 +3,9 @@ use snafu::{OptionExt, ResultExt, ensure};
 use stackable_operator::{
     builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
-    commons::tls_verification::{CaCert, TlsServerVerification, TlsVerification},
     crd::s3,
     k8s_openapi::api::core::v1::ConfigMap,
+    v2::types::kubernetes::NamespaceName,
 };
 
 use super::{
@@ -14,13 +14,13 @@ use super::{
     from_trino_catalog_error::{
         ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
         FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
-        ObjectHasNoNamespaceSnafu, S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
+        S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
     },
 };
 use crate::{
-    command,
+    config,
     crd::{
-        CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
+        CONFIG_DIR_NAME,
         catalog::commons::{HdfsConnection, MetastoreConnection},
     },
 };
@@ -31,17 +31,12 @@ impl ExtendCatalogConfig for MetastoreConnection {
         &self,
         catalog_config: &mut CatalogConfig,
         catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let hive_cm: ConfigMap = client
-            .get(
-                &self.config_map,
-                catalog_namespace
-                    .as_deref()
-                    .context(ObjectHasNoNamespaceSnafu)?,
-            )
+            .get(self.config_map.as_ref(), catalog_namespace.as_ref())
             .await
             .with_context(|_| FailedToGetDiscoveryConfigMapSnafu {
                 catalog: catalog_name.to_string(),
@@ -78,18 +73,13 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         &self,
         catalog_config: &mut CatalogConfig,
         _catalog_name: &str,
-        catalog_namespace: Option<String>,
+        catalog_namespace: &NamespaceName,
         client: &Client,
         _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
             .clone()
-            .resolve(
-                client,
-                catalog_namespace
-                    .as_deref()
-                    .context(ObjectHasNoNamespaceSnafu)?,
-            )
+            .resolve(client, catalog_namespace.as_ref())
             .await
             .context(ConfigureS3Snafu)?;
 
@@ -113,23 +103,10 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         // TLS is required when using native S3 implementation.
         ensure!(s3.tls.uses_tls(), S3TlsRequiredSnafu);
 
-        if let Some(tls) = s3.tls.tls.as_ref() {
-            match &tls.verification {
-                TlsVerification::None {} => return S3TlsNoVerificationNotSupportedSnafu.fail(),
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::WebPki {},
-                }) => {}
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(_),
-                }) => {
-                    if let Some(ca_cert) = s3.tls.tls_ca_cert_mount_path() {
-                        catalog_config.init_container_extra_start_commands.extend(
-                            command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR),
-                        );
-                    }
-                }
-            }
-        }
+        catalog_config.init_container_extra_start_commands.extend(
+            config::s3::s3_tls_truststore_commands(&s3.tls)
+                .map_err(|_| S3TlsNoVerificationNotSupportedSnafu.build())?,
+        );
 
         Ok(())
     }
@@ -141,7 +118,7 @@ impl ExtendCatalogConfig for HdfsConnection {
         &self,
         catalog_config: &mut CatalogConfig,
         catalog_name: &str,
-        _catalog_namespace: Option<String>,
+        _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {

@@ -1,15 +1,14 @@
 //! The dereference step in the TrinoCluster controller
 //!
 //! Fetches all Kubernetes objects referenced by the TrinoCluster spec and returns them in
-//! [`DereferencedObjects`]. The functions called here (`CatalogConfig::from_catalog`,
-//! `TrinoOpaConfig::from_opa_config`, `ResolvedFaultTolerantExecutionConfig::from_config`,
-//! `ResolvedClientProtocolConfig::from_config`) currently mix fetching and validation; their
-//! outputs are treated as "dereferenced" for now. Splitting those helpers is a follow-up.
+//! [`DereferencedObjects`].
 
 use std::{num::ParseIntError, str::FromStr};
 
-use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{client::Client, kube::runtime::reflector::ObjectRef};
+use snafu::{ResultExt, Snafu};
+use stackable_operator::{
+    client::Client, kube::runtime::reflector::ObjectRef, v2::controller_utils::get_namespace,
+};
 
 use crate::{
     authorization::opa::TrinoOpaConfig,
@@ -26,8 +25,10 @@ use crate::{
 
 #[derive(Snafu, Debug)]
 pub enum Error {
-    #[snafu(display("object defines no namespace"))]
-    ObjectHasNoNamespace,
+    #[snafu(display("failed to get namespace"))]
+    GetNamespace {
+        source: stackable_operator::v2::controller_utils::Error,
+    },
 
     #[snafu(display("failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
@@ -67,8 +68,7 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// Kubernetes objects referenced from the TrinoCluster spec, already fetched (and, for now, partly
-/// validated by the existing helper functions).
+/// Kubernetes objects referenced from the TrinoCluster spec, fetched from the cluster.
 pub struct DereferencedObjects {
     pub resolved_authentication_classes: Vec<ResolvedAuthenticationClassRef>,
     pub catalog_definitions: Vec<catalog::v1alpha1::TrinoCatalog>,
@@ -83,11 +83,7 @@ pub async fn dereference(
     client: &Client,
     trino: &v1alpha1::TrinoCluster,
 ) -> Result<DereferencedObjects> {
-    let namespace = trino
-        .metadata
-        .namespace
-        .as_deref()
-        .context(ObjectHasNoNamespaceSnafu)?;
+    let namespace = get_namespace(trino).context(GetNamespaceSnafu)?;
 
     let resolved_authentication_classes =
         resolve_authentication_classes(client, trino.get_authentication())
@@ -96,7 +92,7 @@ pub async fn dereference(
 
     let catalog_definitions = client
         .list_with_label_selector::<catalog::v1alpha1::TrinoCatalog>(
-            namespace,
+            namespace.as_ref(),
             &trino.spec.cluster_config.catalog_label_selector,
         )
         .await
@@ -110,17 +106,18 @@ pub async fn dereference(
     let mut catalogs = Vec::with_capacity(catalog_definitions.len());
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config = CatalogConfig::from_catalog(catalog, client, product_version)
-            .await
-            .context(ParseCatalogSnafu {
-                catalog: catalog_ref,
-            })?;
+        let catalog_config =
+            CatalogConfig::from_catalog(catalog, client, &namespace, product_version)
+                .await
+                .context(ParseCatalogSnafu {
+                    catalog: catalog_ref,
+                })?;
         catalogs.push(catalog_config);
     }
 
     let trino_opa_config = match trino.get_opa_config() {
         Some(opa_config) => Some(
-            TrinoOpaConfig::from_opa_config(client, trino, opa_config)
+            TrinoOpaConfig::from_opa_config(client, trino, &namespace, opa_config)
                 .await
                 .context(InvalidOpaConfigSnafu)?,
         ),
@@ -129,18 +126,26 @@ pub async fn dereference(
 
     let resolved_fte_config = match trino.spec.cluster_config.fault_tolerant_execution.as_ref() {
         Some(fte_config) => Some(
-            ResolvedFaultTolerantExecutionConfig::from_config(fte_config, Some(client), namespace)
-                .await
-                .context(FaultTolerantExecutionSnafu)?,
+            ResolvedFaultTolerantExecutionConfig::from_config(
+                fte_config,
+                Some(client),
+                namespace.as_ref(),
+            )
+            .await
+            .context(FaultTolerantExecutionSnafu)?,
         ),
         None => None,
     };
 
     let resolved_client_protocol_config = match trino.spec.cluster_config.client_protocol.as_ref() {
         Some(spooling_config) => Some(
-            ResolvedClientProtocolConfig::from_config(spooling_config, Some(client), namespace)
-                .await
-                .context(ClientProtocolConfigurationSnafu)?,
+            ResolvedClientProtocolConfig::from_config(
+                spooling_config,
+                Some(client),
+                namespace.as_ref(),
+            )
+            .await
+            .context(ClientProtocolConfigurationSnafu)?,
         ),
         None => None,
     };

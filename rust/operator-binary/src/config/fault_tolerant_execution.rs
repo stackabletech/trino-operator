@@ -21,6 +21,9 @@ use crate::{
     },
 };
 
+/// Sub-directory of [`CONFIG_DIR_NAME`] holding the HDFS exchange config.
+const EXCHANGE_HDFS_CONFIG: &str = "exchange-hdfs-config";
+
 #[derive(Snafu, Debug)]
 pub enum Error {
     #[snafu(display("failed to resolve S3 connection"))]
@@ -31,9 +34,6 @@ pub enum Error {
     #[snafu(display("failed to resolve S3 connection"))]
     ResolveS3Connection { source: config::s3::Error },
 
-    #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
-    S3TlsNoVerificationNotSupported,
-
     #[snafu(display("failed to convert data size for [{field}] to bytes"))]
     QuantityConversion {
         source: stackable_operator::memory::Error,
@@ -42,6 +42,7 @@ pub enum Error {
 }
 
 /// Fault tolerant execution configuration with external resources resolved
+#[derive(Clone, Debug)]
 pub struct ResolvedFaultTolerantExecutionConfig {
     /// Properties to add to config.properties
     pub config_properties: BTreeMap<String, String>,
@@ -242,7 +243,7 @@ impl ResolvedFaultTolerantExecutionConfig {
                         hdfs_config.skip_directory_scheme_validation,
                     );
 
-                    let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/exchange-hdfs-config");
+                    let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/{EXCHANGE_HDFS_CONFIG}");
                     exchange_manager_properties.insert(
                         "hdfs.config.resources".to_string(),
                         format!("{hdfs_config_dir}/core-site.xml,{hdfs_config_dir}/hdfs-site.xml"),
@@ -310,8 +311,8 @@ impl ResolvedFaultTolerantExecutionConfig {
     }
 
     fn resolve_hdfs_backend(&mut self, hdfs_config: &HdfsExchangeConfig) {
-        let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/exchange-hdfs-config");
-        let volume_name = "exchange-hdfs-config".to_string();
+        let hdfs_config_dir = format!("{CONFIG_DIR_NAME}/{EXCHANGE_HDFS_CONFIG}");
+        let volume_name = EXCHANGE_HDFS_CONFIG.to_string();
 
         self.volumes.push(
             VolumeBuilder::new(&volume_name)

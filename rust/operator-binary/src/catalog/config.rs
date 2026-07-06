@@ -5,12 +5,14 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{
         ConfigMapKeySelector, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
     },
-    kube::{Resource, ResourceExt},
+    kube::Resource,
+    v2::types::kubernetes::NamespaceName,
 };
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
 use crate::crd::catalog::{TrinoCatalogConnector, v1alpha1};
 
+#[derive(Clone, Debug)]
 pub struct CatalogConfig {
     /// Name of the catalog
     pub name: String,
@@ -105,6 +107,7 @@ impl CatalogConfig {
     pub async fn from_catalog(
         catalog: &v1alpha1::TrinoCatalog,
         client: &Client,
+        catalog_namespace: &NamespaceName,
         trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let catalog_name = catalog
@@ -112,7 +115,6 @@ impl CatalogConfig {
             .name
             .clone()
             .ok_or(FromTrinoCatalogError::InvalidCatalogSpec)?;
-        let catalog_namespace = catalog.namespace();
 
         let to_catalog_config: &dyn ToCatalogConfig = match &catalog.spec.connector {
             TrinoCatalogConnector::BlackHole(black_hole_connector) => black_hole_connector,

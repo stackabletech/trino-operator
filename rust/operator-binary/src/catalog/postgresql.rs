@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use snafu::ResultExt;
 use stackable_operator::{
     client::Client, database_connections::drivers::jdbc::JdbcDatabaseConnection,
+    v2::types::kubernetes::NamespaceName,
 };
 
 use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
@@ -17,7 +18,7 @@ impl ToCatalogConfig for PostgresqlConnector {
     async fn to_catalog_config(
         &self,
         catalog_name: &str,
-        _catalog_namespace: Option<String>,
+        _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
