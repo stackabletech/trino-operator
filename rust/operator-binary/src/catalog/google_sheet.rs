@@ -6,7 +6,10 @@ use stackable_operator::{
 };
 
 use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
-use crate::crd::{CONFIG_DIR_NAME, catalog::google_sheet::GoogleSheetConnector};
+use crate::{
+    controller::dereference::TrinoCatalogName,
+    crd::{CONFIG_DIR_NAME, catalog::google_sheet::GoogleSheetConnector},
+};
 
 pub const CONNECTOR_NAME: &str = "gsheets";
 
@@ -14,12 +17,12 @@ pub const CONNECTOR_NAME: &str = "gsheets";
 impl ToCatalogConfig for GoogleSheetConnector {
     async fn to_catalog_config(
         &self,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
+        let mut config = CatalogConfig::new(catalog_name, CONNECTOR_NAME);
 
         let volume_name = format!("{catalog_name}-google-sheets-credentials");
         let google_sheets_credentials_dir =

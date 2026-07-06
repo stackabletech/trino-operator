@@ -145,7 +145,7 @@ pub fn build_rolegroup_statefulset(
     // so the caller only needs to pass those (plus the applied ServiceAccount name).
     let resolved_product_image = &cluster.image;
     let trino_authentication_config = &cluster.cluster_config.authentication;
-    let catalogs = cluster.cluster_config.catalogs.as_slice();
+    let catalogs = &cluster.cluster_config.catalogs;
     let resolved_fte_config = &cluster.cluster_config.fault_tolerant_execution;
     let resolved_spooling_config = &cluster.cluster_config.client_protocol;
     let trino_opa_config = &cluster.cluster_config.authorization;
@@ -208,7 +208,7 @@ pub fn build_rolegroup_statefulset(
     // Add the needed stuff for catalogs
     env.extend(
         catalogs
-            .iter()
+            .values()
             .flat_map(|catalog| &catalog.env_bindings)
             .cloned(),
     );
@@ -632,7 +632,7 @@ fn tls_volume_mounts(
     cb_trino: &mut ContainerBuilder,
     requested_secret_lifetime: &Duration,
 ) -> Result<()> {
-    let catalogs = cluster.cluster_config.catalogs.as_slice();
+    let catalogs = &cluster.cluster_config.catalogs;
     let resolved_fte_config = &cluster.cluster_config.fault_tolerant_execution;
     let resolved_spooling_config = &cluster.cluster_config.client_protocol;
     let trino_opa_config = &cluster.cluster_config.authorization;
@@ -715,7 +715,7 @@ fn tls_volume_mounts(
     }
 
     // catalogs
-    for catalog in catalogs {
+    for catalog in catalogs.values() {
         cb_prepare
             .add_volume_mounts(catalog.volume_mounts.clone())
             .context(AddVolumeMountSnafu)?;

@@ -32,7 +32,7 @@ use super::{
 };
 use crate::{
     authentication::{self, TrinoAuthenticationConfig, TrinoAuthenticationTypes},
-    controller::dereference::DereferencedObjects,
+    controller::dereference::{DereferencedObjects, TrinoCatalogName},
     crd::{Container, TrinoRole, v1alpha1},
 };
 
@@ -109,6 +109,11 @@ pub enum Error {
         "the Vector aggregator discovery ConfigMap name is required when the Vector agent is enabled"
     ))]
     MissingVectorAggregatorConfigMapName,
+
+    #[snafu(display(
+        "The catalog name {catalog_name:?} clashes (there are multiple catalogs with this name). Please make sure there is exactly one catalog for any given name"
+    ))]
+    ClashingCatalogName { catalog_name: TrinoCatalogName },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -271,6 +276,19 @@ pub fn validate(
         role_group_configs.insert(trino_role, groups);
     }
 
+    let mut catalogs = BTreeMap::new();
+    for catalog in &dereferenced_objects.catalogs {
+        if catalogs
+            .insert(catalog.name.clone(), catalog.clone())
+            .is_some()
+        {
+            return ClashingCatalogNameSnafu {
+                catalog_name: catalog.name.clone(),
+            }
+            .fail();
+        }
+    }
+
     let tls = &trino.spec.cluster_config.tls;
     let cluster_config = ValidatedClusterConfig {
         tls: ValidatedTls {
@@ -282,7 +300,7 @@ pub fn validate(
         fault_tolerant_execution: dereferenced_objects.resolved_fte_config.clone(),
         client_protocol: dereferenced_objects.resolved_client_protocol_config.clone(),
         coordinator_pod_refs: trino.coordinator_pods(&namespace).collect(),
-        catalogs: dereferenced_objects.catalogs.clone(),
+        catalogs,
     };
 
     let name = get_cluster_name(trino).context(GetClusterNameSnafu)?;

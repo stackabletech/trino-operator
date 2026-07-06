@@ -105,6 +105,28 @@ In this case the `hive` and `iceberg` catalogs will be used as they both match t
 
 A `TrinoCluster` can, once created, detect and use new catalogs that have been subsequently created with a matching label. This also means that it is possible to reuse a `TrinoCatalog` within multiple `TrinoClusters`.
 
+=== Catalog name tweaking
+
+By default the name of the catalog in Trino is inferred from the `.metadata.name` of the TrinoCatalog object.
+This ensures that no catalog names clash, as their can only be one TrinoCatalog with a given name.
+
+One inconvenience is that you need to quote catalogs (or schemas and tables for that matter) containing `-` in Trino, while `_` is fine.
+As Kubernetes doesn't allow `_` in the object names, we offer a feature to replace `-` with `_`, which allows you to use valid Kubernetes names, but keeps the convenience of `_` in catalog names.
+
+You can enable it like this, the Trino catalog will be called `my_postgres`:
+
+[source,yaml]
+----
+kind: TrinoCatalog
+metadata:
+  name: my-postgres
+spec:
+  name:
+    inferred:
+      replaceHyphensWithUnderscores: true
+# ...
+----
+
 === Generic fallback connector
 
 Trino supports lots of different connectors and we can not cover all the available connectors.

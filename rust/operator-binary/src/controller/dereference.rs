@@ -5,9 +5,11 @@
 
 use std::{num::ParseIntError, str::FromStr};
 
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    client::Client, kube::runtime::reflector::ObjectRef, v2::controller_utils::get_namespace,
+    client::Client,
+    kube::runtime::reflector::{Lookup, ObjectRef},
+    v2::controller_utils::get_namespace,
 };
 
 use crate::{
@@ -29,6 +31,9 @@ pub enum Error {
     GetNamespace {
         source: stackable_operator::v2::controller_utils::Error,
     },
+
+    #[snafu(display("object defines no name"))]
+    ObjectHasNoName,
 
     #[snafu(display("failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
@@ -64,6 +69,20 @@ pub enum Error {
     InvalidOpaConfig {
         source: stackable_operator::commons::opa::Error,
     },
+}
+
+/// TODO: Use a typed String from operator-rs similar to [`stackable_operator::v2::types::operator::ClusterName`].
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct TrinoCatalogName(pub String);
+impl AsRef<str> for TrinoCatalogName {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+impl std::fmt::Display for TrinoCatalogName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -106,12 +125,29 @@ pub async fn dereference(
     let mut catalogs = Vec::with_capacity(catalog_definitions.len());
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config =
-            CatalogConfig::from_catalog(catalog, client, &namespace, product_version)
-                .await
-                .context(ParseCatalogSnafu {
-                    catalog: catalog_ref,
-                })?;
+        // We are using a match here, as we might support other ways of naming (e.g. custom) later
+        let catalog_name = match catalog.spec.name {
+            catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+                replace_hyphens_with_underscores,
+            } => {
+                let mut catalog_name = catalog.name().context(ObjectHasNoNameSnafu)?.to_string();
+                if replace_hyphens_with_underscores {
+                    catalog_name = catalog_name.replace('-', "_");
+                }
+                TrinoCatalogName(catalog_name)
+            }
+        };
+        let catalog_config = CatalogConfig::from_catalog(
+            &catalog_name,
+            catalog,
+            client,
+            &namespace,
+            product_version,
+        )
+        .await
+        .context(ParseCatalogSnafu {
+            catalog: catalog_ref,
+        })?;
         catalogs.push(catalog_config);
     }
 

@@ -5,17 +5,19 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{
         ConfigMapKeySelector, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
     },
-    kube::Resource,
     v2::types::kubernetes::NamespaceName,
 };
 
 use super::{FromTrinoCatalogError, ToCatalogConfig};
-use crate::crd::catalog::{TrinoCatalogConnector, v1alpha1};
+use crate::{
+    controller::dereference::TrinoCatalogName,
+    crd::catalog::{TrinoCatalogConnector, v1alpha1},
+};
 
 #[derive(Clone, Debug)]
 pub struct CatalogConfig {
     /// Name of the catalog
-    pub name: String,
+    pub name: TrinoCatalogName,
 
     /// Properties of the catalog
     pub properties: BTreeMap<String, String>,
@@ -39,9 +41,9 @@ pub struct CatalogConfig {
 }
 
 impl CatalogConfig {
-    pub fn new(name: impl Into<String>, connector_name: impl Into<String>) -> Self {
+    pub fn new(name: &TrinoCatalogName, connector_name: impl Into<String>) -> Self {
         let mut config = CatalogConfig {
-            name: name.into(),
+            name: name.clone(),
             properties: BTreeMap::new(),
             env_bindings: Vec::new(),
             load_env_from_files: BTreeMap::new(),
@@ -105,17 +107,12 @@ impl CatalogConfig {
     }
 
     pub async fn from_catalog(
+        catalog_name: &TrinoCatalogName,
         catalog: &v1alpha1::TrinoCatalog,
         client: &Client,
         catalog_namespace: &NamespaceName,
         trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let catalog_name = catalog
-            .meta()
-            .name
-            .clone()
-            .ok_or(FromTrinoCatalogError::InvalidCatalogSpec)?;
-
         let to_catalog_config: &dyn ToCatalogConfig = match &catalog.spec.connector {
             TrinoCatalogConnector::BlackHole(black_hole_connector) => black_hole_connector,
             TrinoCatalogConnector::DeltaLake(delta_lake_connector) => delta_lake_connector,
@@ -128,7 +125,7 @@ impl CatalogConfig {
             TrinoCatalogConnector::Tpch(tpch_connector) => tpch_connector,
         };
         let mut catalog_config = to_catalog_config
-            .to_catalog_config(&catalog_name, catalog_namespace, client, trino_version)
+            .to_catalog_config(catalog_name, catalog_namespace, client, trino_version)
             .await?;
 
         catalog_config
@@ -138,7 +135,7 @@ impl CatalogConfig {
         for removal in &catalog.spec.config_removals {
             if catalog_config.properties.remove(removal).is_none() {
                 tracing::warn!(
-                    catalog.name = catalog_name,
+                    catalog.name = %catalog_name,
                     property = removal,
                     "You asked to remove a non-existing config property from a catalog"
                 );
@@ -149,8 +146,8 @@ impl CatalogConfig {
     }
 }
 
-fn calculate_env_name(catalog: impl Into<String>, property: impl Into<String>) -> String {
-    let catalog = catalog.into().replace(['.', '-'], "_");
+fn calculate_env_name(catalog_name: &TrinoCatalogName, property: impl Into<String>) -> String {
+    let catalog = catalog_name.to_string().replace(['.', '-'], "_");
     let property = property.into().replace(['.', '-'], "_");
     format!("CATALOG_{catalog}_{property}").to_uppercase()
 }

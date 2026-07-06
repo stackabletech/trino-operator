@@ -19,6 +19,7 @@ use super::{
 };
 use crate::{
     config,
+    controller::dereference::TrinoCatalogName,
     crd::{
         CONFIG_DIR_NAME,
         catalog::commons::{HdfsConnection, MetastoreConnection},
@@ -30,7 +31,7 @@ impl ExtendCatalogConfig for MetastoreConnection {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
         _trino_version: u16,
@@ -72,7 +73,7 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        _catalog_name: &str,
+        _catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
         _trino_version: u16,
@@ -117,7 +118,7 @@ impl ExtendCatalogConfig for HdfsConnection {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
@@ -125,7 +126,7 @@ impl ExtendCatalogConfig for HdfsConnection {
         // Since Trino 458, fs.hadoop.enabled defaults to false.
         catalog_config.add_property("fs.hadoop.enabled", "true");
 
-        let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
+        let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config",);
         catalog_config.add_property(
             "hive.config.resources",
             format!("{hdfs_site_dir}/core-site.xml,{hdfs_site_dir}/hdfs-site.xml"),

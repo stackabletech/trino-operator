@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use stackable_operator::{
     product_logging::framework::{
         create_vector_shutdown_file_command, remove_vector_shutdown_file_command,
@@ -10,7 +12,10 @@ use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
     config::{client_protocol, fault_tolerant_execution},
-    controller::{ValidatedCluster, ValidatedTrinoConfig, build::properties::ConfigFileName},
+    controller::{
+        ValidatedCluster, ValidatedTrinoConfig, build::properties::ConfigFileName,
+        dereference::TrinoCatalogName,
+    },
     crd::{
         CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
@@ -22,7 +27,7 @@ use crate::{
 
 pub fn container_prepare_args(
     cluster: &ValidatedCluster,
-    catalogs: &[CatalogConfig],
+    catalogs: &BTreeMap<TrinoCatalogName, CatalogConfig>,
     merged_config: &ValidatedTrinoConfig,
     resolved_fte_config: &Option<fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig>,
     resolved_spooling_config: &Option<client_protocol::ResolvedClientProtocolConfig>,
@@ -63,7 +68,7 @@ pub fn container_prepare_args(
     }
 
     // Add the commands that are needed to set up the catalogs
-    catalogs.iter().for_each(|catalog| {
+    catalogs.values().for_each(|catalog| {
         args.extend_from_slice(&catalog.init_container_extra_start_commands);
     });
 
@@ -82,7 +87,7 @@ pub fn container_prepare_args(
 
 pub fn container_trino_args(
     authentication_config: &TrinoAuthenticationConfig,
-    catalogs: &[CatalogConfig],
+    catalogs: &BTreeMap<TrinoCatalogName, CatalogConfig>,
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writeable empty folder
@@ -104,7 +109,7 @@ pub fn container_trino_args(
     // Add the commands that are needed to set up the catalogs
     // Don't print secret contents!
     args.push("set +x".to_string());
-    catalogs.iter().for_each(|catalog| {
+    catalogs.values().for_each(|catalog| {
         for (env_name, file) in &catalog.load_env_from_files {
             args.push(format!("export {env_name}=\"$(cat {file})\""));
         }

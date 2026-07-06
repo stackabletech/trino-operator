@@ -213,8 +213,8 @@ pub fn build_rolegroup_catalog_config_map(
                 .cluster_config
                 .catalogs
                 .iter()
-                .map(|catalog| {
-                    let file = format!("{}.properties", catalog.name);
+                .map(|(catalog_name, catalog)| {
+                    let file = format!("{catalog_name}.properties");
                     let rendered = to_java_properties_string(catalog.properties.iter())
                         .with_context(|_| WritePropertiesSnafu { file: file.clone() })?;
                     Ok((file, rendered))

@@ -2,19 +2,22 @@ use async_trait::async_trait;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
 use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
-use crate::crd::catalog::generic::{GenericConnector, Property};
+use crate::{
+    controller::dereference::TrinoCatalogName,
+    crd::catalog::generic::{GenericConnector, Property},
+};
 
 #[async_trait]
 impl ToCatalogConfig for GenericConnector {
     async fn to_catalog_config(
         &self,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let connector_name = &self.connector_name;
-        let mut config = CatalogConfig::new(catalog_name.to_string(), connector_name);
+        let mut config = CatalogConfig::new(catalog_name, connector_name);
 
         for (property_name, property) in &self.properties {
             match property {
