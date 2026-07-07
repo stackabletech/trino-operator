@@ -32,7 +32,7 @@ use crate::{
         client_protocol::ResolvedClientProtocolConfig,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
     },
-    crd::{APP_NAME, TrinoRole, discovery::TrinoPodRef, v1alpha1},
+    crd::{APP_NAME, TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
 };
 
@@ -57,7 +57,7 @@ pub struct ValidatedClusterConfig {
     pub fault_tolerant_execution: Option<ResolvedFaultTolerantExecutionConfig>,
     pub client_protocol: Option<ResolvedClientProtocolConfig>,
     pub coordinator_pod_refs: Vec<TrinoPodRef>,
-    pub catalogs: Vec<CatalogConfig>,
+    pub catalogs: BTreeMap<TrinoCatalogName, CatalogConfig>,
 }
 
 impl ValidatedClusterConfig {

@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Added support for the [PostgreSQL connector](https://trino.io/docs/current/connector/postgresql.html) using the new generic database connection mechanism.
   Previously, users had to use the `generic` connector ([#883]).
 - Added support for Trino 481 ([#900]).
+- Add a new `.spec.name.inferred.replaceHyphensWithUnderscores` field on TrinoCatalog, which allows tweaking the catalog name in Trino ([#903]).
 
 ### Changed
 
@@ -43,6 +44,7 @@ All notable changes to this project will be documented in this file.
 [#895]: https://github.com/stackabletech/trino-operator/pull/895
 [#897]: https://github.com/stackabletech/trino-operator/pull/897
 [#900]: https://github.com/stackabletech/trino-operator/pull/900
+[#903]: https://github.com/stackabletech/trino-operator/pull/903
 
 ## [26.3.0] - 2026-03-16
 

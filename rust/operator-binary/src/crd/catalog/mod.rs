@@ -9,7 +9,7 @@ pub mod postgresql;
 pub mod tpcds;
 pub mod tpch;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use black_hole::BlackHoleConnector;
 use generic::GenericConnector;
@@ -18,6 +18,7 @@ use hive::HiveConnector;
 use iceberg::IcebergConnector;
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
+    attributed_string_type,
     kube::CustomResource,
     schemars::{self, JsonSchema},
     versioned::versioned,
@@ -48,6 +49,10 @@ pub mod versioned {
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoCatalogSpec {
+        /// The name of the catalog
+        #[serde(default)]
+        pub name: TrinoCatalogNameSpec,
+
         /// The `connector` defines which connector is used.
         pub connector: TrinoCatalogConnector,
 
@@ -64,6 +69,36 @@ pub mod versioned {
         /// This field is experimental, and might be replaced by a more generic mechanism to edit config properties
         #[serde(default, rename = "experimentalConfigRemovals")]
         pub config_removals: Vec<String>,
+    }
+
+    // We might implement more variants in the future. See the CRD decision in
+    // https://github.com/stackabletech/trino-operator/issues/891 for details.
+    #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub enum TrinoCatalogNameSpec {
+        /// Infer the catalog name from the `.metadata.name` of the TrinoCatalog resource.
+        ///
+        /// This ensures that no catalog names clash, as there can only be one TrinoCatalog with a
+        /// given name.
+        #[serde(rename_all = "camelCase")]
+        Inferred {
+            /// Whether hyphens (`-`) in the name of the catalog should be replaced by underscores (`_`).
+            ///
+            /// This is recommended because Kubernetes only allows `a-z` and `-`, while Trino
+            /// requires quoting for catalogs containing `-` characters. This mechanism allows
+            /// you to use valid Kubernetes names, but keeps the convenience of using `_` in
+            /// catalog names.
+            #[serde(default)]
+            replace_hyphens_with_underscores: bool,
+        },
+    }
+}
+
+impl Default for v1alpha1::TrinoCatalogNameSpec {
+    fn default() -> Self {
+        Self::Inferred {
+            replace_hyphens_with_underscores: false,
+        }
     }
 }
 
@@ -96,6 +131,19 @@ pub enum TrinoCatalogConnector {
 
     /// A [TPC-H](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/tpch) connector.
     Tpch(TpchConnector),
+}
+
+attributed_string_type! {
+    TrinoCatalogName,
+    "The name of a TrinoCluster",
+    "lakehouse",
+    // Suffixes are added to produce resource/volume names.
+    //
+    // 40 characters should be sufficient and still allow the operators to append custom suffixes.
+    // As of 2026-07 the longest suffix is for a volume name (63 characters limit) and is
+    // "-sheets-credentials" (19 characters).
+    (max_length = 40),
+    is_valid_label_value
 }
 
 #[cfg(test)]
@@ -172,7 +220,10 @@ mod tests {
                       secretClass: minio-credentials
           - connector:
               tpcds: {}
-          - connector:
+          - name:
+              inferred:
+                replaceHyphensWithUnderscores: true
+            connector:
               tpch: {}
         "})
             .expect("Failed to parse TrinoCatalogSpec YAML")

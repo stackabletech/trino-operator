@@ -5,9 +5,11 @@
 
 use std::{num::ParseIntError, str::FromStr};
 
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    client::Client, kube::runtime::reflector::ObjectRef, v2::controller_utils::get_namespace,
+    client::Client,
+    kube::runtime::reflector::{Lookup, ObjectRef},
+    v2::controller_utils::get_namespace,
 };
 
 use crate::{
@@ -19,7 +21,8 @@ use crate::{
     },
     crd::{
         authentication::{ResolvedAuthenticationClassRef, resolve_authentication_classes},
-        catalog, v1alpha1,
+        catalog::{self, TrinoCatalogName},
+        v1alpha1,
     },
 };
 
@@ -29,6 +32,9 @@ pub enum Error {
     GetNamespace {
         source: stackable_operator::v2::controller_utils::Error,
     },
+
+    #[snafu(display("object defines no name"))]
+    ObjectHasNoName,
 
     #[snafu(display("failed to retrieve AuthenticationClass"))]
     AuthenticationClassRetrieval {
@@ -63,6 +69,12 @@ pub enum Error {
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {
         source: stackable_operator::commons::opa::Error,
+    },
+
+    #[snafu(display("invalid trino catalog name"))]
+    InvalidTrinoCatalogName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
+        catalog_name: String,
     },
 }
 
@@ -106,12 +118,21 @@ pub async fn dereference(
     let mut catalogs = Vec::with_capacity(catalog_definitions.len());
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        let catalog_config =
-            CatalogConfig::from_catalog(catalog, client, &namespace, product_version)
-                .await
-                .context(ParseCatalogSnafu {
-                    catalog: catalog_ref,
-                })?;
+        let catalog_name = determine_catalog_name(
+            &catalog.spec.name,
+            &catalog.name().context(ObjectHasNoNameSnafu)?,
+        )?;
+        let catalog_config = CatalogConfig::from_catalog(
+            &catalog_name,
+            catalog,
+            client,
+            &namespace,
+            product_version,
+        )
+        .await
+        .context(ParseCatalogSnafu {
+            catalog: catalog_ref,
+        })?;
         catalogs.push(catalog_config);
     }
 
@@ -158,4 +179,47 @@ pub async fn dereference(
         resolved_fte_config,
         resolved_client_protocol_config,
     })
+}
+
+/// Determines the Trino catalog name based on user settings and the Kubernetes TrinoCatalog object
+/// name.
+fn determine_catalog_name(
+    catalog_name_spec: &catalog::v1alpha1::TrinoCatalogNameSpec,
+    catalog_object_name: &str,
+) -> Result<TrinoCatalogName> {
+    // A `match` is used because we might support other ways of naming (e.g. custom) later.
+    match catalog_name_spec {
+        catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+            replace_hyphens_with_underscores,
+        } => {
+            let mut catalog_name = catalog_object_name.to_owned();
+            if *replace_hyphens_with_underscores {
+                catalog_name = catalog_name.replace('-', "_");
+            }
+            TrinoCatalogName::from_str(&catalog_name)
+                .with_context(|_| InvalidTrinoCatalogNameSnafu { catalog_name })
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn determine_catalog_name_replaces_hyphens() {
+        let inferred = |replace_hyphens_with_underscores| {
+            determine_catalog_name(
+                &catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+                    replace_hyphens_with_underscores,
+                },
+                "my-postgres",
+            )
+            .expect("catalog name should be valid")
+            .to_string()
+        };
+
+        assert_eq!(inferred(false), "my-postgres");
+        assert_eq!(inferred(true), "my_postgres");
+    }
 }

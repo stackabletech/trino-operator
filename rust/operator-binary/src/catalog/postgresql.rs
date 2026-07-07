@@ -5,10 +5,12 @@ use stackable_operator::{
     v2::types::kubernetes::NamespaceName,
 };
 
-use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
 use crate::{
-    catalog::from_trino_catalog_error::GetPostgresConnectionDetailsSnafu,
-    crd::catalog::postgresql::PostgresqlConnector,
+    catalog::{
+        FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig,
+        from_trino_catalog_error::GetPostgresConnectionDetailsSnafu,
+    },
+    crd::catalog::{TrinoCatalogName, postgresql::PostgresqlConnector},
 };
 
 pub const CONNECTOR_NAME: &str = "postgresql";
@@ -17,16 +19,16 @@ pub const CONNECTOR_NAME: &str = "postgresql";
 impl ToCatalogConfig for PostgresqlConnector {
     async fn to_catalog_config(
         &self,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
+        let mut config = CatalogConfig::new(catalog_name, CONNECTOR_NAME);
         // SAFETY: `unique_database_name` must only contain uppercase ASCII letters and underscores.
         let unique_database_name = format!(
             "POSTGRESQL_{}",
-            catalog_name.replace('-', "_").to_uppercase()
+            catalog_name.to_string().replace('-', "_").to_uppercase()
         );
         let jdbc_connection_details = self
             .inner

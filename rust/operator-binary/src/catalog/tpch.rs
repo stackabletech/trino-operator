@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
-use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
-use crate::crd::catalog::tpch::TpchConnector;
+use crate::{
+    catalog::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig},
+    crd::catalog::{TrinoCatalogName, tpch::TpchConnector},
+};
 
 pub const CONNECTOR_NAME: &str = "tpch";
 
@@ -10,12 +12,12 @@ pub const CONNECTOR_NAME: &str = "tpch";
 impl ToCatalogConfig for TpchConnector {
     async fn to_catalog_config(
         &self,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         // No additional properties needed
-        Ok(CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME))
+        Ok(CatalogConfig::new(catalog_name, CONNECTOR_NAME))
     }
 }

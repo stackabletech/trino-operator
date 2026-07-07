@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
-use super::{ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
-use crate::crd::catalog::hive::HiveConnector;
+use crate::{
+    catalog::{ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig},
+    crd::catalog::{TrinoCatalogName, hive::HiveConnector},
+};
 
 pub const CONNECTOR_NAME: &str = "hive";
 
@@ -10,12 +12,12 @@ pub const CONNECTOR_NAME: &str = "hive";
 impl ToCatalogConfig for HiveConnector {
     async fn to_catalog_config(
         &self,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
-        let mut config = CatalogConfig::new(catalog_name.to_string(), CONNECTOR_NAME);
+        let mut config = CatalogConfig::new(catalog_name, CONNECTOR_NAME);
 
         // No authorization checks are enforced at the catalog level.
         // We don't want the hive connector to prevent users from dropping tables.

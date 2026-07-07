@@ -8,20 +8,23 @@ use stackable_operator::{
     v2::types::kubernetes::NamespaceName,
 };
 
-use super::{
-    ExtendCatalogConfig, FromTrinoCatalogError,
-    config::CatalogConfig,
-    from_trino_catalog_error::{
-        ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
-        FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
-        S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
-    },
-};
 use crate::{
+    catalog::{
+        ExtendCatalogConfig, FromTrinoCatalogError,
+        config::CatalogConfig,
+        from_trino_catalog_error::{
+            ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
+            FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
+            S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
+        },
+    },
     config,
     crd::{
         CONFIG_DIR_NAME,
-        catalog::commons::{HdfsConnection, MetastoreConnection},
+        catalog::{
+            TrinoCatalogName,
+            commons::{HdfsConnection, MetastoreConnection},
+        },
     },
 };
 
@@ -30,7 +33,7 @@ impl ExtendCatalogConfig for MetastoreConnection {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
         _trino_version: u16,
@@ -72,7 +75,7 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        _catalog_name: &str,
+        _catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
         _trino_version: u16,
@@ -117,7 +120,7 @@ impl ExtendCatalogConfig for HdfsConnection {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
         _trino_version: u16,

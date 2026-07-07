@@ -15,6 +15,7 @@ use snafu::Snafu;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
 use self::config::CatalogConfig;
+use crate::crd::catalog::TrinoCatalogName;
 
 #[derive(Debug, Snafu)]
 #[snafu(module)]
@@ -62,7 +63,7 @@ pub enum FromTrinoCatalogError {
 pub trait ToCatalogConfig {
     async fn to_catalog_config(
         &self,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
@@ -74,7 +75,7 @@ pub trait ExtendCatalogConfig {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
-        catalog_name: &str,
+        catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
         trino_version: u16,
