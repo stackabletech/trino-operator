@@ -108,12 +108,13 @@ A `TrinoCluster` can, once created, detect and use new catalogs that have been s
 === Catalog name tweaking
 
 By default the name of the catalog in Trino is inferred from the `.metadata.name` of the TrinoCatalog object.
-This ensures that no catalog names clash, as their can only be one TrinoCatalog with a given name.
+This ensures that no catalog names clash, as there can only be one TrinoCatalog with a given name.
 
 One inconvenience is that you need to quote catalogs (or schemas and tables for that matter) containing `-` in Trino, while `_` is fine.
-As Kubernetes doesn't allow `_` in the object names, we offer a feature to replace `-` with `_`, which allows you to use valid Kubernetes names, but keeps the convenience of `_` in catalog names.
+As Kubernetes doesn't allow `_` in the object names, we offer a feature to replace `-` with `_`, which allows you to use valid Kubernetes names, but keeps the convenience of using `_` in catalog names.
 
-You can enable it like this, the Trino catalog will be called `my_postgres`:
+In order to replace `-` with `_`, use the setting `name.inferred.replaceHyphensWithUnderscores`.
+The Trino catalog will be called `my_postgres`:
 
 [source,yaml]
 ----
