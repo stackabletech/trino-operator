@@ -143,7 +143,6 @@ attributed_string_type! {
     // As of 2026-07 the longest suffix is for a volume name (63 characters limit) and is
     // "-sheets-credentials" (19 characters).
     (max_length = 40),
-    is_rfc_1035_label_name,
     is_valid_label_value
 }
 

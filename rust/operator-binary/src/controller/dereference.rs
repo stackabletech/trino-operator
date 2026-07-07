@@ -118,19 +118,10 @@ pub async fn dereference(
     let mut catalogs = Vec::with_capacity(catalog_definitions.len());
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
-        // We are using a match here, as we might support other ways of naming (e.g. custom) later
-        let catalog_name = match catalog.spec.name {
-            catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
-                replace_hyphens_with_underscores,
-            } => {
-                let mut catalog_name = catalog.name().context(ObjectHasNoNameSnafu)?.to_string();
-                if replace_hyphens_with_underscores {
-                    catalog_name = catalog_name.replace('-', "_");
-                }
-                TrinoCatalogName::from_str(&catalog_name)
-                    .with_context(|_| InvalidTrinoCatalogNameSnafu { catalog_name })?
-            }
-        };
+        let catalog_name = determine_catalog_name(
+            &catalog.spec.name,
+            &catalog.name().context(ObjectHasNoNameSnafu)?,
+        )?;
         let catalog_config = CatalogConfig::from_catalog(
             &catalog_name,
             catalog,
@@ -188,4 +179,47 @@ pub async fn dereference(
         resolved_fte_config,
         resolved_client_protocol_config,
     })
+}
+
+/// Determines the Trino catalog name based on user settings and the Kubernetes TrinoCatalog object
+/// name.
+fn determine_catalog_name(
+    catalog_name_spec: &catalog::v1alpha1::TrinoCatalogNameSpec,
+    catalog_object_name: &str,
+) -> Result<TrinoCatalogName> {
+    // A `match` is used because we might support other ways of naming (e.g. custom) later.
+    match catalog_name_spec {
+        catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+            replace_hyphens_with_underscores,
+        } => {
+            let mut catalog_name = catalog_object_name.to_owned();
+            if *replace_hyphens_with_underscores {
+                catalog_name = catalog_name.replace('-', "_");
+            }
+            TrinoCatalogName::from_str(&catalog_name)
+                .with_context(|_| InvalidTrinoCatalogNameSnafu { catalog_name })
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn determine_catalog_name_replaces_hyphens() {
+        let inferred = |replace_hyphens_with_underscores| {
+            determine_catalog_name(
+                &catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+                    replace_hyphens_with_underscores,
+                },
+                "my-postgres",
+            )
+            .expect("catalog name should be valid")
+            .to_string()
+        };
+
+        assert_eq!(inferred(false), "my-postgres");
+        assert_eq!(inferred(true), "my_postgres");
+    }
 }
