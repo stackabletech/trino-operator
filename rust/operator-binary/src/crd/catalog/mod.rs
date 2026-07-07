@@ -85,7 +85,7 @@ pub mod versioned {
             ///
             /// This is recommended because Kubernetes only allows `a-z` and `-`, while Trino
             /// requires quoting for catalogs containing `-` characters. This mechanism allows
-            /// you to use valid Kubernetes names, but keeps the convenience of using `_` in 
+            /// you to use valid Kubernetes names, but keeps the convenience of using `_` in
             /// catalog names.
             #[serde(default)]
             replace_hyphens_with_underscores: bool,

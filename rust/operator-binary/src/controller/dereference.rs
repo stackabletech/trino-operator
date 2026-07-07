@@ -7,6 +7,7 @@ use std::{num::ParseIntError, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
+    attributed_string_type,
     client::Client,
     kube::runtime::reflector::{Lookup, ObjectRef},
     v2::controller_utils::get_namespace,
@@ -71,18 +72,17 @@ pub enum Error {
     },
 }
 
-/// TODO: Use a typed String from operator-rs similar to [`stackable_operator::v2::types::operator::ClusterName`].
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct TrinoCatalogName(pub String);
-impl AsRef<str> for TrinoCatalogName {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-impl std::fmt::Display for TrinoCatalogName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
+attributed_string_type! {
+    TrinoCatalogName,
+    "The name of a TrinoCluster",
+    "lakehouse",
+    // Suffixes are added to produce resource names.
+    //
+    // 40 characters for catalog names should be sufficient and still allow the operators to append
+    // custom suffixes to build resource names.
+    (max_length = 40),
+    is_rfc_1035_label_name,
+    is_valid_label_value
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
