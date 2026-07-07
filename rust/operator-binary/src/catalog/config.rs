@@ -8,10 +8,9 @@ use stackable_operator::{
     v2::types::kubernetes::NamespaceName,
 };
 
-use super::{FromTrinoCatalogError, ToCatalogConfig};
 use crate::{
-    controller::dereference::TrinoCatalogName,
-    crd::catalog::{TrinoCatalogConnector, v1alpha1},
+    catalog::{FromTrinoCatalogError, ToCatalogConfig},
+    crd::catalog::{TrinoCatalogConnector, TrinoCatalogName, v1alpha1},
 };
 
 #[derive(Clone, Debug)]

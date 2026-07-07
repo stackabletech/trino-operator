@@ -5,10 +5,12 @@ use stackable_operator::{
     v2::types::kubernetes::NamespaceName,
 };
 
-use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
 use crate::{
-    controller::dereference::TrinoCatalogName,
-    crd::{CONFIG_DIR_NAME, catalog::google_sheet::GoogleSheetConnector},
+    catalog::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig},
+    crd::{
+        CONFIG_DIR_NAME,
+        catalog::{TrinoCatalogName, google_sheet::GoogleSheetConnector},
+    },
 };
 
 pub const CONNECTOR_NAME: &str = "gsheets";
@@ -24,9 +26,9 @@ impl ToCatalogConfig for GoogleSheetConnector {
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let mut config = CatalogConfig::new(catalog_name, CONNECTOR_NAME);
 
-        let volume_name = format!("{catalog_name}-google-sheets-credentials");
+        let volume_name = format!("{catalog_name}-sheets-credentials");
         let google_sheets_credentials_dir =
-            format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/google-sheets-credentials/");
+            format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/sheets-credentials/");
 
         config.volumes.push(
             VolumeBuilder::new(&volume_name)

@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
-use super::{ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
-use crate::{controller::dereference::TrinoCatalogName, crd::catalog::hive::HiveConnector};
+use crate::{
+    catalog::{ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig},
+    crd::catalog::{TrinoCatalogName, hive::HiveConnector},
+};
 
 pub const CONNECTOR_NAME: &str = "hive";
 

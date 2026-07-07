@@ -14,9 +14,8 @@ use async_trait::async_trait;
 use snafu::Snafu;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
-use crate::controller::dereference::TrinoCatalogName;
-
 use self::config::CatalogConfig;
+use crate::crd::catalog::TrinoCatalogName;
 
 #[derive(Debug, Snafu)]
 #[snafu(module)]

@@ -5,10 +5,12 @@ use stackable_operator::{
     v2::types::kubernetes::NamespaceName,
 };
 
-use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
 use crate::{
-    catalog::from_trino_catalog_error::GetPostgresConnectionDetailsSnafu,
-    controller::dereference::TrinoCatalogName, crd::catalog::postgresql::PostgresqlConnector,
+    catalog::{
+        FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig,
+        from_trino_catalog_error::GetPostgresConnectionDetailsSnafu,
+    },
+    crd::catalog::{TrinoCatalogName, postgresql::PostgresqlConnector},
 };
 
 pub const CONNECTOR_NAME: &str = "postgresql";

@@ -7,7 +7,6 @@ use std::{num::ParseIntError, str::FromStr};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    attributed_string_type,
     client::Client,
     kube::runtime::reflector::{Lookup, ObjectRef},
     v2::controller_utils::get_namespace,
@@ -22,7 +21,8 @@ use crate::{
     },
     crd::{
         authentication::{ResolvedAuthenticationClassRef, resolve_authentication_classes},
-        catalog, v1alpha1,
+        catalog::{self, TrinoCatalogName},
+        v1alpha1,
     },
 };
 
@@ -70,19 +70,12 @@ pub enum Error {
     InvalidOpaConfig {
         source: stackable_operator::commons::opa::Error,
     },
-}
 
-attributed_string_type! {
-    TrinoCatalogName,
-    "The name of a TrinoCluster",
-    "lakehouse",
-    // Suffixes are added to produce resource names.
-    //
-    // 40 characters for catalog names should be sufficient and still allow the operators to append
-    // custom suffixes to build resource names.
-    (max_length = 40),
-    is_rfc_1035_label_name,
-    is_valid_label_value
+    #[snafu(display("invalid trino catalog name"))]
+    InvalidTrinoCatalogName {
+        source: stackable_operator::v2::macros::attributed_string_type::Error,
+        catalog_name: String,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -134,7 +127,8 @@ pub async fn dereference(
                 if replace_hyphens_with_underscores {
                     catalog_name = catalog_name.replace('-', "_");
                 }
-                TrinoCatalogName(catalog_name)
+                TrinoCatalogName::from_str(&catalog_name)
+                    .with_context(|_| InvalidTrinoCatalogNameSnafu { catalog_name })?
             }
         };
         let catalog_config = CatalogConfig::from_catalog(

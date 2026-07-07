@@ -9,7 +9,7 @@ pub mod postgresql;
 pub mod tpcds;
 pub mod tpch;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use black_hole::BlackHoleConnector;
 use generic::GenericConnector;
@@ -18,6 +18,7 @@ use hive::HiveConnector;
 use iceberg::IcebergConnector;
 use serde::{Deserialize, Serialize};
 use stackable_operator::{
+    attributed_string_type,
     kube::CustomResource,
     schemars::{self, JsonSchema},
     versioned::versioned,
@@ -130,6 +131,20 @@ pub enum TrinoCatalogConnector {
 
     /// A [TPC-H](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/tpch) connector.
     Tpch(TpchConnector),
+}
+
+attributed_string_type! {
+    TrinoCatalogName,
+    "The name of a TrinoCluster",
+    "lakehouse",
+    // Suffixes are added to produce resource/volume names.
+    //
+    // 40 characters should be sufficient and still allow the operators to append custom suffixes.
+    // As of 2026-07 the longest suffix is for a volume name (63 characters limit) and is
+    // "-sheets-credentials" (19 characters).
+    (max_length = 40),
+    is_rfc_1035_label_name,
+    is_valid_label_value
 }
 
 #[cfg(test)]

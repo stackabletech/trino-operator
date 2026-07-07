@@ -1,10 +1,12 @@
 use async_trait::async_trait;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
-use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
 use crate::{
-    controller::dereference::TrinoCatalogName,
-    crd::catalog::generic::{GenericConnector, Property},
+    catalog::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig},
+    crd::catalog::{
+        TrinoCatalogName,
+        generic::{GenericConnector, Property},
+    },
 };
 
 #[async_trait]

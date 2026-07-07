@@ -8,21 +8,23 @@ use stackable_operator::{
     v2::types::kubernetes::NamespaceName,
 };
 
-use super::{
-    ExtendCatalogConfig, FromTrinoCatalogError,
-    config::CatalogConfig,
-    from_trino_catalog_error::{
-        ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
-        FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
-        S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
-    },
-};
 use crate::{
+    catalog::{
+        ExtendCatalogConfig, FromTrinoCatalogError,
+        config::CatalogConfig,
+        from_trino_catalog_error::{
+            ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
+            FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
+            S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
+        },
+    },
     config,
-    controller::dereference::TrinoCatalogName,
     crd::{
         CONFIG_DIR_NAME,
-        catalog::commons::{HdfsConnection, MetastoreConnection},
+        catalog::{
+            TrinoCatalogName,
+            commons::{HdfsConnection, MetastoreConnection},
+        },
     },
 };
 

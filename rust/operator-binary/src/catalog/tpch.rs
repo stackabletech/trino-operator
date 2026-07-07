@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
-use super::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
-use crate::{controller::dereference::TrinoCatalogName, crd::catalog::tpch::TpchConnector};
+use crate::{
+    catalog::{FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig},
+    crd::catalog::{TrinoCatalogName, tpch::TpchConnector},
+};
 
 pub const CONNECTOR_NAME: &str = "tpch";
 

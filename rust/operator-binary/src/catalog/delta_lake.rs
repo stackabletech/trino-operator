@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use stackable_operator::{client::Client, v2::types::kubernetes::NamespaceName};
 
-use super::{ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig};
 use crate::{
-    controller::dereference::TrinoCatalogName, crd::catalog::delta_lake::DeltaLakeConnector,
+    catalog::{ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig, config::CatalogConfig},
+    crd::catalog::{TrinoCatalogName, delta_lake::DeltaLakeConnector},
 };
 
 pub const CONNECTOR_NAME: &str = "delta_lake";

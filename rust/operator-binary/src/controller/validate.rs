@@ -26,14 +26,13 @@ use stackable_operator::{
 };
 use strum::{EnumDiscriminants, IntoEnumIterator, IntoStaticStr};
 
-use super::{
-    ValidatedCluster, ValidatedClusterConfig, ValidatedRoleConfig, ValidatedTls,
-    ValidatedTrinoConfig,
-};
 use crate::{
     authentication::{self, TrinoAuthenticationConfig, TrinoAuthenticationTypes},
-    controller::dereference::{DereferencedObjects, TrinoCatalogName},
-    crd::{Container, TrinoRole, v1alpha1},
+    controller::{
+        ValidatedCluster, ValidatedClusterConfig, ValidatedRoleConfig, ValidatedTls,
+        ValidatedTrinoConfig, dereference::DereferencedObjects,
+    },
+    crd::{Container, TrinoRole, catalog::TrinoCatalogName, v1alpha1},
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]

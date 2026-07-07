@@ -12,15 +12,12 @@ use crate::{
     authentication::TrinoAuthenticationConfig,
     catalog::config::CatalogConfig,
     config::{client_protocol, fault_tolerant_execution},
-    controller::{
-        ValidatedCluster, ValidatedTrinoConfig, build::properties::ConfigFileName,
-        dereference::TrinoCatalogName,
-    },
+    controller::{ValidatedCluster, ValidatedTrinoConfig, build::properties::ConfigFileName},
     crd::{
         CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole,
+        TrinoRole, catalog::TrinoCatalogName,
     },
     trino_controller::{STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR},
 };

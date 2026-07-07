@@ -32,8 +32,7 @@ use crate::{
         client_protocol::ResolvedClientProtocolConfig,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
     },
-    controller::dereference::TrinoCatalogName,
-    crd::{APP_NAME, TrinoRole, discovery::TrinoPodRef, v1alpha1},
+    crd::{APP_NAME, TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
 };
 
