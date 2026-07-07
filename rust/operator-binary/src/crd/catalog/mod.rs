@@ -75,16 +75,16 @@ pub mod versioned {
     pub enum TrinoCatalogNameSpec {
         /// Infer the catalog name from the `.metadata.name` of the TrinoCatalog resource.
         ///
-        /// This ensures that no catalog names clash, as their can only be one TrinoCatalog with a
+        /// This ensures that no catalog names clash, as there can only be one TrinoCatalog with a
         /// given name.
         #[serde(rename_all = "camelCase")]
         Inferred {
-            /// Wether hyphens (`-`) in the name of the catalog should be replaced by underscores (`_`).
+            /// Whether hyphens (`-`) in the name of the catalog should be replaced by underscores (`_`).
             ///
             /// This is recommended because Kubernetes only allows `a-z` and `-`, while Trino
-            /// requires quoting for catalogs containing `-` characters, but not for `_`. This mechanism
-            /// allows you to use valid Kubernetes names, but keeps the convenience of `_` in catalog
-            /// names.
+            /// requires quoting for catalogs containing `-` characters. This mechanism allows
+            /// you to use valid Kubernetes names, but keeps the convenience of using `_` in 
+            /// catalog names.
             //
             // /// In case you need complete flexibility over the catalog name, you can use
             // /// `name.custom`.

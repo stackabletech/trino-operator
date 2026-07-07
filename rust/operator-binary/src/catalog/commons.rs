@@ -126,7 +126,7 @@ impl ExtendCatalogConfig for HdfsConnection {
         // Since Trino 458, fs.hadoop.enabled defaults to false.
         catalog_config.add_property("fs.hadoop.enabled", "true");
 
-        let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config",);
+        let hdfs_site_dir = format!("{CONFIG_DIR_NAME}/catalog/{catalog_name}/hdfs-config");
         catalog_config.add_property(
             "hive.config.resources",
             format!("{hdfs_site_dir}/core-site.xml,{hdfs_site_dir}/hdfs-site.xml"),
