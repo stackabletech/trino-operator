@@ -70,6 +70,8 @@ pub mod versioned {
         pub config_removals: Vec<String>,
     }
 
+    // We might implement more variants in the future. See the CRD decision in
+    // https://github.com/stackabletech/trino-operator/issues/891 for details.
     #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub enum TrinoCatalogNameSpec {
@@ -85,24 +87,9 @@ pub mod versioned {
             /// requires quoting for catalogs containing `-` characters. This mechanism allows
             /// you to use valid Kubernetes names, but keeps the convenience of using `_` in 
             /// catalog names.
-            //
-            // /// In case you need complete flexibility over the catalog name, you can use
-            // /// `name.custom`.
             #[serde(default)]
             replace_hyphens_with_underscores: bool,
         },
-        // As requested in https://github.com/stackabletech/trino-operator/issues/891 we are not
-        // implementing the custom variant yet. Please re-open or create a new decision before
-        // implementing this.
-        //
-        // /// Specify the name of the catalog as it shows up in Trino.
-        // ///
-        // /// It is your responsibility to make sure that no catalog names clash, the operator will
-        // /// raise an error in that case.
-        // ///
-        // /// TIP: If you only want to replace `-` with `_` use
-        // /// `name.inferred.replaceHyphensWithUnderscores` instead.
-        // Custom(String),
     }
 }
 
