@@ -4245,7 +4245,13 @@ spec:
                     properties:
                       replaceHyphensWithUnderscores:
                         default: false
-                        description: "Whether hyphens (`-`) in the name of the catalog should be replaced by underscores (`_`).\n\nThis is recommended because Kubernetes only allows `a-z` and `-`, while Trino\nrequires quoting for catalogs containing `-` characters. This mechanism allows\nyou to use valid Kubernetes names, but keeps the convenience of using `_` in \ncatalog names."
+                        description: |-
+                          Whether hyphens (`-`) in the name of the catalog should be replaced by underscores (`_`).
+
+                          This is recommended because Kubernetes only allows `a-z` and `-`, while Trino
+                          requires quoting for catalogs containing `-` characters. This mechanism allows
+                          you to use valid Kubernetes names, but keeps the convenience of using `_` in
+                          catalog names.
                         type: boolean
                     type: object
                 type: object
