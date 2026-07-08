@@ -9,7 +9,7 @@ pub mod postgresql;
 pub mod tpcds;
 pub mod tpch;
 
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use black_hole::BlackHoleConnector;
 use generic::GenericConnector;
@@ -45,7 +45,12 @@ pub mod versioned {
     /// Read more about it in the [Trino operator concept docs](DOCS_BASE_URL_PLACEHOLDER/trino/concepts)
     /// and the [Trino operator usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/).
     /// The documentation also contains a list of all the supported backends.
-    #[versioned(crd(group = "trino.stackable.tech", plural = "trinocatalogs", namespaced,))]
+    #[versioned(crd(
+        doc = "The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.",
+        group = "trino.stackable.tech",
+        plural = "trinocatalogs",
+        namespaced,
+    ))]
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct TrinoCatalogSpec {

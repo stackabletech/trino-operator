@@ -18,7 +18,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for TrinoClusterSpec via `CustomResource`
+        description: A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
         properties:
           spec:
             description: |-
@@ -209,7 +209,7 @@ spec:
                                                     type: array
                                                 type: object
                                               secretClass:
-                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                                                 type: string
                                             required:
                                             - secretClass
@@ -456,7 +456,7 @@ spec:
                                                     type: array
                                                 type: object
                                               secretClass:
-                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                                                 type: string
                                             required:
                                             - secretClass
@@ -743,7 +743,7 @@ spec:
                                                     type: array
                                                 type: object
                                               secretClass:
-                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                                description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                                                 type: string
                                             required:
                                             - secretClass
@@ -2148,6 +2148,21 @@ spec:
                           nullable: true
                           type: integer
                       type: object
+                    description: |-
+                      The set of role groups for this role, keyed by their name.
+
+                      A role group is a subset of the replicas of a role that share the same configuration,
+                      allowing finer-grained control than the role level. This is useful to e.g. schedule groups
+                      onto different classes of nodes or into different regions, or to run them with different
+                      settings. Configuration set on a role group is merged on top of the role-level `config`,
+                      with the more specific role group values taking precedence.
+
+                      Every role needs at least one role group. A role with a single role group conventionally
+                      names it `default`.
+
+                      Read the
+                      [roles and role groups concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups)
+                      for more details.
                     type: object
                 required:
                 - roleGroups
@@ -3405,6 +3420,21 @@ spec:
                           nullable: true
                           type: integer
                       type: object
+                    description: |-
+                      The set of role groups for this role, keyed by their name.
+
+                      A role group is a subset of the replicas of a role that share the same configuration,
+                      allowing finer-grained control than the role level. This is useful to e.g. schedule groups
+                      onto different classes of nodes or into different regions, or to run them with different
+                      settings. Configuration set on a role group is merged on top of the role-level `config`,
+                      with the more specific role group values taking precedence.
+
+                      Every role needs at least one role group. A role with a single role group conventionally
+                      names it `default`.
+
+                      Read the
+                      [roles and role groups concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups)
+                      for more details.
                     type: object
                 required:
                 - roleGroups
@@ -3482,7 +3512,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Auto-generated derived type for TrinoCatalogSpec via `CustomResource`
+        description: The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
         properties:
           spec:
             description: |-
@@ -3624,7 +3654,7 @@ spec:
                                         type: array
                                     type: object
                                   secretClass:
-                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                                     type: string
                                 required:
                                 - secretClass
@@ -3900,7 +3930,7 @@ spec:
                                         type: array
                                     type: object
                                   secretClass:
-                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                                     type: string
                                 required:
                                 - secretClass
@@ -4090,7 +4120,7 @@ spec:
                                         type: array
                                     type: object
                                   secretClass:
-                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing the requested secrets.'
                                     type: string
                                 required:
                                 - secretClass

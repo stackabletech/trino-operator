@@ -130,6 +130,7 @@ pub mod versioned {
     /// Find more information on how to use it and the resources that the operator generates in the
     /// [operator documentation](DOCS_BASE_URL_PLACEHOLDER/trino/).
     #[versioned(crd(
+        doc = "A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.",
         group = "trino.stackable.tech",
         plural = "trinoclusters",
         shortname = "trino",

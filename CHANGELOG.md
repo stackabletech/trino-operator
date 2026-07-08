@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
   `spooling-manager.properties`). Previously arbitrary keys were silently accepted
   but ignored ([#878]).
 - Document Helm deployed RBAC permissions and remove unnecessary permissions ([#869]).
-- Bump `stackable-operator` to 0.111.0 and `kube` to 3.1.0 ([#878], [#884]).
+- Bump `stackable-operator` to 0.113.3 and `kube` to 3.1.0 ([#878], [#884], [#908]).
 - Internal operator refactoring: introduce dereference() and validate() steps in the reconciler ([#889]).
 - test: Bump vector-aggregator to 0.55.0, replace /graphql call with gRPC call ([#895]).
 - BREAKING: Removed product-config machinery. This is a breaking change in terms of configuration.
@@ -45,6 +45,7 @@ All notable changes to this project will be documented in this file.
 [#897]: https://github.com/stackabletech/trino-operator/pull/897
 [#900]: https://github.com/stackabletech/trino-operator/pull/900
 [#903]: https://github.com/stackabletech/trino-operator/pull/903
+[#908]: https://github.com/stackabletech/trino-operator/pull/908
 
 ## [26.3.0] - 2026-03-16
 
