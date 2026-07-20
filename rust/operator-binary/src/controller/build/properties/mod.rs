@@ -6,6 +6,7 @@
 
 pub mod access_control_properties;
 pub mod config_properties;
+pub mod event_listener_properties;
 pub mod exchange_manager_properties;
 pub mod log_properties;
 pub mod logging;
@@ -31,6 +32,8 @@ pub enum ConfigFileName {
     ExchangeManager,
     #[strum(serialize = "spooling-manager.properties")]
     SpoolingManager,
+    #[strum(serialize = "event-listener.properties")]
+    EventListener,
 }
 
 #[cfg(test)]
@@ -51,6 +54,7 @@ pub(crate) mod test_support {
             trino_opa_config: None,
             resolved_fte_config: None,
             resolved_client_protocol_config: None,
+            resolved_open_lineage_config: None,
         }
     }
 

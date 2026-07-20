@@ -15,8 +15,8 @@ use crate::{
         RoleGroupName, ValidatedCluster,
         build::properties::{
             ConfigFileName, access_control_properties, config_properties,
-            exchange_manager_properties, log_properties, node_properties, product_logging,
-            security_properties, spooling_manager_properties,
+            event_listener_properties, exchange_manager_properties, log_properties,
+            node_properties, product_logging, security_properties, spooling_manager_properties,
         },
     },
     crd::TrinoRole,
@@ -157,6 +157,17 @@ pub fn build_rolegroup_config_map(
             ConfigFileName::SpoolingManager.to_string(),
             to_java_properties_string(sm.iter()).with_context(|_| WritePropertiesSnafu {
                 file: ConfigFileName::SpoolingManager.to_string(),
+            })?,
+        );
+    }
+
+    // 8. event-listener.properties (optional, coordinator only — the OpenLineage event listener).
+    let el = event_listener_properties::build(cluster, role.clone(), rg, cluster_info);
+    if !el.is_empty() {
+        data.insert(
+            ConfigFileName::EventListener.to_string(),
+            to_java_properties_string(el.iter()).with_context(|_| WritePropertiesSnafu {
+                file: ConfigFileName::EventListener.to_string(),
             })?,
         );
     }

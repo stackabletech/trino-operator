@@ -22,7 +22,7 @@ use stackable_operator::{
         },
     },
     config::{fragment::Fragment, merge::Merge},
-    crd::authentication::core,
+    crd::{authentication::core, openlineage},
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt},
@@ -85,6 +85,10 @@ pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
 // secret vars
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
+// OpenLineage
+/// Fixed key that must hold the OpenLineage HTTP transport bearer token inside the Secret referenced
+/// by the Static `AuthenticationClass` used in `spec.clusterConfig.openLineage`.
+pub const OPENLINEAGE_AUTH_SECRET_KEY: &str = "apiKey";
 // TLS
 const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
 // Listener
@@ -205,6 +209,10 @@ pub mod versioned {
         // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "spooling-manager.properties")]
         pub spooling_manager_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
+        #[serde(default, rename = "event-listener.properties")]
+        pub event_listener_properties: KeyValueConfigOverrides,
     }
 
     #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
@@ -284,6 +292,14 @@ pub mod versioned {
         /// Client spooling protocol configuration.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub client_protocol: Option<client_protocol::ClientProtocolConfig>,
+
+        /// Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
+        /// Trino cluster. The OpenLineage event listener runs on the coordinator only.
+        /// The backend connection is either inlined or references an `OpenLineageConnection` resource.
+        /// The shared `appName` field is not used by Trino, which derives an OpenLineage job name per
+        /// query. See the [OpenLineage usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/openlineage).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub open_lineage: Option<openlineage::v1alpha1::OpenLineageJob>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.

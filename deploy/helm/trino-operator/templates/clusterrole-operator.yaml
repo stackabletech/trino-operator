@@ -176,3 +176,12 @@ rules:
       - get
       - list
       - watch
+  # Read OpenLineage connection configuration referenced in the TrinoCluster spec.
+  - apiGroups:
+      - openlineage.stackable.tech
+    resources:
+      - openlineageconnections
+    verbs:
+      - get
+      - list
+      - watch

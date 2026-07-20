@@ -1,0 +1,23 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+commands:
+  # The coordinator ConfigMap must carry a generated event-listener.properties selecting the
+  # OpenLineage plugin and pointing at the receiver.
+  - script: |
+      CM=$(kubectl get -n "$NAMESPACE" configmap trino-openlineage-coordinator-default -o yaml)
+      echo "$CM" | grep -q "event-listener.properties"
+      echo "$CM" | grep -q "event-listener.name=openlineage"
+      echo "$CM" | grep -q "openlineage-event-listener.transport.url"
+  # Workers must NOT get an event listener configured.
+  - script: |
+      ! kubectl get -n "$NAMESPACE" configmap trino-openlineage-worker-default -o yaml | grep -q "event-listener.properties"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: trino-test-helper
+status:
+  readyReplicas: 1
+  replicas: 1

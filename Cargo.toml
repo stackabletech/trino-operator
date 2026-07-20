@@ -29,5 +29,9 @@ tokio = { version = "1.52", features = ["full"] }
 tracing = "0.1"
 
 [patch."https://github.com/stackabletech/operator-rs.git"]
+# TODO: Switch back to a release tag once operator-rs#1250 (the `crd::openlineage`
+# module) has merged and a new stackable-operator release has been published.
+# See <https://github.com/stackabletech/operator-rs/pull/1250>.
+stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", branch = "feat/openlineage-crd" }
 # stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", branch = "smooth-operator"}
 # stackable-operator = { path = "../operator-rs/crates/stackable-operator" }

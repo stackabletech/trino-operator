@@ -68,6 +68,14 @@ dimensions:
     values:
       - "false"
       - "true"
+  - name: openlineage-use-tls
+    values:
+      - "false"
+      - "true"
+  - name: openlineage-use-auth
+    values:
+      - "false"
+      - "true"
   - name: openshift
     values:
       - "false"
@@ -124,6 +132,12 @@ tests:
       # The client spooling protocol was introduced in Trino 466 but it only works reliably starting with Trino 476.
       # Long term we should test all versions
       - trino-latest
+      - openshift
+  - name: openlineage
+    dimensions:
+      - trino-latest
+      - openlineage-use-tls
+      - openlineage-use-auth
       - openshift
   - name: listener
     dimensions:

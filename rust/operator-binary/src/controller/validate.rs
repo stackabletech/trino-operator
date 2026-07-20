@@ -298,6 +298,7 @@ pub fn validate(
         authorization: dereferenced_objects.trino_opa_config.clone(),
         fault_tolerant_execution: dereferenced_objects.resolved_fte_config.clone(),
         client_protocol: dereferenced_objects.resolved_client_protocol_config.clone(),
+        open_lineage: dereferenced_objects.resolved_open_lineage_config.clone(),
         coordinator_pod_refs: trino.coordinator_pods(&namespace).collect(),
         catalogs,
     };
@@ -399,6 +400,7 @@ mod tests {
             trino_opa_config: None,
             resolved_fte_config: None,
             resolved_client_protocol_config: None,
+            resolved_open_lineage_config: None,
         }
     }
 
