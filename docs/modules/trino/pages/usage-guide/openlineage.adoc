@@ -15,6 +15,8 @@ When configured, the operator:
 
 The event listener runs on the coordinator only; workers are not affected.
 
+NOTE: The Trino OpenLineage plugin only emits events for data-modifying query types (`INSERT`, `DELETE`, `MERGE`, `UPDATE`, `ALTER_TABLE_EXECUTE` and `DATA_DEFINITION`) by default; plain `SELECT` queries are filtered out. Adjust `openlineage-event-listener.trino.include-query-types` via config overrides (see below) to change this.
+
 == Enabling OpenLineage
 
 OpenLineage is configured through `clusterConfig.openLineage.connection`, which either inlines an OpenLineage connection or references a standalone `OpenLineageConnection` resource by name:
@@ -62,6 +64,8 @@ spec:
 
 The transport scheme is `https` when `tls.verification.server` is configured, otherwise `http`.
 When the connection verifies the server against a `secretClass` CA (as in the commented `tls` block above), the operator mounts that SecretClass certificate into the coordinator and adds it to the trust store, so the OpenLineage listener trusts the backend's certificate.
+
+IMPORTANT: With TLS server verification, the `host` must match a Subject Alternative Name in the backend's certificate. Use the exact hostname the certificate was issued for (for an in-cluster backend, typically its full service FQDN such as `marquez.<namespace>.svc.cluster.local`), otherwise the TLS handshake fails and no events are delivered.
 
 [#authentication]
 == Authentication

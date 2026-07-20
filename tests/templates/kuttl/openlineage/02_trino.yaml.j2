@@ -27,11 +27,11 @@ metadata:
   name: trino-openlineage
 spec:
   image:
-{% if test_scenario['values']['trino'].find(",") > 0 %}
-    custom: "{{ test_scenario['values']['trino'].split(',')[1] }}"
-    productVersion: "{{ test_scenario['values']['trino'].split(',')[0] }}"
+{% if test_scenario['values']['trino-latest'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino-latest'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino-latest'].split(',')[0] }}"
 {% else %}
-    productVersion: "{{ test_scenario['values']['trino'] }}"
+    productVersion: "{{ test_scenario['values']['trino-latest'] }}"
 {% endif %}
     pullPolicy: IfNotPresent
   clusterConfig:
@@ -41,7 +41,9 @@ spec:
     openLineage:
       connection:
         inline:
-          host: openlineage-receiver
+          # Use the full service FQDN: with TLS the backend's secret-operator cert only carries the
+          # `openlineage-receiver.<ns>.svc.cluster.local` SAN, so a shorter host fails verification.
+          host: openlineage-receiver.$NAMESPACE.svc.cluster.local
           port: 5000
 {% if test_scenario['values']['openlineage-use-tls'] == 'true' %}
           tls:
@@ -83,3 +85,16 @@ metadata:
 spec:
   connector:
     tpch: {}
+---
+# A writable target so the test can run a CREATE TABLE AS SELECT. The OpenLineage event listener
+# only emits for data-modifying query types (INSERT/DATA_DEFINITION/...); a plain SELECT is filtered
+# out by the plugin's default `include-query-types`.
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: blackhole
+  labels:
+    trino: trino-openlineage
+spec:
+  connector:
+    blackHole: {}

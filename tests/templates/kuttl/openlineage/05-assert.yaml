@@ -9,7 +9,7 @@ timeout: 180
 commands:
   - script: |
       POD=$(kubectl get -n "$NAMESPACE" pod -l app=openlineage-receiver -o jsonpath='{.items[0].metadata.name}')
-      # At least one lineage event body was persisted, referencing the queried tpch dataset ...
-      kubectl exec -n "$NAMESPACE" "$POD" -- sh -c 'cat /tmp/lineage/* 2>/dev/null | grep -qi "nation"'
+      # At least one lineage event body was persisted, referencing the CTAS output dataset ...
+      kubectl exec -n "$NAMESPACE" "$POD" -- sh -c 'cat /tmp/lineage/* 2>/dev/null | grep -q "nation_copy"'
       # ... and a COMPLETE run event was received (the query finished and reported lineage).
       kubectl exec -n "$NAMESPACE" "$POD" -- sh -c 'cat /tmp/lineage/* 2>/dev/null | grep -q "COMPLETE"'

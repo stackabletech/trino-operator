@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-"""Run a query against Trino to make the OpenLineage event listener emit lineage events."""
+"""Run a data-modifying query against Trino so the OpenLineage event listener emits lineage events.
+
+A plain SELECT is filtered out by the plugin's default `include-query-types`; a CREATE TABLE AS
+SELECT (INSERT / DATA_DEFINITION) is emitted, with `tpch.tiny.nation` as the input dataset and the
+blackhole table as the output dataset.
+"""
 
 import argparse
 
@@ -29,9 +34,14 @@ if __name__ == "__main__":
 
     conn = get_connection(args["coordinator"])
     cursor = conn.cursor()
-    # Reads the built-in tpch dataset; the OpenLineage listener reports `tpch.tiny.nation` as an
-    # input dataset in the emitted (START + COMPLETE) query events.
-    cursor.execute("SELECT COUNT(*) FROM tpch.tiny.nation")
+
+    cursor.execute("CREATE SCHEMA IF NOT EXISTS blackhole.lineage_test")
+    cursor.fetchall()
+    cursor.execute("DROP TABLE IF EXISTS blackhole.lineage_test.nation_copy")
+    cursor.fetchall()
+    cursor.execute(
+        "CREATE TABLE blackhole.lineage_test.nation_copy AS SELECT * FROM tpch.tiny.nation"
+    )
     result = cursor.fetchone()
-    assert result[0] == 25, f"unexpected tpch.tiny.nation row count: {result[0]}"
-    print("query executed, OpenLineage events should have been emitted")
+    assert result[0] == 25, f"unexpected CTAS row count: {result[0]}"
+    print("CTAS executed, OpenLineage events should have been emitted")

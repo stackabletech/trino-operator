@@ -6,11 +6,11 @@ use snafu::Snafu;
 use stackable_operator::{memory::BinaryMultiple, utils::cluster_info::KubernetesClusterInfo};
 
 use crate::{
-    controller::{TrinoRoleGroupConfig, ValidatedCluster},
+    controller::{TrinoRoleGroupConfig, ValidatedCluster, build::properties::ConfigFileName},
     crd::{
         Container, ENV_INTERNAL_SECRET, HTTP_PORT, HTTPS_PORT, MAX_TRINO_LOG_FILES_SIZE,
-        STACKABLE_INTERNAL_TLS_DIR, STACKABLE_LOG_DIR, STACKABLE_SERVER_TLS_DIR,
-        STACKABLE_TLS_STORE_PASSWORD, TrinoRole,
+        RW_CONFIG_DIR_NAME, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_LOG_DIR,
+        STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD, TrinoRole,
         discovery::{TrinoDiscovery, TrinoDiscoveryProtocol},
     },
 };
@@ -21,6 +21,9 @@ const HTTP_SERVER_LOG_ENABLED: &str = "http-server.log.enabled";
 // config.properties
 const COORDINATOR: &str = "coordinator";
 const DISCOVERY_URI: &str = "discovery.uri";
+// Registers event listener config files. Trino does not load `event-listener.properties` from
+// `--etc-dir`; the file must be listed here explicitly (see trinodb/trino `EventListenerManager`).
+const EVENT_LISTENER_CONFIG_FILES: &str = "event-listener.config-files";
 const HTTP_SERVER_HTTP_PORT: &str = "http-server.http.port";
 const QUERY_MAX_MEMORY: &str = "query.max-memory";
 const QUERY_MAX_MEMORY_PER_NODE: &str = "query.max-memory-per-node";
@@ -95,6 +98,19 @@ pub fn build(
         COORDINATOR.to_string(),
         (role == TrinoRole::Coordinator).to_string(),
     );
+
+    // Register the OpenLineage event listener (coordinator only). The `event-listener.properties`
+    // file itself is built by `event_listener_properties` and lands in the read-write config dir;
+    // without this registration Trino would never load it (it does not scan `--etc-dir`).
+    if role == TrinoRole::Coordinator && cluster.cluster_config.open_lineage.is_some() {
+        props.insert(
+            EVENT_LISTENER_CONFIG_FILES.to_string(),
+            format!(
+                "{RW_CONFIG_DIR_NAME}/{event_listener}",
+                event_listener = ConfigFileName::EventListener
+            ),
+        );
+    }
 
     // Trino's own JSON logging output.
     props.insert(LOG_FORMAT.to_string(), "json".to_string());
@@ -249,9 +265,12 @@ pub fn build(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::controller::build::properties::test_support::{
-        MINIMAL_TRINO_YAML, file_auth_class, validated_cluster_from_yaml,
-        validated_cluster_from_yaml_with_auth,
+    use crate::{
+        config::open_lineage::ResolvedOpenLineageConfig,
+        controller::build::properties::test_support::{
+            MINIMAL_TRINO_YAML, empty_derefs, file_auth_class, validated_cluster_from_yaml,
+            validated_cluster_from_yaml_with_auth, validated_cluster_from_yaml_with_derefs,
+        },
     };
 
     const SERVER_TLS_ONLY_YAML: &str = r#"
@@ -345,6 +364,60 @@ mod tests {
             props.get("query.max-memory").map(String::as_str),
             Some("50GB")
         );
+    }
+
+    fn cluster_with_open_lineage() -> ValidatedCluster {
+        let mut derefs = empty_derefs();
+        derefs.resolved_open_lineage_config = Some(ResolvedOpenLineageConfig {
+            properties: BTreeMap::new(),
+            volumes: Vec::new(),
+            volume_mounts: Vec::new(),
+            init_container_extra_start_commands: Vec::new(),
+        });
+        validated_cluster_from_yaml_with_derefs(MINIMAL_TRINO_YAML, derefs)
+    }
+
+    #[test]
+    fn coordinator_registers_openlineage_event_listener_config_file() {
+        let cluster = cluster_with_open_lineage();
+        let props = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .unwrap();
+        // Trino only loads the event listener when it is registered here.
+        assert_eq!(
+            props.get(EVENT_LISTENER_CONFIG_FILES).map(String::as_str),
+            Some("/stackable/rwconfig/event-listener.properties")
+        );
+    }
+
+    #[test]
+    fn worker_does_not_register_event_listener_config_file() {
+        let cluster = cluster_with_open_lineage();
+        let props = build(
+            &cluster,
+            TrinoRole::Worker,
+            &rg(&cluster, &TrinoRole::Worker),
+            &cluster_info(),
+        )
+        .unwrap();
+        assert!(!props.contains_key(EVENT_LISTENER_CONFIG_FILES));
+    }
+
+    #[test]
+    fn no_event_listener_config_file_without_open_lineage() {
+        let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
+        let props = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .unwrap();
+        assert!(!props.contains_key(EVENT_LISTENER_CONFIG_FILES));
     }
 
     #[test]
