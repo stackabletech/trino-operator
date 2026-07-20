@@ -61,6 +61,10 @@ pub const OPENLINEAGE_TRANSPORT_URL_KEY: &str = "openlineage-event-listener.tran
 pub const OPENLINEAGE_TRANSPORT_API_KEY_KEY: &str = "openlineage-event-listener.transport.api-key";
 /// The OpenLineage namespace lineage is reported under.
 pub const OPENLINEAGE_NAMESPACE_KEY: &str = "openlineage-event-listener.namespace";
+/// Format for the emitted OpenLineage job name. Set from `spec.clusterConfig.openLineage.appName`.
+/// Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP`
+/// substitution variables (Trino defaults to `$QUERY_ID` when unset).
+pub const OPENLINEAGE_JOB_NAME_FORMAT_KEY: &str = "openlineage-event-listener.job.name-format";
 /// The URI identifying this Trino cluster in emitted lineage. Computed from the coordinator service
 /// at ConfigMap-build time (see [`crate::controller::build::properties::event_listener_properties`]).
 pub const OPENLINEAGE_TRINO_URI_KEY: &str = "openlineage-event-listener.trino.uri";
@@ -147,6 +151,14 @@ impl ResolvedOpenLineageConfig {
                 .clone()
                 .unwrap_or_else(|| namespace.to_string()),
         );
+
+        // The stable OpenLineage job name format. When unset, Trino defaults to `$QUERY_ID`.
+        if let Some(app_name) = &open_lineage.app_name {
+            properties.insert(
+                OPENLINEAGE_JOB_NAME_FORMAT_KEY.to_string(),
+                app_name.clone(),
+            );
+        }
 
         // Backend TLS: mount and import a `SecretClass` CA into the client truststore. WebPKI and
         // no verification need nothing (WebPKI is trusted via the system bundle already seeded into

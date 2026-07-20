@@ -296,8 +296,9 @@ pub mod versioned {
         /// Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
         /// Trino cluster. The OpenLineage event listener runs on the coordinator only.
         /// The backend connection is either inlined or references an `OpenLineageConnection` resource.
-        /// The shared `appName` field is not used by Trino, which derives an OpenLineage job name per
-        /// query. See the [OpenLineage usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/openlineage).
+        /// The shared `appName` field sets the OpenLineage job name format
+        /// (`openlineage-event-listener.job.name-format`); when unset Trino defaults to `$QUERY_ID`.
+        /// See the [OpenLineage usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/openlineage).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub open_lineage: Option<openlineage::v1alpha1::OpenLineageJob>,
 
