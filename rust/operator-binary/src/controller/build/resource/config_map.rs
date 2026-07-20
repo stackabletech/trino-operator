@@ -164,7 +164,7 @@ pub fn build_rolegroup_config_map(
     // 8. jvm.config. The role + role-group `jvmArgumentOverrides` were already merged in the
     // validate step and are carried by `product_specific_common_config`.
     let jvm_config = jvm::jvm_config(
-        cluster.product_version,
+        cluster.numeric_product_version,
         &rg.config,
         &rg.product_specific_common_config.jvm_argument_overrides,
     )

@@ -13,6 +13,7 @@ use crate::controller::{
         config_map,
         listener::{build_group_listener, group_listener_name},
         pdb::build_pdb,
+        rbac::{build_role_binding, build_service_account},
         service::{
             build_rolegroup_headless_service, build_rolegroup_metrics_service,
             headless_service_ports,
@@ -52,13 +53,9 @@ pub enum Error {
 /// Does not need a Kubernetes client: every reference to another Kubernetes resource is already
 /// dereferenced and validated by this point, so the errors returned here are resource-assembly
 /// failures only.
-///
-/// `service_account_name` is the name of the RBAC `ServiceAccount` the role-group Pods run under
-/// (RBAC resources are built and applied separately, in the reconcile step).
 pub fn build(
     cluster: &ValidatedCluster,
     cluster_info: &KubernetesClusterInfo,
-    service_account_name: &str,
 ) -> Result<KubernetesResources, Error> {
     let mut stateful_sets = vec![];
     let mut services = vec![];
@@ -115,7 +112,6 @@ pub fn build(
                     role,
                     role_group_name,
                     role_group_config,
-                    service_account_name,
                 )
                 .context(StatefulSetSnafu {
                     role_group: role_group_name.clone(),
@@ -147,11 +143,15 @@ pub fn build(
         listeners,
         config_maps,
         pod_disruption_budgets,
+        service_accounts: vec![build_service_account(cluster)],
+        role_bindings: vec![build_role_binding(cluster)],
     })
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use stackable_operator::{
         commons::networking::DomainName, kube::Resource, utils::cluster_info::KubernetesClusterInfo,
     };
@@ -177,8 +177,7 @@ mod tests {
                 .expect("cluster.local is a valid domain name"),
         };
 
-        let resources =
-            build(&cluster, &cluster_info, "simple-trino-serviceaccount").expect("build succeeds");
+        let resources = build(&cluster, &cluster_info).expect("build succeeds");
 
         // One StatefulSet per role group.
         assert_eq!(
@@ -218,5 +217,59 @@ mod tests {
             sorted_names(&resources.pod_disruption_budgets),
             ["simple-trino-coordinator", "simple-trino-worker"]
         );
+    }
+
+    /// Locks the RBAC resource names, the roleRef, and the recommended label set against
+    /// accidental drift. The fixture's cluster name deliberately differs from the product name so
+    /// that swapped `name`/`instance` label values cannot pass unnoticed.
+    #[test]
+    fn build_produces_rbac() {
+        let cluster = validated_cluster();
+        let cluster_info = KubernetesClusterInfo {
+            cluster_domain: DomainName::try_from("cluster.local")
+                .expect("cluster.local is a valid domain name"),
+        };
+
+        let resources = build(&cluster, &cluster_info).expect("build succeeds");
+
+        assert_eq!(
+            sorted_names(&resources.service_accounts),
+            ["simple-trino-serviceaccount"]
+        );
+        assert_eq!(
+            sorted_names(&resources.role_bindings),
+            ["simple-trino-rolebinding"]
+        );
+
+        let expected_labels = BTreeMap::from(
+            [
+                ("app.kubernetes.io/component", "none"),
+                ("app.kubernetes.io/instance", "simple-trino"),
+                (
+                    "app.kubernetes.io/managed-by",
+                    "trino.stackable.tech_trinocluster",
+                ),
+                ("app.kubernetes.io/name", "trino"),
+                ("app.kubernetes.io/role-group", "none"),
+                ("app.kubernetes.io/version", "481-stackable0.0.0-dev"),
+                ("stackable.tech/vendor", "Stackable"),
+            ]
+            .map(|(key, value)| (key.to_string(), value.to_string())),
+        );
+        let service_account = resources
+            .service_accounts
+            .first()
+            .expect("a ServiceAccount is built");
+        assert_eq!(
+            service_account.metadata.labels,
+            Some(expected_labels.clone())
+        );
+
+        let role_binding = resources
+            .role_bindings
+            .first()
+            .expect("a RoleBinding is built");
+        assert_eq!(role_binding.metadata.labels, Some(expected_labels));
+        assert_eq!(role_binding.role_ref.name, "trino-clusterrole");
     }
 }

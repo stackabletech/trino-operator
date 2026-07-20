@@ -188,7 +188,7 @@ pub fn validate(
         )
         .context(ResolveProductImageSnafu)?;
 
-    let product_version =
+    let numeric_product_version =
         u16::from_str(&image.product_version).context(ParseTrinoVersionSnafu {
             product_version: image.product_version.clone(),
         })?;
@@ -310,7 +310,7 @@ pub fn validate(
         namespace,
         uid,
         image,
-        product_version,
+        numeric_product_version,
         cluster_config,
         role_configs,
         role_group_configs,
@@ -452,7 +452,7 @@ mod tests {
             validated.uid.to_string(),
             "e6ac237d-a6d4-43a1-8135-f36506110912"
         );
-        assert_eq!(validated.product_version, 481);
+        assert_eq!(validated.numeric_product_version, 481);
         assert!(!validated.cluster_config.authentication_enabled());
         assert!(
             validated

@@ -41,9 +41,9 @@ use crate::{
     authorization::opa::OPA_TLS_VOLUME_NAME,
     controller::{
         MAX_PREPARE_LOG_FILE_SIZE, RoleGroupName, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
-        TrinoRoleGroupConfig, ValidatedCluster, build,
+        TrinoRoleGroupConfig, ValidatedCluster,
         build::{
-            command,
+            self, command,
             resource::listener::{
                 LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener_pvc,
                 group_listener_name, secret_volume_listener_scope,
@@ -137,10 +137,9 @@ pub fn build_rolegroup_statefulset(
     trino_role: &TrinoRole,
     role_group_name: &RoleGroupName,
     role_group_config: &TrinoRoleGroupConfig,
-    sa_name: &str,
 ) -> Result<StatefulSet> {
     // Everything below is derived from the validated cluster and the validated role-group config,
-    // so the caller only needs to pass those (plus the applied ServiceAccount name).
+    // so the caller only needs to pass those.
     let resolved_product_image = &cluster.image;
     let trino_authentication_config = &cluster.cluster_config.authentication;
     let catalogs = &cluster.cluster_config.catalogs;
@@ -422,7 +421,12 @@ pub fn build_rolegroup_statefulset(
             )),
         )
         .context(AddVolumeSnafu)?
-        .service_account_name(sa_name)
+        .service_account_name(
+            cluster
+                .rbac_resource_names()
+                .service_account_name()
+                .to_string(),
+        )
         .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
 
     let mut pod_template = pod_builder.build_template();
