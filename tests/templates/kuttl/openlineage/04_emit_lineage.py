@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Run a query against Trino to make the OpenLineage event listener emit lineage events."""
+
 import argparse
 
 import trino
