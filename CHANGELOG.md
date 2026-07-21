@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Internal operator refactoring: introduce a build() step in the reconciler that
+  assembles all relevant Kubernetes resources before anything is applied ([#909]).
+
+[#909]: https://github.com/stackabletech/trino-operator/pull/909
+
 ## [26.7.0] - 2026-07-21
 
 ## [26.7.0-rc1] - 2026-07-16
