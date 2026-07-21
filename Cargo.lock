@@ -3135,7 +3135,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-trino-operator"
-version = "26.7.0-rc1"
+version = "26.7.0"
 dependencies = [
  "anyhow",
  "async-trait",
