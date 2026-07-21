@@ -16,8 +16,8 @@ All notable changes to this project will be documented in this file.
   `event-listener.properties` pointing at the backend `host`/`port`, with the cluster's `trino.uri`
   and namespace). The backend connection is inlined or references an `OpenLineageConnection`
   resource. TLS server verification against a `secretClass` CA is imported into the coordinator
-  truststore, and a bearer token from a Static `AuthenticationClass` is injected at startup without
-  landing in the ConfigMap ([#914]).
+  truststore, and a bearer token from the connection's `credentialsSecretName` Secret is injected at
+  startup without landing in the ConfigMap ([#914]).
 
 ### Changed
 

@@ -1,16 +1,5 @@
 {% if test_scenario['values']['openlineage-use-auth'] == 'true' %}
 ---
-# Cluster-scoped, so suffixed with $NAMESPACE to avoid collisions across parallel scenarios.
-apiVersion: authentication.stackable.tech/v1alpha1
-kind: AuthenticationClass
-metadata:
-  name: openlineage-auth-$NAMESPACE
-spec:
-  provider:
-    static:
-      userCredentialsSecret:
-        name: openlineage-token
----
 apiVersion: v1
 kind: Secret
 metadata:
@@ -53,7 +42,7 @@ spec:
                   secretClass: openlineage-tls-$NAMESPACE
 {% endif %}
 {% if test_scenario['values']['openlineage-use-auth'] == 'true' %}
-          authenticationClassRef: openlineage-auth-$NAMESPACE
+          credentialsSecretName: openlineage-token
 {% endif %}
       # Sets openlineage-event-listener.job.name-format (asserted in 03-assert.yaml).
       appName: "trino-$QUERY_ID"

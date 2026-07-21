@@ -86,8 +86,8 @@ pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
 pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
 // OpenLineage
-/// Fixed key that must hold the OpenLineage HTTP transport bearer token inside the Secret referenced
-/// by the Static `AuthenticationClass` used in `spec.clusterConfig.openLineage`.
+/// Fixed key that must hold the OpenLineage HTTP transport bearer token inside the Secret named by
+/// `credentialsSecretName` on the connection used in `spec.clusterConfig.openLineage`.
 pub const OPENLINEAGE_AUTH_SECRET_KEY: &str = "apiKey";
 // TLS
 const TLS_DEFAULT_SECRET_CLASS: &str = "tls";

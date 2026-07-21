@@ -22,10 +22,7 @@ use stackable_operator::{
     commons::tls_verification::{
         CaCert, TlsClientDetails, TlsClientDetailsError, TlsServerVerification, TlsVerification,
     },
-    crd::{
-        authentication::core::v1alpha1::{AuthenticationClass, AuthenticationClassProvider},
-        openlineage::{self, v1alpha1::OpenLineageJob},
-    },
+    crd::openlineage::{self, v1alpha1::OpenLineageJob},
     k8s_openapi::api::core::v1::{SecretVolumeSource, Volume, VolumeMount},
 };
 
@@ -75,16 +72,6 @@ pub enum Error {
     ResolveConnection {
         source: openlineage::v1alpha1::OpenLineageError,
     },
-
-    #[snafu(display("failed to resolve the OpenLineage AuthenticationClass"))]
-    ResolveAuthenticationClass {
-        source: openlineage::v1alpha1::OpenLineageError,
-    },
-
-    #[snafu(display(
-        "unsupported AuthenticationClass provider {provider:?} for OpenLineage; only the Static provider is supported"
-    ))]
-    UnsupportedAuthenticationProvider { provider: String },
 
     #[snafu(display(
         "failed to build volumes and mounts for the OpenLineage backend TLS CA certificate"
@@ -172,21 +159,14 @@ impl ResolvedOpenLineageConfig {
         init_container_extra_start_commands
             .extend(openlineage_tls_truststore_commands(&connection.tls));
 
-        // Authentication: resolve the connection's `authenticationClassRef` (Static provider only)
-        // into its credentials Secret, mount it and reference the token via a `${file:...}`
-        // placeholder so it is resolved at startup and never lands in the ConfigMap.
-        if let Some(auth_class) = connection
-            .resolve_authentication_class(client)
-            .await
-            .context(ResolveAuthenticationClassSnafu)?
-        {
-            let secret_name = openlineage_auth_secret_name(&auth_class)
-                .map_err(|provider| UnsupportedAuthenticationProviderSnafu { provider }.build())?;
-
+        // Authentication: when the connection sets `credentialsSecretName`, mount that Secret and
+        // reference the token via a `${file:...}` placeholder so it is resolved at startup and never
+        // lands in the ConfigMap. The token must be stored under the `apiKey` Secret key.
+        if let Some(secret_name) = &connection.credentials_secret_name {
             volumes.push(Volume {
                 name: OPENLINEAGE_AUTH_VOLUME_NAME.to_string(),
                 secret: Some(SecretVolumeSource {
-                    secret_name: Some(secret_name),
+                    secret_name: Some(secret_name.clone()),
                     ..SecretVolumeSource::default()
                 }),
                 ..Volume::default()
@@ -214,22 +194,6 @@ impl ResolvedOpenLineageConfig {
     }
 }
 
-/// Extracts the credentials Secret name from a resolved OpenLineage [`AuthenticationClass`].
-///
-/// Only the `Static` provider is supported (its Secret holds the bearer token under
-/// [`OPENLINEAGE_AUTH_SECRET_KEY`]). Any other provider returns `Err(provider_name)` so the caller
-/// can surface a clear error naming the offending provider.
-pub(crate) fn openlineage_auth_secret_name(
-    auth_class: &AuthenticationClass,
-) -> Result<String, String> {
-    match &auth_class.spec.provider {
-        AuthenticationClassProvider::Static(provider) => {
-            Ok(provider.user_credentials_secret.name.clone())
-        }
-        other => Err(other.to_string()),
-    }
-}
-
 /// Init-container commands that add the backend's `SecretClass` CA certificate to the client
 /// truststore (which is the JVM default truststore, see `config::jvm`). Returns an empty list when
 /// no import is needed: no TLS, `verification.none` (plain `http`), or WebPKI verification (trusted
@@ -248,53 +212,9 @@ fn openlineage_tls_truststore_commands(tls: &TlsClientDetails) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::{
-        commons::tls_verification::Tls,
-        crd::authentication::{
-            core::v1alpha1::{
-                AuthenticationClass, AuthenticationClassProvider, AuthenticationClassSpec,
-            },
-            r#static, tls,
-        },
-        k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta,
-    };
+    use stackable_operator::commons::tls_verification::Tls;
 
     use super::*;
-
-    fn auth_class(provider: AuthenticationClassProvider) -> AuthenticationClass {
-        AuthenticationClass {
-            metadata: ObjectMeta::default(),
-            spec: AuthenticationClassSpec { provider },
-        }
-    }
-
-    #[test]
-    fn secret_name_extracted_from_static_provider() {
-        let ac = auth_class(AuthenticationClassProvider::Static(
-            r#static::v1alpha1::AuthenticationProvider {
-                user_credentials_secret: r#static::v1alpha1::UserCredentialsSecretRef {
-                    name: "ol-token".to_string(),
-                },
-            },
-        ));
-
-        assert_eq!(openlineage_auth_secret_name(&ac).unwrap(), "ol-token");
-    }
-
-    #[test]
-    fn non_static_provider_is_rejected_naming_the_provider() {
-        let ac = auth_class(AuthenticationClassProvider::Tls(
-            tls::v1alpha1::AuthenticationProvider {
-                client_cert_secret_class: None,
-            },
-        ));
-
-        let err = openlineage_auth_secret_name(&ac).unwrap_err();
-        assert!(
-            err.to_lowercase().contains("tls"),
-            "error should name the offending provider, got: {err}"
-        );
-    }
 
     fn tls_details(verification: Option<TlsVerification>) -> TlsClientDetails {
         TlsClientDetails {
