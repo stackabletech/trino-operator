@@ -172,7 +172,7 @@ pub fn build_rolegroup_config_map(
         );
     }
 
-    // 8. jvm.config. The role + role-group `jvmArgumentOverrides` were already merged in the
+    // 9. jvm.config. The role + role-group `jvmArgumentOverrides` were already merged in the
     // validate step and are carried by `product_specific_common_config`.
     let jvm_config = jvm::jvm_config(
         cluster.product_version,
@@ -182,7 +182,7 @@ pub fn build_rolegroup_config_map(
     .context(BuildJvmConfigSnafu)?;
     data.insert(JVM_CONFIG.to_string(), jvm_config);
 
-    // 9. Vector agent config (`vector.yaml`) if the Vector agent is enabled. The file is templated
+    // 10. Vector agent config (`vector.yaml`) if the Vector agent is enabled. The file is templated
     // with environment variables injected by the Vector container at runtime.
     if rg.config.logging.enable_vector_agent {
         data.insert(

@@ -4,12 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `spec.clusterConfig.openLineage` to emit [OpenLineage](https://openlineage.io/) lineage events ([#914]).
+
 ### Changed
 
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
+[#914]: https://github.com/stackabletech/trino-operator/pull/914
 
 ## [26.7.0] - 2026-07-21
 
@@ -22,13 +27,6 @@ All notable changes to this project will be documented in this file.
   Previously, users had to use the `generic` connector ([#883]).
 - Added support for Trino 481 ([#900]).
 - Add a new `.spec.name.inferred.replaceHyphensWithUnderscores` field on TrinoCatalog, which allows tweaking the catalog name in Trino ([#903]).
-- Add `spec.clusterConfig.openLineage` to emit [OpenLineage](https://openlineage.io/) lineage events:
-  the operator configures the Trino OpenLineage event listener on the coordinator (an
-  `event-listener.properties` pointing at the backend `host`/`port`, with the cluster's `trino.uri`
-  and namespace). The backend connection is inlined or references an `OpenLineageConnection`
-  resource. TLS server verification against a `secretClass` CA is imported into the coordinator
-  truststore, and a bearer token from the connection's `credentialsSecretName` Secret is injected at
-  startup without landing in the ConfigMap ([#914]).
 
 ### Changed
 
@@ -64,7 +62,6 @@ All notable changes to this project will be documented in this file.
 [#900]: https://github.com/stackabletech/trino-operator/pull/900
 [#903]: https://github.com/stackabletech/trino-operator/pull/903
 [#908]: https://github.com/stackabletech/trino-operator/pull/908
-[#914]: https://github.com/stackabletech/trino-operator/pull/914
 
 ## [26.3.0] - 2026-03-16
 

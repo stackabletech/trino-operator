@@ -266,7 +266,7 @@ pub fn build(
 mod tests {
     use super::*;
     use crate::{
-        config::open_lineage::ResolvedOpenLineageConfig,
+        config::openlineage::ResolvedOpenLineageConfig,
         controller::build::properties::test_support::{
             MINIMAL_TRINO_YAML, empty_derefs, file_auth_class, validated_cluster_from_yaml,
             validated_cluster_from_yaml_with_auth, validated_cluster_from_yaml_with_derefs,

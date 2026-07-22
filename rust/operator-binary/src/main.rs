@@ -9,10 +9,7 @@ use futures::{FutureExt, TryFutureExt, stream::StreamExt};
 use stackable_operator::{
     YamlSchema,
     cli::{Command, RunArguments},
-    crd::{
-        authentication::core,
-        openlineage::{OpenLineageConnection, OpenLineageConnectionVersion},
-    },
+    crd::authentication::core,
     eos::EndOfSupportChecker,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
@@ -72,8 +69,6 @@ async fn main() -> anyhow::Result<()> {
             TrinoCluster::merged_crd(TrinoClusterVersion::V1Alpha1)?
                 .print_yaml_schema(built_info::PKG_VERSION, &SerializeOptions::default())?;
             TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1)?
-                .print_yaml_schema(built_info::PKG_VERSION, &SerializeOptions::default())?;
-            OpenLineageConnection::merged_crd(OpenLineageConnectionVersion::V1Alpha1)?
                 .print_yaml_schema(built_info::PKG_VERSION, &SerializeOptions::default())?;
         }
         Command::Run(RunArguments {

@@ -294,11 +294,7 @@ pub mod versioned {
         pub client_protocol: Option<client_protocol::ClientProtocolConfig>,
 
         /// Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
-        /// Trino cluster. The OpenLineage event listener runs on the coordinator only.
-        /// The backend connection is either inlined or references an `OpenLineageConnection` resource.
-        /// The shared `appName` field sets the OpenLineage job name format
-        /// (`openlineage-event-listener.job.name-format`); when unset Trino defaults to `$QUERY_ID`.
-        /// See the [OpenLineage usage guide](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/openlineage).
+        /// Trino cluster.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pub open_lineage: Option<openlineage::v1alpha1::OpenLineageJob>,
 

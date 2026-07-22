@@ -18,7 +18,7 @@ use crate::{
     config::{
         client_protocol::{self, ResolvedClientProtocolConfig},
         fault_tolerant_execution::{self, ResolvedFaultTolerantExecutionConfig},
-        open_lineage::{self, ResolvedOpenLineageConfig},
+        openlineage::{self, ResolvedOpenLineageConfig},
     },
     crd::{
         authentication::{ResolvedAuthenticationClassRef, resolve_authentication_classes},
@@ -68,7 +68,7 @@ pub enum Error {
     ClientProtocolConfiguration { source: client_protocol::Error },
 
     #[snafu(display("failed to resolve OpenLineage configuration"))]
-    OpenLineageConfiguration { source: open_lineage::Error },
+    OpenLineageConfiguration { source: openlineage::Error },
 
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {

@@ -38,7 +38,7 @@ use crate::{
     config::{
         client_protocol::ResolvedClientProtocolConfig,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
-        open_lineage::ResolvedOpenLineageConfig,
+        openlineage::ResolvedOpenLineageConfig,
     },
     crd::{APP_NAME, TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},

@@ -2,7 +2,7 @@
 //!
 //! The OpenLineage event listener runs on the **coordinator only**, so this builder returns an
 //! empty map for every other role and the caller omits the file from those ConfigMaps. For the
-//! coordinator it emits the connection-derived settings resolved in [`crate::config::open_lineage`],
+//! coordinator it emits the connection-derived settings resolved in [`crate::config::openlineage`],
 //! adds the cluster-facing `trino.uri`, and finally merges any user `event-listener.properties`
 //! overrides (highest precedence).
 
@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use stackable_operator::utils::cluster_info::KubernetesClusterInfo;
 
 use crate::{
-    config::open_lineage::OPENLINEAGE_TRINO_URI_KEY,
+    config::openlineage::OPENLINEAGE_TRINO_URI_KEY,
     controller::{TrinoRoleGroupConfig, ValidatedCluster},
     crd::{
         TrinoRole,
@@ -70,7 +70,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        config::open_lineage::{
+        config::openlineage::{
             EVENT_LISTENER_NAME_KEY, OPENLINEAGE_NAMESPACE_KEY, OPENLINEAGE_TRANSPORT_API_KEY_KEY,
             OPENLINEAGE_TRANSPORT_TYPE_KEY, OPENLINEAGE_TRANSPORT_URL_KEY,
             ResolvedOpenLineageConfig,
@@ -88,7 +88,7 @@ mod tests {
         }
     }
 
-    /// A resolved OpenLineage config as `config::open_lineage` would produce it for an inline
+    /// A resolved OpenLineage config as `config::openlineage` would produce it for an inline
     /// `http://marquez:5000` connection, optionally with a bearer-token api-key reference.
     fn resolved_open_lineage(with_auth: bool) -> ResolvedOpenLineageConfig {
         let mut properties = BTreeMap::from([
