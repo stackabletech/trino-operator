@@ -40,7 +40,8 @@ use stackable_operator::{
 use crate::{
     authorization::opa::OPA_TLS_VOLUME_NAME,
     controller::{
-        RoleGroupName, TrinoRoleGroupConfig, ValidatedCluster, build,
+        MAX_PREPARE_LOG_FILE_SIZE, RoleGroupName, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
+        TrinoRoleGroupConfig, ValidatedCluster, build,
         build::{
             command,
             resource::listener::{
@@ -48,6 +49,7 @@ use crate::{
                 group_listener_name, secret_volume_listener_scope,
             },
         },
+        shared_internal_secret_name, shared_spooling_secret_name,
     },
     crd::{
         CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
@@ -56,10 +58,6 @@ use crate::{
         STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
         STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
         TrinoRole,
-    },
-    trino_controller::{
-        MAX_PREPARE_LOG_FILE_SIZE, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
-        shared_internal_secret_name, shared_spooling_secret_name,
     },
 };
 

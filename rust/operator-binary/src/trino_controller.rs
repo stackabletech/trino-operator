@@ -13,28 +13,19 @@ use stackable_operator::{
         runtime::controller::Action,
     },
     logging::controller::ReconcilerError,
-    memory::{BinaryMultiple, MemoryQuantity},
     shared::time::Duration,
     status::condition::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
-    v2::{cluster_resources::cluster_resources_new, types::operator::ClusterName},
+    v2::cluster_resources::cluster_resources_new,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     controller::{
-        RoleGroupName, build,
-        build::resource::{
-            listener::{build_group_listener, group_listener_name},
-            pdb::build_pdb,
-            service::{
-                build_rolegroup_headless_service, build_rolegroup_metrics_service,
-                headless_service_ports,
-            },
-        },
-        controller_name, dereference, operator_name, product_name, validate,
+        ValidatedCluster, build, controller_name, dereference, operator_name, product_name,
+        shared_internal_secret_name, shared_spooling_secret_name, validate,
     },
     crd::{APP_NAME, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1},
 };
@@ -48,53 +39,22 @@ pub const OPERATOR_NAME: &str = "trino.stackable.tech";
 pub const CONTROLLER_NAME: &str = "trinocluster";
 pub const FULL_CONTROLLER_NAME: &str = concatcp!(CONTROLLER_NAME, '.', OPERATOR_NAME);
 
-pub use stackable_operator::v2::product_logging::framework::STACKABLE_LOG_DIR;
-pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
-
-pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
-    value: 1.0,
-    unit: BinaryMultiple::Mebi,
-};
-
 pub(crate) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
-#[allow(clippy::enum_variant_names)]
 pub enum Error {
     #[snafu(display("failed to delete orphaned resources"))]
     DeleteOrphanedResources {
         source: stackable_operator::cluster_resources::Error,
     },
 
-    #[snafu(display("failed to apply Service for {}", rolegroup))]
-    ApplyRoleGroupService {
+    #[snafu(display("failed to build the Kubernetes resources"))]
+    BuildResources { source: build::Error },
+
+    #[snafu(display("failed to apply Kubernetes resource"))]
+    ApplyResource {
         source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupName,
-    },
-
-    #[snafu(display("failed to build ConfigMap for {}", rolegroup))]
-    BuildRoleGroupConfigMap {
-        source: build::resource::config_map::Error,
-        rolegroup: RoleGroupName,
-    },
-
-    #[snafu(display("failed to apply ConfigMap for {}", rolegroup))]
-    ApplyRoleGroupConfig {
-        source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupName,
-    },
-
-    #[snafu(display("failed to build StatefulSet for {}", rolegroup))]
-    BuildRoleGroupStatefulSet {
-        source: build::resource::statefulset::Error,
-        rolegroup: RoleGroupName,
-    },
-
-    #[snafu(display("failed to apply StatefulSet for {}", rolegroup))]
-    ApplyRoleGroupStatefulSet {
-        source: stackable_operator::cluster_resources::Error,
-        rolegroup: RoleGroupName,
     },
 
     #[snafu(display("failed to patch service account"))]
@@ -115,11 +75,6 @@ pub enum Error {
     #[snafu(display("failed to build RBAC resources"))]
     BuildRbacResources {
         source: stackable_operator::commons::rbac::Error,
-    },
-
-    #[snafu(display("failed to apply PodDisruptionBudget"))]
-    ApplyPdb {
-        source: stackable_operator::cluster_resources::Error,
     },
 
     #[snafu(display("failed to get required Labels"))]
@@ -143,11 +98,6 @@ pub enum Error {
 
     #[snafu(display("failed to validate cluster"))]
     ValidateCluster { source: validate::Error },
-
-    #[snafu(display("failed to apply group listener"))]
-    ApplyGroupListener {
-        source: stackable_operator::cluster_resources::Error,
-    },
 
     #[snafu(display("failed to create internal secret"))]
     CreateInternalSecret {
@@ -212,7 +162,11 @@ pub async fn reconcile_trino(
     )
     .context(BuildRbacResourcesSnafu)?;
 
-    let rbac_sa = cluster_resources
+    // The ServiceAccount name is deterministic on the built object, so the build step does not
+    // depend on the applied ServiceAccount.
+    let service_account_name = rbac_sa.name_any();
+
+    cluster_resources
         .add(client, rbac_sa)
         .await
         .context(ApplyServiceAccountSnafu)?;
@@ -222,156 +176,55 @@ pub async fn reconcile_trino(
         .await
         .context(ApplyRoleBindingSnafu)?;
 
-    random_secret_creation::create_random_secret_if_not_exists(
-        &shared_internal_secret_name(&validated_cluster.name),
-        ENV_INTERNAL_SECRET,
-        512,
-        &validated_cluster,
-        client,
-    )
-    .await
-    .context(CreateInternalSecretSnafu)?;
+    ensure_random_secrets(client, &validated_cluster).await?;
 
-    // This secret is created even if spooling is not configured.
-    // Trino currently requires the secret to be exactly 256 bits long.
-    random_secret_creation::create_random_secret_if_not_exists(
-        &shared_spooling_secret_name(&validated_cluster.name),
-        ENV_SPOOLING_SECRET,
-        32,
+    let resources = build::build(
         &validated_cluster,
-        client,
+        &client.kubernetes_cluster_info,
+        &service_account_name,
     )
-    .await
-    .context(CreateInternalSecretSnafu)?;
+    .context(BuildResourcesSnafu)?;
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
 
-    for (trino_role, role_group_configs) in &validated_cluster.role_group_configs {
-        for (role_group_name, rg) in role_group_configs {
-            let role_group_service_recommended_labels =
-                validated_cluster.recommended_labels(trino_role, role_group_name);
+    for service in resources.services {
+        cluster_resources
+            .add(client, service)
+            .await
+            .context(ApplyResourceSnafu)?;
+    }
 
-            let role_group_service_selector =
-                validated_cluster.role_group_selector(trino_role, role_group_name);
+    for listener in resources.listeners {
+        cluster_resources
+            .add(client, listener)
+            .await
+            .context(ApplyResourceSnafu)?;
+    }
 
-            let rg_headless_service = build_rolegroup_headless_service(
-                &validated_cluster,
-                trino_role,
-                role_group_name,
-                &role_group_service_recommended_labels,
-                role_group_service_selector.clone().into(),
-                headless_service_ports(&validated_cluster),
-            );
+    for config_map in resources.config_maps {
+        cluster_resources
+            .add(client, config_map)
+            .await
+            .context(ApplyResourceSnafu)?;
+    }
 
-            let rg_metrics_service = build_rolegroup_metrics_service(
-                &validated_cluster,
-                trino_role,
-                role_group_name,
-                &role_group_service_recommended_labels,
-                role_group_service_selector.into(),
-            );
+    for pdb in resources.pod_disruption_budgets {
+        cluster_resources
+            .add(client, pdb)
+            .await
+            .context(ApplyResourceSnafu)?;
+    }
 
-            let rg_configmap = build::resource::config_map::build_rolegroup_config_map(
-                &validated_cluster,
-                trino_role,
-                role_group_name,
-                &client.kubernetes_cluster_info,
-                &role_group_service_recommended_labels,
-            )
-            .with_context(|_| BuildRoleGroupConfigMapSnafu {
-                rolegroup: role_group_name.clone(),
-            })?;
-
-            let rg_catalog_configmap =
-                build::resource::config_map::build_rolegroup_catalog_config_map(
-                    &validated_cluster,
-                    trino_role,
-                    role_group_name,
-                    &role_group_service_recommended_labels,
-                )
-                .with_context(|_| BuildRoleGroupConfigMapSnafu {
-                    rolegroup: role_group_name.clone(),
-                })?;
-
-            let rg_stateful_set = build::resource::statefulset::build_rolegroup_statefulset(
-                &validated_cluster,
-                trino_role,
-                role_group_name,
-                rg,
-                &rbac_sa.name_any(),
-            )
-            .with_context(|_| BuildRoleGroupStatefulSetSnafu {
-                rolegroup: role_group_name.clone(),
-            })?;
-
+    // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
+    // to prevent unnecessary Pod restarts.
+    // See https://github.com/stackabletech/commons-operator/issues/111 for details.
+    for stateful_set in resources.stateful_sets {
+        sts_cond_builder.add(
             cluster_resources
-                .add(client, rg_headless_service)
+                .add(client, stateful_set)
                 .await
-                .with_context(|_| ApplyRoleGroupServiceSnafu {
-                    rolegroup: role_group_name.clone(),
-                })?;
-
-            cluster_resources
-                .add(client, rg_metrics_service)
-                .await
-                .with_context(|_| ApplyRoleGroupServiceSnafu {
-                    rolegroup: role_group_name.clone(),
-                })?;
-
-            cluster_resources
-                .add(client, rg_configmap)
-                .await
-                .with_context(|_| ApplyRoleGroupConfigSnafu {
-                    rolegroup: role_group_name.clone(),
-                })?;
-
-            cluster_resources
-                .add(client, rg_catalog_configmap)
-                .await
-                .with_context(|_| ApplyRoleGroupConfigSnafu {
-                    rolegroup: role_group_name.clone(),
-                })?;
-
-            // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
-            // to prevent unnecessary Pod restarts.
-            // See https://github.com/stackabletech/commons-operator/issues/111 for details.
-            sts_cond_builder.add(
-                cluster_resources
-                    .add(client, rg_stateful_set)
-                    .await
-                    .with_context(|_| ApplyRoleGroupStatefulSetSnafu {
-                        rolegroup: role_group_name.clone(),
-                    })?,
-            );
-        }
-
-        let Some(role_config) = validated_cluster.role_config(trino_role) else {
-            continue;
-        };
-
-        if let Some(listener_class) = &role_config.listener_class
-            && let Some(listener_group_name) = group_listener_name(&validated_cluster, trino_role)
-        {
-            let role_group_listener = build_group_listener(
-                &validated_cluster,
-                validated_cluster
-                    .recommended_labels(trino_role, &build::PLACEHOLDER_LISTENER_ROLE_GROUP),
-                listener_class,
-                listener_group_name,
-            );
-
-            cluster_resources
-                .add(client, role_group_listener)
-                .await
-                .context(ApplyGroupListenerSnafu)?;
-        }
-
-        if let Some(pdb) = build_pdb(&role_config.pdb, &validated_cluster, trino_role) {
-            cluster_resources
-                .add(client, pdb)
-                .await
-                .context(ApplyPdbSnafu)?;
-        }
+                .context(ApplyResourceSnafu)?,
+        );
     }
 
     let cluster_operation_cond_builder =
@@ -396,6 +249,37 @@ pub async fn reconcile_trino(
     Ok(Action::await_change())
 }
 
+/// Ensures the two shared random Secrets (internal communication and spooling) exist, creating
+/// any that are missing.
+async fn ensure_random_secrets(
+    client: &stackable_operator::client::Client,
+    cluster: &ValidatedCluster,
+) -> Result<()> {
+    random_secret_creation::create_random_secret_if_not_exists(
+        &shared_internal_secret_name(&cluster.name),
+        ENV_INTERNAL_SECRET,
+        512,
+        cluster,
+        client,
+    )
+    .await
+    .context(CreateInternalSecretSnafu)?;
+
+    // This secret is created even if spooling is not configured.
+    // Trino currently requires the secret to be exactly 256 bits long.
+    random_secret_creation::create_random_secret_if_not_exists(
+        &shared_spooling_secret_name(&cluster.name),
+        ENV_SPOOLING_SECRET,
+        32,
+        cluster,
+        client,
+    )
+    .await
+    .context(CreateInternalSecretSnafu)?;
+
+    Ok(())
+}
+
 pub fn error_policy(
     _obj: Arc<DeserializeGuard<v1alpha1::TrinoCluster>>,
     error: &Error,
@@ -405,14 +289,6 @@ pub fn error_policy(
         Error::InvalidTrinoCluster { .. } => Action::await_change(),
         _ => Action::requeue(*Duration::from_secs(5)),
     }
-}
-
-pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> String {
-    format!("{cluster_name}-internal-secret")
-}
-
-pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String {
-    format!("{cluster_name}-spooling-secret")
 }
 
 #[cfg(test)]
@@ -432,7 +308,7 @@ mod tests {
             client_protocol::ResolvedClientProtocolConfig,
             fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         },
-        controller::dereference::DereferencedObjects,
+        controller::{RoleGroupName, dereference::DereferencedObjects},
         crd::{ENV_SPOOLING_SECRET, TrinoRole, v1alpha1},
     };
 

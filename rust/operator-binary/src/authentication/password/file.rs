@@ -20,7 +20,7 @@ use stackable_operator::{
 
 use crate::{
     authentication::password::PASSWORD_AUTHENTICATOR_NAME,
-    controller::build::resource::statefulset::LOG_VOLUME_NAME, trino_controller::STACKABLE_LOG_DIR,
+    controller::{STACKABLE_LOG_DIR, build::resource::statefulset::LOG_VOLUME_NAME},
 };
 
 // mounts

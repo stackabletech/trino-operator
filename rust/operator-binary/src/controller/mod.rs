@@ -7,8 +7,15 @@ use stackable_operator::{
         product_image_selection::ResolvedProductImage,
         resources::{NoRuntimeLimits, Resources},
     },
+    crd::listener::v1alpha1::Listener,
+    k8s_openapi::api::{
+        apps::v1::StatefulSet,
+        core::v1::{ConfigMap, Service},
+        policy::v1::PodDisruptionBudget,
+    },
     kube::{Resource, api::ObjectMeta},
     kvp::Labels,
+    memory::{BinaryMultiple, MemoryQuantity},
     shared::time::Duration,
     v2::{
         HasName, HasUid, NameIsValidLabelValue,
@@ -41,7 +48,31 @@ pub(crate) mod build;
 pub(crate) mod dereference;
 pub(crate) mod validate;
 
+pub use stackable_operator::v2::product_logging::framework::STACKABLE_LOG_DIR;
 pub use validate::{RoleGroupName, TrinoRoleGroupConfig};
+pub const STACKABLE_LOG_CONFIG_DIR: &str = "/stackable/log_config";
+
+pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
+    value: 1.0,
+    unit: BinaryMultiple::Mebi,
+};
+
+pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> String {
+    format!("{cluster_name}-internal-secret")
+}
+
+pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String {
+    format!("{cluster_name}-spooling-secret")
+}
+
+/// Every Kubernetes resource produced by the client-free [`build()`](build::build) step.
+pub struct KubernetesResources {
+    pub stateful_sets: Vec<StatefulSet>,
+    pub services: Vec<Service>,
+    pub listeners: Vec<Listener>,
+    pub config_maps: Vec<ConfigMap>,
+    pub pod_disruption_budgets: Vec<PodDisruptionBudget>,
+}
 
 #[derive(Clone, Debug)]
 pub struct ValidatedTls {
