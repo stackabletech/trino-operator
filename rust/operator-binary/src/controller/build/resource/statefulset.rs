@@ -149,7 +149,7 @@ pub fn build_rolegroup_statefulset(
     let env_overrides = &role_group_config.env_overrides;
     let merged_config = &role_group_config.config;
 
-    let resource_names = cluster.resource_names(trino_role, role_group_name);
+    let resource_names = cluster.role_group_resource_names(trino_role, role_group_name);
     let config_map_name = resource_names.role_group_config_map().to_string();
 
     let mut pod_builder = PodBuilder::new();
@@ -423,7 +423,7 @@ pub fn build_rolegroup_statefulset(
         .context(AddVolumeSnafu)?
         .service_account_name(
             cluster
-                .rbac_resource_names()
+                .cluster_resource_names()
                 .service_account_name()
                 .to_string(),
         )

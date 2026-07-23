@@ -20,7 +20,7 @@ stackable_operator::constant!(NONE_ROLE_GROUP_NAME: RoleGroupName = "none");
 pub fn build_service_account(cluster: &ValidatedCluster) -> ServiceAccount {
     rbac::build_service_account(
         cluster,
-        &cluster.rbac_resource_names(),
+        &cluster.cluster_resource_names(),
         rbac_labels(cluster),
     )
 }
@@ -30,7 +30,7 @@ pub fn build_service_account(cluster: &ValidatedCluster) -> ServiceAccount {
 pub fn build_role_binding(cluster: &ValidatedCluster) -> RoleBinding {
     rbac::build_role_binding(
         cluster,
-        &cluster.rbac_resource_names(),
+        &cluster.cluster_resource_names(),
         rbac_labels(cluster),
     )
 }
