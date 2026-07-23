@@ -8,8 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
+- Bump `stackable-operator` to 0.114.0 ([#918]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
+[#918]: https://github.com/stackabletech/trino-operator/pull/918
 
 ## [26.7.0] - 2026-07-21
 
