@@ -178,7 +178,7 @@ rules:
       - watch
   # Read OpenLineage connection configuration referenced in the TrinoCluster spec.
   - apiGroups:
-      - openlineage.stackable.tech
+      - lineage.stackable.tech
     resources:
       - openlineageconnections
     verbs:

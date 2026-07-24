@@ -45,7 +45,7 @@ spec:
           credentialsSecretName: openlineage-token
 {% endif %}
       # Sets openlineage-event-listener.job.name-format (asserted in 03-assert.yaml).
-      appName: "trino-$QUERY_ID"
+      jobName: "trino-$QUERY_ID"
 {% if lookup('env', 'VECTOR_AGGREGATOR') %}
     vectorAggregatorConfigMapName: vector-aggregator-discovery
 {% endif %}
