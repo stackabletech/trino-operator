@@ -54,7 +54,7 @@ pub(crate) mod test_support {
             trino_opa_config: None,
             resolved_fte_config: None,
             resolved_client_protocol_config: None,
-            resolved_open_lineage_config: None,
+            resolved_lineage_config: None,
         }
     }
 

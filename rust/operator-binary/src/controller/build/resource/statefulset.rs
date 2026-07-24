@@ -272,13 +272,9 @@ pub fn build_rolegroup_statefulset(
 
     // Add the OpenLineage backend CA certificate to the truststore if configured (coordinator only).
     if trino_role == &TrinoRole::Coordinator
-        && let Some(resolved_open_lineage) = &cluster.cluster_config.open_lineage
+        && let Some(resolved_lineage) = &cluster.cluster_config.lineage
     {
-        prepare_args.extend(
-            resolved_open_lineage
-                .init_container_extra_start_commands
-                .clone(),
-        );
+        prepare_args.extend(resolved_lineage.init_container_extra_start_commands.clone());
     }
 
     let container_prepare = cb_prepare
@@ -794,16 +790,16 @@ fn tls_volume_mounts(
     // OpenLineage backend CA certificate and (when authenticated) the bearer-token Secret. The
     // event listener runs on the coordinator only, so these are mounted there only.
     if trino_role == &TrinoRole::Coordinator
-        && let Some(resolved_open_lineage) = &cluster.cluster_config.open_lineage
+        && let Some(resolved_lineage) = &cluster.cluster_config.lineage
     {
         cb_prepare
-            .add_volume_mounts(resolved_open_lineage.volume_mounts.clone())
+            .add_volume_mounts(resolved_lineage.volume_mounts.clone())
             .context(AddVolumeMountSnafu)?;
         cb_trino
-            .add_volume_mounts(resolved_open_lineage.volume_mounts.clone())
+            .add_volume_mounts(resolved_lineage.volume_mounts.clone())
             .context(AddVolumeMountSnafu)?;
         pod_builder
-            .add_volumes(resolved_open_lineage.volumes.clone())
+            .add_volumes(resolved_lineage.volumes.clone())
             .context(AddVolumeSnafu)?;
     }
 

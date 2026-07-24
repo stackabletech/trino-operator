@@ -2,7 +2,7 @@
 //!
 //! The OpenLineage event listener runs on the **coordinator only**, so this builder returns an
 //! empty map for every other role and the caller omits the file from those ConfigMaps. For the
-//! coordinator it emits the connection-derived settings resolved in [`crate::config::openlineage`],
+//! coordinator it emits the connection-derived settings resolved in [`crate::config::lineage`],
 //! adds the cluster-facing `trino.uri`, and finally merges any user `event-listener.properties`
 //! overrides (highest precedence).
 
@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use stackable_operator::utils::cluster_info::KubernetesClusterInfo;
 
 use crate::{
-    config::openlineage::OPENLINEAGE_TRINO_URI_KEY,
+    config::lineage::OPENLINEAGE_TRINO_URI_KEY,
     controller::{TrinoRoleGroupConfig, ValidatedCluster},
     crd::{
         TrinoRole,
@@ -36,9 +36,9 @@ pub fn build(
         return props;
     }
 
-    if let Some(open_lineage) = &cluster.cluster_config.open_lineage {
+    if let Some(lineage) = &cluster.cluster_config.lineage {
         // Connection-derived settings (transport type/URL, namespace and optional api-key).
-        props.extend(open_lineage.properties.clone());
+        props.extend(lineage.properties.clone());
 
         // The URI identifying this Trino cluster in emitted lineage. Uses the same coordinator
         // address as `discovery.uri`; the scheme follows the client-facing TLS setting.
@@ -70,10 +70,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        config::openlineage::{
+        config::lineage::{
             EVENT_LISTENER_NAME_KEY, OPENLINEAGE_NAMESPACE_KEY, OPENLINEAGE_TRANSPORT_API_KEY_KEY,
-            OPENLINEAGE_TRANSPORT_TYPE_KEY, OPENLINEAGE_TRANSPORT_URL_KEY,
-            ResolvedOpenLineageConfig,
+            OPENLINEAGE_TRANSPORT_TYPE_KEY, OPENLINEAGE_TRANSPORT_URL_KEY, ResolvedLineageConfig,
         },
         controller::{
             ValidatedCluster,
@@ -88,9 +87,9 @@ mod tests {
         }
     }
 
-    /// A resolved OpenLineage config as `config::openlineage` would produce it for an inline
+    /// A resolved OpenLineage config as `config::lineage` would produce it for an inline
     /// `http://marquez:5000` connection, optionally with a bearer-token api-key reference.
-    fn resolved_open_lineage(with_auth: bool) -> ResolvedOpenLineageConfig {
+    fn resolved_lineage(with_auth: bool) -> ResolvedLineageConfig {
         let mut properties = BTreeMap::from([
             (
                 EVENT_LISTENER_NAME_KEY.to_string(),
@@ -112,7 +111,7 @@ mod tests {
                 "${file:UTF-8:/stackable/openlineage_auth/apiKey}".to_string(),
             );
         }
-        ResolvedOpenLineageConfig {
+        ResolvedLineageConfig {
             properties,
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
@@ -120,9 +119,9 @@ mod tests {
         }
     }
 
-    fn cluster_with_open_lineage(with_auth: bool) -> ValidatedCluster {
+    fn cluster_with_lineage(with_auth: bool) -> ValidatedCluster {
         let mut derefs = empty_derefs();
-        derefs.resolved_open_lineage_config = Some(resolved_open_lineage(with_auth));
+        derefs.resolved_lineage_config = Some(resolved_lineage(with_auth));
         crate::controller::build::properties::test_support::validated_cluster_from_yaml_with_derefs(
             MINIMAL_TRINO_YAML,
             derefs,
@@ -139,7 +138,7 @@ mod tests {
 
     #[test]
     fn worker_role_renders_empty() {
-        let cluster = cluster_with_open_lineage(false);
+        let cluster = cluster_with_lineage(false);
         // Reuse the coordinator role group config; the role argument alone must gate emission.
         let rg = coordinator_rg(&cluster);
         let props = build(&cluster, TrinoRole::Worker, &rg, &cluster_info());
@@ -150,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn coordinator_without_open_lineage_renders_empty() {
+    fn coordinator_without_lineage_renders_empty() {
         let cluster =
             crate::controller::build::properties::test_support::validated_cluster_from_yaml(
                 MINIMAL_TRINO_YAML,
@@ -162,7 +161,7 @@ mod tests {
 
     #[test]
     fn coordinator_emits_listener_transport_and_trino_uri() {
-        let cluster = cluster_with_open_lineage(false);
+        let cluster = cluster_with_lineage(false);
         let rg = coordinator_rg(&cluster);
         let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info());
 
@@ -187,7 +186,7 @@ mod tests {
 
     #[test]
     fn coordinator_with_auth_emits_api_key_file_reference() {
-        let cluster = cluster_with_open_lineage(true);
+        let cluster = cluster_with_lineage(true);
         let rg = coordinator_rg(&cluster);
         let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info());
 

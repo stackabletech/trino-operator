@@ -891,7 +891,7 @@ spec:
                         - exchangeManager
                         type: object
                     type: object
-                  openLineage:
+                  lineage:
                     description: |-
                       Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
                       Trino cluster.

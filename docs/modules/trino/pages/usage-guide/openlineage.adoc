@@ -19,7 +19,7 @@ NOTE: The Trino OpenLineage plugin only emits events for data-modifying query ty
 
 == Enabling OpenLineage
 
-OpenLineage is configured through `clusterConfig.openLineage.connection`, which either inlines an OpenLineage connection or references a standalone `OpenLineageConnection` resource by name:
+OpenLineage is configured through `clusterConfig.lineage.connection`, which either inlines an OpenLineage connection or references a standalone `OpenLineageConnection` resource by name:
 
 [source,yaml]
 ----
@@ -29,7 +29,7 @@ metadata:
   name: trino
 spec:
   clusterConfig:
-    openLineage: # <1>
+    lineage: # <1>
       connection: # <2>
         inline:
           host: marquez
@@ -43,7 +43,7 @@ spec:
       # jobName: "$QUERY_ID" # <4>
   ...
 ----
-<1> Adding the `openLineage` block enables OpenLineage event emission. Omit it entirely to leave OpenLineage off (the default).
+<1> Adding the `lineage` block enables OpenLineage event emission. Omit it entirely to leave OpenLineage off (the default).
 <2> The OpenLineage backend connection. Use `inline` (shown here) to define the connection directly, or `reference: <name>` to point at an `OpenLineageConnection` resource in the same namespace. Required.
 <3> Optional. The OpenLineage namespace events are reported under. Defaults to the cluster's Kubernetes namespace.
 <4> Optional. Sets the OpenLineage job name format (`openlineage-event-listener.job.name-format`). Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. When unset, Trino defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
@@ -81,7 +81,7 @@ metadata:
   name: trino
 spec:
   clusterConfig:
-    openLineage:
+    lineage:
       connection:
         inline:
           host: marquez

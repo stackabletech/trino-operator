@@ -18,7 +18,7 @@ use crate::{
     config::{
         client_protocol::{self, ResolvedClientProtocolConfig},
         fault_tolerant_execution::{self, ResolvedFaultTolerantExecutionConfig},
-        openlineage::{self, ResolvedOpenLineageConfig},
+        lineage::{self, ResolvedLineageConfig},
     },
     crd::{
         authentication::{ResolvedAuthenticationClassRef, resolve_authentication_classes},
@@ -68,7 +68,7 @@ pub enum Error {
     ClientProtocolConfiguration { source: client_protocol::Error },
 
     #[snafu(display("failed to resolve OpenLineage configuration"))]
-    OpenLineageConfiguration { source: openlineage::Error },
+    OpenLineageConfiguration { source: lineage::Error },
 
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {
@@ -92,7 +92,7 @@ pub struct DereferencedObjects {
     pub trino_opa_config: Option<TrinoOpaConfig>,
     pub resolved_fte_config: Option<ResolvedFaultTolerantExecutionConfig>,
     pub resolved_client_protocol_config: Option<ResolvedClientProtocolConfig>,
-    pub resolved_open_lineage_config: Option<ResolvedOpenLineageConfig>,
+    pub resolved_lineage_config: Option<ResolvedLineageConfig>,
 }
 
 /// Fetches all Kubernetes objects referenced from the [`v1alpha1::TrinoCluster`] spec.
@@ -176,9 +176,9 @@ pub async fn dereference(
         None => None,
     };
 
-    let resolved_open_lineage_config = match trino.spec.cluster_config.open_lineage.as_ref() {
-        Some(open_lineage) => Some(
-            ResolvedOpenLineageConfig::from_config(open_lineage, client, namespace.as_ref())
+    let resolved_lineage_config = match trino.spec.cluster_config.lineage.as_ref() {
+        Some(lineage) => Some(
+            ResolvedLineageConfig::from_config(lineage, client, namespace.as_ref())
                 .await
                 .context(OpenLineageConfigurationSnafu)?,
         ),
@@ -192,7 +192,7 @@ pub async fn dereference(
         trino_opa_config,
         resolved_fte_config,
         resolved_client_protocol_config,
-        resolved_open_lineage_config,
+        resolved_lineage_config,
     })
 }
 

@@ -87,7 +87,7 @@ pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
 pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
 // OpenLineage
 /// Fixed key that must hold the OpenLineage HTTP transport bearer token inside the Secret named by
-/// `credentialsSecretName` on the connection used in `spec.clusterConfig.openLineage`.
+/// `credentialsSecretName` on the connection used in `spec.clusterConfig.lineage`.
 pub const OPENLINEAGE_AUTH_SECRET_KEY: &str = "apiKey";
 // TLS
 const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
@@ -296,7 +296,7 @@ pub mod versioned {
         /// Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
         /// Trino cluster.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub open_lineage: Option<openlineage::v1alpha1::OpenLineageJob>,
+        pub lineage: Option<openlineage::v1alpha1::OpenLineageJob>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.

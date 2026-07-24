@@ -1,4 +1,4 @@
-//! Resolves `spec.clusterConfig.openLineage` into everything the coordinator needs to run the
+//! Resolves `spec.clusterConfig.lineage` into everything the coordinator needs to run the
 //! Trino [OpenLineage](https://openlineage.io/) event listener.
 //!
 //! Trino ships the OpenLineage event listener as a **core** plugin, so nothing needs to be added
@@ -58,7 +58,7 @@ pub const OPENLINEAGE_TRANSPORT_URL_KEY: &str = "openlineage-event-listener.tran
 pub const OPENLINEAGE_TRANSPORT_API_KEY_KEY: &str = "openlineage-event-listener.transport.api-key";
 /// The OpenLineage namespace lineage is reported under.
 pub const OPENLINEAGE_NAMESPACE_KEY: &str = "openlineage-event-listener.namespace";
-/// Format for the emitted OpenLineage job name. Set from `spec.clusterConfig.openLineage.jobName`.
+/// Format for the emitted OpenLineage job name. Set from `spec.clusterConfig.lineage.jobName`.
 /// Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP`
 /// substitution variables (Trino defaults to `$QUERY_ID` when unset).
 pub const OPENLINEAGE_JOB_NAME_FORMAT_KEY: &str = "openlineage-event-listener.job.name-format";
@@ -80,9 +80,9 @@ pub enum Error {
 }
 
 /// Everything the coordinator needs to run the OpenLineage event listener, resolved from
-/// `spec.clusterConfig.openLineage` during the dereference step.
+/// `spec.clusterConfig.lineage` during the dereference step.
 #[derive(Clone, Debug)]
-pub struct ResolvedOpenLineageConfig {
+pub struct ResolvedLineageConfig {
     /// Connection-derived `event-listener.properties` entries. The cluster-dependent `trino.uri`
     /// is added later by the properties builder.
     pub properties: BTreeMap<String, String>,
@@ -98,11 +98,11 @@ pub struct ResolvedOpenLineageConfig {
     pub init_container_extra_start_commands: Vec<String>,
 }
 
-impl ResolvedOpenLineageConfig {
+impl ResolvedLineageConfig {
     /// Resolves the OpenLineage connection (inline or referenced), backend TLS trust and (optional)
     /// authentication into the coordinator-side configuration.
     pub async fn from_config(
-        open_lineage: &OpenLineageJob,
+        lineage: &OpenLineageJob,
         client: &Client,
         namespace: &str,
     ) -> Result<Self, Error> {
@@ -111,7 +111,7 @@ impl ResolvedOpenLineageConfig {
         let mut volume_mounts = Vec::new();
         let mut init_container_extra_start_commands = Vec::new();
 
-        let connection = open_lineage
+        let connection = lineage
             .connection
             .clone()
             .resolve(client, namespace)
@@ -133,14 +133,14 @@ impl ResolvedOpenLineageConfig {
         // Default the OpenLineage namespace to the workload's Kubernetes namespace.
         properties.insert(
             OPENLINEAGE_NAMESPACE_KEY.to_string(),
-            open_lineage
+            lineage
                 .namespace
                 .clone()
                 .unwrap_or_else(|| namespace.to_string()),
         );
 
         // The stable OpenLineage job name format. When unset, Trino defaults to `$QUERY_ID`.
-        if let Some(job_name) = &open_lineage.job_name {
+        if let Some(job_name) = &lineage.job_name {
             properties.insert(
                 OPENLINEAGE_JOB_NAME_FORMAT_KEY.to_string(),
                 job_name.clone(),

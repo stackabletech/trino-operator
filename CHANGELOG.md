@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `spec.clusterConfig.openLineage` to emit [OpenLineage](https://openlineage.io/) lineage events ([#914]).
+- Add `spec.clusterConfig.lineage` to emit [OpenLineage](https://openlineage.io/) lineage events ([#914]).
 
 ### Changed
 

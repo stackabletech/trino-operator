@@ -102,7 +102,7 @@ pub fn build(
     // Register the OpenLineage event listener (coordinator only). The `event-listener.properties`
     // file itself is built by `event_listener_properties` and lands in the read-write config dir;
     // without this registration Trino would never load it (it does not scan `--etc-dir`).
-    if role == TrinoRole::Coordinator && cluster.cluster_config.open_lineage.is_some() {
+    if role == TrinoRole::Coordinator && cluster.cluster_config.lineage.is_some() {
         props.insert(
             EVENT_LISTENER_CONFIG_FILES.to_string(),
             format!(
@@ -266,7 +266,7 @@ pub fn build(
 mod tests {
     use super::*;
     use crate::{
-        config::openlineage::ResolvedOpenLineageConfig,
+        config::lineage::ResolvedLineageConfig,
         controller::build::properties::test_support::{
             MINIMAL_TRINO_YAML, empty_derefs, file_auth_class, validated_cluster_from_yaml,
             validated_cluster_from_yaml_with_auth, validated_cluster_from_yaml_with_derefs,
@@ -366,9 +366,9 @@ mod tests {
         );
     }
 
-    fn cluster_with_open_lineage() -> ValidatedCluster {
+    fn cluster_with_lineage() -> ValidatedCluster {
         let mut derefs = empty_derefs();
-        derefs.resolved_open_lineage_config = Some(ResolvedOpenLineageConfig {
+        derefs.resolved_lineage_config = Some(ResolvedLineageConfig {
             properties: BTreeMap::new(),
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn coordinator_registers_openlineage_event_listener_config_file() {
-        let cluster = cluster_with_open_lineage();
+        let cluster = cluster_with_lineage();
         let props = build(
             &cluster,
             TrinoRole::Coordinator,
@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn worker_does_not_register_event_listener_config_file() {
-        let cluster = cluster_with_open_lineage();
+        let cluster = cluster_with_lineage();
         let props = build(
             &cluster,
             TrinoRole::Worker,
@@ -408,7 +408,7 @@ mod tests {
     }
 
     #[test]
-    fn no_event_listener_config_file_without_open_lineage() {
+    fn no_event_listener_config_file_without_lineage() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
         let props = build(
             &cluster,
