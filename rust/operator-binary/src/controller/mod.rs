@@ -249,7 +249,7 @@ impl ValidatedCluster {
     ) -> ResourceNames {
         ResourceNames {
             cluster_name: self.name.clone(),
-            role_name: Self::role_name(role),
+            role_name: role.into(),
             role_group_name: role_group_name.clone(),
         }
     }
@@ -288,10 +288,6 @@ impl ValidatedCluster {
     }
 
     /// A [`TrinoRole`] as a type-safe [`RoleName`].
-    fn role_name(role: &TrinoRole) -> RoleName {
-        RoleName::from_str(&role.to_string()).expect("a TrinoRole is a valid RFC 1123 role name")
-    }
-
     fn recommended_labels_with(
         &self,
         version: &ProductVersion,
@@ -311,7 +307,7 @@ impl ValidatedCluster {
 
     /// Recommended labels for a role-group resource (using the resolved product version).
     pub fn recommended_labels(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
-        self.recommended_labels_for(&Self::role_name(role), role_group_name)
+        self.recommended_labels_for(&role.into(), role_group_name)
     }
 
     /// Recommended labels for a resource that is not tied to a concrete [`TrinoRole`] (e.g. the
@@ -331,21 +327,12 @@ impl ValidatedCluster {
         role: &TrinoRole,
         role_group_name: &RoleGroupName,
     ) -> Labels {
-        self.recommended_labels_with(
-            &UNVERSIONED_PRODUCT_VERSION,
-            &Self::role_name(role),
-            role_group_name,
-        )
+        self.recommended_labels_with(&UNVERSIONED_PRODUCT_VERSION, &role.into(), role_group_name)
     }
 
     /// Selector labels matching the pods of a role group.
     pub fn role_group_selector(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
-        role_group_selector(
-            self,
-            &product_name(),
-            &Self::role_name(role),
-            role_group_name,
-        )
+        role_group_selector(self, &product_name(), &role.into(), role_group_name)
     }
 }
 
@@ -468,17 +455,18 @@ pub(crate) fn validated_cluster() -> ValidatedCluster {
 
 #[cfg(test)]
 mod tests {
+    use stackable_operator::v2::types::operator::RoleName;
     use strum::IntoEnumIterator;
 
-    use super::ValidatedCluster;
     use crate::crd::TrinoRole;
 
-    /// Locks the invariant behind the `expect` in [`ValidatedCluster::role_name`]: every
-    /// `TrinoRole` variant (present and future) must serialise to a valid `RoleName`.
+    /// Locks the invariant behind the `expect` in the `From<TrinoRole> for RoleName` impls:
+    /// every `TrinoRole` variant (present and future) must serialise to a valid `RoleName`.
     #[test]
     fn every_trino_role_serialises_to_a_valid_role_name() {
         for role in TrinoRole::iter() {
-            ValidatedCluster::role_name(&role);
+            let _: RoleName = (&role).into();
+            let _: RoleName = role.into();
         }
     }
 }

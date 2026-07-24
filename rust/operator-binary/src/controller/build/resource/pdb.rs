@@ -1,4 +1,4 @@
-use std::{cmp::max, str::FromStr};
+use std::cmp::max;
 
 use stackable_operator::{
     commons::pdb::PdbConfig,
@@ -26,8 +26,7 @@ pub fn build_pdb(
         TrinoRole::Coordinator => max_unavailable_coordinators(),
         TrinoRole::Worker => max_unavailable_workers(worker_count(cluster)),
     });
-    let role_name =
-        RoleName::from_str(&role.to_string()).expect("a TrinoRole is a valid RFC 1123 role name");
+    let role_name: RoleName = role.into();
     let pdb = pod_disruption_budget_builder_with_role(
         cluster,
         &product_name(),

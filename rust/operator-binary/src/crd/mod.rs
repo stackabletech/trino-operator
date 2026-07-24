@@ -420,6 +420,18 @@ pub enum TrinoRole {
     Worker,
 }
 
+impl From<TrinoRole> for RoleName {
+    fn from(value: TrinoRole) -> Self {
+        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
+    }
+}
+
+impl From<&TrinoRole> for RoleName {
+    fn from(value: &TrinoRole) -> Self {
+        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
+    }
+}
+
 impl TrinoRole {
     pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<ListenerClassName> {
         match self {
