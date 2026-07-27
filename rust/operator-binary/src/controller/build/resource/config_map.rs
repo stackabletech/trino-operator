@@ -13,10 +13,13 @@ use crate::{
     config::jvm,
     controller::{
         RoleGroupName, ValidatedCluster,
-        build::properties::{
-            ConfigFileName, access_control_properties, config_properties,
-            exchange_manager_properties, log_properties, node_properties, product_logging,
-            security_properties, spooling_manager_properties,
+        build::{
+            object_meta,
+            properties::{
+                ConfigFileName, access_control_properties, config_properties,
+                exchange_manager_properties, log_properties, node_properties, product_logging,
+                security_properties, spooling_manager_properties,
+            },
         },
     },
     crd::TrinoRole,
@@ -181,11 +184,7 @@ pub fn build_rolegroup_config_map(
     }
 
     ConfigMapBuilder::new()
-        .metadata(
-            cluster
-                .object_meta(&config_map_name, recommended_labels.clone())
-                .build(),
-        )
+        .metadata(object_meta(cluster, &config_map_name, recommended_labels.clone()).build())
         .data(data)
         .build()
         .with_context(|_| AssembleSnafu {
@@ -204,9 +203,12 @@ pub fn build_rolegroup_catalog_config_map(
     let catalog_config_map_name = cluster.role_group_catalog_config_map_name(role, role_group_name);
     ConfigMapBuilder::new()
         .metadata(
-            cluster
-                .object_meta(&catalog_config_map_name, recommended_labels.clone())
-                .build(),
+            object_meta(
+                cluster,
+                &catalog_config_map_name,
+                recommended_labels.clone(),
+            )
+            .build(),
         )
         .data(
             cluster

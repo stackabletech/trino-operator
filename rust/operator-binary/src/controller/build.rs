@@ -4,7 +4,10 @@ use std::str::FromStr;
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    utils::cluster_info::KubernetesClusterInfo, v2::types::operator::RoleGroupName,
+    builder::meta::ObjectMetaBuilder,
+    kvp::Labels,
+    utils::cluster_info::KubernetesClusterInfo,
+    v2::{builder::meta::ownerreference_from_resource, types::operator::RoleGroupName},
 };
 
 use crate::controller::{
@@ -146,6 +149,25 @@ pub fn build(
         service_accounts: vec![build_service_account(cluster)],
         role_bindings: vec![build_role_binding(cluster)],
     })
+}
+
+/// Returns an [`ObjectMetaBuilder`] pre-filled with the cluster's namespace, an owner
+/// reference back to the cluster, the resource `name` and the given `recommended_labels`.
+///
+/// Consolidates the metadata chain repeated by the child-resource builders. Call sites that
+/// need extra labels/annotations chain them onto the returned builder.
+pub(crate) fn object_meta(
+    cluster: &ValidatedCluster,
+    name: impl Into<String>,
+    recommended_labels: Labels,
+) -> ObjectMetaBuilder {
+    let mut builder = ObjectMetaBuilder::new();
+    builder
+        .name_and_namespace(cluster)
+        .name(name)
+        .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
+        .with_labels(recommended_labels);
+    builder
 }
 
 #[cfg(test)]

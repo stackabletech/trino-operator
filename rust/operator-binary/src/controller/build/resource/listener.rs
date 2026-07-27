@@ -10,7 +10,10 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{ValidatedCluster, build::ports},
+    controller::{
+        ValidatedCluster,
+        build::{object_meta, ports},
+    },
     crd::TrinoRole,
 };
 
@@ -32,9 +35,7 @@ pub fn build_group_listener(
     listener_group_name: String,
 ) -> Listener {
     Listener {
-        metadata: cluster
-            .object_meta(listener_group_name, recommended_labels)
-            .build(),
+        metadata: object_meta(cluster, listener_group_name, recommended_labels).build(),
         spec: ListenerSpec {
             class_name: Some(listener_class.to_string()),
             ports: Some(listener_ports(cluster)),

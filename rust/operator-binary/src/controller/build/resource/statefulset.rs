@@ -43,7 +43,7 @@ use crate::{
         MAX_PREPARE_LOG_FILE_SIZE, RoleGroupName, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
         TrinoRoleGroupConfig, ValidatedCluster,
         build::{
-            self, command,
+            self, command, object_meta,
             resource::listener::{
                 LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener_pvc,
                 group_listener_name, secret_volume_listener_scope,
@@ -442,14 +442,14 @@ pub fn build_rolegroup_statefulset(
     );
 
     Ok(StatefulSet {
-        metadata: cluster
-            .object_meta(
-                resource_names.stateful_set_name().to_string(),
-                cluster.recommended_labels(trino_role, role_group_name),
-            )
-            .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
-            .with_annotations(annotations)
-            .build(),
+        metadata: object_meta(
+            cluster,
+            resource_names.stateful_set_name().to_string(),
+            cluster.recommended_labels(trino_role, role_group_name),
+        )
+        .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
+        .with_annotations(annotations)
+        .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
             // Forward `None` when the user did not set `replicas`, leaving the field unset on the
