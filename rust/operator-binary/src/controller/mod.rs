@@ -398,7 +398,23 @@ pub(crate) fn controller_name() -> ControllerName {
     ControllerName::from_str(CONTROLLER_NAME).expect("the controller name is a valid label value")
 }
 
+/// The expected `app.kubernetes.io/version` label value for the given product version.
+///
+/// The `-stackable` suffix carries the operator's own version, which is `0.0.0-dev` on main
+/// but rewritten by the release process — so tests must derive it rather than hardcode it,
+/// or they fail on release branches.
+#[cfg(test)]
+pub(crate) fn app_version_label(product_version: &str) -> String {
+    format!(
+        "{product_version}-stackable{}",
+        crate::built_info::PKG_VERSION
+    )
+}
+
 /// A minimal, valid TrinoCluster spec shared across unit tests.
+///
+/// The cluster name (`simple-trino`) deliberately differs from the product name (`trino`), so
+/// tests asserting recommended labels catch swapped `name`/`instance` values.
 #[cfg(test)]
 pub(crate) const MINIMAL_TRINO_YAML: &str = r#"
     apiVersion: trino.stackable.tech/v1alpha1
