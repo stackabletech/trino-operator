@@ -76,12 +76,6 @@ pub enum Error {
     ))]
     ClientSpoolingProtocolTrinoVersion { product_version: String },
 
-    #[snafu(display("object defines no {role:?} role"))]
-    MissingTrinoRole {
-        source: crate::crd::Error,
-        role: String,
-    },
-
     #[snafu(display("invalid role group name {role_group}"))]
     ParseRoleGroupName {
         source: stackable_operator::v2::macros::attributed_string_type::Error,
@@ -224,11 +218,7 @@ pub fn validate(
     let mut role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>> =
         BTreeMap::new();
     for trino_role in TrinoRole::iter() {
-        let role = trino
-            .role(&trino_role)
-            .with_context(|_| MissingTrinoRoleSnafu {
-                role: trino_role.to_string(),
-            })?;
+        let role = trino.role(&trino_role);
 
         // Extract the per-role PDB and (optional) listener class up-front, so the reconciler and
         // build steps consume the validated config instead of re-reading the raw cluster.
@@ -237,8 +227,8 @@ pub fn validate(
             ValidatedRoleConfig {
                 pdb: trino
                     .generic_role_config(&trino_role)
-                    .map(|rc| rc.pod_disruption_budget.clone())
-                    .unwrap_or_default(),
+                    .pod_disruption_budget
+                    .clone(),
                 listener_class: trino_role.listener_class_name(trino),
             },
         );
@@ -358,7 +348,7 @@ pub(crate) fn merged_role_group_config(
     role_group: &str,
     trino_catalogs: &[crate::crd::catalog::v1alpha1::TrinoCatalog],
 ) -> TrinoRoleGroupConfig {
-    let role = trino.role(trino_role).expect("role should be defined");
+    let role = trino.role(trino_role);
     let default_config =
         v1alpha1::TrinoConfig::default_config(&trino.name_any(), trino_role, trino_catalogs);
     let rg = role

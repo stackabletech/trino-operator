@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 - Bump `stackable-operator` to 0.114.0 ([#918]).
 - The RBAC ServiceAccount and RoleBinding are now built with the operator-rs `v2::rbac`
   functions and carry the full set of recommended labels ([#913]).
+- BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
+  Previously a TrinoCluster missing either role was accepted by the API server but failed reconciliation ([#913]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
