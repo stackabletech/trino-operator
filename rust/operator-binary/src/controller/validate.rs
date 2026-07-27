@@ -377,7 +377,10 @@ mod tests {
     use super::{Error, RoleGroupName, validate};
     use crate::{
         config::client_protocol::ResolvedClientProtocolConfig,
-        controller::{ValidatedCluster, dereference::DereferencedObjects, validated_cluster},
+        controller::{
+            ValidatedCluster, app_version_label, dereference::DereferencedObjects,
+            validated_cluster,
+        },
         crd::{TrinoRole, v1alpha1},
     };
 
@@ -432,8 +435,15 @@ mod tests {
         )
     }
 
+    /// Locks every value the validate step itself derives from the minimal fixture — so a
+    /// validation regression fails here, with a validate-shaped message, instead of surfacing as
+    /// a confusing build-test failure downstream.
+    ///
+    /// The merged per-role-group config (resources, affinity, logging defaults, …) is produced by
+    /// the config merge machinery, whose contracts are tested in operator-rs and the properties
+    /// tests; only the values this module derives on top are re-asserted here.
     #[test]
-    fn validate_minimal_cluster() {
+    fn validate_ok_derives_expected_values() {
         let validated = validated_cluster();
 
         assert_eq!(validated.name.to_string(), "simple-trino");
@@ -442,24 +452,74 @@ mod tests {
             validated.uid.to_string(),
             "e6ac237d-a6d4-43a1-8135-f36506110912"
         );
-        assert_eq!(validated.numeric_product_version, 481);
-        assert!(!validated.cluster_config.authentication_enabled());
-        assert!(
-            validated
-                .role_group_configs
-                .contains_key(&TrinoRole::Coordinator)
+        assert_eq!(
+            validated.image.image,
+            format!("oci.example.org/trino:{}", app_version_label("481"))
         );
-        assert!(
-            validated
-                .role_group_configs
-                .contains_key(&TrinoRole::Worker)
+        assert_eq!(validated.image.product_version, "481");
+        assert_eq!(validated.numeric_product_version, 481);
+        assert_eq!(
+            validated.product_version.to_string(),
+            app_version_label("481")
+        );
+
+        // TLS defaults to the `tls` SecretClass for both server and internal traffic; the
+        // minimal fixture has no authentication, authorization, FTE or client-protocol config,
+        // and no catalogs.
+        let cluster_config = &validated.cluster_config;
+        assert_eq!(
+            cluster_config.tls.server.as_ref().map(ToString::to_string),
+            Some("tls".to_string())
         );
         assert_eq!(
-            validated.role_group_configs[&TrinoRole::Coordinator]
-                [&RoleGroupName::from_str("default").unwrap()]
-                .replicas,
-            Some(1)
+            cluster_config
+                .tls
+                .internal
+                .as_ref()
+                .map(ToString::to_string),
+            Some("tls".to_string())
         );
+        assert!(!cluster_config.authentication_enabled());
+        assert!(cluster_config.authorization.is_none());
+        assert!(cluster_config.fault_tolerant_execution.is_none());
+        assert!(cluster_config.client_protocol.is_none());
+        assert!(cluster_config.catalogs.is_empty());
+
+        // One coordinator pod ref (a single `default` role group with one replica), predicted
+        // for the discovery config of all pods.
+        assert_eq!(cluster_config.coordinator_pod_refs.len(), 1);
+        assert_eq!(
+            cluster_config.coordinator_pod_refs[0].pod_name,
+            "simple-trino-coordinator-default-0"
+        );
+
+        // Per-role configs: default (enabled) PDBs; only the coordinator has a group listener.
+        let roles: Vec<_> = validated.role_configs.keys().collect();
+        assert_eq!(roles, [&TrinoRole::Coordinator, &TrinoRole::Worker]);
+        for role_config in validated.role_configs.values() {
+            assert!(role_config.pdb.enabled);
+            assert_eq!(role_config.pdb.max_unavailable, None);
+        }
+        assert_eq!(
+            validated.role_configs[&TrinoRole::Coordinator]
+                .listener_class
+                .as_ref()
+                .map(ToString::to_string),
+            Some("cluster-internal".to_string())
+        );
+        assert_eq!(
+            validated.role_configs[&TrinoRole::Worker].listener_class,
+            None
+        );
+
+        // One `default` role group per role; the Vector agent is off.
+        let default_rg = RoleGroupName::from_str("default").expect("valid role group name");
+        for role in [TrinoRole::Coordinator, TrinoRole::Worker] {
+            let role_group = &validated.role_group_configs[&role][&default_rg];
+            assert_eq!(role_group.replicas, Some(1));
+            assert!(!role_group.config.logging.enable_vector_agent);
+            assert_eq!(role_group.config.logging.vector_container, None);
+        }
     }
 
     #[test]
