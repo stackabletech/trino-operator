@@ -6,12 +6,6 @@ This mechanism is used across the whole Stackable Data Platform, read the xref:c
 
 [#tls-required]
 IMPORTANT: Every S3 connection must contain a `tls` section, because Trino uses the native S3 client, which requires TLS.
-The operator rejects a connection without it, and reconciliation of the entire TrinoCluster fails.
-No configuration change is applied until the connection is fixed, including changes unrelated to S3.
-The Stacklet keeps running with its previous configuration and still reports the `Available` condition as `True`, and no Kubernetes event is emitted.
-Check the logs of the Trino operator if a catalog or a configuration change appears to have no effect.
-Adding the missing `tls` section is enough to recover; the pending changes are applied within seconds.
-This applies to both of the forms shown below.
 
 == Inline
 
