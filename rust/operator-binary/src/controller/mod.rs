@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use stackable_operator::{
-    builder::meta::ObjectMetaBuilder,
     commons::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
@@ -10,8 +9,9 @@ use stackable_operator::{
     crd::listener::v1alpha1::Listener,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
-        core::v1::{ConfigMap, Service},
+        core::v1::{ConfigMap, Service, ServiceAccount},
         policy::v1::PodDisruptionBudget,
+        rbac::v1::RoleBinding,
     },
     kube::{Resource, api::ObjectMeta},
     kvp::Labels,
@@ -19,9 +19,9 @@ use stackable_operator::{
     shared::time::Duration,
     v2::{
         HasName, HasUid, NameIsValidLabelValue,
-        builder::meta::ownerreference_from_resource,
         kvp::label::{recommended_labels, role_group_selector},
         role_group_utils::ResourceNames,
+        role_utils,
         types::{
             kubernetes::{ListenerClassName, NamespaceName, SecretClassName, Uid},
             operator::{
@@ -64,6 +64,9 @@ pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String 
     format!("{cluster_name}-spooling-secret")
 }
 
+// Placeholder version label value for resources whose labels must not change after deployment.
+stackable_operator::constant!(UNVERSIONED_PRODUCT_VERSION: ProductVersion = "none");
+
 /// Every Kubernetes resource produced by the client-free [`build()`](build::build) step.
 pub struct KubernetesResources {
     pub stateful_sets: Vec<StatefulSet>,
@@ -71,6 +74,8 @@ pub struct KubernetesResources {
     pub listeners: Vec<Listener>,
     pub config_maps: Vec<ConfigMap>,
     pub pod_disruption_budgets: Vec<PodDisruptionBudget>,
+    pub service_accounts: Vec<ServiceAccount>,
+    pub role_bindings: Vec<RoleBinding>,
 }
 
 #[derive(Clone, Debug)]
@@ -153,7 +158,11 @@ pub struct ValidatedCluster {
     pub namespace: NamespaceName,
     pub uid: Uid,
     pub image: ResolvedProductImage,
-    pub product_version: u16,
+    /// The numeric Trino version (e.g. `481`), used for version-dependent configuration.
+    pub numeric_product_version: u16,
+    /// The version label value (`app.kubernetes.io/version`) as a type-safe [`ProductVersion`],
+    /// parsed once from the resolved image's app version label value.
+    pub product_version: ProductVersion,
     pub cluster_config: ValidatedClusterConfig,
     pub role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
     pub role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
@@ -166,7 +175,7 @@ impl ValidatedCluster {
         namespace: NamespaceName,
         uid: Uid,
         image: ResolvedProductImage,
-        product_version: u16,
+        numeric_product_version: u16,
         cluster_config: ValidatedClusterConfig,
         role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
         role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
@@ -181,8 +190,10 @@ impl ValidatedCluster {
             name,
             namespace,
             uid,
+            product_version: ProductVersion::from_str(&image.app_version_label_value)
+                .expect("the app version label value is a valid product version"),
             image,
-            product_version,
+            numeric_product_version,
             cluster_config,
             role_configs,
             role_group_configs,
@@ -219,15 +230,24 @@ impl ValidatedCluster {
         self.cluster_config.authentication_enabled() || self.server_tls_enabled()
     }
 
+    /// Type-safe names for the per-cluster RBAC resources: the ServiceAccount shared by all
+    /// Pods, its (namespaced) RoleBinding, and the operator-deployed ClusterRole it binds.
+    pub fn cluster_resource_names(&self) -> role_utils::ResourceNames {
+        role_utils::ResourceNames {
+            cluster_name: self.name.clone(),
+            product_name: product_name(),
+        }
+    }
+
     /// Type-safe names for the resources of a given role group.
-    pub(crate) fn resource_names(
+    pub(crate) fn role_group_resource_names(
         &self,
         role: &TrinoRole,
         role_group_name: &RoleGroupName,
     ) -> ResourceNames {
         ResourceNames {
             cluster_name: self.name.clone(),
-            role_name: Self::role_name(role),
+            role_name: role.into(),
             role_group_name: role_group_name.clone(),
         }
     }
@@ -241,45 +261,16 @@ impl ValidatedCluster {
     ) -> String {
         format!(
             "{}-catalog",
-            self.resource_names(role, role_group_name)
+            self.role_group_resource_names(role, role_group_name)
                 .role_group_config_map()
         )
     }
 
-    /// Returns an [`ObjectMetaBuilder`] pre-filled with this cluster's namespace, an owner
-    /// reference back to the cluster, the resource `name` and the given `recommended_labels`.
-    ///
-    /// Consolidates the metadata chain repeated by the child-resource builders. Call sites that
-    /// need extra labels/annotations chain them onto the returned builder.
-    pub(crate) fn object_meta(
-        &self,
-        name: impl Into<String>,
-        recommended_labels: Labels,
-    ) -> ObjectMetaBuilder {
-        let mut builder = ObjectMetaBuilder::new();
-        builder
-            .name_and_namespace(self)
-            .name(name)
-            .ownerreference(ownerreference_from_resource(self, None, Some(true)))
-            .with_labels(recommended_labels);
-        builder
-    }
-
     /// A [`TrinoRole`] as a type-safe [`RoleName`].
-    fn role_name(role: &TrinoRole) -> RoleName {
-        RoleName::from_str(&role.to_string()).expect("a TrinoRole is a valid RFC 1123 role name")
-    }
-
-    /// The version label value (`app.kubernetes.io/version`) as a type-safe [`ProductVersion`].
-    fn version_label(&self) -> ProductVersion {
-        ProductVersion::from_str(&self.image.app_version_label_value)
-            .expect("the app version label value is a valid product version")
-    }
-
-    fn recommended_labels_with_version(
+    fn recommended_labels_with(
         &self,
         version: &ProductVersion,
-        role: &TrinoRole,
+        role_name: &RoleName,
         role_group_name: &RoleGroupName,
     ) -> Labels {
         recommended_labels(
@@ -288,44 +279,39 @@ impl ValidatedCluster {
             version,
             &operator_name(),
             &controller_name(),
-            &Self::role_name(role),
+            role_name,
             role_group_name,
         )
     }
 
     /// Recommended labels for a role-group resource (using the resolved product version).
-    pub(crate) fn recommended_labels(
-        &self,
-        role: &TrinoRole,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        self.recommended_labels_with_version(&self.version_label(), role, role_group_name)
+    pub fn recommended_labels(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
+        self.recommended_labels_for(&role.into(), role_group_name)
     }
 
-    /// Recommended labels using a fixed `"none"` version, for resources whose labels must not
-    /// change after creation (e.g. listener PVC templates).
-    pub(crate) fn unversioned_recommended_labels(
+    /// Recommended labels for a resource that is not tied to a concrete [`TrinoRole`] (e.g. the
+    /// cluster-shared RBAC resources), using a free-form role/role-group label value.
+    pub fn recommended_labels_for(
+        &self,
+        role_name: &RoleName,
+        role_group_name: &RoleGroupName,
+    ) -> Labels {
+        self.recommended_labels_with(&self.product_version, role_name, role_group_name)
+    }
+
+    /// Recommended labels with the constant [`UNVERSIONED_PRODUCT_VERSION`], for resources whose
+    /// labels must not change after creation (e.g. listener PVC templates).
+    pub fn unversioned_recommended_labels(
         &self,
         role: &TrinoRole,
         role_group_name: &RoleGroupName,
     ) -> Labels {
-        let none = ProductVersion::from_str("none")
-            .expect("\"none\" is a valid product version label value");
-        self.recommended_labels_with_version(&none, role, role_group_name)
+        self.recommended_labels_with(&UNVERSIONED_PRODUCT_VERSION, &role.into(), role_group_name)
     }
 
     /// Selector labels matching the pods of a role group.
-    pub(crate) fn role_group_selector(
-        &self,
-        role: &TrinoRole,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        role_group_selector(
-            self,
-            &product_name(),
-            &Self::role_name(role),
-            role_group_name,
-        )
+    pub fn role_group_selector(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
+        role_group_selector(self, &product_name(), &role.into(), role_group_name)
     }
 }
 
@@ -391,7 +377,23 @@ pub(crate) fn controller_name() -> ControllerName {
     ControllerName::from_str(CONTROLLER_NAME).expect("the controller name is a valid label value")
 }
 
+/// The expected `app.kubernetes.io/version` label value for the given product version.
+///
+/// The `-stackable` suffix carries the operator's own version, which is `0.0.0-dev` on main
+/// but rewritten by the release process — so tests must derive it rather than hardcode it,
+/// or they fail on release branches.
+#[cfg(test)]
+pub(crate) fn app_version_label(product_version: &str) -> String {
+    format!(
+        "{product_version}-stackable{}",
+        crate::built_info::PKG_VERSION
+    )
+}
+
 /// A minimal, valid TrinoCluster spec shared across unit tests.
+///
+/// The cluster name (`simple-trino`) deliberately differs from the product name (`trino`), so
+/// tests asserting recommended labels catch swapped `name`/`instance` values.
 #[cfg(test)]
 pub(crate) const MINIMAL_TRINO_YAML: &str = r#"
     apiVersion: trino.stackable.tech/v1alpha1
@@ -444,4 +446,22 @@ pub(crate) fn validated_cluster() -> ValidatedCluster {
     };
 
     validate::validate(&minimal_trino(), &derefs, &operator_env).expect("validate should succeed")
+}
+
+#[cfg(test)]
+mod tests {
+    use stackable_operator::v2::types::operator::RoleName;
+    use strum::IntoEnumIterator;
+
+    use crate::crd::TrinoRole;
+
+    /// Locks the invariant behind the `expect` in the `From<TrinoRole> for RoleName` impls:
+    /// every `TrinoRole` variant (present and future) must serialise to a valid `RoleName`.
+    #[test]
+    fn every_trino_role_serialises_to_a_valid_role_name() {
+        for role in TrinoRole::iter() {
+            let _: RoleName = (&role).into();
+            let _: RoleName = role.into();
+        }
+    }
 }

@@ -9,8 +9,13 @@ All notable changes to this project will be documented in this file.
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
 - Bump `stackable-operator` to 0.114.0 ([#918]).
+- The RBAC ServiceAccount and RoleBinding are now built with the operator-rs `v2::rbac`
+  functions and carry the full set of recommended labels ([#913]).
+- BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
+  Previously a TrinoCluster missing either role was accepted by the API server but failed reconciliation ([#913]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
+[#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 
 ## [26.7.0] - 2026-07-21

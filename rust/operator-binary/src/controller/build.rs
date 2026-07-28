@@ -4,7 +4,10 @@ use std::str::FromStr;
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    utils::cluster_info::KubernetesClusterInfo, v2::types::operator::RoleGroupName,
+    builder::meta::ObjectMetaBuilder,
+    kvp::Labels,
+    utils::cluster_info::KubernetesClusterInfo,
+    v2::{builder::meta::ownerreference_from_resource, types::operator::RoleGroupName},
 };
 
 use crate::controller::{
@@ -13,6 +16,7 @@ use crate::controller::{
         config_map,
         listener::{build_group_listener, group_listener_name},
         pdb::build_pdb,
+        rbac::{build_role_binding, build_service_account},
         service::{
             build_rolegroup_headless_service, build_rolegroup_metrics_service,
             headless_service_ports,
@@ -52,13 +56,9 @@ pub enum Error {
 /// Does not need a Kubernetes client: every reference to another Kubernetes resource is already
 /// dereferenced and validated by this point, so the errors returned here are resource-assembly
 /// failures only.
-///
-/// `service_account_name` is the name of the RBAC `ServiceAccount` the role-group Pods run under
-/// (RBAC resources are built and applied separately, in the reconcile step).
 pub fn build(
     cluster: &ValidatedCluster,
     cluster_info: &KubernetesClusterInfo,
-    service_account_name: &str,
 ) -> Result<KubernetesResources, Error> {
     let mut stateful_sets = vec![];
     let mut services = vec![];
@@ -115,7 +115,6 @@ pub fn build(
                     role,
                     role_group_name,
                     role_group_config,
-                    service_account_name,
                 )
                 .context(StatefulSetSnafu {
                     role_group: role_group_name.clone(),
@@ -147,7 +146,28 @@ pub fn build(
         listeners,
         config_maps,
         pod_disruption_budgets,
+        service_accounts: vec![build_service_account(cluster)],
+        role_bindings: vec![build_role_binding(cluster)],
     })
+}
+
+/// Returns an [`ObjectMetaBuilder`] pre-filled with the cluster's namespace, an owner
+/// reference back to the cluster, the resource `name` and the given `recommended_labels`.
+///
+/// Consolidates the metadata chain repeated by the child-resource builders. Call sites that
+/// need extra labels/annotations chain them onto the returned builder.
+pub(crate) fn object_meta(
+    cluster: &ValidatedCluster,
+    name: impl Into<String>,
+    recommended_labels: Labels,
+) -> ObjectMetaBuilder {
+    let mut builder = ObjectMetaBuilder::new();
+    builder
+        .name_and_namespace(cluster)
+        .name(name)
+        .ownerreference(ownerreference_from_resource(cluster, None, Some(true)))
+        .with_labels(recommended_labels);
+    builder
 }
 
 #[cfg(test)]
@@ -177,8 +197,7 @@ mod tests {
                 .expect("cluster.local is a valid domain name"),
         };
 
-        let resources =
-            build(&cluster, &cluster_info, "simple-trino-serviceaccount").expect("build succeeds");
+        let resources = build(&cluster, &cluster_info).expect("build succeeds");
 
         // One StatefulSet per role group.
         assert_eq!(
@@ -217,6 +236,15 @@ mod tests {
         assert_eq!(
             sorted_names(&resources.pod_disruption_budgets),
             ["simple-trino-coordinator", "simple-trino-worker"]
+        );
+        // The cluster-shared RBAC pair.
+        assert_eq!(
+            sorted_names(&resources.service_accounts),
+            ["simple-trino-serviceaccount"]
+        );
+        assert_eq!(
+            sorted_names(&resources.role_bindings),
+            ["simple-trino-rolebinding"]
         );
     }
 }

@@ -41,9 +41,9 @@ use crate::{
     authorization::opa::OPA_TLS_VOLUME_NAME,
     controller::{
         MAX_PREPARE_LOG_FILE_SIZE, RoleGroupName, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
-        TrinoRoleGroupConfig, ValidatedCluster, build,
+        TrinoRoleGroupConfig, ValidatedCluster,
         build::{
-            command,
+            self, command, object_meta,
             resource::listener::{
                 LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener_pvc,
                 group_listener_name, secret_volume_listener_scope,
@@ -137,10 +137,9 @@ pub fn build_rolegroup_statefulset(
     trino_role: &TrinoRole,
     role_group_name: &RoleGroupName,
     role_group_config: &TrinoRoleGroupConfig,
-    sa_name: &str,
 ) -> Result<StatefulSet> {
     // Everything below is derived from the validated cluster and the validated role-group config,
-    // so the caller only needs to pass those (plus the applied ServiceAccount name).
+    // so the caller only needs to pass those.
     let resolved_product_image = &cluster.image;
     let trino_authentication_config = &cluster.cluster_config.authentication;
     let catalogs = &cluster.cluster_config.catalogs;
@@ -150,7 +149,7 @@ pub fn build_rolegroup_statefulset(
     let env_overrides = &role_group_config.env_overrides;
     let merged_config = &role_group_config.config;
 
-    let resource_names = cluster.resource_names(trino_role, role_group_name);
+    let resource_names = cluster.role_group_resource_names(trino_role, role_group_name);
     let config_map_name = resource_names.role_group_config_map().to_string();
 
     let mut pod_builder = PodBuilder::new();
@@ -422,7 +421,12 @@ pub fn build_rolegroup_statefulset(
             )),
         )
         .context(AddVolumeSnafu)?
-        .service_account_name(sa_name)
+        .service_account_name(
+            cluster
+                .cluster_resource_names()
+                .service_account_name()
+                .to_string(),
+        )
         .security_context(PodSecurityContextBuilder::new().fs_group(1000).build());
 
     let mut pod_template = pod_builder.build_template();
@@ -438,14 +442,14 @@ pub fn build_rolegroup_statefulset(
     );
 
     Ok(StatefulSet {
-        metadata: cluster
-            .object_meta(
-                resource_names.stateful_set_name().to_string(),
-                cluster.recommended_labels(trino_role, role_group_name),
-            )
-            .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
-            .with_annotations(annotations)
-            .build(),
+        metadata: object_meta(
+            cluster,
+            resource_names.stateful_set_name().to_string(),
+            cluster.recommended_labels(trino_role, role_group_name),
+        )
+        .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
+        .with_annotations(annotations)
+        .build(),
         spec: Some(StatefulSetSpec {
             pod_management_policy: Some("Parallel".to_string()),
             // Forward `None` when the user did not set `replicas`, leaving the field unset on the

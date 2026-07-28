@@ -7,7 +7,10 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{RoleGroupName, ValidatedCluster, build::ports},
+    controller::{
+        RoleGroupName, ValidatedCluster,
+        build::{object_meta, ports},
+    },
     crd::{METRICS_PORT, METRICS_PORT_NAME, TrinoRole},
 };
 
@@ -22,15 +25,15 @@ pub fn build_rolegroup_headless_service(
     ports: Vec<ServicePort>,
 ) -> Service {
     Service {
-        metadata: cluster
-            .object_meta(
-                cluster
-                    .resource_names(role, role_group_name)
-                    .headless_service_name()
-                    .to_string(),
-                recommended_labels.clone(),
-            )
-            .build(),
+        metadata: object_meta(
+            cluster,
+            cluster
+                .role_group_resource_names(role, role_group_name)
+                .headless_service_name()
+                .to_string(),
+            recommended_labels.clone(),
+        )
+        .build(),
         spec: Some(ServiceSpec {
             // Internal communication does not need to be exposed
             type_: Some("ClusterIP".to_string()),
@@ -53,22 +56,22 @@ pub fn build_rolegroup_metrics_service(
     selector: BTreeMap<String, String>,
 ) -> Service {
     Service {
-        metadata: cluster
-            .object_meta(
-                cluster
-                    .resource_names(role, role_group_name)
-                    .metrics_service_name()
-                    .to_string(),
-                recommended_labels.clone(),
-            )
-            .with_labels(prometheus_labels(&Scraping::Enabled))
-            .with_annotations(prometheus_annotations(
-                &Scraping::Enabled,
-                &Scheme::Http,
-                "/metrics",
-                &METRICS_PORT,
-            ))
-            .build(),
+        metadata: object_meta(
+            cluster,
+            cluster
+                .role_group_resource_names(role, role_group_name)
+                .metrics_service_name()
+                .to_string(),
+            recommended_labels.clone(),
+        )
+        .with_labels(prometheus_labels(&Scraping::Enabled))
+        .with_annotations(prometheus_annotations(
+            &Scraping::Enabled,
+            &Scheme::Http,
+            "/metrics",
+            &METRICS_PORT,
+        ))
+        .build(),
         spec: Some(ServiceSpec {
             // Internal communication does not need to be exposed
             type_: Some("ClusterIP".to_string()),
@@ -101,4 +104,89 @@ fn metrics_service_ports() -> Vec<ServicePort> {
         protocol: Some("TCP".to_string()),
         ..ServicePort::default()
     }]
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use stackable_operator::v2::types::operator::RoleGroupName;
+
+    use super::*;
+    use crate::controller::{app_version_label, validated_cluster};
+
+    /// Every metrics Service must carry the Prometheus scrape label and the
+    /// `prometheus.io/path|port|scheme|scrape` annotations, or Prometheus stops discovering the
+    /// endpoints.
+    #[test]
+    fn test_rolegroup_metrics_service() {
+        let cluster = validated_cluster();
+        let role = TrinoRole::Coordinator;
+        let role_group_name: RoleGroupName = "default".parse().expect("valid role group name");
+        // Mirrors how `build()` derives the label arguments.
+        let recommended_labels = cluster.recommended_labels(&role, &role_group_name);
+        let selector = cluster.role_group_selector(&role, &role_group_name);
+
+        let service = build_rolegroup_metrics_service(
+            &cluster,
+            &role,
+            &role_group_name,
+            &recommended_labels,
+            selector.into(),
+        );
+
+        assert_eq!(
+            json!({
+                "apiVersion": "v1",
+                "kind": "Service",
+                "metadata": {
+                    "annotations": {
+                        "prometheus.io/path": "/metrics",
+                        "prometheus.io/port": "8081",
+                        "prometheus.io/scheme": "http",
+                        "prometheus.io/scrape": "true"
+                    },
+                    "labels": {
+                        "app.kubernetes.io/component": "coordinator",
+                        "app.kubernetes.io/instance": "simple-trino",
+                        "app.kubernetes.io/managed-by": "trino.stackable.tech_trinocluster",
+                        "app.kubernetes.io/name": "trino",
+                        "app.kubernetes.io/role-group": "default",
+                        "app.kubernetes.io/version": app_version_label("481"),
+                        "prometheus.io/scrape": "true",
+                        "stackable.tech/vendor": "Stackable"
+                    },
+                    "name": "simple-trino-coordinator-default-metrics",
+                    "namespace": "default",
+                    "ownerReferences": [
+                        {
+                            "apiVersion": "trino.stackable.tech/v1alpha1",
+                            "controller": true,
+                            "kind": "TrinoCluster",
+                            "name": "simple-trino",
+                            "uid": "e6ac237d-a6d4-43a1-8135-f36506110912"
+                        }
+                    ]
+                },
+                "spec": {
+                    "clusterIP": "None",
+                    "ports": [
+                        {
+                            "name": "metrics",
+                            "port": 8081,
+                            "protocol": "TCP"
+                        }
+                    ],
+                    "publishNotReadyAddresses": true,
+                    "selector": {
+                        "app.kubernetes.io/component": "coordinator",
+                        "app.kubernetes.io/instance": "simple-trino",
+                        "app.kubernetes.io/name": "trino",
+                        "app.kubernetes.io/role-group": "default"
+                    },
+                    "type": "ClusterIP"
+                }
+            }),
+            serde_json::to_value(service).expect("must be serializable")
+        );
+    }
 }
