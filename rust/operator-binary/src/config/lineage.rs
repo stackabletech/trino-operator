@@ -11,7 +11,7 @@
 //! * the init-container commands that import a `SecretClass` CA into the client truststore.
 //!
 //! The reusable OpenLineage CRD types (`OpenLineageConnectionSpec`, `InlineConnectionOrReference`,
-//! `OpenLineageJob`) live in [`stackable_operator::crd::openlineage`]; this module only holds the
+//! `OpenLineageConfig`) live in [`stackable_operator::crd::openlineage`]; this module only holds the
 //! Trino-specific wiring around them.
 
 use std::collections::BTreeMap;
@@ -22,7 +22,10 @@ use stackable_operator::{
     commons::tls_verification::{
         CaCert, TlsClientDetails, TlsClientDetailsError, TlsServerVerification, TlsVerification,
     },
-    crd::openlineage::{self, v1alpha1::OpenLineageJob},
+    crd::openlineage::{
+        self,
+        v1alpha1::{OpenLineageConfig, OpenLineageTransport},
+    },
     k8s_openapi::api::core::v1::{SecretVolumeSource, Volume, VolumeMount},
 };
 
@@ -53,6 +56,9 @@ pub const OPENLINEAGE_TRANSPORT_TYPE_KEY: &str = "openlineage-event-listener.tra
 pub const OPENLINEAGE_TRANSPORT_TYPE_HTTP: &str = "HTTP";
 /// OpenLineage HTTP transport base URL key (scheme/host/port of the backend).
 pub const OPENLINEAGE_TRANSPORT_URL_KEY: &str = "openlineage-event-listener.transport.url";
+/// OpenLineage HTTP transport endpoint path key, set from the connection's `path`.
+pub const OPENLINEAGE_TRANSPORT_ENDPOINT_KEY: &str =
+    "openlineage-event-listener.transport.endpoint";
 /// OpenLineage HTTP transport bearer-token (API key) key. Only set when authentication is
 /// configured; the value is a `${file:...}` reference so the token never enters the ConfigMap.
 pub const OPENLINEAGE_TRANSPORT_API_KEY_KEY: &str = "openlineage-event-listener.transport.api-key";
@@ -102,7 +108,7 @@ impl ResolvedLineageConfig {
     /// Resolves the OpenLineage connection (inline or referenced), backend TLS trust and (optional)
     /// authentication into the coordinator-side configuration.
     pub async fn from_config(
-        lineage: &OpenLineageJob,
+        lineage: &OpenLineageConfig,
         client: &Client,
         namespace: &str,
     ) -> Result<Self, Error> {
@@ -118,6 +124,8 @@ impl ResolvedLineageConfig {
             .await
             .context(ResolveConnectionSnafu)?;
 
+        let OpenLineageTransport::Http(http) = &connection.transport;
+
         properties.insert(
             EVENT_LISTENER_NAME_KEY.to_string(),
             EVENT_LISTENER_NAME_OPENLINEAGE.to_string(),
@@ -128,15 +136,15 @@ impl ResolvedLineageConfig {
         );
         properties.insert(
             OPENLINEAGE_TRANSPORT_URL_KEY.to_string(),
-            connection.transport_url(),
+            http.transport_url(),
         );
-        // Default the OpenLineage namespace to the workload's Kubernetes namespace.
+        properties.insert(
+            OPENLINEAGE_TRANSPORT_ENDPOINT_KEY.to_string(),
+            http.path.clone(),
+        );
         properties.insert(
             OPENLINEAGE_NAMESPACE_KEY.to_string(),
-            lineage
-                .namespace
-                .clone()
-                .unwrap_or_else(|| namespace.to_string()),
+            lineage.namespace.clone(),
         );
 
         // The stable OpenLineage job name format. When unset, Trino defaults to `$QUERY_ID`.
@@ -150,19 +158,18 @@ impl ResolvedLineageConfig {
         // Backend TLS: mount and import a `SecretClass` CA into the client truststore. WebPKI and
         // no verification need nothing (WebPKI is trusted via the system bundle already seeded into
         // the truststore; without server verification the URL is plain `http`).
-        let (tls_volumes, tls_mounts) = connection
+        let (tls_volumes, tls_mounts) = http
             .tls
             .volumes_and_mounts()
             .context(TlsVolumesAndMountsSnafu)?;
         volumes.extend(tls_volumes);
         volume_mounts.extend(tls_mounts);
-        init_container_extra_start_commands
-            .extend(openlineage_tls_truststore_commands(&connection.tls));
+        init_container_extra_start_commands.extend(openlineage_tls_truststore_commands(&http.tls));
 
         // Authentication: when the connection sets `credentialsSecretName`, mount that Secret and
         // reference the token via a `${file:...}` placeholder so it is resolved at startup and never
         // lands in the ConfigMap. The token must be stored under the `apiKey` Secret key.
-        if let Some(secret_name) = &connection.credentials_secret_name {
+        if let Some(secret_name) = &http.credentials_secret_name {
             volumes.push(Volume {
                 name: OPENLINEAGE_AUTH_VOLUME_NAME.to_string(),
                 secret: Some(SecretVolumeSource {

@@ -296,7 +296,7 @@ pub mod versioned {
         /// Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
         /// Trino cluster.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub lineage: Option<openlineage::v1alpha1::OpenLineageJob>,
+        pub lineage: Option<openlineage::v1alpha1::OpenLineageConfig>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.

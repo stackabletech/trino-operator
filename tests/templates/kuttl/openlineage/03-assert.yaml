@@ -11,6 +11,7 @@ commands:
       echo "$CM" | grep -q "event-listener.properties"
       echo "$CM" | grep -q "event-listener.name=openlineage"
       echo "$CM" | grep -q "openlineage-event-listener.transport.url"
+      echo "$CM" | grep -q "openlineage-event-listener.transport.endpoint=/api/v1/lineage"
       echo "$CM" | grep -q "event-listener.config-files=/stackable/rwconfig/event-listener.properties"
       # jobName maps to the OpenLineage job name format.
       echo "$CM" | grep -q "openlineage-event-listener.job.name-format=trino-"
