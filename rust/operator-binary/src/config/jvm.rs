@@ -200,6 +200,10 @@ mod tests {
             roleGroups:
               default:
                 replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
         "#;
         let jvm_config = construct_jvm_config(input);
 
@@ -259,6 +263,10 @@ mod tests {
                   add:
                     - -Xmx40000m
                     - -Dhttps.proxyPort=1234
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
         "#;
         let jvm_config = construct_jvm_config(input);
 

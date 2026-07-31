@@ -26,13 +26,19 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
-  configOverrides: # <4>
+          tls: # <4>
+            verification:
+              server:
+                caCert:
+                  secretClass: minio-tls-certificates
+  configOverrides: # <5>
     hive.metastore.username: trino
 ----
 <1> The name of the catalog as it will appear in Trino
 <2> TrinoCluster can use these labels to select which catalogs to include
 <3> The name of your Hive Stacklet
-<4> Use `configOverrides` to add arbitrary properties to the Trino catalog configuration
+<4> TLS is required for S3 connections, see xref:usage-guide/s3.adoc#tls-required[Connecting Trino to S3]
+<5> Use `configOverrides` to add arbitrary properties to the Trino catalog configuration
 
 == Connect to S3 store
 
@@ -50,10 +56,17 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
+          tls:
+            verification:
+              server:
+                caCert:
+                  secretClass: minio-tls-certificates
       # OR
       s3:
         reference: my-minio
 ----
+
+IMPORTANT: The `tls` section is required, see xref:usage-guide/s3.adoc#tls-required[Connecting Trino to S3].
 
 See xref:concepts:s3.adoc[] for details about S3 connections.
 

@@ -2,7 +2,10 @@
 :description: Configure S3 connections in Trino either inline within the TrinoCatalog or via an external S3Connection resource for centralized management.
 
 You can specify S3 connection details directly inside the TrinoCatalog specification or by referring to an external S3Connection custom resource.
-This mechanism used used across the whole Stackable Data Platform, read the xref:concepts:s3.adoc[S3 concepts page] to learn more.
+This mechanism is used across the whole Stackable Data Platform, read the xref:concepts:s3.adoc[S3 concepts page] to learn more.
+
+[#tls-required]
+IMPORTANT: Every S3 connection must contain a `tls` section, because Trino uses the native S3 client, which requires TLS.
 
 == Inline
 
@@ -14,22 +17,24 @@ s3: # <1>
   inline:
     host: test-minio # <2>
     port: 9000 # <3>
-    pathStyleAccess: true # <4>
-    secretClass: minio-credentials  # <5>
-    tls:
+    accessStyle: Path # <4>
+    credentials:
+      secretClass: minio-credentials  # <5>
+    tls: # <6>
       verification:
         server:
           caCert:
-            secretClass: minio-tls-certificates #<6>
+            secretClass: minio-tls-certificates
 ----
 <1> Entry point for the connection configuration
 <2> Connection host
 <3> Optional connection port
-<4> Optional flag if path-style URLs should be used; This defaults to `false`
-    which means virtual hosted-style URLs are used.
-<5> Name of the Secret object expected to contain the following keys:
-    `accessKey` and `secretKey`
-<6> Optional TLS settings for encrypted traffic. The `secretClass` can be provided by the Secret Operator or yourself.
+<4> Optional access style, either `Path` or `VirtualHosted`; This defaults to
+    `VirtualHosted`, which means virtual hosted-style URLs are used.
+<5> Name of the SecretClass providing the credentials. The Secret behind it is expected
+    to contain the following keys: `accessKey` and `secretKey`
+<6> TLS settings for encrypted traffic. The `secretClass` can be provided by the Secret Operator or yourself.
+    This section is required, see <<tls-required,the note above>>.
 
 A self provided S3 TLS secret can be specified like this:
 
@@ -84,6 +89,11 @@ spec:
   accessStyle: Path
   credentials:
     secretClass: minio-credentials
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: minio-tls-certificates
 ----
 
 This has the advantage that the connection configuration is configured in a single place and can be shared across applications, reducing the cost of updating these details.

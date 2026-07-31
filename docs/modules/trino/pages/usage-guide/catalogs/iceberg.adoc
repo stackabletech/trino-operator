@@ -28,9 +28,15 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
+          tls: # <3>
+            verification:
+              server:
+                caCert:
+                  secretClass: minio-tls-certificates
 ----
 <1> The name of the catalog as it will appear in Trino
 <2> This is the name of your Hive Stacklet
+<3> TLS is required for S3 connections, see xref:usage-guide/s3.adoc#tls-required[Connecting Trino to S3]
 
 == Connect to S3 store or HDFS
 The Iceberg connector can connect to S3 or HDFS in the same way the xref:usage-guide/catalogs/hive.adoc[] connector does.

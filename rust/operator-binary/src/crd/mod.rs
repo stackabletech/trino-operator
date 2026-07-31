@@ -9,7 +9,6 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use affinity::get_affinity;
 use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, Snafu};
 use stackable_operator::{
     commons::{
         affinity::StackableAffinity,
@@ -112,12 +111,6 @@ pub(crate) fn quantity_to_trino_bytes(
     Ok(format!("{bytes}B"))
 }
 
-#[derive(Snafu, Debug)]
-pub enum Error {
-    #[snafu(display("the role {role} is not defined"))]
-    CannotRetrieveTrinoRole { role: String },
-}
-
 #[versioned(
     version(name = "v1alpha1"),
     crates(
@@ -160,12 +153,10 @@ pub mod versioned {
         pub object_overrides: ObjectOverrides,
 
         // no doc - it's in the struct.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub coordinators: Option<super::TrinoCoordinatorRoleType>,
+        pub coordinators: super::TrinoCoordinatorRoleType,
 
         // no doc - it's in the struct.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub workers: Option<super::TrinoRoleType>,
+        pub workers: super::TrinoRoleType,
     }
 
     #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -433,14 +424,22 @@ pub enum TrinoRole {
     Worker,
 }
 
+impl From<TrinoRole> for RoleName {
+    fn from(value: TrinoRole) -> Self {
+        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
+    }
+}
+
+impl From<&TrinoRole> for RoleName {
+    fn from(value: &TrinoRole) -> Self {
+        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
+    }
+}
+
 impl TrinoRole {
     pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<ListenerClassName> {
         match self {
-            Self::Coordinator => trino
-                .spec
-                .coordinators
-                .to_owned()
-                .map(|coordinator| coordinator.role_config.listener_class),
+            Self::Coordinator => Some(trino.spec.coordinators.role_config.listener_class.clone()),
             Self::Worker => None,
         }
     }
@@ -518,29 +517,20 @@ impl v1alpha1::TrinoConfig {
 }
 
 impl v1alpha1::TrinoCluster {
-    /// Returns a reference to the role. Raises an error if the role is not defined.
-    pub fn role(&self, role_variant: &TrinoRole) -> Result<TrinoRoleType, Error> {
+    /// Returns the given role (both roles are required by the CRD).
+    pub fn role(&self, role_variant: &TrinoRole) -> TrinoRoleType {
         match role_variant {
-            TrinoRole::Coordinator => self
-                .spec
-                .coordinators
-                .to_owned()
-                .map(extract_role_from_coordinator_config),
+            TrinoRole::Coordinator => {
+                extract_role_from_coordinator_config(self.spec.coordinators.to_owned())
+            }
             TrinoRole::Worker => self.spec.workers.to_owned(),
         }
-        .with_context(|| CannotRetrieveTrinoRoleSnafu {
-            role: role_variant.to_string(),
-        })
     }
 
-    pub fn generic_role_config(&self, role: &TrinoRole) -> Option<&GenericRoleConfig> {
+    pub fn generic_role_config(&self, role: &TrinoRole) -> &GenericRoleConfig {
         match role {
-            TrinoRole::Coordinator => self
-                .spec
-                .coordinators
-                .as_ref()
-                .map(|c| &c.role_config.common),
-            TrinoRole::Worker => self.spec.workers.as_ref().map(|w| &w.role_config),
+            TrinoRole::Coordinator => &self.spec.coordinators.role_config.common,
+            TrinoRole::Worker => &self.spec.workers.role_config,
         }
     }
 
@@ -559,8 +549,8 @@ impl v1alpha1::TrinoCluster {
             .expect("the coordinator role name is a valid role name");
         self.spec
             .coordinators
+            .role_groups
             .iter()
-            .flat_map(|role| &role.role_groups)
             // Order rolegroups consistently, to avoid spurious downstream rewrites
             .collect::<BTreeMap<_, _>>()
             .into_iter()
@@ -655,6 +645,14 @@ mod tests {
         spec:
           image:
             productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -674,6 +672,14 @@ mod tests {
         spec:
           image:
             productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -695,6 +701,14 @@ mod tests {
         spec:
           image:
             productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -714,6 +728,14 @@ mod tests {
         spec:
           image:
             productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -738,6 +760,14 @@ mod tests {
         spec:
           image:
             productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
           clusterConfig:
             catalogLabelSelector: {}
         "#;
@@ -757,6 +787,14 @@ mod tests {
         spec:
           image:
             productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
           clusterConfig:
             catalogLabelSelector: {}
             tls:
@@ -778,6 +816,14 @@ mod tests {
         spec:
           image:
             productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
           clusterConfig:
             catalogLabelSelector: {}
             tls:

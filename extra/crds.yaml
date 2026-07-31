@@ -1087,7 +1087,6 @@ spec:
                   at role level, the `roleConfig`.
                   You can learn more about this in the
                   [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
-                nullable: true
                 properties:
                   cliOverrides:
                     additionalProperties:
@@ -2379,7 +2378,6 @@ spec:
                   at role level, the `roleConfig`.
                   You can learn more about this in the
                   [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
-                nullable: true
                 properties:
                   cliOverrides:
                     additionalProperties:
@@ -3579,7 +3577,9 @@ spec:
                 type: object
             required:
             - clusterConfig
+            - coordinators
             - image
+            - workers
             type: object
           status:
             nullable: true

@@ -6,9 +6,8 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     cluster_resources::ClusterResourceApplyStrategy,
-    commons::{random_secret_creation, rbac::build_rbac_resources},
+    commons::random_secret_creation,
     kube::{
-        ResourceExt,
         core::{DeserializeGuard, error_boundary},
         runtime::controller::Action,
     },
@@ -27,7 +26,7 @@ use crate::{
         ValidatedCluster, build, controller_name, dereference, operator_name, product_name,
         shared_internal_secret_name, shared_spooling_secret_name, validate,
     },
-    crd::{APP_NAME, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1},
+    crd::{ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1},
 };
 
 pub struct Ctx {
@@ -57,35 +56,9 @@ pub enum Error {
         source: stackable_operator::cluster_resources::Error,
     },
 
-    #[snafu(display("failed to patch service account"))]
-    ApplyServiceAccount {
-        source: stackable_operator::cluster_resources::Error,
-    },
-
-    #[snafu(display("failed to patch role binding"))]
-    ApplyRoleBinding {
-        source: stackable_operator::cluster_resources::Error,
-    },
-
     #[snafu(display("failed to update status"))]
     ApplyStatus {
         source: stackable_operator::client::Error,
-    },
-
-    #[snafu(display("failed to build RBAC resources"))]
-    BuildRbacResources {
-        source: stackable_operator::commons::rbac::Error,
-    },
-
-    #[snafu(display("failed to get required Labels"))]
-    GetRequiredLabels {
-        source:
-            stackable_operator::kvp::KeyValuePairError<stackable_operator::kvp::LabelValueError>,
-    },
-
-    #[snafu(display("failed to build Labels"))]
-    LabelBuild {
-        source: stackable_operator::kvp::LabelError,
     },
 
     #[snafu(display("invalid TrinoCluster object"))]
@@ -153,39 +126,26 @@ pub async fn reconcile_trino(
         &trino.spec.object_overrides,
     );
 
-    let (rbac_sa, rbac_rolebinding) = build_rbac_resources(
-        trino,
-        APP_NAME,
-        cluster_resources
-            .get_required_labels()
-            .context(GetRequiredLabelsSnafu)?,
-    )
-    .context(BuildRbacResourcesSnafu)?;
-
-    // The ServiceAccount name is deterministic on the built object, so the build step does not
-    // depend on the applied ServiceAccount.
-    let service_account_name = rbac_sa.name_any();
-
-    cluster_resources
-        .add(client, rbac_sa)
-        .await
-        .context(ApplyServiceAccountSnafu)?;
-
-    cluster_resources
-        .add(client, rbac_rolebinding)
-        .await
-        .context(ApplyRoleBindingSnafu)?;
-
     ensure_random_secrets(client, &validated_cluster).await?;
 
-    let resources = build::build(
-        &validated_cluster,
-        &client.kubernetes_cluster_info,
-        &service_account_name,
-    )
-    .context(BuildResourcesSnafu)?;
+    let resources = build::build(&validated_cluster, &client.kubernetes_cluster_info)
+        .context(BuildResourcesSnafu)?;
 
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
+
+    for service_account in resources.service_accounts {
+        cluster_resources
+            .add(client, service_account)
+            .await
+            .context(ApplyResourceSnafu)?;
+    }
+
+    for role_binding in resources.role_bindings {
+        cluster_resources
+            .add(client, role_binding)
+            .await
+            .context(ApplyResourceSnafu)?;
+    }
 
     for service in resources.services {
         cluster_resources
