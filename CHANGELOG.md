@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `spec.clusterConfig.lineage` to emit [OpenLineage](https://openlineage.io/) lineage events ([#914]).
+
 ### Changed
 
 - Internal operator refactoring: introduce a build() step in the reconciler that
@@ -16,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
+[#914]: https://github.com/stackabletech/trino-operator/pull/914
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 
 ## [26.7.0] - 2026-07-21

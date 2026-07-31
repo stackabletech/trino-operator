@@ -18,6 +18,7 @@ use crate::{
     config::{
         client_protocol::{self, ResolvedClientProtocolConfig},
         fault_tolerant_execution::{self, ResolvedFaultTolerantExecutionConfig},
+        lineage::{self, ResolvedLineageConfig},
     },
     crd::{
         authentication::{ResolvedAuthenticationClassRef, resolve_authentication_classes},
@@ -66,6 +67,9 @@ pub enum Error {
     #[snafu(display("failed to resolve client protocol configuration"))]
     ClientProtocolConfiguration { source: client_protocol::Error },
 
+    #[snafu(display("failed to resolve OpenLineage configuration"))]
+    OpenLineageConfiguration { source: lineage::Error },
+
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {
         source: stackable_operator::commons::opa::Error,
@@ -88,6 +92,7 @@ pub struct DereferencedObjects {
     pub trino_opa_config: Option<TrinoOpaConfig>,
     pub resolved_fte_config: Option<ResolvedFaultTolerantExecutionConfig>,
     pub resolved_client_protocol_config: Option<ResolvedClientProtocolConfig>,
+    pub resolved_lineage_config: Option<ResolvedLineageConfig>,
 }
 
 /// Fetches all Kubernetes objects referenced from the [`v1alpha1::TrinoCluster`] spec.
@@ -171,6 +176,15 @@ pub async fn dereference(
         None => None,
     };
 
+    let resolved_lineage_config = match trino.spec.cluster_config.lineage.as_ref() {
+        Some(lineage) => Some(
+            ResolvedLineageConfig::from_config(lineage, client, namespace.as_ref())
+                .await
+                .context(OpenLineageConfigurationSnafu)?,
+        ),
+        None => None,
+    };
+
     Ok(DereferencedObjects {
         resolved_authentication_classes,
         catalog_definitions,
@@ -178,6 +192,7 @@ pub async fn dereference(
         trino_opa_config,
         resolved_fte_config,
         resolved_client_protocol_config,
+        resolved_lineage_config,
     })
 }
 

@@ -38,6 +38,7 @@ use crate::{
     config::{
         client_protocol::ResolvedClientProtocolConfig,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
+        lineage::ResolvedLineageConfig,
     },
     crd::{APP_NAME, TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
@@ -92,6 +93,7 @@ pub struct ValidatedClusterConfig {
     pub authorization: Option<TrinoOpaConfig>,
     pub fault_tolerant_execution: Option<ResolvedFaultTolerantExecutionConfig>,
     pub client_protocol: Option<ResolvedClientProtocolConfig>,
+    pub lineage: Option<ResolvedLineageConfig>,
     pub coordinator_pod_refs: Vec<TrinoPodRef>,
     pub catalogs: BTreeMap<TrinoCatalogName, CatalogConfig>,
 }
@@ -438,6 +440,7 @@ pub(crate) fn validated_cluster() -> ValidatedCluster {
         trino_opa_config: None,
         resolved_fte_config: None,
         resolved_client_protocol_config: None,
+        resolved_lineage_config: None,
     };
     let operator_env = OperatorEnvironmentOptions {
         operator_namespace: "stackable-operators".to_string(),

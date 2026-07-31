@@ -1,0 +1,126 @@
+= OpenLineage
+:description: Emit OpenLineage data lineage events from Trino queries to an OpenLineage-compatible backend such as Marquez.
+:keywords: OpenLineage, data lineage, event listener, Marquez, Trino
+
+https://openlineage.io/[OpenLineage] is an open standard for data lineage collection.
+Trino ships an https://trino.io/docs/current/admin/event-listeners-openlineage.html[OpenLineage event listener] as a core plugin, which emits a lineage event for every executed query.
+The Trino operator can configure this listener automatically, so lineage from all queries run on the cluster is sent to an OpenLineage-compatible backend such as https://marquezproject.github.io/marquez/[Marquez], without any manual configuration.
+
+When configured, the operator:
+
+* writes an `event-listener.properties` file on the *coordinator* selecting the OpenLineage plugin and its HTTP transport,
+* points the transport at the backend endpoint (`<scheme>://<host>:<port>`),
+* records this cluster's `trino.uri` and a lineage namespace, and
+* (optionally) imports a backend CA certificate into the coordinator trust store and injects a bearer token for authenticated backends.
+
+The event listener runs on the coordinator only; workers are not affected.
+
+NOTE: The Trino OpenLineage plugin only emits events for data-modifying query types (`INSERT`, `DELETE`, `MERGE`, `UPDATE`, `ALTER_TABLE_EXECUTE` and `DATA_DEFINITION`) by default; plain `SELECT` queries are filtered out. Adjust `openlineage-event-listener.trino.include-query-types` via config overrides (see below) to change this.
+
+== Enabling OpenLineage
+
+OpenLineage is configured through `clusterConfig.lineage.connection`, which either inlines an OpenLineage connection or references a standalone `OpenLineageConnection` resource by name:
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  clusterConfig:
+    lineage: # <1>
+      connection: # <2>
+        inline:
+          http:
+            host: marquez
+            port: 5000
+            # path: /api/v1/lineage # <5>
+            # tls:
+            #   verification:
+            #     server:
+            #       caCert:
+            #         secretClass: marquez-ca
+      # namespace: trino-lineage # <3>
+      # jobName: "$QUERY_ID" # <4>
+  ...
+----
+<1> Adding the `lineage` block enables OpenLineage event emission. Omit it entirely to leave OpenLineage off (the default).
+<2> The OpenLineage backend connection. Use `inline` (shown here) to define the connection directly, or `reference: <name>` to point at an `OpenLineageConnection` resource in the same namespace. Required. The connection selects a transport; `http` is currently the only one supported.
+<3> Optional. The OpenLineage namespace events are reported under. Defaults to `default`.
+<4> Optional. Sets the OpenLineage job name format (`openlineage-event-listener.job.name-format`). Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. When unset, Trino defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
+<5> Optional. URL path of the endpoint events are POSTed to, mapped onto `openlineage-event-listener.transport.endpoint`. Defaults to `/api/v1/lineage`.
+
+The `OpenLineageConnection` resource (`lineage.stackable.tech`) is a reusable definition of a connection to an OpenLineage backend, provided by the Stackable operator library.
+Reference it to share one backend definition across multiple clusters:
+
+[source,yaml]
+----
+apiVersion: lineage.stackable.tech/v1alpha1
+kind: OpenLineageConnection
+metadata:
+  name: marquez
+spec:
+  http:
+    host: marquez
+    port: 5000
+----
+
+The transport scheme is `https` when `tls.verification.server` is configured, otherwise `http`.
+When the connection verifies the server against a `secretClass` CA (as in the commented `tls` block above), the operator mounts that SecretClass certificate into the coordinator and adds it to the trust store, so the OpenLineage listener trusts the backend's certificate.
+
+IMPORTANT: With TLS server verification, the `host` must match a Subject Alternative Name in the backend's certificate. Use the exact hostname the certificate was issued for (for an in-cluster backend, typically its full service FQDN such as `marquez.<namespace>.svc.cluster.local`), otherwise the TLS handshake fails and no events are delivered.
+
+[#authentication]
+== Authentication
+
+Backends that require authentication (for example DataHub, or a Marquez instance behind a gateway) expect a bearer token on each request.
+Configure this by setting `credentialsSecretName` on the connection to the name of a Secret holding the token:
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+spec:
+  clusterConfig:
+    lineage:
+      connection:
+        inline:
+          http:
+            host: marquez
+            port: 5000
+            credentialsSecretName: openlineage-token # <1>
+  ...
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openlineage-token
+  namespace: default # <2>
+stringData:
+  apiKey: "s3cr3t-bearer-token" # <3>
+----
+<1> Name of the Secret holding the token. If omitted, no authentication is used. The Secret must exist in the same namespace as the `TrinoCluster`.
+<2> The Secret must be in the cluster's namespace so it can be projected into the coordinator.
+<3> The token must be stored under the fixed key `apiKey`. The token is mounted as a file into the coordinator and resolved into the event listener configuration at startup, so it never appears in the ConfigMap or the pod's environment.
+
+The operator translates this into the OpenLineage HTTP transport's `api-key` (bearer) authentication.
+Combine it with the `tls` block above when the backend also needs TLS server verification.
+
+== Overriding the generated configuration
+
+The generated `event-listener.properties` can be extended or overridden per role group through xref:usage-guide/overrides.adoc[config overrides], using the `event-listener.properties` file name.
+Overrides are merged last and therefore take precedence over the operator-generated values:
+
+[source,yaml]
+----
+spec:
+  coordinators:
+    configOverrides:
+      event-listener.properties:
+        openlineage-event-listener.trino.uri: "https://trino.example.com:8443"
+----
+
+Event listeners run on the coordinator, so `event-listener.properties` overrides only take effect on the coordinator role.

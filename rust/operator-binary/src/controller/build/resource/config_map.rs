@@ -17,8 +17,8 @@ use crate::{
             object_meta,
             properties::{
                 ConfigFileName, access_control_properties, config_properties,
-                exchange_manager_properties, log_properties, node_properties, product_logging,
-                security_properties, spooling_manager_properties,
+                event_listener_properties, exchange_manager_properties, log_properties,
+                node_properties, product_logging, security_properties, spooling_manager_properties,
             },
         },
     },
@@ -164,7 +164,18 @@ pub fn build_rolegroup_config_map(
         );
     }
 
-    // 8. jvm.config. The role + role-group `jvmArgumentOverrides` were already merged in the
+    // 8. event-listener.properties (optional, coordinator only — the OpenLineage event listener).
+    let el = event_listener_properties::build(cluster, role.clone(), rg, cluster_info);
+    if !el.is_empty() {
+        data.insert(
+            ConfigFileName::EventListener.to_string(),
+            to_java_properties_string(el.iter()).with_context(|_| WritePropertiesSnafu {
+                file: ConfigFileName::EventListener.to_string(),
+            })?,
+        );
+    }
+
+    // 9. jvm.config. The role + role-group `jvmArgumentOverrides` were already merged in the
     // validate step and are carried by `product_specific_common_config`.
     let jvm_config = jvm::jvm_config(
         cluster.numeric_product_version,
@@ -174,7 +185,7 @@ pub fn build_rolegroup_config_map(
     .context(BuildJvmConfigSnafu)?;
     data.insert(JVM_CONFIG.to_string(), jvm_config);
 
-    // 9. Vector agent config (`vector.yaml`) if the Vector agent is enabled. The file is templated
+    // 10. Vector agent config (`vector.yaml`) if the Vector agent is enabled. The file is templated
     // with environment variables injected by the Vector container at runtime.
     if rg.config.logging.enable_vector_agent {
         data.insert(

@@ -1,0 +1,92 @@
+{% if test_scenario['values']['openlineage-use-auth'] == 'true' %}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openlineage-token
+stringData:
+  # The operator resolves this into the OpenLineage HTTP transport `api-key`; the nginx receiver
+  # requires exactly `Authorization: Bearer openlineage-test-token`.
+  apiKey: "openlineage-test-token"
+{% endif %}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino-openlineage
+spec:
+  image:
+{% if test_scenario['values']['trino-latest'].find(",") > 0 %}
+    custom: "{{ test_scenario['values']['trino-latest'].split(',')[1] }}"
+    productVersion: "{{ test_scenario['values']['trino-latest'].split(',')[0] }}"
+{% else %}
+    productVersion: "{{ test_scenario['values']['trino-latest'] }}"
+{% endif %}
+    pullPolicy: IfNotPresent
+  clusterConfig:
+    catalogLabelSelector:
+      matchLabels:
+        trino: trino-openlineage
+    lineage:
+      connection:
+        inline:
+          http:
+            # Use the full service FQDN: with TLS the backend's secret-operator cert only carries the
+            # `openlineage-receiver.<ns>.svc.cluster.local` SAN, so a shorter host fails verification.
+            host: openlineage-receiver.$NAMESPACE.svc.cluster.local
+            port: 5000
+{% if test_scenario['values']['openlineage-use-tls'] == 'true' %}
+            tls:
+              verification:
+                server:
+                  caCert:
+                    secretClass: openlineage-tls-$NAMESPACE
+{% endif %}
+{% if test_scenario['values']['openlineage-use-auth'] == 'true' %}
+            credentialsSecretName: openlineage-token
+{% endif %}
+      # Sets openlineage-event-listener.job.name-format (asserted in 03-assert.yaml).
+      jobName: "trino-$QUERY_ID"
+{% if lookup('env', 'VECTOR_AGGREGATOR') %}
+    vectorAggregatorConfigMapName: vector-aggregator-discovery
+{% endif %}
+  coordinators:
+    config:
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+  workers:
+    config:
+      gracefulShutdownTimeout: 5s # Let the test run faster
+      logging:
+        enableVectorAgent: {{ lookup('env', 'VECTOR_AGGREGATOR') | length > 0 }}
+    roleGroups:
+      default:
+        replicas: 1
+        config: {}
+---
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: tpch
+  labels:
+    trino: trino-openlineage
+spec:
+  connector:
+    tpch: {}
+---
+# A writable target so the test can run a CREATE TABLE AS SELECT. The OpenLineage event listener
+# only emits for data-modifying query types (INSERT/DATA_DEFINITION/...); a plain SELECT is filtered
+# out by the plugin's default `include-query-types`.
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCatalog
+metadata:
+  name: blackhole
+  labels:
+    trino: trino-openlineage
+spec:
+  connector:
+    blackHole: {}
