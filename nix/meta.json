@@ -1,1 +1,1 @@
-{"operator": {"name": "trino-operator", "pretty_string": "Trino", "product_string": "trino", "url": "stackabletech/trino-operator.git"}}
+{"operator": {"name": "trino-operator", "pretty_string": "Trino", "product_string": "trino", "url": "stackabletech/trino-operator.git", "chart_description": "Kubernetes operator for Trino. Deploy and run Trino coordinators and workers with the Stackable Data Platform (SDP).", "keywords": ["trino", "sql", "query-engine", "federation", "kubernetes", "operator", "big-data"]}}
