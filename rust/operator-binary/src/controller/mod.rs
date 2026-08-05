@@ -46,6 +46,7 @@ use crate::{
 pub(crate) mod apply;
 pub(crate) mod build;
 pub(crate) mod dereference;
+pub(crate) mod update_status;
 pub(crate) mod validate;
 
 pub use stackable_operator::v2::product_logging::framework::STACKABLE_LOG_DIR;

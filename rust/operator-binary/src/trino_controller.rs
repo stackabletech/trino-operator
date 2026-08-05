@@ -1,4 +1,10 @@
-//! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`]
+//! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`].
+//!
+//! This is the controller driver: it runs the
+//! `dereference -> validate -> build -> apply -> update_status` pipeline. The validated cluster
+//! type and the individual steps live under the [`crate::controller`] module tree; this file is
+//! kept next to `main.rs` for consistency with the other Stackable operators.
+
 use std::sync::Arc;
 
 use const_format::concatcp;
@@ -12,17 +18,15 @@ use stackable_operator::{
     },
     logging::controller::ReconcilerError,
     shared::time::Duration,
-    status::condition::{
-        compute_conditions, operations::ClusterOperationsConditionBuilder,
-        statefulset::StatefulSetConditionBuilder,
-    },
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     controller::{
         apply::{self, Applier, ensure_random_secrets},
-        build, dereference, validate,
+        build, dereference,
+        update_status::{self, update_status},
+        validate,
     },
     crd::v1alpha1,
 };
@@ -50,10 +54,8 @@ pub enum Error {
     #[snafu(display("failed to apply the Kubernetes resources"))]
     ApplyResources { source: apply::Error },
 
-    #[snafu(display("failed to update status"))]
-    ApplyStatus {
-        source: stackable_operator::client::Error,
-    },
+    #[snafu(display("failed to update the cluster status"))]
+    UpdateStatus { source: update_status::Error },
 
     #[snafu(display("invalid TrinoCluster object"))]
     InvalidTrinoCluster {
@@ -124,25 +126,9 @@ pub async fn reconcile_trino(
     .context(ApplyResourcesSnafu)?;
 
     // update status (client required)
-    let mut sts_cond_builder = StatefulSetConditionBuilder::default();
-    for stateful_set in &applied.stateful_sets {
-        sts_cond_builder.add(stateful_set.clone());
-    }
-
-    let cluster_operation_cond_builder =
-        ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
-
-    let status = v1alpha1::TrinoClusterStatus {
-        conditions: compute_conditions(
-            trino,
-            &[&sts_cond_builder, &cluster_operation_cond_builder],
-        ),
-    };
-
-    client
-        .apply_patch_status(OPERATOR_NAME, trino, &status)
+    update_status(client, trino, &applied)
         .await
-        .context(ApplyStatusSnafu)?;
+        .context(UpdateStatusSnafu)?;
 
     Ok(Action::await_change())
 }
