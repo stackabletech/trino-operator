@@ -43,6 +43,7 @@ use crate::{
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
 };
 
+pub(crate) mod apply;
 pub(crate) mod build;
 pub(crate) mod dereference;
 pub(crate) mod validate;
@@ -70,12 +71,14 @@ stackable_operator::constant!(UNVERSIONED_PRODUCT_VERSION: ProductVersion = "non
 /// Marker for prepared Kubernetes resources which are not applied yet.
 pub struct Prepared;
 
+/// Marker for Kubernetes resources which have been applied to the Kubernetes cluster.
+pub struct Applied;
+
 /// Every Kubernetes resource produced by the client-free [`build()`](build::build) step.
 ///
-/// `T` marks how far the resources have travelled through the reconcile pipeline (currently
-/// [`Prepared`], later also applied). The marker lets the type system enforce, for example, that
-/// the cluster status is derived from the resources the API server returned rather than from the
-/// ones we merely built.
+/// `T` marks whether these resources are only [`Prepared`] or already [`Applied`]. The marker
+/// lets the type system enforce, for example, that the cluster status is derived from the
+/// resources the API server returned rather than from the ones we merely built.
 pub struct KubernetesResources<T> {
     pub stateful_sets: Vec<StatefulSet>,
     pub services: Vec<Service>,

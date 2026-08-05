@@ -6,7 +6,6 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     cluster_resources::ClusterResourceApplyStrategy,
-    commons::random_secret_creation,
     kube::{
         core::{DeserializeGuard, error_boundary},
         runtime::controller::Action,
@@ -17,16 +16,15 @@ use stackable_operator::{
         compute_conditions, operations::ClusterOperationsConditionBuilder,
         statefulset::StatefulSetConditionBuilder,
     },
-    v2::cluster_resources::cluster_resources_new,
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     controller::{
-        ValidatedCluster, build, controller_name, dereference, operator_name, product_name,
-        shared_internal_secret_name, shared_spooling_secret_name, validate,
+        apply::{self, Applier, ensure_random_secrets},
+        build, dereference, validate,
     },
-    crd::{ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1},
+    crd::v1alpha1,
 };
 
 pub struct Ctx {
@@ -43,18 +41,14 @@ pub(crate) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
 pub enum Error {
-    #[snafu(display("failed to delete orphaned resources"))]
-    DeleteOrphanedResources {
-        source: stackable_operator::cluster_resources::Error,
-    },
-
     #[snafu(display("failed to build the Kubernetes resources"))]
     BuildResources { source: build::Error },
 
-    #[snafu(display("failed to apply Kubernetes resource"))]
-    ApplyResource {
-        source: stackable_operator::cluster_resources::Error,
-    },
+    #[snafu(display("failed to ensure the shared random Secrets exist"))]
+    EnsureSecrets { source: apply::Error },
+
+    #[snafu(display("failed to apply the Kubernetes resources"))]
+    ApplyResources { source: apply::Error },
 
     #[snafu(display("failed to update status"))]
     ApplyStatus {
@@ -71,11 +65,6 @@ pub enum Error {
 
     #[snafu(display("failed to validate cluster"))]
     ValidateCluster { source: validate::Error },
-
-    #[snafu(display("failed to create internal secret"))]
-    CreateInternalSecret {
-        source: random_secret_creation::Error,
-    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -115,76 +104,29 @@ pub async fn reconcile_trino(
         "Validated TrinoCluster"
     );
 
-    let mut cluster_resources = cluster_resources_new(
-        &product_name(),
-        &operator_name(),
-        &controller_name(),
-        &validated_cluster.name,
-        &validated_cluster.namespace,
-        &validated_cluster.uid,
-        ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
-        &trino.spec.object_overrides,
-    );
-
-    ensure_random_secrets(client, &validated_cluster).await?;
-
+    // build (no client required)
     let resources = build::build(&validated_cluster, &client.kubernetes_cluster_info)
         .context(BuildResourcesSnafu)?;
 
+    // apply (client required)
+    ensure_random_secrets(client, &validated_cluster)
+        .await
+        .context(EnsureSecretsSnafu)?;
+
+    let applied = Applier::new(
+        client,
+        &validated_cluster,
+        ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
+        &trino.spec.object_overrides,
+    )
+    .apply(resources)
+    .await
+    .context(ApplyResourcesSnafu)?;
+
+    // update status (client required)
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
-
-    for service_account in resources.service_accounts {
-        cluster_resources
-            .add(client, service_account)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for role_binding in resources.role_bindings {
-        cluster_resources
-            .add(client, role_binding)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for service in resources.services {
-        cluster_resources
-            .add(client, service)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for listener in resources.listeners {
-        cluster_resources
-            .add(client, listener)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for config_map in resources.config_maps {
-        cluster_resources
-            .add(client, config_map)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for pdb in resources.pod_disruption_budgets {
-        cluster_resources
-            .add(client, pdb)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
-    // to prevent unnecessary Pod restarts.
-    // See https://github.com/stackabletech/commons-operator/issues/111 for details.
-    for stateful_set in resources.stateful_sets {
-        sts_cond_builder.add(
-            cluster_resources
-                .add(client, stateful_set)
-                .await
-                .context(ApplyResourceSnafu)?,
-        );
+    for stateful_set in &applied.stateful_sets {
+        sts_cond_builder.add(stateful_set.clone());
     }
 
     let cluster_operation_cond_builder =
@@ -197,47 +139,12 @@ pub async fn reconcile_trino(
         ),
     };
 
-    cluster_resources
-        .delete_orphaned_resources(client)
-        .await
-        .context(DeleteOrphanedResourcesSnafu)?;
     client
         .apply_patch_status(OPERATOR_NAME, trino, &status)
         .await
         .context(ApplyStatusSnafu)?;
 
     Ok(Action::await_change())
-}
-
-/// Ensures the two shared random Secrets (internal communication and spooling) exist, creating
-/// any that are missing.
-async fn ensure_random_secrets(
-    client: &stackable_operator::client::Client,
-    cluster: &ValidatedCluster,
-) -> Result<()> {
-    random_secret_creation::create_random_secret_if_not_exists(
-        &shared_internal_secret_name(&cluster.name),
-        ENV_INTERNAL_SECRET,
-        512,
-        cluster,
-        client,
-    )
-    .await
-    .context(CreateInternalSecretSnafu)?;
-
-    // This secret is created even if spooling is not configured.
-    // Trino currently requires the secret to be exactly 256 bits long.
-    random_secret_creation::create_random_secret_if_not_exists(
-        &shared_spooling_secret_name(&cluster.name),
-        ENV_SPOOLING_SECRET,
-        32,
-        cluster,
-        client,
-    )
-    .await
-    .context(CreateInternalSecretSnafu)?;
-
-    Ok(())
 }
 
 pub fn error_policy(
