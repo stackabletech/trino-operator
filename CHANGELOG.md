@@ -13,10 +13,13 @@ All notable changes to this project will be documented in this file.
   functions and carry the full set of recommended labels ([#913]).
 - BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
   Previously a TrinoCluster missing either role was accepted by the API server but failed reconciliation ([#913]).
+- The reconciler now applies resources and derives the cluster status in discrete
+  apply and update_status steps for the `trino_controller` ([#923]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
+[#923]: https://github.com/stackabletech/trino-operator/pull/923
 
 ## [26.7.0] - 2026-07-21
 
