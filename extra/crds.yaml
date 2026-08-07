@@ -6,7 +6,6 @@ metadata:
 spec:
   group: trino.stackable.tech
   names:
-    categories: []
     kind: TrinoCluster
     plural: trinoclusters
     shortNames:
@@ -14,8 +13,7 @@ spec:
     singular: trinocluster
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
@@ -3501,15 +3499,12 @@ metadata:
 spec:
   group: trino.stackable.tech
   names:
-    categories: []
     kind: TrinoCatalog
     plural: trinocatalogs
-    shortNames: []
     singular: trinocatalog
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
@@ -4294,4 +4289,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}
