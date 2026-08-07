@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#923]).
+
 ### Changed
 
 - Internal operator refactoring: introduce a build() step in the reconciler that
@@ -17,6 +21,7 @@ All notable changes to this project will be documented in this file.
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
+[#923]: https://github.com/stackabletech/trino-operator/pull/923
 
 ## [26.7.0] - 2026-07-21
 

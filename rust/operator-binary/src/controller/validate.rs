@@ -237,6 +237,7 @@ pub fn validate(
             &trino.name_any(),
             &trino_role,
             &dereferenced_objects.catalog_definitions,
+            trino.get_opa_config(),
         );
         let mut groups = BTreeMap::new();
         for (rg_name, rg) in &role.role_groups {
@@ -349,8 +350,12 @@ pub(crate) fn merged_role_group_config(
     trino_catalogs: &[crate::crd::catalog::v1alpha1::TrinoCatalog],
 ) -> TrinoRoleGroupConfig {
     let role = trino.role(trino_role);
-    let default_config =
-        v1alpha1::TrinoConfig::default_config(&trino.name_any(), trino_role, trino_catalogs);
+    let default_config = v1alpha1::TrinoConfig::default_config(
+        &trino.name_any(),
+        trino_role,
+        trino_catalogs,
+        trino.get_opa_config(),
+    );
     let rg = role
         .role_groups
         .get(role_group)

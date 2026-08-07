@@ -7,7 +7,12 @@ The default affinities created by the operator are:
 1. Co-locate all the Trino Pods (weight 20)
 2. Distribute all Pods within the same role (coordinators, workers) (weight 70)
 
+In case OPA authorization is configured the following affinity is added
+
+1. Co-locate the coordinator with the OPA Pods (weight 50).
+   This basically has no effect in case the OpaCluster is deployed as a DaemonSet, but makes sense for a Deployment, as Trino does many calls to OPA.
+
 Additionally the operator looks through every `TrinoCatalog` you configure and sets up the following affinities:
 
-1. Hive + Iceberg connector: Co-locate the coordinators with the hive metastores (weight 50)
+1. Hive + Iceberg connector: Co-locate the coordinator with the hive metastores (weight 50)
 2. Hive + Iceberg connector: Co-locate the workers with the hdfs datanodes (if hdfs is used) (weight 50)
