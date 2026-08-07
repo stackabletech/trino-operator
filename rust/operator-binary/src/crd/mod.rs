@@ -464,6 +464,7 @@ impl v1alpha1::TrinoConfig {
         cluster_name: &str,
         role: &TrinoRole,
         trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],
+        opa_config: Option<&v1alpha1::TrinoAuthorizationOpaConfig>,
     ) -> v1alpha1::TrinoConfigFragment {
         let (cpu_min, cpu_max, memory) = match role {
             TrinoRole::Coordinator => ("500m", "2", "4Gi"),
@@ -483,7 +484,7 @@ impl v1alpha1::TrinoConfig {
 
         v1alpha1::TrinoConfigFragment {
             logging: product_logging::spec::default_logging(),
-            affinity: get_affinity(cluster_name, role, trino_catalogs),
+            affinity: get_affinity(cluster_name, role, trino_catalogs, opa_config),
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity(cpu_min.to_string())),
