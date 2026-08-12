@@ -37,6 +37,11 @@ pub enum Error {
     CreateInternalSecret {
         source: random_secret_creation::Error,
     },
+
+    #[snafu(display("failed to create spooling secret"))]
+    CreateSpoolingSecret {
+        source: random_secret_creation::Error,
+    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -173,7 +178,7 @@ pub async fn ensure_random_secrets(client: &Client, cluster: &ValidatedCluster) 
         client,
     )
     .await
-    .context(CreateInternalSecretSnafu)?;
+    .context(CreateSpoolingSecretSnafu)?;
 
     Ok(())
 }

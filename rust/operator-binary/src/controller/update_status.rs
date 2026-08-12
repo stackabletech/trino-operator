@@ -31,15 +31,16 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// [`v1alpha1::TrinoCluster`].
 ///
 /// Takes [`KubernetesResources<Applied>`], so the type system proves that the status is derived
-/// from the resources the API server acknowledged and not from the ones we merely built.
+/// from the resources the API server acknowledged and not from the ones we merely built. They are
+/// consumed, because this is the last step of the reconciliation pipeline.
 pub async fn update_status(
     client: &Client,
     trino: &v1alpha1::TrinoCluster,
-    applied: &KubernetesResources<Applied>,
+    applied: KubernetesResources<Applied>,
 ) -> Result<()> {
     let mut sts_cond_builder = StatefulSetConditionBuilder::default();
-    for stateful_set in &applied.stateful_sets {
-        sts_cond_builder.add(stateful_set.clone());
+    for stateful_set in applied.stateful_sets {
+        sts_cond_builder.add(stateful_set);
     }
 
     let cluster_operation_cond_builder =

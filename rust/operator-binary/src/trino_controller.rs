@@ -126,7 +126,7 @@ pub async fn reconcile_trino(
     .context(ApplyResourcesSnafu)?;
 
     // update status (client required)
-    update_status(client, trino, &applied)
+    update_status(client, trino, applied)
         .await
         .context(UpdateStatusSnafu)?;
 
