@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, marker::PhantomData, str::FromStr};
 
 use stackable_operator::{
     commons::{
@@ -43,8 +43,10 @@ use crate::{
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
 };
 
+pub(crate) mod apply;
 pub(crate) mod build;
 pub(crate) mod dereference;
+pub(crate) mod update_status;
 pub(crate) mod validate;
 
 pub use stackable_operator::v2::product_logging::framework::STACKABLE_LOG_DIR;
@@ -67,8 +69,18 @@ pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String 
 // Placeholder version label value for resources whose labels must not change after deployment.
 stackable_operator::constant!(UNVERSIONED_PRODUCT_VERSION: ProductVersion = "none");
 
+/// Marker for prepared Kubernetes resources which are not applied yet.
+pub struct Prepared;
+
+/// Marker for Kubernetes resources which have been applied to the Kubernetes cluster.
+pub struct Applied;
+
 /// Every Kubernetes resource produced by the client-free [`build()`](build::build) step.
-pub struct KubernetesResources {
+///
+/// `T` marks whether these resources are only [`Prepared`] or already [`Applied`]. The marker
+/// lets the type system enforce, for example, that the cluster status is derived from the
+/// resources the API server returned rather than from the ones we merely built.
+pub struct KubernetesResources<T> {
     pub stateful_sets: Vec<StatefulSet>,
     pub services: Vec<Service>,
     pub listeners: Vec<Listener>,
@@ -76,6 +88,7 @@ pub struct KubernetesResources {
     pub pod_disruption_budgets: Vec<PodDisruptionBudget>,
     pub service_accounts: Vec<ServiceAccount>,
     pub role_bindings: Vec<RoleBinding>,
+    pub status: PhantomData<T>,
 }
 
 #[derive(Clone, Debug)]
