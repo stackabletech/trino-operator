@@ -5,6 +5,10 @@ version: "0.0.0-dev"
 appVersion: "0.0.0-dev"
 description: "Kubernetes operator for Trino. Deploy and run Trino coordinators and workers with the Stackable Data Platform (SDP)."
 home: https://github.com/stackabletech/trino-operator
+# One known use of this is the Artifact Hub (AH) listing which shows the logo.
+# AH downloads the logo and re-hosts it.
+# We opted to not use the project logos (e.g. the Apache Spark logo) here due to trademark concerns.
+icon: https://raw.githubusercontent.com/stackabletech/trino-operator/main/.readme/static/borrowed/Icon_Stackable.svg
 sources:
   - https://github.com/stackabletech/trino-operator
 keywords: ["trino", "sql", "query-engine", "federation", "kubernetes", "operator", "big-data"]
@@ -21,3 +25,14 @@ annotations:
       url: https://docs.stackable.tech/home/stable/trino/
     - name: support
       url: https://github.com/stackabletech/trino-operator/issues
+  artifacthub.io/crds: |-
+    - kind: TrinoCluster
+      version: v1alpha1
+      name: trinoclusters.trino.stackable.tech
+      displayName: TrinoCluster
+      description: A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
+    - kind: TrinoCatalog
+      version: v1alpha1
+      name: trinocatalogs.trino.stackable.tech
+      displayName: TrinoCatalog
+      description: The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
