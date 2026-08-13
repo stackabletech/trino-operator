@@ -59,6 +59,12 @@ dimensions:
     values:
       - "true"
       - "false"
+  # Whether the S3Connection used by the `delta` test carries a `tls` section, and MinIO is
+  # installed with TLS. With "false" Trino talks plaintext HTTP to S3.
+  - name: s3-use-tls
+    values:
+      - "true"
+      - "false"
   - name: use-internal-tls
     values:
       - "true"
@@ -131,15 +137,12 @@ tests:
   - name: delta
     # NOTE: this test only works because we set `parquet.use-column-index=false` in the delta catalog
     # to work around this bug: https://github.com/trinodb/trino/issues/28885
+    #
+    # This is also where plaintext (non-TLS) S3 access is covered, via the `s3-use-tls` dimension.
     dimensions:
       - trino-delta
       - hive-latest
-      - openshift
-  - name: s3-no-tls
-    # Trino must accept an S3Connection without a `tls` section and talk plaintext HTTP to it.
-    dimensions:
-      - trino-latest
-      - hive-latest
+      - s3-use-tls
       - openshift
 suites:
   - name: nightly
