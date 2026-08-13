@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use snafu::{OptionExt, ResultExt, ensure};
+use snafu::{OptionExt, ResultExt};
 use stackable_operator::{
     builder::pod::volume::{VolumeBuilder, VolumeMountBuilder},
     client::Client,
@@ -15,7 +15,7 @@ use crate::{
         from_trino_catalog_error::{
             ConfigureS3Snafu, FailedToGetDiscoveryConfigMapDataKeySnafu,
             FailedToGetDiscoveryConfigMapDataSnafu, FailedToGetDiscoveryConfigMapSnafu,
-            S3TlsNoVerificationNotSupportedSnafu, S3TlsRequiredSnafu,
+            S3TlsNoVerificationNotSupportedSnafu,
         },
     },
     config,
@@ -36,7 +36,6 @@ impl ExtendCatalogConfig for MetastoreConnection {
         catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
-        _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let hive_cm: ConfigMap = client
             .get(self.config_map.as_ref(), catalog_namespace.as_ref())
@@ -78,7 +77,6 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         _catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
-        _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         let s3 = self
             .clone()
@@ -103,9 +101,6 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
             catalog_config.add_env_property_from_file("s3.aws-secret-key", secret_key);
         }
 
-        // TLS is required when using native S3 implementation.
-        ensure!(s3.tls.uses_tls(), S3TlsRequiredSnafu);
-
         catalog_config.init_container_extra_start_commands.extend(
             config::s3::s3_tls_truststore_commands(&s3.tls)
                 .map_err(|_| S3TlsNoVerificationNotSupportedSnafu.build())?,
@@ -123,7 +118,6 @@ impl ExtendCatalogConfig for HdfsConnection {
         catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
-        _trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError> {
         // Since Trino 458, fs.hadoop.enabled defaults to false.
         catalog_config.add_property("fs.hadoop.enabled", "true");

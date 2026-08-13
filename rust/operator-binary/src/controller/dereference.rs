@@ -3,7 +3,7 @@
 //! Fetches all Kubernetes objects referenced by the TrinoCluster spec and returns them in
 //! [`DereferencedObjects`].
 
-use std::{num::ParseIntError, str::FromStr};
+use std::str::FromStr;
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -50,12 +50,6 @@ pub enum Error {
     ParseCatalog {
         source: FromTrinoCatalogError,
         catalog: ObjectRef<catalog::v1alpha1::TrinoCatalog>,
-    },
-
-    #[snafu(display("unable to parse Trino version: {product_version:?}"))]
-    ParseTrinoVersion {
-        source: ParseIntError,
-        product_version: String,
     },
 
     #[snafu(display("failed to configure fault tolerant execution"))]
@@ -110,11 +104,6 @@ pub async fn dereference(
         .await
         .context(GetCatalogsSnafu)?;
 
-    let raw_product_version = trino.spec.image.product_version();
-    let product_version = u16::from_str(raw_product_version).context(ParseTrinoVersionSnafu {
-        product_version: raw_product_version,
-    })?;
-
     let mut catalogs = Vec::with_capacity(catalog_definitions.len());
     for catalog in &catalog_definitions {
         let catalog_ref = ObjectRef::from_obj(catalog);
@@ -122,17 +111,12 @@ pub async fn dereference(
             &catalog.spec.name,
             &catalog.name().context(ObjectHasNoNameSnafu)?,
         )?;
-        let catalog_config = CatalogConfig::from_catalog(
-            &catalog_name,
-            catalog,
-            client,
-            &namespace,
-            product_version,
-        )
-        .await
-        .context(ParseCatalogSnafu {
-            catalog: catalog_ref,
-        })?;
+        let catalog_config =
+            CatalogConfig::from_catalog(&catalog_name, catalog, client, &namespace)
+                .await
+                .context(ParseCatalogSnafu {
+                    catalog: catalog_ref,
+                })?;
         catalogs.push(catalog_config);
     }
 

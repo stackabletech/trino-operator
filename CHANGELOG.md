@@ -16,18 +16,23 @@ All notable changes to this project will be documented in this file.
 - The reconciler now applies resources and derives the cluster status in discrete
   apply and update_status steps for the `trino_controller` ([#923]).
 - All product containers now run with `securityContext.runAsNonRoot` set to `true` to improve security ([#925]).
+- Internal operator refactoring: the Trino version is no longer passed to the catalog configuration,
+  as no catalog uses it for version-dependent behaviour anymore ([#928]).
 
 ### Fixed
 
 - Fix a longstanding problem of including empty `categories`, `shortNames` and `additionalPrinterColumns` in the CRDs,
   which could cause problems with GitOps tools (e.g. ArgoCD) reporting a diff in the custom resources.
   See [our internal issue](https://github.com/stackabletech/hdfs-operator/issues/626) and [the fix](https://github.com/kube-rs/kube/pull/2042) for details ([#925]).
+- `S3Connection`s without a `tls` section are accepted again and configured as `s3.endpoint=http://...`.
+  Trino's native S3 file system takes the transport from the endpoint scheme, so requiring TLS was never necessary ([#928]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 [#923]: https://github.com/stackabletech/trino-operator/pull/923
 [#925]: https://github.com/stackabletech/trino-operator/pull/925
+[#928]: https://github.com/stackabletech/trino-operator/pull/928
 
 ## [26.7.0] - 2026-07-21
 

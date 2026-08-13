@@ -110,7 +110,6 @@ impl CatalogConfig {
         catalog: &v1alpha1::TrinoCatalog,
         client: &Client,
         catalog_namespace: &NamespaceName,
-        trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let to_catalog_config: &dyn ToCatalogConfig = match &catalog.spec.connector {
             TrinoCatalogConnector::BlackHole(black_hole_connector) => black_hole_connector,
@@ -124,7 +123,7 @@ impl CatalogConfig {
             TrinoCatalogConnector::Tpch(tpch_connector) => tpch_connector,
         };
         let mut catalog_config = to_catalog_config
-            .to_catalog_config(catalog_name, catalog_namespace, client, trino_version)
+            .to_catalog_config(catalog_name, catalog_namespace, client)
             .await?;
 
         catalog_config

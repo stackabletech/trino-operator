@@ -4,8 +4,7 @@
 # However, the Bitnami chart for MinIO which cannot use self-signed TLS
 # certificates due to a bug in libminioclient.sh.
 #
-# Therefore, testing S3 access with TLS on OpenShift is currently broken due to
-# the Native S3 implementation in Trino requiring S3 connections to use TLS.
+# Therefore, testing S3 access with TLS on OpenShift is currently broken.
 #
 # libminioclient.sh hard-codes localhost in the certificate:
 # https://github.com/bitnami/containers/blob/7b976016fb6e926c91881bc4d824dd9e1c8e045f/bitnami/minio/2025/debian-12/rootfs/opt/bitnami/scripts/libminioclient.sh#L108
@@ -134,6 +133,12 @@ tests:
     # to work around this bug: https://github.com/trinodb/trino/issues/28885
     dimensions:
       - trino-delta
+      - hive-latest
+      - openshift
+  - name: s3-no-tls
+    # Trino must accept an S3Connection without a `tls` section and talk plaintext HTTP to it.
+    dimensions:
+      - trino-latest
       - hive-latest
       - openshift
 suites:

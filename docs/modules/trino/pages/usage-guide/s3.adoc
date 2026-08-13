@@ -4,8 +4,9 @@
 You can specify S3 connection details directly inside the TrinoCatalog specification or by referring to an external S3Connection custom resource.
 This mechanism is used across the whole Stackable Data Platform, read the xref:concepts:s3.adoc[S3 concepts page] to learn more.
 
-[#tls-required]
-IMPORTANT: Every S3 connection must contain a `tls` section, because Trino uses the native S3 client, which requires TLS.
+[#tls]
+NOTE: Add a `tls` section to encrypt the traffic to the object store.
+Without it, Trino connects over plaintext HTTP, which should be reserved for object stores that do not support TLS.
 
 == Inline
 
@@ -34,7 +35,7 @@ s3: # <1>
 <5> Name of the SecretClass providing the credentials. The Secret behind it is expected
     to contain the following keys: `accessKey` and `secretKey`
 <6> TLS settings for encrypted traffic. The `secretClass` can be provided by the Secret Operator or yourself.
-    This section is required, see <<tls-required,the note above>>.
+    This section is optional but recommended, see <<tls,the note above>>.
 
 A self provided S3 TLS secret can be specified like this:
 
