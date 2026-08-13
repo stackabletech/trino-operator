@@ -2,7 +2,6 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  # MinIO and its bucket provisioning Job are awaited in 02-assert.yaml.
   - script: |
      POD=$(kubectl -n $NAMESPACE get pod -l app.kubernetes.io/instance=minio -o name | head -n1 | sed 's#pod/##')
      kubectl -n $NAMESPACE cp delta-table "$POD:/tmp/delta-table"
