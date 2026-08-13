@@ -27,7 +27,7 @@ spec:
           accessStyle: Path
           credentials:
             secretClass: minio-credentials
-          # TLS is required for S3 connections, see the note below
+          # TLS is recommended for S3 connections, see the note below
           tls:
             verification:
               server:
@@ -35,7 +35,7 @@ spec:
                   secretClass: minio-tls-certificates
 ----
 
-IMPORTANT: The `tls` section is required, see xref:usage-guide/s3.adoc#tls-required[Connecting Trino to S3].
+NOTE: The `tls` section is optional but recommended, see xref:usage-guide/s3.adoc#tls[Connecting Trino to S3].
 
 == Connect to S3 store or HDFS
 

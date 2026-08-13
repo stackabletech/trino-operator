@@ -28,9 +28,6 @@ pub enum FromTrinoCatalogError {
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
 
-    #[snafu(display("trino 469 and greater require TLS for S3"))]
-    S3TlsRequired,
-
     #[snafu(display("trino catalog has no name set"))]
     InvalidCatalogSpec,
 
@@ -66,7 +63,6 @@ pub trait ToCatalogConfig {
         catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
-        trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError>;
 }
 
@@ -78,6 +74,5 @@ pub trait ExtendCatalogConfig {
         catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
-        trino_version: u16,
     ) -> Result<(), FromTrinoCatalogError>;
 }
