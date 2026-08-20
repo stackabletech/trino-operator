@@ -21,8 +21,7 @@ use stackable_operator::{
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
             core::v1::{
-                ConfigMapVolumeSource, ContainerPort, EnvVar, EnvVarSource, ExecAction,
-                HTTPGetAction, Probe, SecretKeySelector, Volume,
+                ConfigMapVolumeSource, ContainerPort, ExecAction, HTTPGetAction, Probe, Volume,
             },
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
@@ -31,7 +30,10 @@ use stackable_operator::{
     product_logging,
     shared::time::Duration,
     v2::{
-        builder::{pod::container::EnvVarSet, statefulset::restarter_ignore_secret_annotations},
+        builder::{
+            pod::container::{EnvVarName, EnvVarSet},
+            statefulset::restarter_ignore_secret_annotations,
+        },
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
         types::kubernetes::{ContainerName, SecretClassName, VolumeName},
     },
@@ -55,15 +57,22 @@ use crate::{
     },
     crd::{
         CONFIG_DIR_NAME, Container, ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, HTTP_PORT,
-        HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT,
-        METRICS_PORT_NAME, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
-        STACKABLE_INTERNAL_TLS_DIR, STACKABLE_MOUNT_INTERNAL_TLS_DIR,
-        STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR, STACKABLE_TLS_STORE_PASSWORD,
-        TrinoRole,
+        HTTP_PORT_NAME, HTTPS_PORT, HTTPS_PORT_NAME, INTERNAL_SECRET_SECRET_KEY,
+        MAX_TRINO_LOG_FILES_SIZE, METRICS_PORT, METRICS_PORT_NAME, RW_CONFIG_DIR_NAME,
+        SPOOLING_SECRET_SECRET_KEY, STACKABLE_CLIENT_TLS_DIR, STACKABLE_INTERNAL_TLS_DIR,
+        STACKABLE_MOUNT_INTERNAL_TLS_DIR, STACKABLE_MOUNT_SERVER_TLS_DIR, STACKABLE_SERVER_TLS_DIR,
+        STACKABLE_TLS_STORE_PASSWORD, TrinoRole,
     },
 };
 
 stackable_operator::constant!(VECTOR_CONTAINER_NAME: ContainerName = "vector");
+
+// The env var the `containerdebug` process (running in the background of the `trino`
+// container) logs its tracing information to. See `command::container_trino_args()` for how
+// the process is called.
+stackable_operator::constant!(
+    CONTAINERDEBUG_LOG_DIRECTORY: EnvVarName = "CONTAINERDEBUG_LOG_DIRECTORY"
+);
 
 // Typed names for the Pod's volumes, so each volume definition and its matching volume mounts
 // stay in sync. The Vector agent reads its `vector.yaml` from the rolegroup ConfigMap (mounted as
@@ -84,6 +93,16 @@ stackable_operator::constant!(INTERNAL_TLS_VOLUME_NAME: VolumeName = "internal-t
 pub enum Error {
     #[snafu(display("missing secret lifetime"))]
     MissingSecretLifetime,
+
+    #[snafu(display("failed to add an authentication environment variable"))]
+    AddAuthenticationEnvVar {
+        source: stackable_operator::v2::builder::pod::container::Error,
+    },
+
+    #[snafu(display("failed to add a catalog environment variable"))]
+    AddCatalogEnvVar {
+        source: stackable_operator::v2::builder::pod::container::Error,
+    },
 
     #[snafu(display("illegal container name: [{container_name}]"))]
     IllegalContainerName {
@@ -170,22 +189,27 @@ pub fn build_rolegroup_statefulset(
         }
     })?;
 
-    // additional authentication env vars
-    let mut env = trino_authentication_config.env_vars(trino_role, &Container::Trino);
+    // Operator-set env vars first; the user's `envOverrides` are merged on top last and win.
+    let mut env = EnvVarSet::new();
 
-    let internal_secret_name = shared_internal_secret_name(&cluster.name);
-    env.push(env_var_from_secret(
-        &internal_secret_name,
-        None,
-        ENV_INTERNAL_SECRET,
-    ));
+    // Additional authentication env vars.
+    for env_var in trino_authentication_config.env_vars(trino_role, &Container::Trino) {
+        env = env
+            .with_env_var(env_var)
+            .context(AddAuthenticationEnvVarSnafu)?;
+    }
 
-    let spooling_secret_name = shared_spooling_secret_name(&cluster.name);
-    env.push(env_var_from_secret(
-        &spooling_secret_name,
-        None,
-        ENV_SPOOLING_SECRET,
-    ));
+    env = env
+        .with_secret_key_ref(
+            &ENV_INTERNAL_SECRET,
+            &shared_internal_secret_name(&cluster.name),
+            &INTERNAL_SECRET_SECRET_KEY,
+        )
+        .with_secret_key_ref(
+            &ENV_SPOOLING_SECRET,
+            &shared_spooling_secret_name(&cluster.name),
+            &SPOOLING_SECRET_SECRET_KEY,
+        );
 
     trino_authentication_config
         .add_authentication_pod_and_volume_config(
@@ -204,25 +228,17 @@ pub fn build_rolegroup_statefulset(
     )
     .context(GracefulShutdownSnafu)?;
 
-    // Add the needed stuff for catalogs
-    env.extend(
-        catalogs
-            .values()
-            .flat_map(|catalog| &catalog.env_bindings)
-            .cloned(),
+    // Add the env vars needed by the catalogs.
+    for env_var in catalogs.values().flat_map(|catalog| &catalog.env_bindings) {
+        env = env
+            .with_env_var(env_var.clone())
+            .context(AddCatalogEnvVarSnafu)?;
+    }
+
+    env = env.with_value(
+        &CONTAINERDEBUG_LOG_DIRECTORY,
+        format!("{STACKABLE_LOG_DIR}/containerdebug"),
     );
-
-    // Needed by the `containerdebug` process to log it's tracing information to.
-    // This process runs in the background of the `trino` container.
-    // See command::container_trino_args() for how it's called.
-    env.push(EnvVar {
-        name: "CONTAINERDEBUG_LOG_DIRECTORY".into(),
-        value: Some(format!("{STACKABLE_LOG_DIR}/containerdebug")),
-        ..EnvVar::default()
-    });
-
-    // Finally add the user defined envOverrides properties.
-    env.extend(env_overrides.clone());
 
     let requested_secret_lifetime = merged_config
         .requested_secret_lifetime
@@ -331,7 +347,7 @@ pub fn build_rolegroup_statefulset(
         .args(vec![
             command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
         ])
-        .add_env_vars(env)
+        .add_env_vars(env.merge(env_overrides.clone()))
         .add_volume_mount(&*CONFIG_VOLUME_NAME, CONFIG_DIR_NAME)
         .context(AddVolumeMountSnafu)?
         .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
@@ -481,24 +497,6 @@ pub fn build_rolegroup_statefulset(
         }),
         status: None,
     })
-}
-
-/// Give a secret name and an optional key in the secret to use.
-/// The value from the key will be set into the given env var name.
-/// If not secret key is given, the env var name will be used as the secret key.
-fn env_var_from_secret(secret_name: &str, secret_key: Option<&str>, env_var: &str) -> EnvVar {
-    EnvVar {
-        name: env_var.to_string(),
-        value_from: Some(EnvVarSource {
-            secret_key_ref: Some(SecretKeySelector {
-                optional: Some(false),
-                name: secret_name.to_string(),
-                key: secret_key.unwrap_or(env_var).to_string(),
-            }),
-            ..EnvVarSource::default()
-        }),
-        ..EnvVar::default()
-    }
 }
 
 fn container_ports(cluster: &ValidatedCluster) -> Vec<ContainerPort> {
@@ -796,4 +794,65 @@ fn tls_volume_mounts(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use stackable_operator::v2::builder::pod::container::EnvVarName;
+
+    use super::*;
+    use crate::controller::validated_cluster;
+
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constant does not panic.
+        let _ = *CONTAINERDEBUG_LOG_DIRECTORY;
+    }
+
+    /// The user-supplied `envOverrides` must be merged in after all operator-set environment
+    /// variables, so that they can override any of them. `CONTAINERDEBUG_LOG_DIRECTORY` is used
+    /// as the example here because it is set unconditionally by the operator.
+    #[test]
+    fn env_overrides_take_precedence_over_operator_set_env_vars() {
+        let cluster = validated_cluster();
+        let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
+        let mut role_group_config =
+            cluster.role_group_configs[&TrinoRole::Coordinator][&role_group_name].clone();
+        role_group_config.env_overrides = EnvVarSet::new().with_value(
+            &EnvVarName::from_str("CONTAINERDEBUG_LOG_DIRECTORY").expect("valid env var name"),
+            "/custom/log/dir",
+        );
+
+        let stateful_set = build_rolegroup_statefulset(
+            &cluster,
+            &TrinoRole::Coordinator,
+            &role_group_name,
+            &role_group_config,
+        )
+        .expect("the StatefulSet builds");
+
+        let env = stateful_set
+            .spec
+            .expect("the StatefulSet has a spec")
+            .template
+            .spec
+            .expect("the pod template has a spec")
+            .containers
+            .into_iter()
+            .find(|container| container.name == "trino")
+            .expect("the trino container exists")
+            .env
+            .expect("the trino container has env vars");
+
+        let containerdebug: Vec<_> = env
+            .iter()
+            .filter(|env_var| env_var.name == "CONTAINERDEBUG_LOG_DIRECTORY")
+            .collect();
+        assert_eq!(
+            containerdebug.len(),
+            1,
+            "exactly one CONTAINERDEBUG_LOG_DIRECTORY entry must survive, got: {containerdebug:?}"
+        );
+        assert_eq!(containerdebug[0].value.as_deref(), Some("/custom/log/dir"));
+    }
 }

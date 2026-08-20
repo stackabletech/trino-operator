@@ -21,7 +21,7 @@ use stackable_operator::{
         role_group_utils::ResourceNames,
         role_utils,
         types::{
-            kubernetes::{ListenerClassName, NamespaceName, SecretClassName, Uid},
+            kubernetes::{ListenerClassName, NamespaceName, SecretClassName, SecretName, Uid},
             operator::{ClusterName, ProductVersion},
         },
     },
@@ -54,12 +54,16 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
-pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> String {
+pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> SecretName {
     format!("{cluster_name}-internal-secret")
+        .parse()
+        .expect("a ClusterName (at most 40 characters) plus '-internal-secret' fits the SecretName limit of 253 characters")
 }
 
-pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String {
+pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> SecretName {
     format!("{cluster_name}-spooling-secret")
+        .parse()
+        .expect("a ClusterName (at most 40 characters) plus '-spooling-secret' fits the SecretName limit of 253 characters")
 }
 
 /// Marker for prepared Kubernetes resources which are not applied yet.

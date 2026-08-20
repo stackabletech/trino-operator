@@ -33,12 +33,15 @@ use stackable_operator::{
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
     v2::{
+        builder::pod::container::EnvVarName,
         config_overrides::KeyValueConfigOverrides,
         role_group_utils::ResourceNames,
         role_utils::{JavaCommonConfig, Role},
         types::{
             common::Port,
-            kubernetes::{ConfigMapName, ListenerClassName, NamespaceName, SecretClassName},
+            kubernetes::{
+                ConfigMapName, ListenerClassName, NamespaceName, SecretClassName, SecretKey,
+            },
             operator::{ClusterName, RoleGroupName, RoleName},
         },
     },
@@ -82,9 +85,13 @@ pub const STACKABLE_MOUNT_SERVER_TLS_DIR: &str = "/stackable/mount_server_tls";
 pub const STACKABLE_MOUNT_INTERNAL_TLS_DIR: &str = "/stackable/mount_internal_tls";
 // store pws
 pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
-// secret vars
-pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
-pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
+// Env vars mounting the shared random Secrets, and the keys under which the Secrets store
+// their value. Name and key deliberately share the same string, so `${ENV:...}` references in
+// the generated properties match the Secret contents.
+constant!(pub ENV_INTERNAL_SECRET: EnvVarName = "INTERNAL_SECRET");
+constant!(pub INTERNAL_SECRET_SECRET_KEY: SecretKey = "INTERNAL_SECRET");
+constant!(pub ENV_SPOOLING_SECRET: EnvVarName = "SPOOLING_SECRET");
+constant!(pub SPOOLING_SECRET_SECRET_KEY: SecretKey = "SPOOLING_SECRET");
 // TLS
 const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
 // Listener
@@ -603,6 +610,15 @@ mod tests {
     use stackable_operator::versioned::test_utils::RoundtripTestData;
 
     use super::*;
+
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constants does not panic.
+        let _ = *ENV_INTERNAL_SECRET;
+        let _ = *INTERNAL_SECRET_SECRET_KEY;
+        let _ = *ENV_SPOOLING_SECRET;
+        let _ = *SPOOLING_SECRET_SECRET_KEY;
+    }
 
     /// The user-provided server TLS SecretClass as `Option<&str>`, used by these CRD-defaulting
     /// assertions.
