@@ -29,7 +29,6 @@ use crate::{
             statefulset,
         },
     },
-    crd::TrinoRole,
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME, PRODUCT_NAME},
 };
 
@@ -153,27 +152,22 @@ pub fn build(
 }
 
 /// Returns an [`ObjectMetaBuilder`] pre-filled with the namespace, an owner reference back to
-/// the cluster, and the recommended labels for a resource named `name` in `role`/
-/// `role_group_name`.
+/// the cluster, the given `name`, and the given `labels` (usually one of the recommended label
+/// sets built by the functions below).
 ///
-/// Consolidates the metadata chain repeated by the role-group child-resource builders. Call
-/// sites that need extra labels/annotations chain them onto the returned builder.
+/// Consolidates the metadata chain repeated by the child-resource builders. Call sites that
+/// need extra labels/annotations chain them onto the returned builder.
 pub(crate) fn object_meta(
     validated: &ValidatedCluster,
     name: impl Into<String>,
-    role: &TrinoRole,
-    role_group_name: &RoleGroupName,
+    labels: Labels,
 ) -> ObjectMetaBuilder {
     let mut builder = ObjectMetaBuilder::new();
     builder
         .name_and_namespace(validated)
         .name(name)
         .ownerreference(ownerreference_from_resource(validated, None, Some(true)))
-        .with_labels(recommended_labels_for_role_group_resources(
-            validated,
-            role,
-            role_group_name,
-        ));
+        .with_labels(labels);
     builder
 }
 

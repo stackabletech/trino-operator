@@ -386,12 +386,11 @@ pub fn build_rolegroup_statefulset(
         ));
     }
 
+    let recommended_object_labels =
+        recommended_labels_for_role_group_resources(cluster, trino_role, role_group_name);
+
     let metadata = ObjectMetaBuilder::new()
-        .with_labels(recommended_labels_for_role_group_resources(
-            cluster,
-            trino_role,
-            role_group_name,
-        ))
+        .with_labels(recommended_object_labels.clone())
         .with_annotation(
             // This is actually used by some kuttl tests (as they don't specify the container explicitly)
             Annotation::try_from(("kubectl.kubernetes.io/default-container", "trino"))
@@ -459,8 +458,7 @@ pub fn build_rolegroup_statefulset(
         metadata: object_meta(
             cluster,
             resource_names.stateful_set_name().to_string(),
-            trino_role,
-            role_group_name,
+            recommended_object_labels,
         )
         .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
         .with_annotations(annotations)

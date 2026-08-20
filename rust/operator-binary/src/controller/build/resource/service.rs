@@ -8,7 +8,7 @@ use stackable_operator::{
 use crate::{
     controller::{
         RoleGroupName, ValidatedCluster,
-        build::{object_meta, ports},
+        build::{object_meta, ports, recommended_labels_for_role_group_resources},
     },
     crd::{METRICS_PORT, METRICS_PORT_NAME, TrinoRole},
 };
@@ -29,8 +29,7 @@ pub fn build_rolegroup_headless_service(
                 .role_group_resource_names(role, role_group_name)
                 .headless_service_name()
                 .to_string(),
-            role,
-            role_group_name,
+            recommended_labels_for_role_group_resources(cluster, role, role_group_name),
         )
         .build(),
         spec: Some(ServiceSpec {
@@ -60,8 +59,7 @@ pub fn build_rolegroup_metrics_service(
                 .role_group_resource_names(role, role_group_name)
                 .metrics_service_name()
                 .to_string(),
-            role,
-            role_group_name,
+            recommended_labels_for_role_group_resources(cluster, role, role_group_name),
         )
         .with_labels(prometheus_labels(&Scraping::Enabled))
         .with_annotations(prometheus_annotations(

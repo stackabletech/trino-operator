@@ -20,6 +20,7 @@ use crate::{
                 exchange_manager_properties, log_properties, node_properties, product_logging,
                 security_properties, spooling_manager_properties,
             },
+            recommended_labels_for_role_group_resources,
         },
     },
     crd::TrinoRole,
@@ -183,7 +184,14 @@ pub fn build_rolegroup_config_map(
     }
 
     ConfigMapBuilder::new()
-        .metadata(object_meta(cluster, &config_map_name, role, role_group_name).build())
+        .metadata(
+            object_meta(
+                cluster,
+                &config_map_name,
+                recommended_labels_for_role_group_resources(cluster, role, role_group_name),
+            )
+            .build(),
+        )
         .data(data)
         .build()
         .with_context(|_| AssembleSnafu {
@@ -200,7 +208,14 @@ pub fn build_rolegroup_catalog_config_map(
 ) -> Result<ConfigMap> {
     let catalog_config_map_name = cluster.role_group_catalog_config_map_name(role, role_group_name);
     ConfigMapBuilder::new()
-        .metadata(object_meta(cluster, &catalog_config_map_name, role, role_group_name).build())
+        .metadata(
+            object_meta(
+                cluster,
+                &catalog_config_map_name,
+                recommended_labels_for_role_group_resources(cluster, role, role_group_name),
+            )
+            .build(),
+        )
         .data(
             cluster
                 .cluster_config
