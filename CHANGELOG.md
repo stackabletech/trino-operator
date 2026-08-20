@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
-- Bump `stackable-operator` to 0.114.0 ([#918]).
+- Bump `stackable-operator` to 0.116.0 ([#918], [#932]).
 - The RBAC ServiceAccount and RoleBinding are now built with the operator-rs `v2::rbac`
   functions and carry the full set of recommended labels ([#913]).
 - BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
@@ -18,6 +18,15 @@ All notable changes to this project will be documented in this file.
 - All product containers now run with `securityContext.runAsNonRoot` set to `true` to improve security ([#925]).
 - Internal operator refactoring: the Trino version is no longer passed to the catalog configuration,
   as no catalog uses it for version-dependent behaviour anymore ([#928]).
+- Environment variable overrides (`envOverrides`) are now merged into the operator-set
+  environment variables by name, so an override replaces the operator's value instead of
+  producing a duplicated entry whose precedence depended on Kubernetes' duplicate-name
+  handling ([#932]).
+- BREAKING: Remove the `app.kubernetes.io/component` and `app.kubernetes.io/role-group` labels
+  from the resources they don't apply to, and the `app.kubernetes.io/version` label from PVC
+  templates (all previously set to the placeholder value `none`). After the operator upgrade,
+  delete each coordinator StatefulSet so that the operator immediately recreates it with the 
+  new labels ([#932]).
 
 ### Fixed
 
@@ -33,6 +42,7 @@ All notable changes to this project will be documented in this file.
 [#923]: https://github.com/stackabletech/trino-operator/pull/923
 [#925]: https://github.com/stackabletech/trino-operator/pull/925
 [#928]: https://github.com/stackabletech/trino-operator/pull/928
+[#932]: https://github.com/stackabletech/trino-operator/pull/932
 
 ## [26.7.0] - 2026-07-21
 

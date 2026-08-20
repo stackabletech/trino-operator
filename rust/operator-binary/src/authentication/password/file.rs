@@ -226,6 +226,12 @@ mod tests {
     const AUTH_CLASS_NAME: &str = "test-auth";
 
     #[test]
+    fn test_constants() {
+        // Test that dereferencing the constant does not panic.
+        let _ = *PASSWORD_DB_VOLUME_NAME;
+    }
+
+    #[test]
     fn test_file_authenticator() {
         let authenticator = FileAuthenticator::new(
             AUTH_CLASS_NAME.to_string(),

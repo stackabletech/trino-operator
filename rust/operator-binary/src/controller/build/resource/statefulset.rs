@@ -805,8 +805,19 @@ mod tests {
 
     #[test]
     fn test_constants() {
-        // Test that dereferencing the constant does not panic.
+        // Test that dereferencing the constants does not panic.
+        let _ = *VECTOR_CONTAINER_NAME;
         let _ = *CONTAINERDEBUG_LOG_DIRECTORY;
+        let _ = *CONFIG_VOLUME_NAME;
+        let _ = *RW_CONFIG_VOLUME_NAME;
+        let _ = *CATALOG_VOLUME_NAME;
+        let _ = *LOG_CONFIG_VOLUME_NAME;
+        let _ = *LOG_VOLUME_NAME;
+        let _ = *SERVER_TLS_MOUNT_VOLUME_NAME;
+        let _ = *SERVER_TLS_VOLUME_NAME;
+        let _ = *CLIENT_TLS_VOLUME_NAME;
+        let _ = *INTERNAL_TLS_MOUNT_VOLUME_NAME;
+        let _ = *INTERNAL_TLS_VOLUME_NAME;
     }
 
     /// The user-supplied `envOverrides` must be merged in after all operator-set environment

@@ -618,6 +618,8 @@ mod tests {
         let _ = *INTERNAL_SECRET_SECRET_KEY;
         let _ = *ENV_SPOOLING_SECRET;
         let _ = *SPOOLING_SECRET_SECRET_KEY;
+        let _ = *COORDINATOR_ROLE_NAME;
+        let _ = *WORKER_ROLE_NAME;
     }
 
     /// The user-provided server TLS SecretClass as `Option<&str>`, used by these CRD-defaulting

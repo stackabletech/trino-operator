@@ -105,6 +105,12 @@ mod tests {
     use super::*;
     use crate::controller::{app_version_label, validated_cluster};
 
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constant does not panic.
+        let _ = *LISTENER_VOLUME_NAME;
+    }
+
     /// The group listener is a role-level (not role-group-level) resource, so it carries the
     /// role-resource recommended labels: a `component` label for the role and no `role-group`
     /// label.
