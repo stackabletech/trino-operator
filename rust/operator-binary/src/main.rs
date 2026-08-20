@@ -37,7 +37,7 @@ use crate::{
         catalog::{TrinoCatalog, TrinoCatalogVersion},
         v1alpha1,
     },
-    trino_controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
+    trino_controller::{FULL_CONTROLLER_NAME, TRINO_OPERATOR_NAME},
     webhooks::conversion::create_webhook_server,
 };
 
@@ -104,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
                     .map(anyhow::Ok);
 
             let client = stackable_operator::client::initialize_operator(
-                Some(OPERATOR_NAME.to_string()),
+                Some(TRINO_OPERATOR_NAME.to_string()),
                 &common.cluster_info,
             )
             .await?;

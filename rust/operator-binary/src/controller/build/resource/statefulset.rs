@@ -43,11 +43,13 @@ use crate::{
         MAX_PREPARE_LOG_FILE_SIZE, RoleGroupName, STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR,
         TrinoRoleGroupConfig, ValidatedCluster,
         build::{
-            self, command, object_meta,
+            self, command, object_meta, recommended_labels_for_role_group_resources,
+            recommended_labels_for_unversioned_role_group_resources,
             resource::listener::{
                 LISTENER_VOLUME_DIR, LISTENER_VOLUME_NAME, build_group_listener_pvc,
                 group_listener_name, secret_volume_listener_scope,
             },
+            role_group_selector,
         },
         shared_internal_secret_name, shared_spooling_secret_name,
     },
@@ -305,7 +307,11 @@ pub fn build_rolegroup_statefulset(
         // Used for PVC templates that cannot be modified once they are deployed, so a fixed
         // "none" version is used while keeping the other recommended labels.
         let unversioned_recommended_labels =
-            cluster.unversioned_recommended_labels(trino_role, role_group_name);
+            recommended_labels_for_unversioned_role_group_resources(
+                cluster,
+                trino_role,
+                role_group_name,
+            );
 
         persistent_volume_claims.push(
             build_group_listener_pvc(&group_listener_name, &unversioned_recommended_labels)
@@ -381,7 +387,11 @@ pub fn build_rolegroup_statefulset(
     }
 
     let metadata = ObjectMetaBuilder::new()
-        .with_labels(cluster.recommended_labels(trino_role, role_group_name))
+        .with_labels(recommended_labels_for_role_group_resources(
+            cluster,
+            trino_role,
+            role_group_name,
+        ))
         .with_annotation(
             // This is actually used by some kuttl tests (as they don't specify the container explicitly)
             Annotation::try_from(("kubectl.kubernetes.io/default-container", "trino"))
@@ -449,7 +459,8 @@ pub fn build_rolegroup_statefulset(
         metadata: object_meta(
             cluster,
             resource_names.stateful_set_name().to_string(),
-            cluster.recommended_labels(trino_role, role_group_name),
+            trino_role,
+            role_group_name,
         )
         .with_label(RESTART_CONTROLLER_ENABLED_LABEL.to_owned())
         .with_annotations(annotations)
@@ -461,9 +472,7 @@ pub fn build_rolegroup_statefulset(
             replicas: role_group_config.replicas.map(i32::from),
             selector: LabelSelector {
                 match_labels: Some(
-                    cluster
-                        .role_group_selector(trino_role, role_group_name)
-                        .into(),
+                    role_group_selector(cluster, trino_role, role_group_name).into(),
                 ),
                 ..LabelSelector::default()
             },

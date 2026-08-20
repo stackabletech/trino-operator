@@ -14,10 +14,11 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     controller::{
-        Applied, KubernetesResources, Prepared, ValidatedCluster, controller_name, operator_name,
-        product_name, shared_internal_secret_name, shared_spooling_secret_name,
+        Applied, KubernetesResources, Prepared, ValidatedCluster, shared_internal_secret_name,
+        shared_spooling_secret_name,
     },
     crd::{ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET},
+    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME, PRODUCT_NAME},
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -63,9 +64,9 @@ impl<'a> Applier<'a> {
         object_overrides: &'a ObjectOverrides,
     ) -> Applier<'a> {
         let cluster_resources = cluster_resources_new(
-            &product_name(),
-            &operator_name(),
-            &controller_name(),
+            &PRODUCT_NAME,
+            &OPERATOR_NAME,
+            &CONTROLLER_NAME,
             &cluster.name,
             &cluster.namespace,
             &cluster.uid,

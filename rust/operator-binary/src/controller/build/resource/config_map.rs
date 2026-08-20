@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
-    builder::configmap::ConfigMapBuilder, k8s_openapi::api::core::v1::ConfigMap, kvp::Labels,
+    builder::configmap::ConfigMapBuilder, k8s_openapi::api::core::v1::ConfigMap,
     product_logging::framework::VECTOR_CONFIG_FILE, utils::cluster_info::KubernetesClusterInfo,
     v2::config_file_writer::to_java_properties_string,
 };
@@ -59,7 +59,6 @@ pub fn build_rolegroup_config_map(
     role: &TrinoRole,
     role_group_name: &RoleGroupName,
     cluster_info: &KubernetesClusterInfo,
-    recommended_labels: &Labels,
 ) -> Result<ConfigMap> {
     let role_group_configs =
         cluster
@@ -184,7 +183,7 @@ pub fn build_rolegroup_config_map(
     }
 
     ConfigMapBuilder::new()
-        .metadata(object_meta(cluster, &config_map_name, recommended_labels.clone()).build())
+        .metadata(object_meta(cluster, &config_map_name, role, role_group_name).build())
         .data(data)
         .build()
         .with_context(|_| AssembleSnafu {
@@ -198,18 +197,10 @@ pub fn build_rolegroup_catalog_config_map(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
     role_group_name: &RoleGroupName,
-    recommended_labels: &Labels,
 ) -> Result<ConfigMap> {
     let catalog_config_map_name = cluster.role_group_catalog_config_map_name(role, role_group_name);
     ConfigMapBuilder::new()
-        .metadata(
-            object_meta(
-                cluster,
-                &catalog_config_map_name,
-                recommended_labels.clone(),
-            )
-            .build(),
-        )
+        .metadata(object_meta(cluster, &catalog_config_map_name, role, role_group_name).build())
         .data(
             cluster
                 .cluster_config

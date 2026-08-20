@@ -5,19 +5,21 @@
 //! type and the individual steps live under the [`crate::controller`] module tree; this file is
 //! kept next to `main.rs` for consistency with the other Stackable operators.
 
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use const_format::concatcp;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     cluster_resources::ClusterResourceApplyStrategy,
+    constant,
     kube::{
         core::{DeserializeGuard, error_boundary},
         runtime::controller::Action,
     },
     logging::controller::ReconcilerError,
     shared::time::Duration,
+    v2::types::operator::{ControllerName, OperatorName, ProductName},
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
@@ -28,7 +30,7 @@ use crate::{
         update_status::{self, update_status},
         validate,
     },
-    crd::v1alpha1,
+    crd::{APP_NAME, v1alpha1},
 };
 
 pub struct Ctx {
@@ -36,9 +38,13 @@ pub struct Ctx {
     pub operator_environment: OperatorEnvironmentOptions,
 }
 
-pub const OPERATOR_NAME: &str = "trino.stackable.tech";
-pub const CONTROLLER_NAME: &str = "trinocluster";
-pub const FULL_CONTROLLER_NAME: &str = concatcp!(CONTROLLER_NAME, '.', OPERATOR_NAME);
+pub const TRINO_OPERATOR_NAME: &str = "trino.stackable.tech";
+pub const TRINO_CONTROLLER_NAME: &str = "trinocluster";
+pub const FULL_CONTROLLER_NAME: &str = concatcp!(TRINO_CONTROLLER_NAME, '.', TRINO_OPERATOR_NAME);
+
+constant!(pub(crate) PRODUCT_NAME: ProductName = APP_NAME);
+constant!(pub(crate) OPERATOR_NAME: OperatorName = TRINO_OPERATOR_NAME);
+constant!(pub(crate) CONTROLLER_NAME: ControllerName = TRINO_CONTROLLER_NAME);
 
 pub(crate) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 
@@ -237,15 +243,12 @@ mod tests {
 
         let trino_role = TrinoRole::Coordinator;
         let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
-        let recommended_labels =
-            validated_cluster.recommended_labels(&trino_role, &role_group_name);
 
         build::resource::config_map::build_rolegroup_config_map(
             &validated_cluster,
             &trino_role,
             &role_group_name,
             &cluster_info,
-            &recommended_labels,
         )
         .expect("build_rolegroup_config_map should succeed")
     }

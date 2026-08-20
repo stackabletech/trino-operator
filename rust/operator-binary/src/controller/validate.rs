@@ -12,15 +12,14 @@ use stackable_operator::{
     config::fragment,
     kube::ResourceExt as _,
     product_logging::spec::Logging,
-    role_utils::{GenericRoleConfig, RoleGroup},
+    role_utils::GenericRoleConfig,
     v2::{
-        builder::pod::container::{EnvVarName, EnvVarSet},
         controller_utils::{get_cluster_name, get_namespace, get_uid},
         product_logging::framework::{
             ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
             validate_logging_configuration_for_container,
         },
-        role_utils::{JavaCommonConfig, RoleGroupConfig, with_validated_config},
+        role_utils::{JavaCommonConfig, RoleGroup, RoleGroupConfig, with_validated_config},
         types::kubernetes::ConfigMapName,
     },
 };
@@ -86,11 +85,6 @@ pub enum Error {
     FailedToResolveConfig {
         source: fragment::ValidationError,
         role_group: RoleGroupName,
-    },
-
-    #[snafu(display("invalid environment variable override name"))]
-    ParseEnvVarName {
-        source: stackable_operator::v2::macros::attributed_string_type::Error,
     },
 
     #[snafu(display("failed to validate logging configuration"))]
@@ -316,21 +310,13 @@ fn into_role_group_config(
     let replicas = merged.replicas;
     let common = merged.config;
 
-    let mut env_overrides = EnvVarSet::new();
-    for (name, value) in common.env_overrides {
-        env_overrides = env_overrides.with_value(
-            &EnvVarName::from_str(&name).context(ParseEnvVarNameSnafu)?,
-            value,
-        );
-    }
-
     let logging = validate_logging(&common.config.logging, vector_aggregator_config_map_name)?;
 
     Ok(RoleGroupConfig {
         replicas,
         config: ValidatedTrinoConfig::from_merged(common.config, logging),
         config_overrides: common.config_overrides,
-        env_overrides,
+        env_overrides: common.env_overrides.into(),
         cli_overrides: common.cli_overrides,
         pod_overrides: common.pod_overrides,
         product_specific_common_config: common.product_specific_common_config,
@@ -618,36 +604,6 @@ mod tests {
         });
 
         assert!(validate_yaml(&minimal_yaml("481"), &derefs).is_ok());
-    }
-
-    #[test]
-    fn rejects_invalid_env_override_name() {
-        let yaml = r#"
-            apiVersion: trino.stackable.tech/v1alpha1
-            kind: TrinoCluster
-            metadata:
-              name: simple-trino
-              namespace: default
-              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
-            spec:
-              image:
-                productVersion: "481"
-              clusterConfig:
-                catalogLabelSelector: {}
-              coordinators:
-                roleGroups:
-                  default:
-                    replicas: 1
-                    envOverrides:
-                      "BAD=NAME": "value"
-              workers:
-                roleGroups:
-                  default:
-                    replicas: 1
-            "#;
-
-        let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
-        assert!(matches!(err, Error::ParseEnvVarName { .. }));
     }
 
     #[test]

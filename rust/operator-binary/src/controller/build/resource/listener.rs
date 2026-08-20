@@ -6,7 +6,10 @@ use stackable_operator::{
     crd::listener::v1alpha1::{Listener, ListenerPort, ListenerSpec},
     k8s_openapi::api::core::v1::PersistentVolumeClaim,
     kvp::Labels,
-    v2::types::kubernetes::{ListenerClassName, VolumeName},
+    v2::types::{
+        kubernetes::{ListenerClassName, VolumeName},
+        operator::RoleGroupName,
+    },
 };
 
 use crate::{
@@ -30,12 +33,13 @@ pub enum Error {
 
 pub fn build_group_listener(
     cluster: &ValidatedCluster,
-    recommended_labels: Labels,
+    role: &TrinoRole,
+    role_group_name: &RoleGroupName,
     listener_class: &ListenerClassName,
     listener_group_name: String,
 ) -> Listener {
     Listener {
-        metadata: object_meta(cluster, listener_group_name, recommended_labels).build(),
+        metadata: object_meta(cluster, listener_group_name, role, role_group_name).build(),
         spec: ListenerSpec {
             class_name: Some(listener_class.to_string()),
             ports: Some(listener_ports(cluster)),
@@ -64,7 +68,8 @@ pub fn group_listener_name(cluster: &ValidatedCluster, role: &TrinoRole) -> Opti
     match role {
         TrinoRole::Coordinator => Some(format!(
             "{cluster_name}-{role}",
-            cluster_name = cluster.name
+            cluster_name = cluster.name,
+            role = role.as_ref(),
         )),
         TrinoRole::Worker => None,
     }

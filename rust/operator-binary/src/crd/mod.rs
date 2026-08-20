@@ -5,7 +5,7 @@ pub mod client_protocol;
 pub mod discovery;
 pub mod fault_tolerant_execution;
 
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, ops::Deref, str::FromStr};
 
 use affinity::get_affinity;
 use serde::{Deserialize, Serialize};
@@ -21,20 +21,21 @@ use stackable_operator::{
         },
     },
     config::{fragment::Fragment, merge::Merge},
+    constant,
     crd::authentication::core,
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt},
     memory::{BinaryMultiple, MemoryQuantity},
     product_logging::{self, spec::Logging},
-    role_utils::{GenericRoleConfig, Role},
+    role_utils::GenericRoleConfig,
     schemars::{self, JsonSchema},
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
     v2::{
         config_overrides::KeyValueConfigOverrides,
         role_group_utils::ResourceNames,
-        role_utils::JavaCommonConfig,
+        role_utils::{JavaCommonConfig, Role},
         types::{
             common::Port,
             kubernetes::{ConfigMapName, ListenerClassName, NamespaceName, SecretClassName},
@@ -389,37 +390,41 @@ fn tls_secret_class_default() -> Option<SecretClassName> {
     )
 }
 
-#[derive(
-    Clone,
-    Debug,
-    Deserialize,
-    Display,
-    EnumIter,
-    Eq,
-    Hash,
-    JsonSchema,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    Serialize,
-    EnumString,
-)]
+constant!(COORDINATOR_ROLE_NAME: RoleName = "coordinator");
+constant!(WORKER_ROLE_NAME: RoleName = "worker");
+
+#[derive(Clone, Debug, EnumIter, EnumString, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd)]
 pub enum TrinoRole {
-    #[strum(serialize = "coordinator")]
     Coordinator,
-    #[strum(serialize = "worker")]
     Worker,
+}
+
+impl Deref for TrinoRole {
+    type Target = RoleName;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            TrinoRole::Coordinator => &COORDINATOR_ROLE_NAME,
+            TrinoRole::Worker => &WORKER_ROLE_NAME,
+        }
+    }
 }
 
 impl From<TrinoRole> for RoleName {
     fn from(value: TrinoRole) -> Self {
-        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
+        value
+            .to_string()
+            .parse()
+            .expect("a TrinoRole serialises to a valid RoleName")
     }
 }
 
 impl From<&TrinoRole> for RoleName {
     fn from(value: &TrinoRole) -> Self {
-        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
+        value
+            .to_string()
+            .parse()
+            .expect("a TrinoRole serialises to a valid RoleName")
     }
 }
 
