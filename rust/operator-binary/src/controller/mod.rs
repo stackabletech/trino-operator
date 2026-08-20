@@ -62,9 +62,6 @@ pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String 
     format!("{cluster_name}-spooling-secret")
 }
 
-// Placeholder version label value for resources whose labels must not change after deployment.
-stackable_operator::constant!(UNVERSIONED_PRODUCT_VERSION: ProductVersion = "none");
-
 /// Marker for prepared Kubernetes resources which are not applied yet.
 pub struct Prepared;
 

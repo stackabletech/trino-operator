@@ -44,7 +44,7 @@ use stackable_operator::{
     },
     versioned::versioned,
 };
-use strum::{Display, EnumIter, EnumString};
+use strum::{Display, EnumIter};
 
 use crate::crd::discovery::TrinoPodRef;
 
@@ -393,7 +393,7 @@ fn tls_secret_class_default() -> Option<SecretClassName> {
 constant!(COORDINATOR_ROLE_NAME: RoleName = "coordinator");
 constant!(WORKER_ROLE_NAME: RoleName = "worker");
 
-#[derive(Clone, Debug, EnumIter, EnumString, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, EnumIter, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd)]
 pub enum TrinoRole {
     Coordinator,
     Worker,

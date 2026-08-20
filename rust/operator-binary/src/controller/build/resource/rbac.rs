@@ -44,7 +44,6 @@ mod tests {
                 "apiVersion": "v1",
                 "kind": "ServiceAccount",
                 "metadata": {
-                    // The RBAC resources are cluster-shared, so role and role group are `none`.
                     "labels": {
                         "app.kubernetes.io/instance": "simple-trino",
                         "app.kubernetes.io/managed-by": "trino.stackable.tech_trinocluster",
