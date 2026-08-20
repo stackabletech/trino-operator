@@ -362,8 +362,8 @@ mod tests {
         let config = cm.get("config.properties").unwrap();
         assert!(config.contains("protocol.spooling.enabled=true"));
         assert!(config.contains(&format!(
-            "protocol.spooling.shared-secret-key=${{ENV\\:{}}}",
-            ENV_SPOOLING_SECRET.as_ref()
+            "protocol.spooling.shared-secret-key=${{ENV\\:{env_spooling_secret}}}",
+            env_spooling_secret = ENV_SPOOLING_SECRET.as_ref()
         )));
         assert!(config.contains("foo=bar"));
 
