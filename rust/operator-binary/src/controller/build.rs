@@ -1,6 +1,6 @@
 //! Builders that turn a `ValidatedCluster` into Kubernetes resource contents.
 
-use std::{marker::PhantomData, str::FromStr};
+use std::marker::PhantomData;
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
@@ -37,11 +37,6 @@ pub mod graceful_shutdown;
 pub mod ports;
 pub mod properties;
 pub mod resource;
-
-// Placeholder role-group name used for the recommended labels of a role's group listener.
-// The group listener is owned by the role (not a single role-group), so there is no real
-// role-group to attribute it to.
-stackable_operator::constant!(PLACEHOLDER_LISTENER_ROLE_GROUP: RoleGroupName = "none");
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -130,7 +125,6 @@ pub fn build(
             listeners.push(build_group_listener(
                 cluster,
                 role,
-                &PLACEHOLDER_LISTENER_ROLE_GROUP,
                 listener_class,
                 listener_group_name,
             ));
@@ -178,6 +172,20 @@ pub(crate) fn recommended_labels_for_cluster_resources(cluster: &ValidatedCluste
         &cluster.product_version,
         &OPERATOR_NAME,
         &CONTROLLER_NAME,
+    )
+}
+
+pub(crate) fn recommended_labels_for_role_resources(
+    cluster: &ValidatedCluster,
+    role_name: &RoleName,
+) -> Labels {
+    label::recommended_labels_for_role_resources(
+        &cluster.name,
+        &PRODUCT_NAME,
+        &cluster.product_version,
+        &OPERATOR_NAME,
+        &CONTROLLER_NAME,
+        role_name,
     )
 }
 

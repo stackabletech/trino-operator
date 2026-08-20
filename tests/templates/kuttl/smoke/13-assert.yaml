@@ -416,7 +416,6 @@ metadata:
     app.kubernetes.io/instance: trino
     app.kubernetes.io/managed-by: trino.stackable.tech_trinocluster
     app.kubernetes.io/name: trino
-    app.kubernetes.io/role-group: none
     stackable.tech/vendor: Stackable
   ownerReferences:
     - apiVersion: trino.stackable.tech/v1alpha1
