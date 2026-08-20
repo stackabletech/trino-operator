@@ -25,7 +25,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Remove the `app.kubernetes.io/component` and `app.kubernetes.io/role-group` labels
   from the resources they don't apply to, and the `app.kubernetes.io/version` label from PVC
   templates (all previously set to the placeholder value `none`). After the operator upgrade,
-  delete each coordinator StatefulSet so that the operator immediately recreates it with the 
+  delete each coordinator StatefulSet so that the operator immediately recreates it with the
   new labels ([#932]).
 
 ### Fixed
