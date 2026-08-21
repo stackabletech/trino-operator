@@ -131,7 +131,7 @@ pub fn build(
     props.insert(HTTP_SERVER_LOG_ENABLED.to_string(), "false".to_string());
     props.insert(
         INTERNAL_COMMUNICATION_SHARED_SECRET.to_string(),
-        format!("${{ENV:{ENV_INTERNAL_SECRET}}}"),
+        format!("${{ENV:{env_var}}}", env_var = ENV_INTERNAL_SECRET.as_ref()),
     );
 
     // TLS gating, including the authentication-requires-TLS check.

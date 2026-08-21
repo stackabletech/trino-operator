@@ -1484,7 +1484,8 @@ spec:
                     default: {}
                     description: |-
                       `envOverrides` configure environment variables to be set in the Pods.
-                      It is a map from strings to strings - environment variables and the value to set.
+                      It is a map from environment variable names to their values. The names are validated to be
+                      valid environment variable names.
                       Read the
                       [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                       for more information and consult the operator specific usage guide to find out about
@@ -2092,7 +2093,8 @@ spec:
                           default: {}
                           description: |-
                             `envOverrides` configure environment variables to be set in the Pods.
-                            It is a map from strings to strings - environment variables and the value to set.
+                            It is a map from environment variable names to their values. The names are validated to be
+                            valid environment variable names.
                             Read the
                             [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                             for more information and consult the operator specific usage guide to find out about
@@ -2763,7 +2765,8 @@ spec:
                     default: {}
                     description: |-
                       `envOverrides` configure environment variables to be set in the Pods.
-                      It is a map from strings to strings - environment variables and the value to set.
+                      It is a map from environment variable names to their values. The names are validated to be
+                      valid environment variable names.
                       Read the
                       [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                       for more information and consult the operator specific usage guide to find out about
@@ -3363,7 +3366,8 @@ spec:
                           default: {}
                           description: |-
                             `envOverrides` configure environment variables to be set in the Pods.
-                            It is a map from strings to strings - environment variables and the value to set.
+                            It is a map from environment variable names to their values. The names are validated to be
+                            valid environment variable names.
                             Read the
                             [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                             for more information and consult the operator specific usage guide to find out about

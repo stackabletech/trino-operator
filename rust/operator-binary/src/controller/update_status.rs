@@ -13,7 +13,7 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 use crate::{
     controller::{Applied, KubernetesResources},
     crd::v1alpha1,
-    trino_controller::OPERATOR_NAME,
+    trino_controller::TRINO_OPERATOR_NAME,
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -54,7 +54,7 @@ pub async fn update_status(
     };
 
     client
-        .apply_patch_status(OPERATOR_NAME, trino, &status)
+        .apply_patch_status(TRINO_OPERATOR_NAME, trino, &status)
         .await
         .context(ApplyStatusSnafu)?;
 

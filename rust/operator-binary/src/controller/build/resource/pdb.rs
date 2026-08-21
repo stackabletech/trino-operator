@@ -7,8 +7,9 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{ValidatedCluster, controller_name, operator_name, product_name},
+    controller::ValidatedCluster,
     crd::TrinoRole,
+    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME, PRODUCT_NAME},
 };
 
 /// Builds the [`PodDisruptionBudget`] for the given `role`, or `None` if PDBs are disabled.
@@ -29,10 +30,10 @@ pub fn build_pdb(
     let role_name: RoleName = role.into();
     let pdb = pod_disruption_budget_builder_with_role(
         cluster,
-        &product_name(),
+        &PRODUCT_NAME,
         &role_name,
-        &operator_name(),
-        &controller_name(),
+        &OPERATOR_NAME,
+        &CONTROLLER_NAME,
     )
     .with_max_unavailable(max_unavailable)
     .build();

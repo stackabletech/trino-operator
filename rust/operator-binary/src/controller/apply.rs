@@ -14,10 +14,11 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     controller::{
-        Applied, KubernetesResources, Prepared, ValidatedCluster, controller_name, operator_name,
-        product_name, shared_internal_secret_name, shared_spooling_secret_name,
+        Applied, KubernetesResources, Prepared, ValidatedCluster, shared_internal_secret_name,
+        shared_spooling_secret_name,
     },
-    crd::{ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET},
+    crd::{INTERNAL_SECRET_SECRET_KEY, SPOOLING_SECRET_SECRET_KEY},
+    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME, PRODUCT_NAME},
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -63,9 +64,9 @@ impl<'a> Applier<'a> {
         object_overrides: &'a ObjectOverrides,
     ) -> Applier<'a> {
         let cluster_resources = cluster_resources_new(
-            &product_name(),
-            &operator_name(),
-            &controller_name(),
+            &PRODUCT_NAME,
+            &OPERATOR_NAME,
+            &CONTROLLER_NAME,
             &cluster.name,
             &cluster.namespace,
             &cluster.uid,
@@ -159,8 +160,8 @@ impl<'a> Applier<'a> {
 /// invalidate all running queries).
 pub async fn ensure_random_secrets(client: &Client, cluster: &ValidatedCluster) -> Result<()> {
     random_secret_creation::create_random_secret_if_not_exists(
-        &shared_internal_secret_name(&cluster.name),
-        ENV_INTERNAL_SECRET,
+        shared_internal_secret_name(&cluster.name).as_ref(),
+        INTERNAL_SECRET_SECRET_KEY.as_ref(),
         512,
         cluster,
         client,
@@ -171,8 +172,8 @@ pub async fn ensure_random_secrets(client: &Client, cluster: &ValidatedCluster) 
     // This secret is created even if spooling is not configured.
     // Trino currently requires the secret to be exactly 256 bits long.
     random_secret_creation::create_random_secret_if_not_exists(
-        &shared_spooling_secret_name(&cluster.name),
-        ENV_SPOOLING_SECRET,
+        shared_spooling_secret_name(&cluster.name).as_ref(),
+        SPOOLING_SECRET_SECRET_KEY.as_ref(),
         32,
         cluster,
         client,

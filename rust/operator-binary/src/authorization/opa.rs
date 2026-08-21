@@ -155,6 +155,12 @@ impl TrinoOpaConfig {
 mod tests {
     use super::*;
 
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constant does not panic.
+        let _ = *OPA_TLS_VOLUME_NAME;
+    }
+
     fn minimal_opa() -> TrinoOpaConfig {
         TrinoOpaConfig {
             non_batched_connection_string: "http://opa/allow".to_string(),

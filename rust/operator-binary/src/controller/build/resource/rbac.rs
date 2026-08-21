@@ -1,27 +1,18 @@
 //! Builds the RBAC resources (ServiceAccount + RoleBinding) shared by all role groups.
 
-use std::str::FromStr;
-
 use stackable_operator::{
     k8s_openapi::api::{core::v1::ServiceAccount, rbac::v1::RoleBinding},
-    kvp::Labels,
-    v2::{
-        rbac,
-        types::operator::{RoleGroupName, RoleName},
-    },
+    v2::rbac,
 };
 
-use crate::controller::ValidatedCluster;
-
-stackable_operator::constant!(NONE_ROLE_NAME: RoleName = "none");
-stackable_operator::constant!(NONE_ROLE_GROUP_NAME: RoleGroupName = "none");
+use crate::controller::{ValidatedCluster, build::recommended_labels_for_cluster_resources};
 
 /// Builds the [`ServiceAccount`] that the coordinator and worker Pods run under.
 pub fn build_service_account(cluster: &ValidatedCluster) -> ServiceAccount {
     rbac::build_service_account(
         cluster,
         &cluster.cluster_resource_names(),
-        rbac_labels(cluster),
+        recommended_labels_for_cluster_resources(cluster),
     )
 }
 
@@ -31,14 +22,8 @@ pub fn build_role_binding(cluster: &ValidatedCluster) -> RoleBinding {
     rbac::build_role_binding(
         cluster,
         &cluster.cluster_resource_names(),
-        rbac_labels(cluster),
+        recommended_labels_for_cluster_resources(cluster),
     )
-}
-
-/// Both resources are shared by the whole cluster rather than tied to a role or role group, so
-/// the recommended labels carry `none` for both values.
-fn rbac_labels(cluster: &ValidatedCluster) -> Labels {
-    cluster.recommended_labels_for(&NONE_ROLE_NAME, &NONE_ROLE_GROUP_NAME)
 }
 
 #[cfg(test)]
@@ -59,13 +44,10 @@ mod tests {
                 "apiVersion": "v1",
                 "kind": "ServiceAccount",
                 "metadata": {
-                    // The RBAC resources are cluster-shared, so role and role group are `none`.
                     "labels": {
-                        "app.kubernetes.io/component": "none",
                         "app.kubernetes.io/instance": "simple-trino",
                         "app.kubernetes.io/managed-by": "trino.stackable.tech_trinocluster",
                         "app.kubernetes.io/name": "trino",
-                        "app.kubernetes.io/role-group": "none",
                         "app.kubernetes.io/version": app_version_label("481"),
                         "stackable.tech/vendor": "Stackable"
                     },
@@ -96,11 +78,9 @@ mod tests {
                 "kind": "RoleBinding",
                 "metadata": {
                     "labels": {
-                        "app.kubernetes.io/component": "none",
                         "app.kubernetes.io/instance": "simple-trino",
                         "app.kubernetes.io/managed-by": "trino.stackable.tech_trinocluster",
                         "app.kubernetes.io/name": "trino",
-                        "app.kubernetes.io/role-group": "none",
                         "app.kubernetes.io/version": app_version_label("481"),
                         "stackable.tech/vendor": "Stackable"
                     },

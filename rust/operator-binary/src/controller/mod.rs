@@ -14,19 +14,15 @@ use stackable_operator::{
         rbac::v1::RoleBinding,
     },
     kube::{Resource, api::ObjectMeta},
-    kvp::Labels,
     memory::{BinaryMultiple, MemoryQuantity},
     shared::time::Duration,
     v2::{
         HasName, HasUid, NameIsValidLabelValue,
-        kvp::label::{recommended_labels, role_group_selector},
         role_group_utils::ResourceNames,
         role_utils,
         types::{
-            kubernetes::{ListenerClassName, NamespaceName, SecretClassName, Uid},
-            operator::{
-                ClusterName, ControllerName, OperatorName, ProductName, ProductVersion, RoleName,
-            },
+            kubernetes::{ListenerClassName, NamespaceName, SecretClassName, SecretName, Uid},
+            operator::{ClusterName, ProductVersion},
         },
     },
 };
@@ -39,8 +35,8 @@ use crate::{
         client_protocol::ResolvedClientProtocolConfig,
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
     },
-    crd::{APP_NAME, TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
-    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
+    crd::{TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
+    trino_controller::PRODUCT_NAME,
 };
 
 pub(crate) mod apply;
@@ -58,16 +54,17 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
-pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> String {
+pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> SecretName {
     format!("{cluster_name}-internal-secret")
+        .parse()
+        .expect("a ClusterName (at most 40 characters) plus '-internal-secret' fits the SecretName limit of 253 characters")
 }
 
-pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String {
+pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> SecretName {
     format!("{cluster_name}-spooling-secret")
+        .parse()
+        .expect("a ClusterName (at most 40 characters) plus '-spooling-secret' fits the SecretName limit of 253 characters")
 }
-
-// Placeholder version label value for resources whose labels must not change after deployment.
-stackable_operator::constant!(UNVERSIONED_PRODUCT_VERSION: ProductVersion = "none");
 
 /// Marker for prepared Kubernetes resources which are not applied yet.
 pub struct Prepared;
@@ -248,7 +245,7 @@ impl ValidatedCluster {
     pub fn cluster_resource_names(&self) -> role_utils::ResourceNames {
         role_utils::ResourceNames {
             cluster_name: self.name.clone(),
-            product_name: product_name(),
+            product_name: PRODUCT_NAME.clone(),
         }
     }
 
@@ -277,54 +274,6 @@ impl ValidatedCluster {
             self.role_group_resource_names(role, role_group_name)
                 .role_group_config_map()
         )
-    }
-
-    /// A [`TrinoRole`] as a type-safe [`RoleName`].
-    fn recommended_labels_with(
-        &self,
-        version: &ProductVersion,
-        role_name: &RoleName,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        recommended_labels(
-            self,
-            &product_name(),
-            version,
-            &operator_name(),
-            &controller_name(),
-            role_name,
-            role_group_name,
-        )
-    }
-
-    /// Recommended labels for a role-group resource (using the resolved product version).
-    pub fn recommended_labels(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
-        self.recommended_labels_for(&role.into(), role_group_name)
-    }
-
-    /// Recommended labels for a resource that is not tied to a concrete [`TrinoRole`] (e.g. the
-    /// cluster-shared RBAC resources), using a free-form role/role-group label value.
-    pub fn recommended_labels_for(
-        &self,
-        role_name: &RoleName,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        self.recommended_labels_with(&self.product_version, role_name, role_group_name)
-    }
-
-    /// Recommended labels with the constant [`UNVERSIONED_PRODUCT_VERSION`], for resources whose
-    /// labels must not change after creation (e.g. listener PVC templates).
-    pub fn unversioned_recommended_labels(
-        &self,
-        role: &TrinoRole,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        self.recommended_labels_with(&UNVERSIONED_PRODUCT_VERSION, &role.into(), role_group_name)
-    }
-
-    /// Selector labels matching the pods of a role group.
-    pub fn role_group_selector(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
-        role_group_selector(self, &product_name(), &role.into(), role_group_name)
     }
 }
 
@@ -373,21 +322,6 @@ impl NameIsValidLabelValue for ValidatedCluster {
     fn to_label_value(&self) -> String {
         self.name.to_label_value()
     }
-}
-
-/// The product name (`trino`) as a type-safe label value.
-pub(crate) fn product_name() -> ProductName {
-    ProductName::from_str(APP_NAME).expect("'trino' is a valid product name")
-}
-
-/// The operator name as a type-safe label value.
-pub(crate) fn operator_name() -> OperatorName {
-    OperatorName::from_str(OPERATOR_NAME).expect("the operator name is a valid label value")
-}
-
-/// The controller name as a type-safe label value.
-pub(crate) fn controller_name() -> ControllerName {
-    ControllerName::from_str(CONTROLLER_NAME).expect("the controller name is a valid label value")
 }
 
 /// The expected `app.kubernetes.io/version` label value for the given product version.
