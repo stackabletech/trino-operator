@@ -35,6 +35,8 @@ All notable changes to this project will be documented in this file.
   See [our internal issue](https://github.com/stackabletech/hdfs-operator/issues/626) and [the fix](https://github.com/kube-rs/kube/pull/2042) for details ([#925]).
 - `S3Connection`s without a `tls` section are accepted again and configured as `s3.endpoint=http://...`.
   Trino's native S3 file system takes the transport from the endpoint scheme, so requiring TLS was never necessary ([#928]).
+- The operator now watches all resources that it creates and early-exits the reconcile action when the
+  cluster is marked for deletion ([#934]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
@@ -43,6 +45,7 @@ All notable changes to this project will be documented in this file.
 [#925]: https://github.com/stackabletech/trino-operator/pull/925
 [#928]: https://github.com/stackabletech/trino-operator/pull/928
 [#932]: https://github.com/stackabletech/trino-operator/pull/932
+[#934]: https://github.com/stackabletech/trino-operator/pull/934
 
 ## [26.7.0] - 2026-07-21
 
