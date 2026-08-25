@@ -14,6 +14,7 @@ use stackable_operator::{
     cluster_resources::ClusterResourceApplyStrategy,
     constant,
     kube::{
+        Resource,
         core::{DeserializeGuard, error_boundary},
         runtime::controller::Action,
     },
@@ -89,6 +90,10 @@ pub async fn reconcile_trino(
 ) -> Result<Action> {
     tracing::info!("Starting reconcile");
 
+    if trino.meta().deletion_timestamp.is_some() {
+        return Ok(Action::await_change());
+    }
+
     let trino = trino
         .0
         .as_ref()
@@ -155,8 +160,12 @@ mod tests {
     use std::str::FromStr;
 
     use stackable_operator::{
-        cli::OperatorEnvironmentOptions, commons::networking::DomainName,
-        k8s_openapi::api::core::v1::ConfigMap, utils::cluster_info::KubernetesClusterInfo,
+        cli::OperatorEnvironmentOptions,
+        client::Client,
+        commons::networking::DomainName,
+        k8s_openapi::api::core::v1::ConfigMap,
+        kube::{Client as KubeClient, Config},
+        utils::cluster_info::KubernetesClusterInfo,
         v2::builder::pod::container::EnvVarName,
     };
 
@@ -488,5 +497,55 @@ mod tests {
         assert_eq!(value("COMMON_VAR").as_deref(), Some("group-value"));
         assert_eq!(value("GROUP_VAR").as_deref(), Some("group-value"));
         assert_eq!(value("ROLE_VAR").as_deref(), Some("role-value"));
+    }
+
+    /// The client points at a closed port, so any API call would fail the reconciliation: an `Ok`
+    /// proves that a cluster being deleted returns before the reconciler touches the Kubernetes
+    /// API, and because the spec is invalid, before the [`DeserializeGuard`] is unwrapped.
+    #[test]
+    fn reconcile_exits_early_for_deleted_cluster() {
+        let trino = serde_yaml::from_str(
+            r#"
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+  namespace: default
+  deletionTimestamp: "2026-08-14T12:00:00Z"
+spec: {}
+"#,
+        )
+        .expect("YAML parses; the invalid spec is captured inside the DeserializeGuard");
+
+        let action = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("current-thread tokio runtime")
+            .block_on(async {
+                let ctx = Arc::new(Ctx {
+                    client: Client::new(
+                        KubeClient::try_from(Config::new(
+                            "http://127.0.0.1:1".parse().expect("valid static URI"),
+                        ))
+                        .expect("client from static config"),
+                        None,
+                        "default".to_owned(),
+                        KubernetesClusterInfo {
+                            cluster_domain: DomainName::from_str("cluster.local")
+                                .expect("valid cluster domain"),
+                        },
+                    ),
+                    operator_environment: OperatorEnvironmentOptions {
+                        operator_namespace: "stackable-operators".to_owned(),
+                        operator_service_name: "trino-operator".to_owned(),
+                        image_repository: "oci.stackable.tech/sdp".to_owned(),
+                    },
+                });
+
+                reconcile_trino(Arc::new(trino), ctx).await
+            })
+            .expect("a deleted cluster reconciles without any API call");
+
+        assert_eq!(action, Action::await_change());
     }
 }

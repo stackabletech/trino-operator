@@ -13,13 +13,15 @@ rules:
       - nodes/proxy
     verbs:
       - get
-  # Manage core workload resources created per TrinoCluster.
-  # All resources are applied via Server-Side Apply (create + patch) and tracked for
-  # orphan cleanup (list + delete).
+  # Manage core workload resources created per TrinoCluster (the ServiceAccount
+  # provides workload pod identity). All resources are applied via Server-Side Apply
+  # (create + patch), tracked for orphan cleanup (list + delete) and watched by the
+  # controller.
   - apiGroups:
       - ""
     resources:
       - configmaps
+      - serviceaccounts
       - services
     verbs:
       - create
@@ -28,18 +30,6 @@ rules:
       - list
       - patch
       - watch
-  # ServiceAccount created per TrinoCluster for workload pod identity.
-  # Applied via SSA and tracked for orphan cleanup.
-  - apiGroups:
-      - ""
-    resources:
-      - serviceaccounts
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
   # Shared internal authentication secrets (communication key and spooling secret).
   # Delete is needed to migrate immutable secrets to mutable ones.
   # Orphan cleanup not needed (instead, Kubernetes GC via owner reference).
@@ -53,7 +43,8 @@ rules:
       - get
       - patch
   # RoleBinding created per TrinoCluster to bind the product ClusterRole to the workload
-  # ServiceAccount. Applied via SSA and tracked for orphan cleanup.
+  # ServiceAccount. Applied via SSA and tracked for orphan cleanup and watched by the
+  # controller.
   - apiGroups:
       - rbac.authorization.k8s.io
     resources:
@@ -64,6 +55,7 @@ rules:
       - get
       - list
       - patch
+      - watch
   # Required to bind the product ClusterRole to the per-cluster ServiceAccount.
   - apiGroups:
       - rbac.authorization.k8s.io
@@ -86,7 +78,8 @@ rules:
       - list
       - patch
       - watch
-  # PodDisruptionBudget created per role. Applied via SSA and tracked for orphan cleanup.
+  # PodDisruptionBudget created per role. Applied via SSA and tracked for orphan cleanup
+  # and watched by the controller.
   - apiGroups:
       - policy
     resources:
@@ -97,6 +90,7 @@ rules:
       - get
       - list
       - patch
+      - watch
   # Required for maintaining the CRDs within the operator (including the conversion webhook info).
   # Also for the startup condition check before the controller can run.
   - apiGroups:
@@ -114,7 +108,7 @@ rules:
       - list
       - watch
   # Listener created per role group for external access. Applied via SSA and tracked for orphan
-  # cleanup.
+  # cleanup and watched by the controller.
   - apiGroups:
       - listeners.stackable.tech
     resources:
@@ -125,6 +119,7 @@ rules:
       - get
       - list
       - patch
+      - watch
   # Required to report reconciliation results and warnings back to the TrinoCluster object.
   - apiGroups:
       - events.k8s.io
