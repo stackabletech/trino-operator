@@ -201,9 +201,9 @@ pub fn build_rolegroup_statefulset(
         .requested_secret_lifetime
         .context(MissingSecretLifetimeSnafu)?;
 
-    // Volumes and volume mounts are added in a fixed order on every builder: first the ones with
-    // operator-defined names and mount paths (`expect`, they can only collide with each other,
-    // which would be an operator bug), then the ones whose names derive from user input
+    // Volumes and volume mounts are added in a fixed order on every builder: first those with
+    // operator-defined names and mount paths (`expect`: a collision there would mean two of our
+    // own constants clash, an operator bug), then those whose names derive from user input
     // (authentication, catalogs, fault-tolerant execution, client spooling), which stay fallible
     // so a collision surfaces as an error instead of a panic. Do not add anything above this block.
     cb_prepare
