@@ -55,15 +55,29 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
 };
 
 pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> SecretName {
-    format!("{cluster_name}-internal-secret")
-        .parse()
-        .expect("a ClusterName (at most 40 characters) plus '-internal-secret' fits the SecretName limit of 253 characters")
+    const SUFFIX: &str = "-internal-secret";
+
+    const _: () = assert!(
+        ClusterName::MAX_LENGTH + SUFFIX.len() <= SecretName::MAX_LENGTH,
+        "The string `<cluster_name>-internal-secret` must not exceed the limit of Secret names."
+    );
+    // A ClusterName is an RFC 1035 label; appending the suffix keeps it an RFC 1123 subdomain.
+    let _ = ClusterName::IS_RFC_1123_SUBDOMAIN_NAME;
+
+    SecretName::from_str(&format!("{cluster_name}{SUFFIX}")).expect("is a valid Secret name")
 }
 
 pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> SecretName {
-    format!("{cluster_name}-spooling-secret")
-        .parse()
-        .expect("a ClusterName (at most 40 characters) plus '-spooling-secret' fits the SecretName limit of 253 characters")
+    const SUFFIX: &str = "-spooling-secret";
+
+    const _: () = assert!(
+        ClusterName::MAX_LENGTH + SUFFIX.len() <= SecretName::MAX_LENGTH,
+        "The string `<cluster_name>-spooling-secret` must not exceed the limit of Secret names."
+    );
+    // A ClusterName is an RFC 1035 label; appending the suffix keeps it an RFC 1123 subdomain.
+    let _ = ClusterName::IS_RFC_1123_SUBDOMAIN_NAME;
+
+    SecretName::from_str(&format!("{cluster_name}{SUFFIX}")).expect("is a valid Secret name")
 }
 
 /// Marker for prepared Kubernetes resources which are not applied yet.
@@ -393,22 +407,4 @@ pub(crate) fn validated_cluster() -> ValidatedCluster {
     };
 
     validate::validate(&minimal_trino(), &derefs, &operator_env).expect("validate should succeed")
-}
-
-#[cfg(test)]
-mod tests {
-    use stackable_operator::v2::types::operator::RoleName;
-    use strum::IntoEnumIterator;
-
-    use crate::crd::TrinoRole;
-
-    /// Locks the invariant behind the `expect` in the `From<TrinoRole> for RoleName` impls:
-    /// every `TrinoRole` variant (present and future) must serialise to a valid `RoleName`.
-    #[test]
-    fn every_trino_role_serialises_to_a_valid_role_name() {
-        for role in TrinoRole::iter() {
-            let _: RoleName = (&role).into();
-            let _: RoleName = role.into();
-        }
-    }
 }

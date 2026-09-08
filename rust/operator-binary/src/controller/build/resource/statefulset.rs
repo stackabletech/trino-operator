@@ -1,6 +1,6 @@
 //! Builds the per-rolegroup [`StatefulSet`] that runs a Trino role group.
 
-use std::{convert::Infallible, str::FromStr};
+use std::str::FromStr;
 
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
@@ -31,11 +31,11 @@ use stackable_operator::{
     shared::time::Duration,
     v2::{
         builder::{
-            pod::container::{EnvVarName, EnvVarSet},
+            pod::container::{EnvVarName, EnvVarSet, new_container_builder},
             statefulset::restarter_ignore_secret_annotations,
         },
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
-        types::kubernetes::{ContainerName, SecretClassName, VolumeName},
+        types::kubernetes::{SecretClassName, VolumeName},
     },
 };
 
@@ -64,8 +64,6 @@ use crate::{
         STACKABLE_TLS_STORE_PASSWORD, TrinoRole,
     },
 };
-
-stackable_operator::constant!(VECTOR_CONTAINER_NAME: ContainerName = "vector");
 
 // The env var the `containerdebug` process (running in the background of the `trino`
 // container) logs its tracing information to. See `command::container_trino_args()` for how
@@ -104,25 +102,9 @@ pub enum Error {
         source: stackable_operator::v2::builder::pod::container::Error,
     },
 
-    #[snafu(display("illegal container name: [{container_name}]"))]
-    IllegalContainerName {
-        source: stackable_operator::builder::pod::container::Error,
-        container_name: String,
-    },
-
     #[snafu(display("failed to configure graceful shutdown"))]
     GracefulShutdown {
         source: build::graceful_shutdown::Error,
-    },
-
-    #[snafu(display("failed to build Annotation"))]
-    AnnotationBuild {
-        source: stackable_operator::kvp::KeyValuePairError<Infallible>,
-    },
-
-    #[snafu(display("failed to build TLS certificate SecretClass Volume"))]
-    TlsCertSecretClassVolumeBuild {
-        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
     },
 
     #[snafu(display("failed to add needed volume"))]
@@ -138,11 +120,6 @@ pub enum Error {
     #[snafu(display("invalid Trino authentication"))]
     InvalidAuthenticationConfig {
         source: crate::authentication::Error,
-    },
-
-    #[snafu(display("failed to configure listener"))]
-    ListenerConfiguration {
-        source: build::resource::listener::Error,
     },
 }
 
@@ -174,20 +151,8 @@ pub fn build_rolegroup_statefulset(
     let config_map_name = resource_names.role_group_config_map().to_string();
 
     let mut pod_builder = PodBuilder::new();
-
-    let prepare_container_name = Container::Prepare.to_string();
-    let mut cb_prepare = ContainerBuilder::new(&prepare_container_name).with_context(|_| {
-        IllegalContainerNameSnafu {
-            container_name: prepare_container_name.clone(),
-        }
-    })?;
-
-    let trino_container_name = Container::Trino.to_string();
-    let mut cb_trino = ContainerBuilder::new(&trino_container_name).with_context(|_| {
-        IllegalContainerNameSnafu {
-            container_name: trino_container_name.clone(),
-        }
-    })?;
+    let mut cb_prepare = new_container_builder(&Container::Prepare);
+    let mut cb_trino = new_container_builder(&Container::Trino);
 
     // Operator-set env vars first; the user's `envOverrides` are merged on top last and win.
     let mut env = EnvVarSet::new();
@@ -211,14 +176,6 @@ pub fn build_rolegroup_statefulset(
             &SPOOLING_SECRET_SECRET_KEY,
         );
 
-    trino_authentication_config
-        .add_authentication_pod_and_volume_config(
-            trino_role,
-            &mut pod_builder,
-            &mut cb_prepare,
-            &mut cb_trino,
-        )
-        .context(InvalidAuthenticationConfigSnafu)?;
     build::graceful_shutdown::add_graceful_shutdown_config(
         cluster,
         trino_role,
@@ -244,15 +201,114 @@ pub fn build_rolegroup_statefulset(
         .requested_secret_lifetime
         .context(MissingSecretLifetimeSnafu)?;
 
-    // add volume mounts depending on the client tls, internal tls, catalogs and authentication
-    tls_volume_mounts(
+    // Volumes and volume mounts are added in a fixed order on every builder: first the ones with
+    // operator-defined names and mount paths (`expect`, they can only collide with each other,
+    // which would be an operator bug), then the ones whose names derive from user input
+    // (authentication, catalogs, fault-tolerant execution, client spooling), which stay fallible
+    // so a collision surfaces as an error instead of a panic. Do not add anything above this block.
+    cb_prepare
+        .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
+        .expect("The mount paths are statically defined and there should be no duplicates.")
+        .add_volume_mount(&*LOG_CONFIG_VOLUME_NAME, STACKABLE_LOG_CONFIG_DIR)
+        .expect("The mount paths are statically defined and there should be no duplicates.")
+        .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
+        .expect("The mount paths are statically defined and there should be no duplicates.");
+
+    cb_trino
+        .add_volume_mount(&*CONFIG_VOLUME_NAME, CONFIG_DIR_NAME)
+        .expect("The mount paths are statically defined and there should be no duplicates.")
+        .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
+        .expect("The mount paths are statically defined and there should be no duplicates.")
+        .add_volume_mount(&*CATALOG_VOLUME_NAME, format!("{CONFIG_DIR_NAME}/catalog"))
+        .expect("The mount paths are statically defined and there should be no duplicates.")
+        .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
+        .expect("The mount paths are statically defined and there should be no duplicates.");
+
+    // The log-config volume mounts either the rolegroup ConfigMap (which carries the automatic
+    // `log.properties`) or a user-provided custom ConfigMap, depending on the validated choice.
+    let log_config_volume_config_map = match &merged_config.logging.trino_container {
+        ValidatedContainerLogConfigChoice::Custom(config_map) => config_map.to_string(),
+        ValidatedContainerLogConfigChoice::Automatic(_) => config_map_name.clone(),
+    };
+    pod_builder
+        .add_volume(Volume {
+            name: CONFIG_VOLUME_NAME.to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: config_map_name.clone(),
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        })
+        .expect("The volume names are statically defined and there should be no duplicates.")
+        .add_empty_dir_volume(&*RW_CONFIG_VOLUME_NAME, None)
+        .expect("The volume names are statically defined and there should be no duplicates.")
+        .add_volume(Volume {
+            name: CATALOG_VOLUME_NAME.to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: cluster.role_group_catalog_config_map_name(trino_role, role_group_name),
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        })
+        .expect("The volume names are statically defined and there should be no duplicates.")
+        .add_volume(Volume {
+            name: LOG_CONFIG_VOLUME_NAME.to_string(),
+            config_map: Some(ConfigMapVolumeSource {
+                name: log_config_volume_config_map,
+                ..ConfigMapVolumeSource::default()
+            }),
+            ..Volume::default()
+        })
+        .expect("The volume names are statically defined and there should be no duplicates.")
+        .add_empty_dir_volume(
+            &*LOG_VOLUME_NAME,
+            Some(product_logging::framework::calculate_log_volume_size_limit(
+                &[MAX_TRINO_LOG_FILES_SIZE, MAX_PREPARE_LOG_FILE_SIZE],
+            )),
+        )
+        .expect("The volume names are statically defined and there should be no duplicates.");
+
+    let mut persistent_volume_claims = vec![];
+    // Add listener
+    if let Some(group_listener_name) = group_listener_name(cluster, trino_role) {
+        cb_trino
+            .add_volume_mount(&*LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
+            .expect("The mount paths are statically defined and there should be no duplicates.");
+
+        // Used for PVC templates that cannot be modified once they are deployed, so a fixed
+        // "none" version is used while keeping the other recommended labels.
+        let unversioned_recommended_labels =
+            recommended_labels_for_unversioned_role_group_resources(
+                cluster,
+                trino_role,
+                role_group_name,
+            );
+
+        persistent_volume_claims.push(build_group_listener_pvc(
+            &group_listener_name,
+            &unversioned_recommended_labels,
+        ));
+    }
+
+    add_tls_volumes_and_mounts(
         cluster,
         trino_role,
         &mut pod_builder,
         &mut cb_prepare,
         &mut cb_trino,
         &requested_secret_lifetime,
-    )?;
+    );
+
+    // From here on the names derive from user input, see the ordering comment above.
+    trino_authentication_config
+        .add_authentication_pod_and_volume_config(
+            trino_role,
+            &mut pod_builder,
+            &mut cb_prepare,
+            &mut cb_trino,
+        )
+        .context(InvalidAuthenticationConfigSnafu)?;
+    add_derived_volumes_and_mounts(cluster, &mut pod_builder, &mut cb_prepare, &mut cb_trino)?;
 
     let mut prepare_args = vec![];
     if let ValidatedContainerLogConfigChoice::Automatic(log_config) =
@@ -260,7 +316,7 @@ pub fn build_rolegroup_statefulset(
     {
         prepare_args.push(product_logging::framework::capture_shell_output(
             STACKABLE_LOG_DIR,
-            &prepare_container_name,
+            &Container::Prepare.to_string(),
             log_config,
         ));
     }
@@ -297,12 +353,6 @@ pub fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![prepare_args.join("\n")])
-        .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
-        .context(AddVolumeMountSnafu)?
-        .add_volume_mount(&*LOG_CONFIG_VOLUME_NAME, STACKABLE_LOG_CONFIG_DIR)
-        .context(AddVolumeMountSnafu)?
-        .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
-        .context(AddVolumeMountSnafu)?
         .resources(
             ResourceRequirementsBuilder::new()
                 .with_cpu_request("500m")
@@ -312,28 +362,6 @@ pub fn build_rolegroup_statefulset(
                 .build(),
         )
         .build();
-
-    let mut persistent_volume_claims = vec![];
-    // Add listener
-    if let Some(group_listener_name) = group_listener_name(cluster, trino_role) {
-        cb_trino
-            .add_volume_mount(&*LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
-            .context(AddVolumeMountSnafu)?;
-
-        // Used for PVC templates that cannot be modified once they are deployed, so a fixed
-        // "none" version is used while keeping the other recommended labels.
-        let unversioned_recommended_labels =
-            recommended_labels_for_unversioned_role_group_resources(
-                cluster,
-                trino_role,
-                role_group_name,
-            );
-
-        persistent_volume_claims.push(
-            build_group_listener_pvc(&group_listener_name, &unversioned_recommended_labels)
-                .context(ListenerConfigurationSnafu)?,
-        );
-    }
 
     let container_trino = cb_trino
         .image_from_product_image(resolved_product_image)
@@ -348,17 +376,6 @@ pub fn build_rolegroup_statefulset(
             command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
         ])
         .add_env_vars(env.merge(env_overrides.clone()))
-        .add_volume_mount(&*CONFIG_VOLUME_NAME, CONFIG_DIR_NAME)
-        .context(AddVolumeMountSnafu)?
-        .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
-        .context(AddVolumeMountSnafu)?
-        .add_volume_mount(
-            &*CATALOG_VOLUME_NAME,
-            format!("{}/catalog", CONFIG_DIR_NAME),
-        )
-        .context(AddVolumeMountSnafu)?
-        .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
-        .context(AddVolumeMountSnafu)?
         .add_container_ports(container_ports(cluster))
         .resources(merged_config.resources.clone().into())
         // The probes are set on coordinators and workers
@@ -373,26 +390,9 @@ pub fn build_rolegroup_statefulset(
     // add password-update container if required
     trino_authentication_config.add_authentication_containers(trino_role, &mut pod_builder);
 
-    // The log-config volume mounts either the rolegroup ConfigMap (which carries the automatic
-    // `log.properties`) or a user-provided custom ConfigMap, depending on the validated choice.
-    let log_config_volume_config_map = match &merged_config.logging.trino_container {
-        ValidatedContainerLogConfigChoice::Custom(config_map) => config_map.to_string(),
-        ValidatedContainerLogConfigChoice::Automatic(_) => config_map_name.clone(),
-    };
-    pod_builder
-        .add_volume(Volume {
-            name: LOG_CONFIG_VOLUME_NAME.to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: log_config_volume_config_map,
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        })
-        .context(AddVolumeSnafu)?;
-
     if let Some(vector_log_config) = &merged_config.logging.vector_container {
         pod_builder.add_container(vector_container(
-            &VECTOR_CONTAINER_NAME,
+            &Container::Vector,
             resolved_product_image,
             vector_log_config,
             &resource_names,
@@ -410,7 +410,7 @@ pub fn build_rolegroup_statefulset(
         .with_annotation(
             // This is actually used by some kuttl tests (as they don't specify the container explicitly)
             Annotation::try_from(("kubectl.kubernetes.io/default-container", "trino"))
-                .context(AnnotationBuildSnafu)?,
+                .expect("The annotation key is static and annotation values cannot be invalid."),
         )
         .build();
 
@@ -419,33 +419,6 @@ pub fn build_rolegroup_statefulset(
         .image_pull_secrets_from_product_image(resolved_product_image)
         .affinity(&merged_config.affinity)
         .add_init_container(container_prepare)
-        .add_volume(Volume {
-            name: CONFIG_VOLUME_NAME.to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: config_map_name.clone(),
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        })
-        .context(AddVolumeSnafu)?
-        .add_empty_dir_volume(&*RW_CONFIG_VOLUME_NAME, None)
-        .context(AddVolumeSnafu)?
-        .add_volume(Volume {
-            name: CATALOG_VOLUME_NAME.to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: cluster.role_group_catalog_config_map_name(trino_role, role_group_name),
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        })
-        .context(AddVolumeSnafu)?
-        .add_empty_dir_volume(
-            &*LOG_VOLUME_NAME,
-            Some(product_logging::framework::calculate_log_volume_size_limit(
-                &[MAX_TRINO_LOG_FILES_SIZE, MAX_PREPARE_LOG_FILE_SIZE],
-            )),
-        )
-        .context(AddVolumeSnafu)?
         .service_account_name(
             cluster
                 .cluster_resource_names()
@@ -610,7 +583,7 @@ fn create_tls_volume(
     tls_secret_class: &SecretClassName,
     requested_secret_lifetime: &Duration,
     listener_scope: Option<String>,
-) -> Result<Volume> {
+) -> Volume {
     let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(
         tls_secret_class.as_ref(),
         SecretClassVolumeProvisionParts::PublicPrivate,
@@ -626,41 +599,43 @@ fn create_tls_volume(
         secret_volume_source_builder.with_listener_volume_scope(listener_scope);
     }
 
-    Ok(VolumeBuilder::new(volume_name)
+    VolumeBuilder::new(volume_name)
         .ephemeral(
             secret_volume_source_builder
                 .build()
-                .context(TlsCertSecretClassVolumeBuildSnafu)?,
+                .expect("The annotation keys are static and annotation values cannot be invalid."),
         )
-        .build())
+        .build()
 }
 
-fn tls_volume_mounts(
+/// Adds the server, internal, client and OPA TLS volumes and volume mounts. All of their names
+/// and mount paths are operator-defined constants.
+///
+/// # Panics
+///
+/// Panics if the volumes or volume mounts cannot be added to the builders. Only call this on
+/// builders whose volume names and mount paths are still distinct from the ones added here.
+fn add_tls_volumes_and_mounts(
     cluster: &ValidatedCluster,
     trino_role: &TrinoRole,
     pod_builder: &mut PodBuilder,
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
     requested_secret_lifetime: &Duration,
-) -> Result<()> {
-    let catalogs = &cluster.cluster_config.catalogs;
-    let resolved_fte_config = &cluster.cluster_config.fault_tolerant_execution;
-    let resolved_spooling_config = &cluster.cluster_config.client_protocol;
-    let trino_opa_config = &cluster.cluster_config.authorization;
-
+) {
     if let Some(server_tls) = cluster.get_server_tls() {
         cb_prepare
             .add_volume_mount(
                 &*SERVER_TLS_MOUNT_VOLUME_NAME,
                 STACKABLE_MOUNT_SERVER_TLS_DIR,
             )
-            .context(AddVolumeMountSnafu)?;
+            .expect("The mount paths are statically defined and there should be no duplicates.");
         cb_trino
             .add_volume_mount(
                 &*SERVER_TLS_MOUNT_VOLUME_NAME,
                 STACKABLE_MOUNT_SERVER_TLS_DIR,
             )
-            .context(AddVolumeMountSnafu)?;
+            .expect("The mount paths are statically defined and there should be no duplicates.");
         pod_builder
             .add_volume(create_tls_volume(
                 &*SERVER_TLS_MOUNT_VOLUME_NAME,
@@ -668,29 +643,29 @@ fn tls_volume_mounts(
                 requested_secret_lifetime,
                 // add listener
                 secret_volume_listener_scope(trino_role),
-            )?)
-            .context(AddVolumeSnafu)?;
+            ))
+            .expect("The volume names are statically defined and there should be no duplicates.");
     }
 
     cb_prepare
         .add_volume_mount(&*SERVER_TLS_VOLUME_NAME, STACKABLE_SERVER_TLS_DIR)
-        .context(AddVolumeMountSnafu)?;
+        .expect("The mount paths are statically defined and there should be no duplicates.");
     cb_trino
         .add_volume_mount(&*SERVER_TLS_VOLUME_NAME, STACKABLE_SERVER_TLS_DIR)
-        .context(AddVolumeMountSnafu)?;
+        .expect("The mount paths are statically defined and there should be no duplicates.");
     pod_builder
         .add_empty_dir_volume(&*SERVER_TLS_VOLUME_NAME, None)
-        .context(AddVolumeSnafu)?;
+        .expect("The volume names are statically defined and there should be no duplicates.");
 
     cb_prepare
         .add_volume_mount(&*CLIENT_TLS_VOLUME_NAME, STACKABLE_CLIENT_TLS_DIR)
-        .context(AddVolumeMountSnafu)?;
+        .expect("The mount paths are statically defined and there should be no duplicates.");
     cb_trino
         .add_volume_mount(&*CLIENT_TLS_VOLUME_NAME, STACKABLE_CLIENT_TLS_DIR)
-        .context(AddVolumeMountSnafu)?;
+        .expect("The mount paths are statically defined and there should be no duplicates.");
     pod_builder
         .add_empty_dir_volume(&*CLIENT_TLS_VOLUME_NAME, None)
-        .context(AddVolumeSnafu)?;
+        .expect("The volume names are statically defined and there should be no duplicates.");
 
     if let Some(internal_tls) = cluster.get_internal_tls() {
         cb_prepare
@@ -698,35 +673,77 @@ fn tls_volume_mounts(
                 &*INTERNAL_TLS_MOUNT_VOLUME_NAME,
                 STACKABLE_MOUNT_INTERNAL_TLS_DIR,
             )
-            .context(AddVolumeMountSnafu)?;
+            .expect("The mount paths are statically defined and there should be no duplicates.");
         cb_trino
             .add_volume_mount(
                 &*INTERNAL_TLS_MOUNT_VOLUME_NAME,
                 STACKABLE_MOUNT_INTERNAL_TLS_DIR,
             )
-            .context(AddVolumeMountSnafu)?;
+            .expect("The mount paths are statically defined and there should be no duplicates.");
         pod_builder
             .add_volume(create_tls_volume(
                 &*INTERNAL_TLS_MOUNT_VOLUME_NAME,
                 internal_tls,
                 requested_secret_lifetime,
                 None,
-            )?)
-            .context(AddVolumeSnafu)?;
+            ))
+            .expect("The volume names are statically defined and there should be no duplicates.");
 
         cb_prepare
             .add_volume_mount(&*INTERNAL_TLS_VOLUME_NAME, STACKABLE_INTERNAL_TLS_DIR)
-            .context(AddVolumeMountSnafu)?;
+            .expect("The mount paths are statically defined and there should be no duplicates.");
         cb_trino
             .add_volume_mount(&*INTERNAL_TLS_VOLUME_NAME, STACKABLE_INTERNAL_TLS_DIR)
-            .context(AddVolumeMountSnafu)?;
+            .expect("The mount paths are statically defined and there should be no duplicates.");
         pod_builder
             .add_empty_dir_volume(&*INTERNAL_TLS_VOLUME_NAME, None)
-            .context(AddVolumeSnafu)?;
+            .expect("The volume names are statically defined and there should be no duplicates.");
     }
 
-    // catalogs
-    for catalog in catalogs.values() {
+    // The OPA TLS certificate is only needed by the prepare container, which imports it into the
+    // client truststore.
+    if let Some((tls_secret_class, tls_mount_path)) = cluster
+        .cluster_config
+        .authorization
+        .as_ref()
+        .and_then(|opa_config| {
+            opa_config
+                .tls_secret_class
+                .as_ref()
+                .zip(opa_config.tls_mount_path())
+        })
+    {
+        cb_prepare
+            .add_volume_mount(&*OPA_TLS_VOLUME_NAME, &tls_mount_path)
+            .expect("The mount paths are statically defined and there should be no duplicates.");
+
+        let opa_tls_volume = VolumeBuilder::new(&*OPA_TLS_VOLUME_NAME)
+            .ephemeral(
+                SecretOperatorVolumeSourceBuilder::new(
+                    tls_secret_class.as_ref(),
+                    SecretClassVolumeProvisionParts::PublicPrivate,
+                )
+                .build()
+                .expect("The annotation keys are static and annotation values cannot be invalid."),
+            )
+            .build();
+
+        pod_builder
+            .add_volume(opa_tls_volume)
+            .expect("The volume names are statically defined and there should be no duplicates.");
+    }
+}
+
+/// Adds the volumes and volume mounts whose names derive from user-supplied resources: the
+/// catalogs, fault-tolerant execution and client spooling. They may collide with each other or
+/// with the operator's own volumes, so the adds stay fallible.
+fn add_derived_volumes_and_mounts(
+    cluster: &ValidatedCluster,
+    pod_builder: &mut PodBuilder,
+    cb_prepare: &mut ContainerBuilder,
+    cb_trino: &mut ContainerBuilder,
+) -> Result<()> {
+    for catalog in cluster.cluster_config.catalogs.values() {
         cb_prepare
             .add_volume_mounts(catalog.volume_mounts.clone())
             .context(AddVolumeMountSnafu)?;
@@ -738,37 +755,8 @@ fn tls_volume_mounts(
             .context(AddVolumeSnafu)?;
     }
 
-    // Add OPA TLS certs if configured
-    if let Some((tls_secret_class, tls_mount_path)) =
-        trino_opa_config.as_ref().and_then(|opa_config| {
-            opa_config
-                .tls_secret_class
-                .as_ref()
-                .zip(opa_config.tls_mount_path())
-        })
-    {
-        cb_prepare
-            .add_volume_mount(&*OPA_TLS_VOLUME_NAME, &tls_mount_path)
-            .context(AddVolumeMountSnafu)?;
-
-        let opa_tls_volume = VolumeBuilder::new(&*OPA_TLS_VOLUME_NAME)
-            .ephemeral(
-                SecretOperatorVolumeSourceBuilder::new(
-                    tls_secret_class.as_ref(),
-                    SecretClassVolumeProvisionParts::PublicPrivate,
-                )
-                .build()
-                .context(TlsCertSecretClassVolumeBuildSnafu)?,
-            )
-            .build();
-
-        pod_builder
-            .add_volume(opa_tls_volume)
-            .context(AddVolumeSnafu)?;
-    }
-
     // fault tolerant execution S3 credentials and other resources
-    if let Some(resolved_fte) = resolved_fte_config {
+    if let Some(resolved_fte) = &cluster.cluster_config.fault_tolerant_execution {
         cb_prepare
             .add_volume_mounts(resolved_fte.volume_mounts.clone())
             .context(AddVolumeMountSnafu)?;
@@ -781,7 +769,7 @@ fn tls_volume_mounts(
     }
 
     // client spooling S3 credentials and other resources
-    if let Some(resolved_spooling) = resolved_spooling_config {
+    if let Some(resolved_spooling) = &cluster.cluster_config.client_protocol {
         cb_prepare
             .add_volume_mounts(resolved_spooling.volume_mounts.clone())
             .context(AddVolumeMountSnafu)?;
@@ -798,15 +786,43 @@ fn tls_volume_mounts(
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::v2::builder::pod::container::EnvVarName;
+    use stackable_operator::{
+        k8s_openapi::api::core::v1::{Container as K8sContainer, PodSpec, VolumeMount},
+        v2::builder::pod::container::EnvVarName,
+    };
 
     use super::*;
-    use crate::controller::validated_cluster;
+    use crate::{
+        authorization::opa::TrinoOpaConfig, catalog::config::CatalogConfig,
+        controller::validated_cluster, crd::catalog::TrinoCatalogName,
+    };
+
+    /// Builds the coordinator `default` role-group StatefulSet for the given cluster.
+    fn build_coordinator_statefulset(cluster: &ValidatedCluster) -> Result<StatefulSet> {
+        let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
+        let role_group_config =
+            &cluster.role_group_configs[&TrinoRole::Coordinator][&role_group_name];
+
+        build_rolegroup_statefulset(
+            cluster,
+            &TrinoRole::Coordinator,
+            &role_group_name,
+            role_group_config,
+        )
+    }
+
+    fn pod_spec(stateful_set: StatefulSet) -> PodSpec {
+        stateful_set
+            .spec
+            .expect("the StatefulSet has a spec")
+            .template
+            .spec
+            .expect("the pod template has a spec")
+    }
 
     #[test]
     fn test_constants() {
         // Test that dereferencing the constants does not panic.
-        let _ = *VECTOR_CONTAINER_NAME;
         let _ = *CONTAINERDEBUG_LOG_DIRECTORY;
         let _ = *CONFIG_VOLUME_NAME;
         let _ = *RW_CONFIG_VOLUME_NAME;
@@ -865,5 +881,81 @@ mod tests {
             "exactly one CONTAINERDEBUG_LOG_DIRECTORY entry must survive, got: {containerdebug:?}"
         );
         assert_eq!(containerdebug[0].value.as_deref(), Some("/custom/log/dir"));
+    }
+
+    /// The operator's own volumes are added with `expect`, which relies on every add whose name
+    /// derives from user input coming afterwards. A catalog volume that reuses an operator volume
+    /// name must therefore surface as an error, never as a panic.
+    #[test]
+    fn catalog_volume_colliding_with_operator_volume_is_an_error() {
+        let mut cluster = validated_cluster();
+        let catalog_name = TrinoCatalogName::from_str("collision").expect("valid catalog name");
+        let mut catalog = CatalogConfig::new(&catalog_name, "tpch");
+        catalog.volumes.push(
+            VolumeBuilder::new(&*CONFIG_VOLUME_NAME)
+                .with_empty_dir(None::<String>, None)
+                .build(),
+        );
+        catalog.volume_mounts.push(VolumeMount {
+            name: CONFIG_VOLUME_NAME.to_string(),
+            mount_path: "/stackable/catalog-collision".to_string(),
+            ..VolumeMount::default()
+        });
+        cluster
+            .cluster_config
+            .catalogs
+            .insert(catalog_name, catalog);
+
+        let result = build_coordinator_statefulset(&cluster);
+
+        assert!(
+            matches!(result, Err(Error::AddVolume { .. })),
+            "expected Error::AddVolume, got: {result:?}"
+        );
+    }
+
+    /// A configured OPA TLS SecretClass adds the `opa-tls` volume to the pod and mounts it into
+    /// the prepare container only.
+    #[test]
+    fn opa_tls_volume_is_mounted_into_the_prepare_container() {
+        let mut cluster = validated_cluster();
+        cluster.cluster_config.authorization = Some(TrinoOpaConfig {
+            non_batched_connection_string: "https://opa/allow".to_string(),
+            batched_connection_string: "https://opa/batch".to_string(),
+            row_filters_connection_string: None,
+            batched_column_masking_connection_string: None,
+            allow_permission_management_operations: false,
+            tls_secret_class: Some("tls".parse().expect("valid SecretClass name")),
+        });
+
+        let spec =
+            pod_spec(build_coordinator_statefulset(&cluster).expect("the StatefulSet builds"));
+
+        let volume_names: Vec<&str> = spec
+            .volumes
+            .iter()
+            .flatten()
+            .map(|volume| volume.name.as_str())
+            .collect();
+        assert!(
+            volume_names.contains(&"opa-tls"),
+            "volumes: {volume_names:?}"
+        );
+
+        fn mounts_opa_tls(containers: &[K8sContainer], name: &str) -> bool {
+            containers
+                .iter()
+                .find(|container| container.name == name)
+                .expect("the container exists")
+                .volume_mounts
+                .iter()
+                .flatten()
+                .any(|mount| mount.name == "opa-tls")
+        }
+        assert!(mounts_opa_tls(
+            spec.init_containers.as_deref().unwrap_or_default(),
+            "prepare"
+        ));
+        assert!(!mounts_opa_tls(&spec.containers, "trino"));
     }
 }

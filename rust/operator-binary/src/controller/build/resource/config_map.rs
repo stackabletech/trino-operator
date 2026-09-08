@@ -43,12 +43,6 @@ pub enum Error {
     #[snafu(display("missing rolegroup {role_group} under role {role}"))]
     MissingRoleGroup { role: String, role_group: String },
 
-    #[snafu(display("failed to assemble ConfigMap for {rolegroup}"))]
-    Assemble {
-        source: stackable_operator::builder::configmap::Error,
-        rolegroup: String,
-    },
-
     #[snafu(display("failed to build jvm.config"))]
     BuildJvmConfig { source: crate::config::jvm::Error },
 }
@@ -183,7 +177,7 @@ pub fn build_rolegroup_config_map(
         );
     }
 
-    ConfigMapBuilder::new()
+    Ok(ConfigMapBuilder::new()
         .metadata(
             object_meta(
                 cluster,
@@ -194,9 +188,7 @@ pub fn build_rolegroup_config_map(
         )
         .data(data)
         .build()
-        .with_context(|_| AssembleSnafu {
-            rolegroup: config_map_name.clone(),
-        })
+        .expect("The ConfigMap metadata is set in this function."))
 }
 
 /// The rolegroup catalog [`ConfigMap`] configures the rolegroup catalog based on the configuration
@@ -207,7 +199,7 @@ pub fn build_rolegroup_catalog_config_map(
     role_group_name: &RoleGroupName,
 ) -> Result<ConfigMap> {
     let catalog_config_map_name = cluster.role_group_catalog_config_map_name(role, role_group_name);
-    ConfigMapBuilder::new()
+    Ok(ConfigMapBuilder::new()
         .metadata(
             object_meta(
                 cluster,
@@ -230,7 +222,5 @@ pub fn build_rolegroup_catalog_config_map(
                 .collect::<Result<_>>()?,
         )
         .build()
-        .with_context(|_| AssembleSnafu {
-            rolegroup: catalog_config_map_name.clone(),
-        })
+        .expect("The ConfigMap metadata is set in this function."))
 }
