@@ -194,11 +194,10 @@ impl TrinoOidcAuthentication {
 
     /// Make sure we have exactly one authentication class
     fn get_single_oauth2_authentication_class(&self) -> Result<OidcAuthenticator, Error> {
-        match self.authenticators.len() {
-            // We should not reach the '0' branch, this is just a sanity check.
-            0 => Err(Error::NoOauth2AuthenticationClassProvided),
-            // The unwrap is safe here
-            1 => Ok(self.authenticators.first().unwrap().clone()),
+        match self.authenticators.as_slice() {
+            // We should not reach the empty branch, this is just a sanity check.
+            [] => Err(Error::NoOauth2AuthenticationClassProvided),
+            [authenticator] => Ok(authenticator.clone()),
             _ => Err(Error::MultipleOauth2AuthenticationClasses {
                 authentication_class_names: self
                     .authenticators

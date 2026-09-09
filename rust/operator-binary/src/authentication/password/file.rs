@@ -5,7 +5,6 @@ use stackable_operator::{
     builder::{
         self,
         pod::{
-            container::ContainerBuilder,
             resources::ResourceRequirementsBuilder,
             volume::{VolumeBuilder, VolumeMountBuilder},
         },
@@ -15,7 +14,10 @@ use stackable_operator::{
     k8s_openapi::api::core::v1::{Container, Volume, VolumeMount},
     product_logging::{self, spec::AutomaticContainerLogConfig},
     utils::COMMON_BASH_TRAP_FUNCTIONS,
-    v2::types::kubernetes::{SecretName, VolumeName},
+    v2::{
+        builder::pod::container::new_container_builder,
+        types::kubernetes::{SecretName, VolumeName},
+    },
 };
 
 use crate::{
@@ -131,10 +133,7 @@ pub fn build_password_file_update_container(
     resolved_product_image: &ResolvedProductImage,
     volume_mounts: Vec<VolumeMount>,
 ) -> Result<Container, Error> {
-    let mut cb_pw_file_updater = ContainerBuilder::new(
-        &crate::crd::Container::PasswordFileUpdater.to_string(),
-    )
-    .expect("Invalid container name. This should not happen, as the container name is fixed");
+    let mut cb_pw_file_updater = new_container_builder(&crate::crd::Container::PasswordFileUpdater);
 
     let mut commands = vec![];
 
@@ -192,11 +191,11 @@ wait_for_termination $!
 
     Ok(cb_pw_file_updater
         .image_from_product_image(resolved_product_image)
-        // calculated mounts
-        .add_volume_mounts(volume_mounts)
-        .context(AddVolumeMountsSnafu)?
-        // fixed
+        // Operator-defined mount first (`expect`), then the AuthenticationClass-derived mounts
+        // (fallible), same ordering rule as in the StatefulSet builder.
         .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
+        .expect("The mount paths are statically defined and there should be no duplicates.")
+        .add_volume_mounts(volume_mounts)
         .context(AddVolumeMountsSnafu)?
         .resources(
             ResourceRequirementsBuilder::new()

@@ -28,9 +28,6 @@ pub enum FromTrinoCatalogError {
     #[snafu(display("trino does not support disabling the TLS verification of S3 servers"))]
     S3TlsNoVerificationNotSupported,
 
-    #[snafu(display("trino catalog has no name set"))]
-    InvalidCatalogSpec,
-
     #[snafu(display("failed to resolve [{catalog}] discovery config map [{cm_name}]"))]
     FailedToGetDiscoveryConfigMap {
         source: stackable_operator::client::Error,

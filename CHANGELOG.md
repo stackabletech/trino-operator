@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
   templates (all previously set to the placeholder value `none`). After the operator upgrade,
   delete each coordinator StatefulSet so that the operator immediately recreates it with the
   new labels ([#932]).
+- Make operations infallible where dependent on static inputs ([#939]).
 
 ### Fixed
 
@@ -46,6 +47,7 @@ All notable changes to this project will be documented in this file.
 [#928]: https://github.com/stackabletech/trino-operator/pull/928
 [#932]: https://github.com/stackabletech/trino-operator/pull/932
 [#934]: https://github.com/stackabletech/trino-operator/pull/934
+[#939]: https://github.com/stackabletech/trino-operator/pull/939
 
 ## [26.7.0] - 2026-07-21
 
