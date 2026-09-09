@@ -20,9 +20,7 @@ use stackable_operator::{
         DeepMerge,
         api::{
             apps::v1::{StatefulSet, StatefulSetSpec},
-            core::v1::{
-                ConfigMapVolumeSource, ContainerPort, ExecAction, HTTPGetAction, Probe, Volume,
-            },
+            core::v1::{ContainerPort, ExecAction, HTTPGetAction, Probe, Volume},
         },
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
     },
@@ -244,34 +242,27 @@ pub fn build_rolegroup_statefulset(
         ValidatedContainerLogConfigChoice::Automatic(_) => config_map_name.clone(),
     };
     pod_builder
-        .add_volume(Volume {
-            name: CONFIG_VOLUME_NAME.to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: config_map_name.clone(),
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        })
+        .add_volume(
+            VolumeBuilder::new(&*CONFIG_VOLUME_NAME)
+                .with_config_map(config_map_name.clone())
+                .build(),
+        )
         .context(AddVolumeSnafu)?
         .add_empty_dir_volume(&*RW_CONFIG_VOLUME_NAME, None)
         .expect("The volume names are statically defined and there should be no duplicates.")
-        .add_volume(Volume {
-            name: CATALOG_VOLUME_NAME.to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: cluster.role_group_catalog_config_map_name(trino_role, role_group_name),
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        })
+        .add_volume(
+            VolumeBuilder::new(&*CATALOG_VOLUME_NAME)
+                .with_config_map(
+                    cluster.role_group_catalog_config_map_name(trino_role, role_group_name),
+                )
+                .build(),
+        )
         .context(AddVolumeSnafu)?
-        .add_volume(Volume {
-            name: LOG_CONFIG_VOLUME_NAME.to_string(),
-            config_map: Some(ConfigMapVolumeSource {
-                name: log_config_volume_config_map,
-                ..ConfigMapVolumeSource::default()
-            }),
-            ..Volume::default()
-        })
+        .add_volume(
+            VolumeBuilder::new(&*LOG_CONFIG_VOLUME_NAME)
+                .with_config_map(log_config_volume_config_map)
+                .build(),
+        )
         .context(AddVolumeSnafu)?
         .add_empty_dir_volume(
             &*LOG_VOLUME_NAME,

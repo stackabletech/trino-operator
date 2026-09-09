@@ -70,6 +70,8 @@ pub fn build_group_listener_pvc(
 /// The name of the group-listener provided for a specific role-group.
 /// Coordinator(s) will use this group listener so that only one load balancer
 /// is needed (per role group).
+///
+/// The returned ListenerName is a lowercase RFC 1035 label name (checked by a unit test).
 pub fn group_listener_name(cluster: &ValidatedCluster, role: &TrinoRole) -> Option<ListenerName> {
     const _: () = assert!(
         ClusterName::MAX_LENGTH + 1 /* dash */ + RoleName::MAX_LENGTH <= ListenerName::MAX_LENGTH,
@@ -116,6 +118,8 @@ fn listener_ports(cluster: &ValidatedCluster) -> Vec<ListenerPort> {
 mod tests {
     use std::collections::BTreeMap;
 
+    use strum::IntoEnumIterator;
+
     use super::*;
     use crate::controller::{app_version_label, validated_cluster};
 
@@ -155,5 +159,25 @@ mod tests {
         .map(|(key, value)| (key.to_string(), value))
         .collect();
         assert_eq!(listener.metadata.labels, Some(expected_labels));
+    }
+
+    #[test]
+    fn group_listener_name_is_rfc_1035_label_name() {
+        // Every ClusterName is a valid RFC 1035 label name, so we use just some string with maximum
+        // length.
+        let _ = ClusterName::IS_RFC_1035_LABEL_NAME;
+        let mut cluster = validated_cluster();
+        cluster.name = ClusterName::from_str_unsafe(&"a".repeat(ClusterName::MAX_LENGTH));
+
+        for role in TrinoRole::iter() {
+            if let Some(group_listener_name) = group_listener_name(&cluster, &role) {
+                assert!(
+                    stackable_operator::validation::is_lowercase_rfc_1035_label(
+                        group_listener_name.as_ref()
+                    )
+                    .is_ok()
+                );
+            }
+        }
     }
 }
