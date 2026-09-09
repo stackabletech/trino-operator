@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     builder::pod::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference},
     crd::listener::v1alpha1::{Listener, ListenerPort, ListenerSpec},
@@ -21,6 +22,14 @@ use crate::{
 
 stackable_operator::constant!(pub LISTENER_VOLUME_NAME: VolumeName = "listener");
 pub const LISTENER_VOLUME_DIR: &str = "/stackable/listener";
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("failed to build listener volume"))]
+    BuildListenerPersistentVolume {
+        source: stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilderError,
+    },
+}
 
 pub fn build_group_listener(
     cluster: &ValidatedCluster,
@@ -49,13 +58,13 @@ pub fn build_group_listener(
 pub fn build_group_listener_pvc(
     group_listener_name: &ListenerName,
     unversioned_recommended_labels: &Labels,
-) -> PersistentVolumeClaim {
+) -> Result<PersistentVolumeClaim, Error> {
     ListenerOperatorVolumeSourceBuilder::new(
         &ListenerReference::ListenerName(group_listener_name.to_string()),
         unversioned_recommended_labels,
     )
     .build_pvc(LISTENER_VOLUME_NAME.to_string())
-    .expect("The annotation keys are static and annotation values cannot be invalid.")
+    .context(BuildListenerPersistentVolumeSnafu)
 }
 
 /// The name of the group-listener provided for a specific role-group.

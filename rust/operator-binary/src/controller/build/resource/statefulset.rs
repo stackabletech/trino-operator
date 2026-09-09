@@ -107,6 +107,11 @@ pub enum Error {
         source: build::graceful_shutdown::Error,
     },
 
+    #[snafu(display("failed to build TLS certificate SecretClass Volume"))]
+    TlsCertSecretClassVolumeBuild {
+        source: stackable_operator::builder::pod::volume::SecretOperatorVolumeSourceBuilderError,
+    },
+
     #[snafu(display("failed to add needed volume"))]
     AddVolume {
         source: stackable_operator::builder::pod::Error,
@@ -120,6 +125,11 @@ pub enum Error {
     #[snafu(display("invalid Trino authentication"))]
     InvalidAuthenticationConfig {
         source: crate::authentication::Error,
+    },
+
+    #[snafu(display("failed to configure listener"))]
+    ListenerConfiguration {
+        source: build::resource::listener::Error,
     },
 }
 
@@ -202,10 +212,13 @@ pub fn build_rolegroup_statefulset(
         .context(MissingSecretLifetimeSnafu)?;
 
     // Volumes and volume mounts are added in a fixed order on every builder: first those with
-    // operator-defined names and mount paths (`expect`: a collision there would mean two of our
-    // own constants clash, an operator bug), then those whose names derive from user input
-    // (authentication, catalogs, fault-tolerant execution, client spooling), which stay fallible
-    // so a collision surfaces as an error instead of a panic. Do not add anything above this block.
+    // operator-defined names and mount paths, then those whose names derive from user input
+    // (authentication, catalogs, fault-tolerant execution, client spooling). Only the volume
+    // mounts whose name and path are both constants at the call site use `expect` (a collision
+    // there would mean two of our own constants clash, an operator bug); every volume add and
+    // every mount with a computed path stays fallible. The order keeps the `expect`s sound: a
+    // user-derived name colliding with an operator one surfaces as an error from the later add,
+    // never as a panic. Do not add anything above this block.
     cb_prepare
         .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
         .expect("The mount paths are statically defined and there should be no duplicates.")
@@ -220,7 +233,7 @@ pub fn build_rolegroup_statefulset(
         .add_volume_mount(&*RW_CONFIG_VOLUME_NAME, RW_CONFIG_DIR_NAME)
         .expect("The mount paths are statically defined and there should be no duplicates.")
         .add_volume_mount(&*CATALOG_VOLUME_NAME, format!("{CONFIG_DIR_NAME}/catalog"))
-        .expect("The mount paths are statically defined and there should be no duplicates.")
+        .context(AddVolumeMountSnafu)?
         .add_volume_mount(&*LOG_VOLUME_NAME, STACKABLE_LOG_DIR)
         .expect("The mount paths are statically defined and there should be no duplicates.");
 
@@ -239,7 +252,7 @@ pub fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .expect("The volume names are statically defined and there should be no duplicates.")
+        .context(AddVolumeSnafu)?
         .add_empty_dir_volume(&*RW_CONFIG_VOLUME_NAME, None)
         .expect("The volume names are statically defined and there should be no duplicates.")
         .add_volume(Volume {
@@ -250,7 +263,7 @@ pub fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .expect("The volume names are statically defined and there should be no duplicates.")
+        .context(AddVolumeSnafu)?
         .add_volume(Volume {
             name: LOG_CONFIG_VOLUME_NAME.to_string(),
             config_map: Some(ConfigMapVolumeSource {
@@ -259,14 +272,14 @@ pub fn build_rolegroup_statefulset(
             }),
             ..Volume::default()
         })
-        .expect("The volume names are statically defined and there should be no duplicates.")
+        .context(AddVolumeSnafu)?
         .add_empty_dir_volume(
             &*LOG_VOLUME_NAME,
             Some(product_logging::framework::calculate_log_volume_size_limit(
                 &[MAX_TRINO_LOG_FILES_SIZE, MAX_PREPARE_LOG_FILE_SIZE],
             )),
         )
-        .expect("The volume names are statically defined and there should be no duplicates.");
+        .context(AddVolumeSnafu)?;
 
     let mut persistent_volume_claims = vec![];
     // Add listener
@@ -284,10 +297,10 @@ pub fn build_rolegroup_statefulset(
                 role_group_name,
             );
 
-        persistent_volume_claims.push(build_group_listener_pvc(
-            &group_listener_name,
-            &unversioned_recommended_labels,
-        ));
+        persistent_volume_claims.push(
+            build_group_listener_pvc(&group_listener_name, &unversioned_recommended_labels)
+                .context(ListenerConfigurationSnafu)?,
+        );
     }
 
     add_tls_volumes_and_mounts(
@@ -297,7 +310,7 @@ pub fn build_rolegroup_statefulset(
         &mut cb_prepare,
         &mut cb_trino,
         &requested_secret_lifetime,
-    );
+    )?;
 
     // From here on the names derive from user input, see the ordering comment above.
     trino_authentication_config
@@ -410,7 +423,7 @@ pub fn build_rolegroup_statefulset(
         .with_annotation(
             // This is actually used by some kuttl tests (as they don't specify the container explicitly)
             Annotation::try_from(("kubectl.kubernetes.io/default-container", "trino"))
-                .expect("The annotation key is static and annotation values cannot be invalid."),
+                .expect("The annotation key and value are static literals."),
         )
         .build();
 
@@ -583,7 +596,7 @@ fn create_tls_volume(
     tls_secret_class: &SecretClassName,
     requested_secret_lifetime: &Duration,
     listener_scope: Option<String>,
-) -> Volume {
+) -> Result<Volume> {
     let mut secret_volume_source_builder = SecretOperatorVolumeSourceBuilder::new(
         tls_secret_class.as_ref(),
         SecretClassVolumeProvisionParts::PublicPrivate,
@@ -599,22 +612,23 @@ fn create_tls_volume(
         secret_volume_source_builder.with_listener_volume_scope(listener_scope);
     }
 
-    VolumeBuilder::new(volume_name)
+    Ok(VolumeBuilder::new(volume_name)
         .ephemeral(
             secret_volume_source_builder
                 .build()
-                .expect("The annotation keys are static and annotation values cannot be invalid."),
+                .context(TlsCertSecretClassVolumeBuildSnafu)?,
         )
-        .build()
+        .build())
 }
 
 /// Adds the server, internal, client and OPA TLS volumes and volume mounts. All of their names
-/// and mount paths are operator-defined constants.
+/// are operator-defined constants; so are the mount paths, except for the OPA one, which the OPA
+/// config computes.
 ///
 /// # Panics
 ///
-/// Panics if the volumes or volume mounts cannot be added to the builders. Only call this on
-/// builders whose volume names and mount paths are still distinct from the ones added here.
+/// Panics if the volume mounts cannot be added to the container builders. Only call this on
+/// container builders whose mount paths are still distinct from the ones added here.
 fn add_tls_volumes_and_mounts(
     cluster: &ValidatedCluster,
     trino_role: &TrinoRole,
@@ -622,7 +636,7 @@ fn add_tls_volumes_and_mounts(
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
     requested_secret_lifetime: &Duration,
-) {
+) -> Result<()> {
     if let Some(server_tls) = cluster.get_server_tls() {
         cb_prepare
             .add_volume_mount(
@@ -643,8 +657,8 @@ fn add_tls_volumes_and_mounts(
                 requested_secret_lifetime,
                 // add listener
                 secret_volume_listener_scope(trino_role),
-            ))
-            .expect("The volume names are statically defined and there should be no duplicates.");
+            )?)
+            .context(AddVolumeSnafu)?;
     }
 
     cb_prepare
@@ -686,8 +700,8 @@ fn add_tls_volumes_and_mounts(
                 internal_tls,
                 requested_secret_lifetime,
                 None,
-            ))
-            .expect("The volume names are statically defined and there should be no duplicates.");
+            )?)
+            .context(AddVolumeSnafu)?;
 
         cb_prepare
             .add_volume_mount(&*INTERNAL_TLS_VOLUME_NAME, STACKABLE_INTERNAL_TLS_DIR)
@@ -715,7 +729,7 @@ fn add_tls_volumes_and_mounts(
     {
         cb_prepare
             .add_volume_mount(&*OPA_TLS_VOLUME_NAME, &tls_mount_path)
-            .expect("The mount paths are statically defined and there should be no duplicates.");
+            .context(AddVolumeMountSnafu)?;
 
         let opa_tls_volume = VolumeBuilder::new(&*OPA_TLS_VOLUME_NAME)
             .ephemeral(
@@ -724,14 +738,16 @@ fn add_tls_volumes_and_mounts(
                     SecretClassVolumeProvisionParts::PublicPrivate,
                 )
                 .build()
-                .expect("The annotation keys are static and annotation values cannot be invalid."),
+                .context(TlsCertSecretClassVolumeBuildSnafu)?,
             )
             .build();
 
         pod_builder
             .add_volume(opa_tls_volume)
-            .expect("The volume names are statically defined and there should be no duplicates.");
+            .context(AddVolumeSnafu)?;
     }
+
+    Ok(())
 }
 
 /// Adds the volumes and volume mounts whose names derive from user-supplied resources: the
@@ -883,9 +899,9 @@ mod tests {
         assert_eq!(containerdebug[0].value.as_deref(), Some("/custom/log/dir"));
     }
 
-    /// The operator's own volumes are added with `expect`, which relies on every add whose name
-    /// derives from user input coming afterwards. A catalog volume that reuses an operator volume
-    /// name must therefore surface as an error, never as a panic.
+    /// The operator's own volume mounts are added with `expect`, which relies on every add whose
+    /// name derives from user input coming afterwards. A catalog volume that reuses an operator
+    /// volume name must therefore surface as an error, never as a panic.
     #[test]
     fn catalog_volume_colliding_with_operator_volume_is_an_error() {
         let mut cluster = validated_cluster();
