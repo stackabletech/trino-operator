@@ -133,7 +133,8 @@ pub fn build_password_file_update_container(
     resolved_product_image: &ResolvedProductImage,
     volume_mounts: Vec<VolumeMount>,
 ) -> Result<Container, Error> {
-    let mut cb_pw_file_updater = new_container_builder(&crate::crd::Container::PasswordFileUpdater);
+    let mut cb_pw_file_updater =
+        new_container_builder(crate::crd::Container::PasswordFileUpdater.name());
 
     let mut commands = vec![];
 

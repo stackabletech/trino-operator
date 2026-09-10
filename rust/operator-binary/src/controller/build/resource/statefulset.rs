@@ -159,8 +159,8 @@ pub fn build_rolegroup_statefulset(
     let config_map_name = resource_names.role_group_config_map().to_string();
 
     let mut pod_builder = PodBuilder::new();
-    let mut cb_prepare = new_container_builder(&Container::Prepare);
-    let mut cb_trino = new_container_builder(&Container::Trino);
+    let mut cb_prepare = new_container_builder(Container::Prepare.name());
+    let mut cb_trino = new_container_builder(Container::Trino.name());
 
     // Operator-set env vars first; the user's `envOverrides` are merged on top last and win.
     let mut env = EnvVarSet::new();
@@ -396,7 +396,7 @@ pub fn build_rolegroup_statefulset(
 
     if let Some(vector_log_config) = &merged_config.logging.vector_container {
         pod_builder.add_container(vector_container(
-            &Container::Vector,
+            Container::Vector.name(),
             resolved_product_image,
             vector_log_config,
             &resource_names,
