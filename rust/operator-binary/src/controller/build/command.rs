@@ -36,7 +36,7 @@ pub fn container_prepare_args(
     // Copy custom logging provided `log.properties` to rw config
     if let ValidatedContainerLogConfigChoice::Custom(_) = merged_config.logging.trino_container {
         let log_properties = ConfigFileName::Log;
-        // copy config files to a writeable empty folder
+        // copy config files to a writable empty folder
         args.push(format!(
             "echo copying {STACKABLE_LOG_CONFIG_DIR}/{log_properties} {rw_conf}/{log_properties}",
             rw_conf = RW_CONFIG_DIR_NAME
@@ -89,7 +89,7 @@ pub fn container_trino_args(
     catalogs: &BTreeMap<TrinoCatalogName, CatalogConfig>,
 ) -> Vec<String> {
     let mut args = vec![
-        // copy config files to a writeable empty folder
+        // copy config files to a writable empty folder
         format!(
             "echo copying {conf} to {rw_conf}",
             conf = CONFIG_DIR_NAME,
