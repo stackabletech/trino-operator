@@ -7,6 +7,15 @@ default_language_version:
   node: system
 
 repos:
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.50.1
+    hooks:
+      - id: typos
+        # Drop the upstream default `--write-changes` so the hook reports and
+        # fails instead of rewriting files. Keep `--force-exclude` so the
+        # excludes in typos.toml still apply to the paths prek passes in.
+        args: ["--force-exclude"]
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # 6.0.0
     hooks:
