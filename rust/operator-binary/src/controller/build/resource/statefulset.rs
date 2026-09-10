@@ -320,7 +320,7 @@ pub fn build_rolegroup_statefulset(
     {
         prepare_args.push(product_logging::framework::capture_shell_output(
             STACKABLE_LOG_DIR,
-            &Container::Prepare.to_string(),
+            Container::Prepare.name().as_ref(),
             log_config,
         ));
     }

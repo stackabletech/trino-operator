@@ -140,7 +140,7 @@ pub fn build_password_file_update_container(
 
     commands.push(product_logging::framework::capture_shell_output(
         STACKABLE_LOG_DIR,
-        &crate::crd::Container::PasswordFileUpdater.to_string(),
+        crate::crd::Container::PasswordFileUpdater.name().as_ref(),
         // we do not access any of the crd config options for this and just log it to file
         &AutomaticContainerLogConfig::default(),
     ));
