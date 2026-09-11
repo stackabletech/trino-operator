@@ -640,7 +640,7 @@ mod tests {
     }
 
     /// The typed container names returned by `name` must agree with the strum `Display` of
-    /// `Container`, which the rest of the operator still uses for log capture and container lookups.
+    /// `Container`, which operator-rs's `Logging<T>` requires and uses in error messages.
     #[test]
     fn container_names_match_display() {
         for container in Container::iter() {
