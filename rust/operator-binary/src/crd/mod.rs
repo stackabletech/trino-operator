@@ -40,7 +40,8 @@ use stackable_operator::{
         types::{
             common::Port,
             kubernetes::{
-                ConfigMapName, ListenerClassName, NamespaceName, SecretClassName, SecretKey,
+                ConfigMapName, ContainerName, ListenerClassName, NamespaceName, SecretClassName,
+                SecretKey,
             },
             operator::{ClusterName, RoleGroupName, RoleName},
         },
@@ -93,9 +94,9 @@ constant!(pub INTERNAL_SECRET_SECRET_KEY: SecretKey = "INTERNAL_SECRET");
 constant!(pub ENV_SPOOLING_SECRET: EnvVarName = "SPOOLING_SECRET");
 constant!(pub SPOOLING_SECRET_SECRET_KEY: SecretKey = "SPOOLING_SECRET");
 // TLS
-const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
+constant!(TLS_DEFAULT_SECRET_CLASS: SecretClassName = "tls");
 // Listener
-pub const DEFAULT_LISTENER_CLASS: &str = "cluster-internal";
+constant!(pub DEFAULT_LISTENER_CLASS: ListenerClassName = "cluster-internal");
 // Logging
 pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
     value: 10.0,
@@ -377,8 +378,7 @@ impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
 }
 
 fn coordinator_default_listener_class() -> ListenerClassName {
-    ListenerClassName::from_str(DEFAULT_LISTENER_CLASS)
-        .expect("the default listener class name must be valid")
+    DEFAULT_LISTENER_CLASS.clone()
 }
 
 impl Default for v1alpha1::TrinoTls {
@@ -391,10 +391,7 @@ impl Default for v1alpha1::TrinoTls {
 }
 
 fn tls_secret_class_default() -> Option<SecretClassName> {
-    Some(
-        SecretClassName::from_str(TLS_DEFAULT_SECRET_CLASS)
-            .expect("the default TLS SecretClass name must be valid"),
-    )
+    Some(TLS_DEFAULT_SECRET_CLASS.clone())
 }
 
 constant!(COORDINATOR_ROLE_NAME: RoleName = "coordinator");
@@ -419,19 +416,13 @@ impl Deref for TrinoRole {
 
 impl From<TrinoRole> for RoleName {
     fn from(value: TrinoRole) -> Self {
-        value
-            .to_string()
-            .parse()
-            .expect("a TrinoRole serialises to a valid RoleName")
+        RoleName::clone(&value)
     }
 }
 
 impl From<&TrinoRole> for RoleName {
     fn from(value: &TrinoRole) -> Self {
-        value
-            .to_string()
-            .parse()
-            .expect("a TrinoRole serialises to a valid RoleName")
+        RoleName::clone(value)
     }
 }
 
@@ -469,6 +460,25 @@ pub enum Container {
     PasswordFileUpdater,
     // main
     Trino,
+}
+
+// Typed container names. They must match the strum `Display` (kebab-case) of the variants above,
+// which is pinned by a unit test.
+constant!(PREPARE_CONTAINER_NAME: ContainerName = "prepare");
+constant!(VECTOR_CONTAINER_NAME: ContainerName = "vector");
+constant!(PASSWORD_FILE_UPDATER_CONTAINER_NAME: ContainerName = "password-file-updater");
+constant!(TRINO_CONTAINER_NAME: ContainerName = "trino");
+
+impl Container {
+    /// The typed container name of this variant.
+    pub fn name(&self) -> &'static ContainerName {
+        match self {
+            Container::Prepare => &PREPARE_CONTAINER_NAME,
+            Container::Vector => &VECTOR_CONTAINER_NAME,
+            Container::PasswordFileUpdater => &PASSWORD_FILE_UPDATER_CONTAINER_NAME,
+            Container::Trino => &TRINO_CONTAINER_NAME,
+        }
+    }
 }
 
 impl v1alpha1::TrinoConfig {
@@ -608,6 +618,7 @@ impl HasStatusCondition for v1alpha1::TrinoCluster {
 #[cfg(test)]
 mod tests {
     use stackable_operator::versioned::test_utils::RoundtripTestData;
+    use strum::IntoEnumIterator;
 
     use super::*;
 
@@ -618,8 +629,23 @@ mod tests {
         let _ = *INTERNAL_SECRET_SECRET_KEY;
         let _ = *ENV_SPOOLING_SECRET;
         let _ = *SPOOLING_SECRET_SECRET_KEY;
+        let _ = *TLS_DEFAULT_SECRET_CLASS;
+        let _ = *DEFAULT_LISTENER_CLASS;
         let _ = *COORDINATOR_ROLE_NAME;
         let _ = *WORKER_ROLE_NAME;
+        let _ = *PREPARE_CONTAINER_NAME;
+        let _ = *VECTOR_CONTAINER_NAME;
+        let _ = *PASSWORD_FILE_UPDATER_CONTAINER_NAME;
+        let _ = *TRINO_CONTAINER_NAME;
+    }
+
+    /// The typed container names returned by `name` must agree with the strum `Display` of
+    /// `Container`, which operator-rs's `Logging<T>` requires and uses in error messages.
+    #[test]
+    fn container_names_match_display() {
+        for container in Container::iter() {
+            assert_eq!(container.name().to_string(), container.to_string());
+        }
     }
 
     /// The user-provided server TLS SecretClass as `Option<&str>`, used by these CRD-defaulting
@@ -668,10 +694,13 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
         assert_eq!(
             internal_secret_class(&trino),
-            Some(TLS_DEFAULT_SECRET_CLASS)
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
         );
 
         let input = r#"
@@ -700,7 +729,7 @@ mod tests {
         assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
         assert_eq!(
             internal_secret_class(&trino),
-            Some(TLS_DEFAULT_SECRET_CLASS)
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
         );
 
         let input = r#"
@@ -753,7 +782,10 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
         assert_eq!(
             internal_secret_class(&trino),
             Some("simple-trino-internal-tls")
@@ -785,9 +817,12 @@ mod tests {
             serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
             internal_secret_class(&trino),
-            Some(TLS_DEFAULT_SECRET_CLASS)
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
         );
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -816,7 +851,10 @@ mod tests {
             internal_secret_class(&trino),
             Some("simple-trino-internal-tls")
         );
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1

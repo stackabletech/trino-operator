@@ -126,7 +126,7 @@ pub fn build(
                 cluster,
                 role,
                 listener_class,
-                listener_group_name,
+                &listener_group_name,
             ));
         }
 
