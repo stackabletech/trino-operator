@@ -102,7 +102,7 @@ pub fn build(
         LOG_PATH.to_string(),
         format!(
             "{STACKABLE_LOG_DIR}/{container}/server.airlift.json",
-            container = Container::Trino
+            container = Container::Trino.name()
         ),
     );
     props.insert(LOG_COMPRESSION.to_string(), "none".to_string());

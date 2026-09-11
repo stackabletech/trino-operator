@@ -469,10 +469,9 @@ constant!(VECTOR_CONTAINER_NAME: ContainerName = "vector");
 constant!(PASSWORD_FILE_UPDATER_CONTAINER_NAME: ContainerName = "password-file-updater");
 constant!(TRINO_CONTAINER_NAME: ContainerName = "trino");
 
-impl Deref for Container {
-    type Target = ContainerName;
-
-    fn deref(&self) -> &Self::Target {
+impl Container {
+    /// The typed container name of this variant.
+    pub fn name(&self) -> &'static ContainerName {
         match self {
             Container::Prepare => &PREPARE_CONTAINER_NAME,
             Container::Vector => &VECTOR_CONTAINER_NAME,
@@ -640,13 +639,12 @@ mod tests {
         let _ = *TRINO_CONTAINER_NAME;
     }
 
-    /// The typed container names behind `Container`'s `Deref` must agree with its strum `Display`,
-    /// which the rest of the operator still uses for log capture and container lookups.
+    /// The typed container names returned by `name` must agree with the strum `Display` of
+    /// `Container`, which operator-rs's `Logging<T>` requires and uses in error messages.
     #[test]
     fn container_names_match_display() {
         for container in Container::iter() {
-            let container_name: &ContainerName = &container;
-            assert_eq!(container_name.to_string(), container.to_string());
+            assert_eq!(container.name().to_string(), container.to_string());
         }
     }
 

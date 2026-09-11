@@ -315,7 +315,7 @@ mod tests {
             .expect("the fixture defines a worker role group")
             .config;
         let mut pod_builder = PodBuilder::new();
-        let mut trino_builder = new_container_builder(&Container::Trino);
+        let mut trino_builder = new_container_builder(Container::Trino.name());
         add_graceful_shutdown_config(
             &cluster,
             &TrinoRole::Worker,
@@ -354,7 +354,7 @@ mod tests {
             .expect("the fixture defines a coordinator role group")
             .config;
         let mut pod_builder = PodBuilder::new();
-        let mut trino_builder = new_container_builder(&Container::Trino);
+        let mut trino_builder = new_container_builder(Container::Trino.name());
         add_graceful_shutdown_config(
             &cluster,
             &TrinoRole::Coordinator,
