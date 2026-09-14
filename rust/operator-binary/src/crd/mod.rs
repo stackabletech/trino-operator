@@ -426,15 +426,6 @@ impl From<&TrinoRole> for RoleName {
     }
 }
 
-impl TrinoRole {
-    pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<ListenerClassName> {
-        match self {
-            Self::Coordinator => Some(trino.spec.coordinators.role_config.listener_class.clone()),
-            Self::Worker => None,
-        }
-    }
-}
-
 #[derive(
     Clone,
     Debug,
@@ -526,23 +517,6 @@ impl v1alpha1::TrinoConfig {
 }
 
 impl v1alpha1::TrinoCluster {
-    /// Returns the given role (both roles are required by the CRD).
-    pub fn role(&self, role_variant: &TrinoRole) -> TrinoRoleType {
-        match role_variant {
-            TrinoRole::Coordinator => {
-                extract_role_from_coordinator_config(self.spec.coordinators.to_owned())
-            }
-            TrinoRole::Worker => self.spec.workers.to_owned(),
-        }
-    }
-
-    pub fn generic_role_config(&self, role: &TrinoRole) -> &GenericRoleConfig {
-        match role {
-            TrinoRole::Coordinator => &self.spec.coordinators.role_config.common,
-            TrinoRole::Worker => &self.spec.workers.role_config,
-        }
-    }
-
     /// List all coordinator pods expected to form the cluster
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to
@@ -598,14 +572,6 @@ impl v1alpha1::TrinoCluster {
 /// Converts the coordinator role (which carries the coordinator-specific `role_config`) into the
 /// generic [`TrinoRoleType`]. Only the `role_config` type parameter differs between the two; the
 /// `config` and `role_groups` carry over unchanged.
-fn extract_role_from_coordinator_config(fragment: TrinoCoordinatorRoleType) -> TrinoRoleType {
-    Role {
-        config: fragment.config,
-        role_config: fragment.role_config.common,
-        role_groups: fragment.role_groups,
-    }
-}
-
 impl HasStatusCondition for v1alpha1::TrinoCluster {
     fn conditions(&self) -> Vec<ClusterCondition> {
         match &self.status {

@@ -158,15 +158,26 @@ impl ValidatedTrinoConfig {
     }
 }
 
-/// Per-role configuration extracted during validation.
+/// The coordinator's validated role-level configuration.
 ///
-/// Lets the reconciler and build steps consume this controller-owned type instead of re-reading
-/// the raw [`v1alpha1::TrinoCluster`].
+/// A type of its own rather than a shared one, because the coordinator's role config really is a
+/// different type in the CRD ([`v1alpha1::TrinoCoordinatorRoleConfig`] against the worker's
+/// `GenericRoleConfig`). Flattening the two into one shape made `listener_class` an `Option` that
+/// is mandatory for the coordinator and meaningless for the worker, so every reader had to
+/// rediscover which role it was holding.
 #[derive(Clone, Debug)]
-pub struct ValidatedRoleConfig {
+pub struct ValidatedCoordinatorRoleConfig {
     pub pdb: stackable_operator::commons::pdb::PdbConfig,
-    /// The listener class for the role's group listener, if it has one (coordinator only).
-    pub listener_class: Option<ListenerClassName>,
+    /// The listener class of the coordinator's group listener. Not optional: the CRD defaults it.
+    pub listener_class: ListenerClassName,
+}
+
+/// The worker's validated role-level configuration.
+///
+/// Workers have no group listener, so there is no listener class here to be `None`.
+#[derive(Clone, Debug)]
+pub struct ValidatedWorkerRoleConfig {
+    pub pdb: stackable_operator::commons::pdb::PdbConfig,
 }
 
 /// The validated TrinoCluster. The output of the validate step.
@@ -188,8 +199,14 @@ pub struct ValidatedCluster {
     /// parsed once from the resolved image's app version label value.
     pub product_version: ProductVersion,
     pub cluster_config: ValidatedClusterConfig,
-    pub role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
-    pub role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
+    /// The coordinator's role-level config.
+    pub coordinator_config: ValidatedCoordinatorRoleConfig,
+    /// The validated config of every coordinator role group, keyed by role group name.
+    pub coordinator_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+    /// The worker's role-level config.
+    pub worker_config: ValidatedWorkerRoleConfig,
+    /// The validated config of every worker role group, keyed by role group name.
+    pub worker_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
 }
 
 impl ValidatedCluster {
@@ -201,8 +218,10 @@ impl ValidatedCluster {
         image: ResolvedProductImage,
         numeric_product_version: u16,
         cluster_config: ValidatedClusterConfig,
-        role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
-        role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
+        coordinator_config: ValidatedCoordinatorRoleConfig,
+        coordinator_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+        worker_config: ValidatedWorkerRoleConfig,
+        worker_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
     ) -> Self {
         Self {
             metadata: ObjectMeta {
@@ -219,14 +238,33 @@ impl ValidatedCluster {
             image,
             numeric_product_version,
             cluster_config,
-            role_configs,
-            role_group_configs,
+            coordinator_config,
+            coordinator_role_group_configs,
+            worker_config,
+            worker_role_group_configs,
         }
     }
 
-    /// The validated per-role config for `role`, if the role is defined.
-    pub(crate) fn role_config(&self, role: &TrinoRole) -> Option<&ValidatedRoleConfig> {
-        self.role_configs.get(role)
+    /// The role groups of `role`.
+    ///
+    /// A lookup, not a search: both roles always exist, because the CRD makes `coordinators` and
+    /// `workers` non-optional, so there is no `Option` to unwrap.
+    pub(crate) fn role_group_configs(
+        &self,
+        role: &TrinoRole,
+    ) -> &BTreeMap<RoleGroupName, TrinoRoleGroupConfig> {
+        match role {
+            TrinoRole::Coordinator => &self.coordinator_role_group_configs,
+            TrinoRole::Worker => &self.worker_role_group_configs,
+        }
+    }
+
+    /// The PodDisruptionBudget config of `role`.
+    pub(crate) fn pdb(&self, role: &TrinoRole) -> &stackable_operator::commons::pdb::PdbConfig {
+        match role {
+            TrinoRole::Coordinator => &self.coordinator_config.pdb,
+            TrinoRole::Worker => &self.worker_config.pdb,
+        }
     }
 
     /// Whether the (client-facing) server TLS is enabled.

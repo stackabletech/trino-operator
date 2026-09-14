@@ -312,7 +312,8 @@ mod tests {
     }
 
     fn rg(cluster: &ValidatedCluster, role: &TrinoRole) -> TrinoRoleGroupConfig {
-        cluster.role_group_configs[role]
+        cluster
+            .role_group_configs(role)
             .values()
             .next()
             .expect("the fixture defines a role group")
@@ -322,7 +323,8 @@ mod tests {
     #[test]
     fn default_renders_includes_coordinator_default_and_query_max_memory_default() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+        let rg = cluster
+            .coordinator_role_group_configs
             .values()
             .next()
             .unwrap()

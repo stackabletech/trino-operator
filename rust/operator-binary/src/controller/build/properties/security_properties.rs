@@ -37,17 +37,15 @@ pub fn build(rg: &TrinoRoleGroupConfig) -> BTreeMap<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        controller::build::properties::test_support::{
-            MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
-        },
-        crd::TrinoRole,
+    use crate::controller::build::properties::test_support::{
+        MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
     };
 
     fn coordinator_rg(
         cluster: &crate::controller::ValidatedCluster,
     ) -> crate::controller::TrinoRoleGroupConfig {
-        cluster.role_group_configs[&TrinoRole::Coordinator]
+        cluster
+            .coordinator_role_group_configs
             .values()
             .next()
             .unwrap()

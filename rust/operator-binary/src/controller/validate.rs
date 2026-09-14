@@ -12,7 +12,6 @@ use stackable_operator::{
     config::fragment,
     kube::ResourceExt as _,
     product_logging::spec::Logging,
-    role_utils::GenericRoleConfig,
     v2::{
         controller_utils::{get_cluster_name, get_namespace, get_uid},
         product_logging::framework::{
@@ -23,13 +22,13 @@ use stackable_operator::{
         types::kubernetes::ConfigMapName,
     },
 };
-use strum::{EnumDiscriminants, IntoEnumIterator, IntoStaticStr};
+use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     authentication::{self, TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     controller::{
-        ValidatedCluster, ValidatedClusterConfig, ValidatedRoleConfig, ValidatedTls,
-        ValidatedTrinoConfig, dereference::DereferencedObjects,
+        ValidatedCluster, ValidatedClusterConfig, ValidatedCoordinatorRoleConfig, ValidatedTls,
+        ValidatedTrinoConfig, ValidatedWorkerRoleConfig, dereference::DereferencedObjects,
     },
     crd::{Container, TrinoRole, catalog::TrinoCatalogName, v1alpha1},
 };
@@ -208,56 +207,43 @@ pub fn validate(
         .vector_aggregator_config_map_name
         .clone();
 
-    let mut role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig> = BTreeMap::new();
-    let mut role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>> =
-        BTreeMap::new();
-    for trino_role in TrinoRole::iter() {
-        let role = trino.role(&trino_role);
+    // Each role's role groups are validated from the role's own CRD type. `validate_role_groups`
+    // is generic over the role config, so the coordinator no longer has to be converted down to
+    // the worker's shape first.
+    //
+    // Validated in `TrinoRole` declaration order, as the `TrinoRole::iter()` loop this replaced
+    // was: the first role that fails is the error the user sees, so swapping these two calls
+    // changes which misconfiguration gets reported when both roles are wrong.
+    let coordinator_role_group_configs = validate_role_groups(
+        &trino.spec.coordinators,
+        trino,
+        &TrinoRole::Coordinator,
+        dereferenced_objects,
+        &vector_aggregator_config_map_name,
+    )?;
+    let worker_role_group_configs = validate_role_groups(
+        &trino.spec.workers,
+        trino,
+        &TrinoRole::Worker,
+        dereferenced_objects,
+        &vector_aggregator_config_map_name,
+    )?;
 
-        // Extract the per-role PDB and (optional) listener class up-front, so the reconciler and
-        // build steps consume the validated config instead of re-reading the raw cluster.
-        role_configs.insert(
-            trino_role.clone(),
-            ValidatedRoleConfig {
-                pdb: trino
-                    .generic_role_config(&trino_role)
-                    .pod_disruption_budget
-                    .clone(),
-                listener_class: trino_role.listener_class_name(trino),
-            },
-        );
-
-        let default_config = v1alpha1::TrinoConfig::default_config(
-            &trino.name_any(),
-            &trino_role,
-            &dereferenced_objects.catalog_definitions,
-        );
-        let mut groups = BTreeMap::new();
-        for (rg_name, rg) in &role.role_groups {
-            let role_group_name =
-                RoleGroupName::from_str(rg_name).with_context(|_| ParseRoleGroupNameSnafu {
-                    role_group: rg_name.clone(),
-                })?;
-            // Merges and validates the role group config (default <- role <- role group). Because
-            // `JavaCommonConfig` implements `Merge`, the role and role-group `jvmArgumentOverrides`
-            // are merged here too and carried by `product_specific_common_config`.
-            let merged = with_validated_config::<
-                v1alpha1::TrinoConfig,
-                JavaCommonConfig,
-                v1alpha1::TrinoConfigFragment,
-                GenericRoleConfig,
-                v1alpha1::TrinoConfigOverrides,
-            >(rg, &role, &default_config)
-            .with_context(|_| FailedToResolveConfigSnafu {
-                role_group: role_group_name.clone(),
-            })?;
-            groups.insert(
-                role_group_name,
-                into_role_group_config(merged, &vector_aggregator_config_map_name)?,
-            );
-        }
-        role_group_configs.insert(trino_role, groups);
-    }
+    // Read from each role's own role config, so the coordinator's mandatory `listener_class` stays
+    // mandatory instead of becoming an `Option` that the worker leaves `None`.
+    let coordinator_config = ValidatedCoordinatorRoleConfig {
+        pdb: trino
+            .spec
+            .coordinators
+            .role_config
+            .common
+            .pod_disruption_budget
+            .clone(),
+        listener_class: trino.spec.coordinators.role_config.listener_class.clone(),
+    };
+    let worker_config = ValidatedWorkerRoleConfig {
+        pdb: trino.spec.workers.role_config.pod_disruption_budget.clone(),
+    };
 
     let mut catalogs = BTreeMap::new();
     for catalog in &dereferenced_objects.catalogs {
@@ -296,13 +282,69 @@ pub fn validate(
         image,
         numeric_product_version,
         cluster_config,
-        role_configs,
-        role_group_configs,
+        coordinator_config,
+        coordinator_role_group_configs,
+        worker_config,
+        worker_role_group_configs,
     ))
 }
 
 /// Adapts the validated [`RoleGroup`] produced by [`with_validated_config`] into the flattened
 /// [`TrinoRoleGroupConfig`] consumed by the build steps.
+/// Validates every role group of one role, merging default <- role <- role group.
+///
+/// Generic over the role's `RoleConfig` so that each role is read from its own CRD type: the
+/// coordinator's [`v1alpha1::TrinoCoordinatorRoleConfig`] no longer has to be converted down to
+/// the worker's `GenericRoleConfig` before its role groups can be validated.
+fn validate_role_groups<RoleConfig>(
+    role: &stackable_operator::v2::role_utils::Role<
+        v1alpha1::TrinoConfigFragment,
+        v1alpha1::TrinoConfigOverrides,
+        RoleConfig,
+        JavaCommonConfig,
+    >,
+    trino: &v1alpha1::TrinoCluster,
+    trino_role: &TrinoRole,
+    dereferenced_objects: &DereferencedObjects,
+    vector_aggregator_config_map_name: &Option<ConfigMapName>,
+) -> Result<BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>
+where
+    RoleConfig: Default + stackable_operator::schemars::JsonSchema + serde::Serialize,
+{
+    let default_config = v1alpha1::TrinoConfig::default_config(
+        &trino.name_any(),
+        trino_role,
+        &dereferenced_objects.catalog_definitions,
+    );
+
+    let mut role_groups = BTreeMap::new();
+    for (rg_name, rg) in &role.role_groups {
+        let role_group_name =
+            RoleGroupName::from_str(rg_name).with_context(|_| ParseRoleGroupNameSnafu {
+                role_group: rg_name.clone(),
+            })?;
+        // Merges and validates the role group config (default <- role <- role group). Because
+        // `JavaCommonConfig` implements `Merge`, the role and role-group `jvmArgumentOverrides`
+        // are merged here too and carried by `product_specific_common_config`.
+        let merged = with_validated_config::<
+            v1alpha1::TrinoConfig,
+            JavaCommonConfig,
+            v1alpha1::TrinoConfigFragment,
+            RoleConfig,
+            v1alpha1::TrinoConfigOverrides,
+        >(rg, role, &default_config)
+        .with_context(|_| FailedToResolveConfigSnafu {
+            role_group: role_group_name.clone(),
+        })?;
+        role_groups.insert(
+            role_group_name,
+            into_role_group_config(merged, vector_aggregator_config_map_name)?,
+        );
+    }
+
+    Ok(role_groups)
+}
+
 fn into_role_group_config(
     merged: RoleGroup<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>,
     vector_aggregator_config_map_name: &Option<ConfigMapName>,
@@ -334,24 +376,30 @@ pub(crate) fn merged_role_group_config(
     role_group: &str,
     trino_catalogs: &[crate::crd::catalog::v1alpha1::TrinoCatalog],
 ) -> TrinoRoleGroupConfig {
-    let role = trino.role(trino_role);
-    let default_config =
-        v1alpha1::TrinoConfig::default_config(&trino.name_any(), trino_role, trino_catalogs);
-    let rg = role
-        .role_groups
-        .get(role_group)
-        .expect("role group should be defined");
-    let merged = with_validated_config::<
-        v1alpha1::TrinoConfig,
-        JavaCommonConfig,
-        v1alpha1::TrinoConfigFragment,
-        GenericRoleConfig,
-        v1alpha1::TrinoConfigOverrides,
-    >(rg, &role, &default_config)
-    .expect("role group config should be valid");
     // The shared test clusters do not enable the Vector agent, so no aggregator ConfigMap name is
     // required here.
-    into_role_group_config(merged, &None).expect("env overrides should be valid")
+    let derefs = DereferencedObjects {
+        catalog_definitions: trino_catalogs.to_vec(),
+        resolved_authentication_classes: Vec::new(),
+        catalogs: Vec::new(),
+        trino_opa_config: None,
+        resolved_fte_config: None,
+        resolved_client_protocol_config: None,
+    };
+    let role_groups = match trino_role {
+        TrinoRole::Coordinator => {
+            validate_role_groups(&trino.spec.coordinators, trino, trino_role, &derefs, &None)
+        }
+        TrinoRole::Worker => {
+            validate_role_groups(&trino.spec.workers, trino, trino_role, &derefs, &None)
+        }
+    }
+    .expect("role group config should be valid");
+
+    role_groups
+        .get(&RoleGroupName::from_str(role_group).expect("valid role group name"))
+        .expect("role group should be defined")
+        .clone()
 }
 
 #[cfg(test)]
@@ -479,29 +527,22 @@ mod tests {
             "simple-trino-coordinator-default-0"
         );
 
-        // Per-role configs: default (enabled) PDBs; only the coordinator has a group listener.
-        let roles: Vec<_> = validated.role_configs.keys().collect();
-        assert_eq!(roles, [&TrinoRole::Coordinator, &TrinoRole::Worker]);
-        for role_config in validated.role_configs.values() {
-            assert!(role_config.pdb.enabled);
-            assert_eq!(role_config.pdb.max_unavailable, None);
+        // Per-role configs: default (enabled) PDBs. The listener class is on the coordinator's
+        // config only — the worker type has no such field to assert `None` against.
+        for role in [TrinoRole::Coordinator, TrinoRole::Worker] {
+            let pdb = validated.pdb(&role);
+            assert!(pdb.enabled);
+            assert_eq!(pdb.max_unavailable, None);
         }
         assert_eq!(
-            validated.role_configs[&TrinoRole::Coordinator]
-                .listener_class
-                .as_ref()
-                .map(ToString::to_string),
-            Some("cluster-internal".to_string())
-        );
-        assert_eq!(
-            validated.role_configs[&TrinoRole::Worker].listener_class,
-            None
+            validated.coordinator_config.listener_class.to_string(),
+            "cluster-internal"
         );
 
         // One `default` role group per role; the Vector agent is off.
         let default_rg = RoleGroupName::from_str("default").expect("valid role group name");
         for role in [TrinoRole::Coordinator, TrinoRole::Worker] {
-            let role_group = &validated.role_group_configs[&role][&default_rg];
+            let role_group = &validated.role_group_configs(&role)[&default_rg];
             assert_eq!(role_group.replicas, Some(1));
             assert!(!role_group.config.logging.enable_vector_agent);
             assert_eq!(role_group.config.logging.vector_container, None);

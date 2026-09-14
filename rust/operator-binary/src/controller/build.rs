@@ -29,6 +29,7 @@ use crate::{
             statefulset,
         },
     },
+    crd::TrinoRole,
     trino_controller::{CONTROLLER_NAME, OPERATOR_NAME, PRODUCT_NAME},
 };
 
@@ -68,7 +69,16 @@ pub fn build(
     let mut config_maps = vec![];
     let mut pod_disruption_budgets = vec![];
 
-    for (role, role_group_configs) in &cluster.role_group_configs {
+    // One entry per role, in `TrinoRole` declaration order. Each role's groups come from its own
+    // field, so the role and its groups cannot be paired up wrongly here.
+    for (role, role_group_configs) in [
+        (
+            TrinoRole::Coordinator,
+            &cluster.coordinator_role_group_configs,
+        ),
+        (TrinoRole::Worker, &cluster.worker_role_group_configs),
+    ] {
+        let role: &TrinoRole = &role;
         for (role_group_name, role_group_config) in role_group_configs {
             let selector = role_group_selector(cluster, role, role_group_name);
 
@@ -115,22 +125,18 @@ pub fn build(
             );
         }
 
-        let Some(role_config) = cluster.role_config(role) else {
-            continue;
-        };
+        pod_disruption_budgets.extend(build_pdb(cluster.pdb(role), cluster, role));
+    }
 
-        if let Some(listener_class) = &role_config.listener_class
-            && let Some(listener_group_name) = group_listener_name(cluster, role)
-        {
-            listeners.push(build_group_listener(
-                cluster,
-                role,
-                listener_class,
-                &listener_group_name,
-            ));
-        }
-
-        pod_disruption_budgets.extend(build_pdb(&role_config.pdb, cluster, role));
+    // Only the coordinator has a group listener, so this is not inside the loop above asking each
+    // role whether it happens to have a listener class.
+    if let Some(listener_group_name) = group_listener_name(cluster, &TrinoRole::Coordinator) {
+        listeners.push(build_group_listener(
+            cluster,
+            &TrinoRole::Coordinator,
+            &cluster.coordinator_config.listener_class,
+            &listener_group_name,
+        ));
     }
 
     Ok(KubernetesResources {
