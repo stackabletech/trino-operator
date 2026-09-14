@@ -28,6 +28,9 @@ All notable changes to this project will be documented in this file.
   delete each coordinator StatefulSet so that the operator immediately recreates it with the
   new labels ([#932]).
 - Make operations infallible where dependent on static inputs ([#939], [#943]).
+- Internal operator refactoring: the validated cluster carries each role's configuration in its own
+  typed fields instead of maps keyed by role, and the coordinator's role config is no longer
+  converted to the worker's shape and its listener class recovered afterwards ([#945]).
 
 ### Fixed
 
@@ -49,6 +52,7 @@ All notable changes to this project will be documented in this file.
 [#934]: https://github.com/stackabletech/trino-operator/pull/934
 [#939]: https://github.com/stackabletech/trino-operator/pull/939
 [#943]: https://github.com/stackabletech/trino-operator/pull/943
+[#945]: https://github.com/stackabletech/trino-operator/pull/945
 
 ## [26.7.0] - 2026-07-21
 
