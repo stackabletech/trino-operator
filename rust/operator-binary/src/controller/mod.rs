@@ -160,11 +160,11 @@ impl ValidatedTrinoConfig {
 
 /// The coordinator's validated role-level configuration.
 ///
-/// A type of its own rather than a shared one, because the coordinator's role config really is a
-/// different type in the CRD ([`v1alpha1::TrinoCoordinatorRoleConfig`] against the worker's
-/// `GenericRoleConfig`). Flattening the two into one shape made `listener_class` an `Option` that
-/// is mandatory for the coordinator and meaningless for the worker, so every reader had to
-/// rediscover which role it was holding.
+/// Separate from the worker's because the two are different types in the CRD:
+/// [`v1alpha1::TrinoCoordinatorRoleConfig`] carries a `listener_class` for which the worker's
+/// `GenericRoleConfig` has no equivalent. One shared type would have to make that field an
+/// `Option` — mandatory for one role, meaningless for the other — leaving every reader to work
+/// out which role it is holding.
 #[derive(Clone, Debug)]
 pub struct ValidatedCoordinatorRoleConfig {
     pub pdb: stackable_operator::commons::pdb::PdbConfig,
@@ -174,7 +174,7 @@ pub struct ValidatedCoordinatorRoleConfig {
 
 /// The worker's validated role-level configuration.
 ///
-/// Workers have no group listener, so there is no listener class here to be `None`.
+/// Workers have no group listener, so there is no listener class to carry.
 #[derive(Clone, Debug)]
 pub struct ValidatedWorkerRoleConfig {
     pub pdb: stackable_operator::commons::pdb::PdbConfig,

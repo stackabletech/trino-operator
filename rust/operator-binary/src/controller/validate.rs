@@ -207,13 +207,12 @@ pub fn validate(
         .vector_aggregator_config_map_name
         .clone();
 
-    // Each role's role groups are validated from the role's own CRD type. `validate_role_groups`
-    // is generic over the role config, so the coordinator no longer has to be converted down to
-    // the worker's shape first.
+    // Each role's role groups are validated from that role's own CRD type: `validate_role_groups`
+    // is generic over the role config, so neither role has to be converted to the other's shape.
     //
-    // Validated in `TrinoRole` declaration order, as the `TrinoRole::iter()` loop this replaced
-    // was: the first role that fails is the error the user sees, so swapping these two calls
-    // changes which misconfiguration gets reported when both roles are wrong.
+    // Validated in `TrinoRole` declaration order: the first role that fails is the error the user
+    // sees, so swapping these two calls changes which misconfiguration gets reported when both
+    // roles are wrong.
     let coordinator_role_group_configs = validate_role_groups(
         &trino.spec.coordinators,
         trino,
@@ -229,8 +228,8 @@ pub fn validate(
         &vector_aggregator_config_map_name,
     )?;
 
-    // Read from each role's own role config, so the coordinator's mandatory `listener_class` stays
-    // mandatory instead of becoming an `Option` that the worker leaves `None`.
+    // Each role's config comes from its own role config in the spec, so the coordinator's
+    // `listener_class` stays mandatory and the worker has no such field at all.
     let coordinator_config = ValidatedCoordinatorRoleConfig {
         pdb: trino
             .spec
@@ -289,13 +288,11 @@ pub fn validate(
     ))
 }
 
-/// Adapts the validated [`RoleGroup`] produced by [`with_validated_config`] into the flattened
-/// [`TrinoRoleGroupConfig`] consumed by the build steps.
 /// Validates every role group of one role, merging default <- role <- role group.
 ///
 /// Generic over the role's `RoleConfig` so that each role is read from its own CRD type: the
-/// coordinator's [`v1alpha1::TrinoCoordinatorRoleConfig`] no longer has to be converted down to
-/// the worker's `GenericRoleConfig` before its role groups can be validated.
+/// coordinator's [`v1alpha1::TrinoCoordinatorRoleConfig`] and the worker's `GenericRoleConfig`
+/// are both accepted, neither converted to the other.
 fn validate_role_groups<RoleConfig>(
     role: &stackable_operator::v2::role_utils::Role<
         v1alpha1::TrinoConfigFragment,
@@ -345,6 +342,8 @@ where
     Ok(role_groups)
 }
 
+/// Adapts the validated [`RoleGroup`] produced by [`with_validated_config`] into the flattened
+/// [`TrinoRoleGroupConfig`] consumed by the build steps.
 fn into_role_group_config(
     merged: RoleGroup<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>,
     vector_aggregator_config_map_name: &Option<ConfigMapName>,
@@ -527,8 +526,8 @@ mod tests {
             "simple-trino-coordinator-default-0"
         );
 
-        // Per-role configs: default (enabled) PDBs. The listener class is on the coordinator's
-        // config only — the worker type has no such field to assert `None` against.
+        // Per-role configs: default (enabled) PDBs. Only the coordinator's config carries a
+        // listener class; the worker type has no such field.
         for role in [TrinoRole::Coordinator, TrinoRole::Worker] {
             let pdb = validated.pdb(&role);
             assert!(pdb.enabled);

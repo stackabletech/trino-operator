@@ -128,8 +128,8 @@ pub fn build(
         pod_disruption_budgets.extend(build_pdb(cluster.pdb(role), cluster, role));
     }
 
-    // Only the coordinator has a group listener, so this is not inside the loop above asking each
-    // role whether it happens to have a listener class.
+    // Only the coordinator has a group listener, so it is built once here rather than inside the
+    // role loop.
     if let Some(listener_group_name) = group_listener_name(cluster, &TrinoRole::Coordinator) {
         listeners.push(build_group_listener(
             cluster,
