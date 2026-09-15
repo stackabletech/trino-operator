@@ -41,6 +41,10 @@ All notable changes to this project will be documented in this file.
   Trino's native S3 file system takes the transport from the endpoint scheme, so requiring TLS was never necessary ([#928]).
 - The operator now watches all resources that it creates and early-exits the reconcile action when the
   cluster is marked for deletion ([#934]).
+- A coordinator role group that does not set `replicas` is now counted as one replica instead of zero
+  when predicting the coordinator pods. Kubernetes runs a single pod for a `StatefulSet` with
+  `replicas: null`, but counting it as zero left `discovery.uri` out of `config.properties`
+  altogether, so no pod could find the coordinator ([#945]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913

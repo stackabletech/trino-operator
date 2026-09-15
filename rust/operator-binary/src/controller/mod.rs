@@ -210,39 +210,29 @@ pub struct ValidatedCluster {
 }
 
 impl ValidatedCluster {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        name: ClusterName,
-        namespace: NamespaceName,
-        uid: Uid,
-        image: ResolvedProductImage,
-        numeric_product_version: u16,
-        cluster_config: ValidatedClusterConfig,
-        coordinator_config: ValidatedCoordinatorRoleConfig,
-        coordinator_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
-        worker_config: ValidatedWorkerRoleConfig,
-        worker_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
-    ) -> Self {
-        Self {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                namespace: Some(namespace.to_string()),
-                uid: Some(uid.to_string()),
-                ..ObjectMeta::default()
-            },
-            name,
-            namespace,
-            uid,
-            product_version: ProductVersion::from_str(&image.app_version_label_value)
-                .expect("the app version label value is a valid product version"),
-            image,
-            numeric_product_version,
-            cluster_config,
-            coordinator_config,
-            coordinator_role_group_configs,
-            worker_config,
-            worker_role_group_configs,
+    /// The `ObjectMeta` a `ValidatedCluster` carries so it can own the objects built from it.
+    ///
+    /// The uid is required: Kubernetes rejects owner references without one.
+    pub(crate) fn object_meta(
+        name: &ClusterName,
+        namespace: &NamespaceName,
+        uid: &Uid,
+    ) -> ObjectMeta {
+        ObjectMeta {
+            name: Some(name.to_string()),
+            namespace: Some(namespace.to_string()),
+            uid: Some(uid.to_string()),
+            ..ObjectMeta::default()
         }
+    }
+
+    /// The product version of the resolved image.
+    ///
+    /// `app_version_label_value` is constructed to be a valid label value, so it is also a valid
+    /// `ProductVersion`.
+    pub(crate) fn product_version(image: &ResolvedProductImage) -> ProductVersion {
+        ProductVersion::from_str(&image.app_version_label_value)
+            .expect("the app version label value is a valid product version")
     }
 
     /// The role groups of `role`.

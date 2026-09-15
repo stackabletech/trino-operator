@@ -516,11 +516,19 @@ impl v1alpha1::TrinoConfig {
     }
 }
 
+/// The replica count a role group gets when it does not set one: Kubernetes runs a single pod for
+/// a `StatefulSet` with `replicas: null`.
+pub const DEFAULT_REPLICAS: u16 = 1;
+
 impl v1alpha1::TrinoCluster {
     /// List all coordinator pods expected to form the cluster
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to
     /// avoid instance churn.
+    ///
+    /// A role group without an explicit `replicas` counts as [`DEFAULT_REPLICAS`]. Counting it as
+    /// zero would yield no pod refs at all for a single-role-group cluster, and the first of these
+    /// is what sets `discovery.uri`.
     pub fn coordinator_pods(
         &self,
         namespace: &NamespaceName,
@@ -545,7 +553,7 @@ impl v1alpha1::TrinoCluster {
                         .expect("a role group name is a valid role group name"),
                 };
                 let ns = ns.clone();
-                (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
+                (0..rolegroup.replicas.unwrap_or(DEFAULT_REPLICAS)).map(move |i| TrinoPodRef {
                     namespace: ns.clone(),
                     role_group_service_name: resource_names.headless_service_name().to_string(),
                     pod_name: format!("{}-{i}", resource_names.stateful_set_name()),

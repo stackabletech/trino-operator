@@ -349,6 +349,50 @@ mod tests {
         );
     }
 
+    /// A coordinator role group with no explicit `replicas` runs one pod — Kubernetes' default
+    /// for a `StatefulSet` with `replicas: null` — so it must predict one pod ref, not none.
+    /// Predicting none leaves `discovery.uri` out of `config.properties` entirely, and no pod can
+    /// find the coordinator.
+    #[test]
+    fn a_coordinator_without_an_explicit_replica_count_still_sets_the_discovery_uri() {
+        const NO_REPLICAS_YAML: &str = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "481"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default: {}
+              workers:
+                roleGroups:
+                  default: {}
+        "#;
+
+        let cluster = validated_cluster_from_yaml(NO_REPLICAS_YAML);
+        assert_eq!(cluster.cluster_config.coordinator_pod_refs.len(), 1);
+
+        let props = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .unwrap();
+        assert_eq!(
+            props.get("discovery.uri").map(String::as_str),
+            Some(
+                "https://simple-trino-coordinator-default-0.simple-trino-coordinator-default-headless.default.svc.cluster.local:8443"
+            )
+        );
+    }
+
     #[test]
     fn server_tls_only_uses_server_keystore_dir_and_http_discovery() {
         let cluster = validated_cluster_from_yaml(SERVER_TLS_ONLY_YAML);

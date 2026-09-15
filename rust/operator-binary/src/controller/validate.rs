@@ -274,7 +274,12 @@ pub fn validate(
     let name = get_cluster_name(trino).context(GetClusterNameSnafu)?;
     let uid = get_uid(trino).context(GetClusterUidSnafu)?;
 
-    Ok(ValidatedCluster::new(
+    // The two role-group maps share one type, so each is named at the point it is set: as
+    // positional arguments they could be swapped silently, giving each role the other's role
+    // groups.
+    Ok(ValidatedCluster {
+        metadata: ValidatedCluster::object_meta(&name, &namespace, &uid),
+        product_version: ValidatedCluster::product_version(&image),
         name,
         namespace,
         uid,
@@ -285,7 +290,7 @@ pub fn validate(
         coordinator_role_group_configs,
         worker_config,
         worker_role_group_configs,
-    ))
+    })
 }
 
 /// Validates every role group of one role, merging default <- role <- role group.
