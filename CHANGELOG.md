@@ -4,11 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
+  ([#944]).
+
 ### Changed
 
+- BREAKING: `spec.image.stackableVersion` must now be a full, valid semver version, e.g. `26.7.1`.
+  Abbreviated values such as `26.7` are no longer accepted ([#944]).
+- BREAKING: `spec.image.pullPolicy` now defaults to `IfNotPresent` for non-floating tags instead of
+  always defaulting to `Always` ([#944]).
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
-- Bump `stackable-operator` to 0.116.0 ([#918], [#932]).
+- Bump `stackable-operator` to 0.118.0 ([#918], [#932], [#944]).
 - The RBAC ServiceAccount and RoleBinding are now built with the operator-rs `v2::rbac`
   functions and carry the full set of recommended labels ([#913]).
 - BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
@@ -49,6 +58,7 @@ All notable changes to this project will be documented in this file.
 [#934]: https://github.com/stackabletech/trino-operator/pull/934
 [#939]: https://github.com/stackabletech/trino-operator/pull/939
 [#943]: https://github.com/stackabletech/trino-operator/pull/943
+[#944]: https://github.com/stackabletech/trino-operator/pull/944
 
 ## [26.7.0] - 2026-07-21
 
