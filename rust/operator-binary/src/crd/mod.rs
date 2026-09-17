@@ -577,9 +577,6 @@ impl v1alpha1::TrinoCluster {
     }
 }
 
-/// Converts the coordinator role (which carries the coordinator-specific `role_config`) into the
-/// generic [`TrinoRoleType`]. Only the `role_config` type parameter differs between the two; the
-/// `config` and `role_groups` carry over unchanged.
 impl HasStatusCondition for v1alpha1::TrinoCluster {
     fn conditions(&self) -> Vec<ClusterCondition> {
         match &self.status {
