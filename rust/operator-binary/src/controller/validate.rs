@@ -27,8 +27,9 @@ use strum::{EnumDiscriminants, IntoStaticStr};
 use crate::{
     authentication::{self, TrinoAuthenticationConfig, TrinoAuthenticationTypes},
     controller::{
-        ValidatedCluster, ValidatedClusterConfig, ValidatedCoordinatorRoleConfig, ValidatedTls,
-        ValidatedTrinoConfig, ValidatedWorkerRoleConfig, dereference::DereferencedObjects,
+        ValidatedCluster, ValidatedClusterConfig, ValidatedClusterParams,
+        ValidatedCoordinatorRoleConfig, ValidatedTls, ValidatedTrinoConfig,
+        ValidatedWorkerRoleConfig, dereference::DereferencedObjects,
     },
     crd::{Container, TrinoRole, catalog::TrinoCatalogName, v1alpha1},
 };
@@ -274,12 +275,7 @@ pub fn validate(
     let name = get_cluster_name(trino).context(GetClusterNameSnafu)?;
     let uid = get_uid(trino).context(GetClusterUidSnafu)?;
 
-    // The two role-group maps share one type, so each is named at the point it is set: as
-    // positional arguments they could be swapped silently, giving each role the other's role
-    // groups.
-    Ok(ValidatedCluster {
-        metadata: ValidatedCluster::object_meta(&name, &namespace, &uid),
-        product_version: ValidatedCluster::product_version(&image),
+    Ok(ValidatedCluster::new(ValidatedClusterParams {
         name,
         namespace,
         uid,
@@ -290,7 +286,7 @@ pub fn validate(
         coordinator_role_group_configs,
         worker_config,
         worker_role_group_configs,
-    })
+    }))
 }
 
 /// Validates every role group of one role, merging default <- role <- role group.

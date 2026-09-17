@@ -209,15 +209,60 @@ pub struct ValidatedCluster {
     pub worker_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
 }
 
+/// The non-derived inputs to [`ValidatedCluster::new`].
+///
+/// Named fields, so the two same-typed role-group maps cannot be swapped silently.
+#[derive(Debug)]
+pub(crate) struct ValidatedClusterParams {
+    pub name: ClusterName,
+    pub namespace: NamespaceName,
+    pub uid: Uid,
+    pub image: ResolvedProductImage,
+    pub numeric_product_version: u16,
+    pub cluster_config: ValidatedClusterConfig,
+    pub coordinator_config: ValidatedCoordinatorRoleConfig,
+    pub coordinator_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+    pub worker_config: ValidatedWorkerRoleConfig,
+    pub worker_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+}
+
 impl ValidatedCluster {
+    /// Derives `metadata` from `name`, `namespace` and `uid`, and `product_version` from
+    /// `image`, so neither can disagree with its source.
+    pub(crate) fn new(params: ValidatedClusterParams) -> Self {
+        let ValidatedClusterParams {
+            name,
+            namespace,
+            uid,
+            image,
+            numeric_product_version,
+            cluster_config,
+            coordinator_config,
+            coordinator_role_group_configs,
+            worker_config,
+            worker_role_group_configs,
+        } = params;
+
+        Self {
+            metadata: Self::object_meta(&name, &namespace, &uid),
+            product_version: Self::product_version(&image),
+            name,
+            namespace,
+            uid,
+            image,
+            numeric_product_version,
+            cluster_config,
+            coordinator_config,
+            coordinator_role_group_configs,
+            worker_config,
+            worker_role_group_configs,
+        }
+    }
+
     /// The `ObjectMeta` a `ValidatedCluster` carries so it can own the objects built from it.
     ///
     /// The uid is required: Kubernetes rejects owner references without one.
-    pub(crate) fn object_meta(
-        name: &ClusterName,
-        namespace: &NamespaceName,
-        uid: &Uid,
-    ) -> ObjectMeta {
+    fn object_meta(name: &ClusterName, namespace: &NamespaceName, uid: &Uid) -> ObjectMeta {
         ObjectMeta {
             name: Some(name.to_string()),
             namespace: Some(namespace.to_string()),
@@ -230,7 +275,7 @@ impl ValidatedCluster {
     ///
     /// `app_version_label_value` is constructed to be a valid label value, so it is also a valid
     /// `ProductVersion`.
-    pub(crate) fn product_version(image: &ResolvedProductImage) -> ProductVersion {
+    fn product_version(image: &ResolvedProductImage) -> ProductVersion {
         ProductVersion::from_str(&image.app_version_label_value)
             .expect("the app version label value is a valid product version")
     }
