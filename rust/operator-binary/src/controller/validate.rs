@@ -171,7 +171,7 @@ pub fn validate(
         .resolve(
             crate::trino_controller::CONTAINER_IMAGE_BASE_NAME,
             &operator_environment.image_repository,
-            crate::built_info::PKG_VERSION,
+            &crate::built_info::PKG_VERSION_SEMVER,
         )
         .context(ResolveProductImageSnafu)?;
 
