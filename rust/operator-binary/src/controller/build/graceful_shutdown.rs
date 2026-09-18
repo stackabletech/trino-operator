@@ -62,16 +62,13 @@ pub fn graceful_shutdown_config_properties(
     }
 }
 
-/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups, read from the
-/// validated [`ValidatedCluster::role_group_configs`].
+/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups
 fn min_worker_graceful_shutdown_timeout(
     cluster: &ValidatedCluster,
 ) -> stackable_operator::shared::time::Duration {
     cluster
-        .role_group_configs
-        .get(&TrinoRole::Worker)
-        .into_iter()
-        .flat_map(|groups| groups.values())
+        .worker_role_group_configs
+        .values()
         .filter_map(|rg| rg.config.graceful_shutdown_timeout)
         .min()
         .unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT)
@@ -309,7 +306,8 @@ mod tests {
     #[test]
     fn worker_termination_grace_period_adds_overhead_and_sets_pre_stop() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let merged = &cluster.role_group_configs[&TrinoRole::Worker]
+        let merged = &cluster
+            .worker_role_group_configs
             .values()
             .next()
             .expect("the fixture defines a worker role group")
@@ -348,7 +346,8 @@ mod tests {
     #[test]
     fn coordinator_termination_grace_period_has_no_overhead_or_pre_stop() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let merged = &cluster.role_group_configs[&TrinoRole::Coordinator]
+        let merged = &cluster
+            .coordinator_role_group_configs
             .values()
             .next()
             .expect("the fixture defines a coordinator role group")

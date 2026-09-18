@@ -426,15 +426,6 @@ impl From<&TrinoRole> for RoleName {
     }
 }
 
-impl TrinoRole {
-    pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<ListenerClassName> {
-        match self {
-            Self::Coordinator => Some(trino.spec.coordinators.role_config.listener_class.clone()),
-            Self::Worker => None,
-        }
-    }
-}
-
 #[derive(
     Clone,
     Debug,
@@ -525,28 +516,19 @@ impl v1alpha1::TrinoConfig {
     }
 }
 
+/// The replica count lower bound used for enumerating role groups when this is not set explicitly (in such cases Kubernetes
+/// runs a single pod for a `StatefulSet`).
+const COORDINATOR_REPLICAS_IF_UNSET: u16 = 1;
+
 impl v1alpha1::TrinoCluster {
-    /// Returns the given role (both roles are required by the CRD).
-    pub fn role(&self, role_variant: &TrinoRole) -> TrinoRoleType {
-        match role_variant {
-            TrinoRole::Coordinator => {
-                extract_role_from_coordinator_config(self.spec.coordinators.to_owned())
-            }
-            TrinoRole::Worker => self.spec.workers.to_owned(),
-        }
-    }
-
-    pub fn generic_role_config(&self, role: &TrinoRole) -> &GenericRoleConfig {
-        match role {
-            TrinoRole::Coordinator => &self.spec.coordinators.role_config.common,
-            TrinoRole::Worker => &self.spec.workers.role_config,
-        }
-    }
-
     /// List all coordinator pods expected to form the cluster
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to
     /// avoid instance churn.
+    ///
+    /// A role group without an explicit `replicas` counts will be assigned a single pod by Kubernetes. Counting it as
+    /// zero would yield no pod refs at all for a single-role-group cluster, and the first of these
+    /// is what sets `discovery.uri`.
     pub fn coordinator_pods(
         &self,
         namespace: &NamespaceName,
@@ -571,10 +553,12 @@ impl v1alpha1::TrinoCluster {
                         .expect("a role group name is a valid role group name"),
                 };
                 let ns = ns.clone();
-                (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
-                    namespace: ns.clone(),
-                    role_group_service_name: resource_names.headless_service_name().to_string(),
-                    pod_name: format!("{}-{i}", resource_names.stateful_set_name()),
+                (0..rolegroup.replicas.unwrap_or(COORDINATOR_REPLICAS_IF_UNSET)).map(move |i| {
+                    TrinoPodRef {
+                        namespace: ns.clone(),
+                        role_group_service_name: resource_names.headless_service_name().to_string(),
+                        pod_name: format!("{}-{i}", resource_names.stateful_set_name()),
+                    }
                 })
             })
     }
@@ -592,17 +576,6 @@ impl v1alpha1::TrinoCluster {
             .map(|a| match a {
                 v1alpha1::TrinoAuthorization::Opa { config } => config,
             })
-    }
-}
-
-/// Converts the coordinator role (which carries the coordinator-specific `role_config`) into the
-/// generic [`TrinoRoleType`]. Only the `role_config` type parameter differs between the two; the
-/// `config` and `role_groups` carry over unchanged.
-fn extract_role_from_coordinator_config(fragment: TrinoCoordinatorRoleType) -> TrinoRoleType {
-    Role {
-        config: fragment.config,
-        role_config: fragment.role_config.common,
-        role_groups: fragment.role_groups,
     }
 }
 

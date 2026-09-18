@@ -27,17 +27,15 @@ pub fn build(cluster: &ValidatedCluster, rg: &TrinoRoleGroupConfig) -> BTreeMap<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        controller::build::properties::test_support::{
-            MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
-        },
-        crd::TrinoRole,
+    use crate::controller::build::properties::test_support::{
+        MINIMAL_TRINO_YAML, validated_cluster_from_yaml,
     };
 
     #[test]
     fn default_renders_empty_when_no_opa() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+        let rg = cluster
+            .coordinator_role_group_configs
             .values()
             .next()
             .unwrap()

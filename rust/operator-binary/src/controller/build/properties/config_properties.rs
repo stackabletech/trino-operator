@@ -307,12 +307,13 @@ mod tests {
             cluster_domain: stackable_operator::commons::networking::DomainName::try_from(
                 "cluster.local",
             )
-            .unwrap(),
+            .expect("the cluster domain is valid"),
         }
     }
 
     fn rg(cluster: &ValidatedCluster, role: &TrinoRole) -> TrinoRoleGroupConfig {
-        cluster.role_group_configs[role]
+        cluster
+            .role_group_configs(role)
             .values()
             .next()
             .expect("the fixture defines a role group")
@@ -322,18 +323,20 @@ mod tests {
     #[test]
     fn default_renders_includes_coordinator_default_and_query_max_memory_default() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let rg = cluster.role_group_configs[&TrinoRole::Coordinator]
+        let rg = cluster
+            .coordinator_role_group_configs
             .values()
             .next()
-            .unwrap()
+            .expect("the role group config is valid")
             .clone();
         let cluster_info = stackable_operator::utils::cluster_info::KubernetesClusterInfo {
             cluster_domain: stackable_operator::commons::networking::DomainName::try_from(
                 "cluster.local",
             )
-            .unwrap(),
+            .expect("the cluster info is valid"),
         };
-        let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info).unwrap();
+        let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info)
+            .expect("authentication properties are valid");
         assert_eq!(props.get("coordinator").map(String::as_str), Some("true"));
         assert_eq!(
             props
@@ -347,6 +350,50 @@ mod tests {
         );
     }
 
+    /// A coordinator role group with no explicit `replicas` runs one pod — Kubernetes' default
+    /// for a `StatefulSet` with `replicas: null` — so it must predict one pod ref, not none.
+    /// Predicting none leaves `discovery.uri` out of `config.properties` entirely, and no pod can
+    /// find the coordinator.
+    #[test]
+    fn a_coordinator_without_an_explicit_replica_count_still_sets_the_discovery_uri() {
+        const NO_REPLICAS_YAML: &str = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "481"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default: {}
+              workers:
+                roleGroups:
+                  default: {}
+        "#;
+
+        let cluster = validated_cluster_from_yaml(NO_REPLICAS_YAML);
+        assert_eq!(cluster.cluster_config.coordinator_pod_refs.len(), 1);
+
+        let props = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .expect("authentication properties are valid");
+        assert_eq!(
+            props.get("discovery.uri").map(String::as_str),
+            Some(
+                "https://simple-trino-coordinator-default-0.simple-trino-coordinator-default-headless.default.svc.cluster.local:8443"
+            )
+        );
+    }
+
     #[test]
     fn server_tls_only_uses_server_keystore_dir_and_http_discovery() {
         let cluster = validated_cluster_from_yaml(SERVER_TLS_ONLY_YAML);
@@ -356,7 +403,7 @@ mod tests {
             &rg(&cluster, &TrinoRole::Coordinator),
             &cluster_info(),
         )
-        .unwrap();
+        .expect("authentication properties are valid");
 
         assert_eq!(
             props.get("http-server.https.enabled").map(String::as_str),
@@ -384,7 +431,12 @@ mod tests {
         );
         assert_eq!(props.get("node.internal-address-source"), None);
         // Discovery uses http when internal TLS is disabled.
-        assert!(props.get("discovery.uri").unwrap().starts_with("http://"));
+        assert!(
+            props
+                .get("discovery.uri")
+                .expect("discovery URI property has been set")
+                .starts_with("http://")
+        );
     }
 
     #[test]
@@ -396,7 +448,7 @@ mod tests {
             &rg(&cluster, &TrinoRole::Coordinator),
             &cluster_info(),
         )
-        .unwrap();
+        .expect("authentication properties are valid");
 
         assert_eq!(
             props.get("http-server.https.enabled").map(String::as_str),
@@ -432,7 +484,12 @@ mod tests {
             Some("FQDN")
         );
         // Discovery uses https when internal TLS is enabled.
-        assert!(props.get("discovery.uri").unwrap().starts_with("https://"));
+        assert!(
+            props
+                .get("discovery.uri")
+                .expect("discovery URI property has been set")
+                .starts_with("https://")
+        );
     }
 
     #[test]
@@ -444,7 +501,7 @@ mod tests {
             &rg(&cluster, &TrinoRole::Worker),
             &cluster_info(),
         )
-        .unwrap();
+        .expect("authentication properties are valid");
 
         assert_eq!(props.get("coordinator").map(String::as_str), Some("false"));
         assert_eq!(props.get("node-scheduler.include-coordinator"), None);

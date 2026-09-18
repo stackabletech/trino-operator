@@ -807,8 +807,7 @@ mod tests {
     /// Builds the coordinator `default` role-group StatefulSet for the given cluster.
     fn build_coordinator_statefulset(cluster: &ValidatedCluster) -> Result<StatefulSet> {
         let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
-        let role_group_config =
-            &cluster.role_group_configs[&TrinoRole::Coordinator][&role_group_name];
+        let role_group_config = &cluster.coordinator_role_group_configs[&role_group_name];
 
         build_rolegroup_statefulset(
             cluster,
@@ -851,7 +850,7 @@ mod tests {
         let cluster = validated_cluster();
         let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
         let mut role_group_config =
-            cluster.role_group_configs[&TrinoRole::Coordinator][&role_group_name].clone();
+            cluster.coordinator_role_group_configs[&role_group_name].clone();
         role_group_config.env_overrides = EnvVarSet::new().with_value(
             &EnvVarName::from_str("CONTAINERDEBUG_LOG_DIRECTORY").expect("valid env var name"),
             "/custom/log/dir",
