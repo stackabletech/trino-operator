@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
   ([#944]).
+- Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
 
 ### Changed
 
@@ -40,6 +41,7 @@ All notable changes to this project will be documented in this file.
 - Internal operator refactoring: the validated cluster carries each role's configuration in its own
   typed fields instead of maps keyed by role, and the coordinator's role config is no longer
   converted to the worker's shape and its listener class recovered afterwards ([#945]).
+- Bump stackable-operator to 0.119.0 ([#949]).
 
 ### Fixed
 
@@ -67,6 +69,7 @@ All notable changes to this project will be documented in this file.
 [#943]: https://github.com/stackabletech/trino-operator/pull/943
 [#944]: https://github.com/stackabletech/trino-operator/pull/944
 [#945]: https://github.com/stackabletech/trino-operator/pull/945
+[#949]: https://github.com/stackabletech/trino-operator/pull/949
 
 ## [26.7.0] - 2026-07-21
 

@@ -31,6 +31,7 @@ use stackable_operator::{
     shared::yaml::SerializeOptions,
     telemetry::Tracing,
     utils::signal::{self, SignalWatcher},
+    webhook::health::HealthCheckRegistry,
 };
 
 use crate::{
@@ -118,9 +119,20 @@ async fn main() -> anyhow::Result<()> {
             )
             .await?;
 
+            let mut readiness_checks = HealthCheckRegistry::new();
+            let trino_cluster_crd_check = readiness_checks.register(format!(
+                "CRD {crd} established",
+                crd = v1alpha1::TrinoCluster::crd_name()
+            ));
+            let trino_catalog_crd_check = readiness_checks.register(format!(
+                "CRD {crd} established",
+                crd = crd::catalog::v1alpha1::TrinoCatalog::crd_name()
+            ));
+
             let webhook_server = create_webhook_server(
                 &operator_environment,
                 maintenance.disable_crd_maintenance,
+                readiness_checks,
                 client.as_kube_client(),
             )
             .await?;
@@ -242,7 +254,11 @@ async fn main() -> anyhow::Result<()> {
                 .map(anyhow::Ok);
 
             let delayed_trino_controller = async {
-                signal::crd_established(&client, v1alpha1::TrinoCluster::crd_name(), None).await?;
+                signal::crd_established(&client, v1alpha1::TrinoCluster::crd_name()).await?;
+                trino_cluster_crd_check.mark_passed();
+                signal::crd_established(&client, crd::catalog::v1alpha1::TrinoCatalog::crd_name())
+                    .await?;
+                trino_catalog_crd_check.mark_passed();
                 trino_controller.await
             };
 
