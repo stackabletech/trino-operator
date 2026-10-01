@@ -485,7 +485,8 @@ mod tests {
         let validated_cluster =
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
-        let env = &validated_cluster.role_group_configs[&TrinoRole::Coordinator]
+        let env = &validated_cluster
+            .coordinator_role_group_configs
             .values()
             .next()
             .unwrap()

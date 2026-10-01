@@ -61,15 +61,8 @@ pub fn build_rolegroup_config_map(
     role_group_name: &RoleGroupName,
     cluster_info: &KubernetesClusterInfo,
 ) -> Result<ConfigMap> {
-    let role_group_configs =
-        cluster
-            .role_group_configs
-            .get(role)
-            .with_context(|| MissingRoleGroupSnafu {
-                role: role.to_string(),
-                role_group: role_group_name.to_string(),
-            })?;
-    let rg = role_group_configs
+    let rg = cluster
+        .role_group_configs(role)
         .get(role_group_name)
         .with_context(|| MissingRoleGroupSnafu {
             role: role.to_string(),

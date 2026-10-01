@@ -159,8 +159,8 @@ pub fn build_rolegroup_statefulset(
     let config_map_name = resource_names.role_group_config_map().to_string();
 
     let mut pod_builder = PodBuilder::new();
-    let mut cb_prepare = new_container_builder(&Container::Prepare);
-    let mut cb_trino = new_container_builder(&Container::Trino);
+    let mut cb_prepare = new_container_builder(Container::Prepare.name());
+    let mut cb_trino = new_container_builder(Container::Trino.name());
 
     // Operator-set env vars first; the user's `envOverrides` are merged on top last and win.
     let mut env = EnvVarSet::new();
@@ -320,7 +320,7 @@ pub fn build_rolegroup_statefulset(
     {
         prepare_args.push(product_logging::framework::capture_shell_output(
             STACKABLE_LOG_DIR,
-            &Container::Prepare.to_string(),
+            Container::Prepare.name().as_ref(),
             log_config,
         ));
     }
@@ -396,7 +396,7 @@ pub fn build_rolegroup_statefulset(
 
     if let Some(vector_log_config) = &merged_config.logging.vector_container {
         pod_builder.add_container(vector_container(
-            &Container::Vector,
+            Container::Vector.name(),
             resolved_product_image,
             vector_log_config,
             &resource_names,
@@ -807,8 +807,7 @@ mod tests {
     /// Builds the coordinator `default` role-group StatefulSet for the given cluster.
     fn build_coordinator_statefulset(cluster: &ValidatedCluster) -> Result<StatefulSet> {
         let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
-        let role_group_config =
-            &cluster.role_group_configs[&TrinoRole::Coordinator][&role_group_name];
+        let role_group_config = &cluster.coordinator_role_group_configs[&role_group_name];
 
         build_rolegroup_statefulset(
             cluster,
@@ -851,7 +850,7 @@ mod tests {
         let cluster = validated_cluster();
         let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
         let mut role_group_config =
-            cluster.role_group_configs[&TrinoRole::Coordinator][&role_group_name].clone();
+            cluster.coordinator_role_group_configs[&role_group_name].clone();
         role_group_config.env_overrides = EnvVarSet::new().with_value(
             &EnvVarName::from_str("CONTAINERDEBUG_LOG_DIRECTORY").expect("valid env var name"),
             "/custom/log/dir",

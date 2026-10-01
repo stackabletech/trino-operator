@@ -46,8 +46,8 @@ dimensions:
       - 3.5.0
   - name: zookeeper
     values:
-      - 3.9.4
       - 3.9.5
+      - 3.9.6
   - name: keycloak
     values:
       - 25.0.0

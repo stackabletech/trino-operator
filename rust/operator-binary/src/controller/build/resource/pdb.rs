@@ -47,10 +47,8 @@ pub fn build_pdb(
 /// contribute nothing, as their size is not known at reconcile time.
 fn worker_count(cluster: &ValidatedCluster) -> u16 {
     cluster
-        .role_group_configs
-        .get(&TrinoRole::Worker)
-        .into_iter()
-        .flat_map(|groups| groups.values())
+        .worker_role_group_configs
+        .values()
         .filter_map(|rg| rg.replicas)
         .sum()
 }

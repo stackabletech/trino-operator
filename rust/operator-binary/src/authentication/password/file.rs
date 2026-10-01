@@ -133,13 +133,14 @@ pub fn build_password_file_update_container(
     resolved_product_image: &ResolvedProductImage,
     volume_mounts: Vec<VolumeMount>,
 ) -> Result<Container, Error> {
-    let mut cb_pw_file_updater = new_container_builder(&crate::crd::Container::PasswordFileUpdater);
+    let mut cb_pw_file_updater =
+        new_container_builder(crate::crd::Container::PasswordFileUpdater.name());
 
     let mut commands = vec![];
 
     commands.push(product_logging::framework::capture_shell_output(
         STACKABLE_LOG_DIR,
-        &crate::crd::Container::PasswordFileUpdater.to_string(),
+        crate::crd::Container::PasswordFileUpdater.name().as_ref(),
         // we do not access any of the crd config options for this and just log it to file
         &AutomaticContainerLogConfig::default(),
     ));

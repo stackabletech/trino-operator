@@ -4,11 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
+  ([#944]).
+- Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
+
 ### Changed
 
+- BREAKING: `spec.image.stackableVersion` must now be a full, valid semver version, e.g. `26.7.1`.
+  Abbreviated values such as `26.7` are no longer accepted ([#944]).
+- BREAKING: `spec.image.pullPolicy` now defaults to `IfNotPresent` for non-floating tags instead of
+  always defaulting to `Always` ([#944]).
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
-- Bump `stackable-operator` to 0.116.0 ([#918], [#932]).
+- Bump `stackable-operator` to 0.118.0 ([#918], [#932], [#944]).
 - The RBAC ServiceAccount and RoleBinding are now built with the operator-rs `v2::rbac`
   functions and carry the full set of recommended labels ([#913]).
 - BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
@@ -27,7 +37,11 @@ All notable changes to this project will be documented in this file.
   templates (all previously set to the placeholder value `none`). After the operator upgrade,
   delete each coordinator StatefulSet so that the operator immediately recreates it with the
   new labels ([#932]).
-- Make operations infallible where dependent on static inputs ([#939]).
+- Make operations infallible where dependent on static inputs ([#939], [#943]).
+- Internal operator refactoring: the validated cluster carries each role's configuration in its own
+  typed fields instead of maps keyed by role, and the coordinator's role config is no longer
+  converted to the worker's shape and its listener class recovered afterwards ([#945]).
+- Bump stackable-operator to 0.119.0 ([#949]).
 
 ### Fixed
 
@@ -38,6 +52,10 @@ All notable changes to this project will be documented in this file.
   Trino's native S3 file system takes the transport from the endpoint scheme, so requiring TLS was never necessary ([#928]).
 - The operator now watches all resources that it creates and early-exits the reconcile action when the
   cluster is marked for deletion ([#934]).
+- A coordinator role group that does not set `replicas` is now counted as one replica instead of zero
+  when predicting the coordinator pods. Kubernetes runs a single pod for a `StatefulSet` with
+  `replicas: null`, but counting it as zero left `discovery.uri` out of `config.properties`
+  altogether, so no pod could find the coordinator ([#945]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
@@ -48,6 +66,10 @@ All notable changes to this project will be documented in this file.
 [#932]: https://github.com/stackabletech/trino-operator/pull/932
 [#934]: https://github.com/stackabletech/trino-operator/pull/934
 [#939]: https://github.com/stackabletech/trino-operator/pull/939
+[#943]: https://github.com/stackabletech/trino-operator/pull/943
+[#944]: https://github.com/stackabletech/trino-operator/pull/944
+[#945]: https://github.com/stackabletech/trino-operator/pull/945
+[#949]: https://github.com/stackabletech/trino-operator/pull/949
 
 ## [26.7.0] - 2026-07-21
 
