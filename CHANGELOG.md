@@ -62,8 +62,6 @@ All notable changes to this project will be documented in this file.
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 [#923]: https://github.com/stackabletech/trino-operator/pull/923
-<<<<<<< HEAD
-=======
 [#925]: https://github.com/stackabletech/trino-operator/pull/925
 [#928]: https://github.com/stackabletech/trino-operator/pull/928
 [#932]: https://github.com/stackabletech/trino-operator/pull/932
@@ -73,7 +71,6 @@ All notable changes to this project will be documented in this file.
 [#944]: https://github.com/stackabletech/trino-operator/pull/944
 [#945]: https://github.com/stackabletech/trino-operator/pull/945
 [#949]: https://github.com/stackabletech/trino-operator/pull/949
->>>>>>> origin/main
 
 ## [26.7.0] - 2026-07-21
 
