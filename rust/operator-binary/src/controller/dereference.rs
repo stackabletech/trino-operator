@@ -8,7 +8,10 @@ use std::str::FromStr;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     client::Client,
-    kube::runtime::reflector::{Lookup, ObjectRef},
+    kube::{
+        ResourceExt,
+        runtime::reflector::{Lookup, ObjectRef},
+    },
     v2::controller_utils::get_namespace,
 };
 
@@ -162,9 +165,14 @@ pub async fn dereference(
 
     let resolved_lineage_config = match trino.spec.cluster_config.lineage.as_ref() {
         Some(lineage) => Some(
-            ResolvedLineageConfig::from_config(lineage, client, namespace.as_ref())
-                .await
-                .context(OpenLineageConfigurationSnafu)?,
+            ResolvedLineageConfig::from_config(
+                lineage,
+                &trino.name_any(),
+                client,
+                namespace.as_ref(),
+            )
+            .await
+            .context(OpenLineageConfigurationSnafu)?,
         ),
         None => None,
     };

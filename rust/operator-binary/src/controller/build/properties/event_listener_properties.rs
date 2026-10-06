@@ -2,21 +2,14 @@
 //!
 //! The OpenLineage event listener runs on the **coordinator only**, so this builder returns an
 //! empty map for every other role and the caller omits the file from those ConfigMaps. For the
-//! coordinator it emits the connection-derived settings resolved in [`crate::config::lineage`],
-//! adds the cluster-facing `trino.uri`, and finally merges any user `event-listener.properties`
-//! overrides (highest precedence).
+//! coordinator it emits the settings resolved in [`crate::config::lineage`] and merges any user
+//! `event-listener.properties` overrides (highest precedence).
 
 use std::collections::BTreeMap;
 
-use stackable_operator::utils::cluster_info::KubernetesClusterInfo;
-
 use crate::{
-    config::lineage::OPENLINEAGE_TRINO_URI_KEY,
     controller::{TrinoRoleGroupConfig, ValidatedCluster},
-    crd::{
-        TrinoRole,
-        discovery::{TrinoDiscovery, TrinoDiscoveryProtocol},
-    },
+    crd::TrinoRole,
 };
 
 /// Build the `event-listener.properties` key/value pairs.
@@ -27,7 +20,6 @@ pub fn build(
     cluster: &ValidatedCluster,
     role: TrinoRole,
     rg: &TrinoRoleGroupConfig,
-    cluster_info: &KubernetesClusterInfo,
 ) -> BTreeMap<String, String> {
     let mut props = BTreeMap::new();
 
@@ -37,23 +29,7 @@ pub fn build(
     }
 
     if let Some(lineage) = &cluster.cluster_config.lineage {
-        // Connection-derived settings (transport type/URL, namespace and optional api-key).
         props.extend(lineage.properties.clone());
-
-        // The URI identifying this Trino cluster in emitted lineage. Uses the same coordinator
-        // address as `discovery.uri`; the scheme follows the client-facing TLS setting.
-        if let Some(coordinator_ref) = cluster.cluster_config.coordinator_pod_refs.first() {
-            let protocol = if cluster.tls_enabled() {
-                TrinoDiscoveryProtocol::Https
-            } else {
-                TrinoDiscoveryProtocol::Http
-            };
-            let discovery = TrinoDiscovery::new(coordinator_ref, protocol);
-            props.insert(
-                OPENLINEAGE_TRINO_URI_KEY.to_string(),
-                discovery.discovery_uri(cluster_info),
-            );
-        }
     }
 
     // User overrides (highest precedence).
@@ -66,13 +42,12 @@ pub fn build(
 mod tests {
     use std::collections::BTreeMap;
 
-    use stackable_operator::utils::cluster_info::KubernetesClusterInfo;
-
     use super::*;
     use crate::{
         config::lineage::{
             EVENT_LISTENER_NAME_KEY, OPENLINEAGE_NAMESPACE_KEY, OPENLINEAGE_TRANSPORT_API_KEY_KEY,
-            OPENLINEAGE_TRANSPORT_TYPE_KEY, OPENLINEAGE_TRANSPORT_URL_KEY, ResolvedLineageConfig,
+            OPENLINEAGE_TRANSPORT_TYPE_KEY, OPENLINEAGE_TRANSPORT_URL_KEY,
+            OPENLINEAGE_TRINO_URI_KEY, ResolvedLineageConfig,
         },
         controller::{
             ValidatedCluster,
@@ -80,12 +55,6 @@ mod tests {
         },
         crd::TrinoRole,
     };
-
-    fn cluster_info() -> KubernetesClusterInfo {
-        KubernetesClusterInfo {
-            cluster_domain: "cluster.local".parse().unwrap(),
-        }
-    }
 
     /// A resolved OpenLineage config as `config::lineage` would produce it for an inline
     /// `http://marquez:5000` connection, optionally with a bearer-token api-key reference.
@@ -104,6 +73,10 @@ mod tests {
                 "http://marquez:5000".to_string(),
             ),
             (OPENLINEAGE_NAMESPACE_KEY.to_string(), "default".to_string()),
+            (
+                OPENLINEAGE_TRINO_URI_KEY.to_string(),
+                "https://simple-trino.dev".to_string(),
+            ),
         ]);
         if with_auth {
             properties.insert(
@@ -142,7 +115,7 @@ mod tests {
         let cluster = cluster_with_lineage(false);
         // Reuse the coordinator role group config; the role argument alone must gate emission.
         let rg = coordinator_rg(&cluster);
-        let props = build(&cluster, TrinoRole::Worker, &rg, &cluster_info());
+        let props = build(&cluster, TrinoRole::Worker, &rg);
         assert!(
             props.is_empty(),
             "event listeners must not be configured on workers"
@@ -156,7 +129,7 @@ mod tests {
                 MINIMAL_TRINO_YAML,
             );
         let rg = coordinator_rg(&cluster);
-        let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info());
+        let props = build(&cluster, TrinoRole::Coordinator, &rg);
         assert!(props.is_empty());
     }
 
@@ -164,7 +137,7 @@ mod tests {
     fn coordinator_emits_listener_transport_and_trino_uri() {
         let cluster = cluster_with_lineage(false);
         let rg = coordinator_rg(&cluster);
-        let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info());
+        let props = build(&cluster, TrinoRole::Coordinator, &rg);
 
         assert_eq!(props.get(EVENT_LISTENER_NAME_KEY).unwrap(), "openlineage");
         assert_eq!(props.get(OPENLINEAGE_TRANSPORT_TYPE_KEY).unwrap(), "HTTP");
@@ -173,13 +146,9 @@ mod tests {
             "http://marquez:5000"
         );
         assert_eq!(props.get(OPENLINEAGE_NAMESPACE_KEY).unwrap(), "default");
-        // The default Trino cluster enables server TLS, so the recorded Trino URI is https.
-        let trino_uri = props
-            .get(OPENLINEAGE_TRINO_URI_KEY)
-            .expect("trino.uri is set");
-        assert!(
-            trino_uri.starts_with("https://") && trino_uri.contains("coordinator"),
-            "trino.uri should be the coordinator address, got: {trino_uri}"
+        assert_eq!(
+            props.get(OPENLINEAGE_TRINO_URI_KEY).unwrap(),
+            "https://simple-trino.dev"
         );
         // No auth configured -> no api-key.
         assert!(!props.contains_key(OPENLINEAGE_TRANSPORT_API_KEY_KEY));
@@ -189,7 +158,7 @@ mod tests {
     fn coordinator_with_auth_emits_api_key_file_reference() {
         let cluster = cluster_with_lineage(true);
         let rg = coordinator_rg(&cluster);
-        let props = build(&cluster, TrinoRole::Coordinator, &rg, &cluster_info());
+        let props = build(&cluster, TrinoRole::Coordinator, &rg);
 
         let api_key = props.get(OPENLINEAGE_TRANSPORT_API_KEY_KEY).unwrap();
         assert!(

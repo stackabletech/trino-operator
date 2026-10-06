@@ -64,8 +64,9 @@ pub const OPENLINEAGE_NAMESPACE_KEY: &str = "openlineage-event-listener.namespac
 /// Format for the emitted OpenLineage job name. Set from
 /// `spec.clusterConfig.lineage.jobNameFormat`, which defaults to `$QUERY_ID`.
 pub const OPENLINEAGE_JOB_NAME_FORMAT_KEY: &str = "openlineage-event-listener.job.name-format";
-/// The URI identifying this Trino cluster in emitted lineage. Computed from the coordinator service
-/// at ConfigMap-build time (see [`crate::controller::build::properties::event_listener_properties`]).
+/// The URI identifying this Trino cluster in emitted lineage. Trino derives the dataset namespace
+/// from it. Set from `spec.clusterConfig.lineage.datasetNamespaceUri`, see
+/// [`dataset_namespace_uri`] for the default.
 pub const OPENLINEAGE_TRINO_URI_KEY: &str = "openlineage-event-listener.trino.uri";
 
 #[derive(Snafu, Debug)]
@@ -110,6 +111,7 @@ impl ResolvedLineageConfig {
     /// authentication into the coordinator-side configuration.
     pub async fn from_config(
         lineage: &TrinoLineageConfig,
+        cluster_name: &str,
         client: &Client,
         namespace: &str,
     ) -> Result<Self, Error> {
@@ -153,6 +155,10 @@ impl ResolvedLineageConfig {
         properties.insert(
             OPENLINEAGE_JOB_NAME_FORMAT_KEY.to_string(),
             lineage.job_name_format.clone(),
+        );
+        properties.insert(
+            OPENLINEAGE_TRINO_URI_KEY.to_string(),
+            dataset_namespace_uri(lineage, cluster_name, namespace),
         );
 
         // Backend TLS: mount and import a `SecretClass` CA into the client truststore. WebPKI and
@@ -217,6 +223,26 @@ fn openlineage_tls_truststore_commands(tls: &TlsClientDetails) -> Vec<String> {
     }
 }
 
+/// The `trino.uri` Trino derives the dataset namespace from: the user-provided
+/// `datasetNamespaceUri`, or `https://<cluster name>.<namespace>` when it is empty (the CRD
+/// default).
+///
+/// The default includes the Kubernetes namespace so that equally named TrinoClusters in different
+/// namespaces (e.g. `dev` and `prod`) do not report the same datasets. It is host-only and does not
+/// depend on role groups or TLS, so it stays stable as long as the TrinoCluster is not renamed or
+/// moved.
+fn dataset_namespace_uri(
+    lineage: &TrinoLineageConfig,
+    cluster_name: &str,
+    namespace: &str,
+) -> String {
+    if lineage.dataset_namespace_uri.is_empty() {
+        format!("https://{cluster_name}.{namespace}")
+    } else {
+        lineage.dataset_namespace_uri.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use stackable_operator::commons::tls_verification::Tls;
@@ -227,6 +253,39 @@ mod tests {
         TlsClientDetails {
             tls: verification.map(|verification| Tls { verification }),
         }
+    }
+
+    fn lineage_config(yaml: &str) -> TrinoLineageConfig {
+        serde_yaml::from_str(yaml).expect("illegal test input")
+    }
+
+    #[test]
+    fn dataset_namespace_uri_defaults_to_cluster_name_and_namespace() {
+        let lineage = lineage_config("connection: {reference: marquez}");
+        assert_eq!(
+            dataset_namespace_uri(&lineage, "simple-trino", "prod"),
+            "https://simple-trino.prod"
+        );
+    }
+
+    #[test]
+    fn empty_dataset_namespace_uri_falls_back_to_default() {
+        let lineage = lineage_config("{connection: {reference: marquez}, datasetNamespaceUri: ''}");
+        assert_eq!(
+            dataset_namespace_uri(&lineage, "simple-trino", "prod"),
+            "https://simple-trino.prod"
+        );
+    }
+
+    #[test]
+    fn dataset_namespace_uri_uses_user_value() {
+        let lineage = lineage_config(
+            "{connection: {reference: marquez}, datasetNamespaceUri: 'https://trino-prod:443'}",
+        );
+        assert_eq!(
+            dataset_namespace_uri(&lineage, "simple-trino", "prod"),
+            "https://trino-prod:443"
+        );
     }
 
     #[test]

@@ -158,7 +158,7 @@ pub fn build_rolegroup_config_map(
     }
 
     // 8. event-listener.properties (optional, coordinator only — the OpenLineage event listener).
-    let el = event_listener_properties::build(cluster, role.clone(), rg, cluster_info);
+    let el = event_listener_properties::build(cluster, role.clone(), rg);
     if !el.is_empty() {
         data.insert(
             ConfigFileName::EventListener.to_string(),

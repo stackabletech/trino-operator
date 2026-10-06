@@ -317,6 +317,13 @@ pub mod versioned {
         /// with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables.
         #[serde(default = "TrinoLineageConfig::default_job_name_format")]
         pub job_name_format: String,
+
+        /// URI identifying this Trino cluster in the emitted lineage. Trino replaces its scheme
+        /// with `trino` and uses the result as the namespace of every dataset (table) it reports,
+        /// e.g. `trino://my-trino`. It is never connected to, so it does not have to be reachable.
+        /// Defaults to `https://<name of the TrinoCluster>.<its namespace>` when empty or unset.
+        #[serde(default)]
+        pub dataset_namespace_uri: String,
     }
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -915,6 +922,7 @@ mod tests {
                 reference: marquez
               namespace: trino-lineage
               jobNameFormat: trino-$QUERY_ID
+              datasetNamespaceUri: https://trino-prod
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
@@ -925,6 +933,7 @@ mod tests {
             .expect("lineage is configured");
         assert_eq!(lineage.open_lineage.namespace, "trino-lineage");
         assert_eq!(lineage.job_name_format, "trino-$QUERY_ID");
+        assert_eq!(lineage.dataset_namespace_uri, "https://trino-prod");
     }
 
     #[test]
@@ -985,6 +994,7 @@ mod tests {
                       reference: marquez
                     namespace: trino-lineage
                     jobNameFormat: trino-$QUERY_ID
+                    datasetNamespaceUri: https://trino-prod
                   vectorAggregatorConfigMapName: vector-aggregator-discovery
                 coordinators:
                   config:

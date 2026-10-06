@@ -43,6 +43,7 @@ spec:
             #         secretClass: marquez-ca
       # namespace: trino-lineage # <3>
       # jobNameFormat: "$QUERY_ID" # <5>
+      # datasetNamespaceUri: https://trino-prod # <6>
   ...
 ----
 <1> Adding the `lineage` block enables OpenLineage event emission. Omit it entirely to leave OpenLineage off (the default).
@@ -50,6 +51,7 @@ spec:
 <3> Optional. The OpenLineage namespace events are reported under. Defaults to `default`.
 <4> Optional. URL path of the endpoint events are POSTed to, mapped onto `openlineage-event-listener.transport.endpoint`. Defaults to `/api/v1/lineage`.
 <5> Optional. Sets the OpenLineage job name format (`openlineage-event-listener.job.name-format`). Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. Defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
+<6> Optional. Sets `openlineage-event-listener.trino.uri`, from which Trino derives the namespace of every dataset it reports: the scheme is replaced with `trino`, so `https://trino-prod` yields datasets such as `trino://trino-prod` / `catalog.schema.table`. The URI is only an identifier and is never connected to. Defaults to `https://<name of the TrinoCluster>.<its namespace>` when empty or unset, so equally named TrinoClusters in different namespaces report distinct datasets. Set it explicitly to keep dataset identities stable across Kubernetes clusters or namespace moves.
 
 The `OpenLineageConnection` resource (`lineage.stackable.tech`) is a reusable definition of a connection to an OpenLineage backend, provided by the Stackable operator library.
 Reference it to share one backend definition across multiple clusters:
