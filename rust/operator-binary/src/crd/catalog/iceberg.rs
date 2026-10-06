@@ -1,28 +1,70 @@
 use serde::{Deserialize, Serialize};
-use stackable_operator::{
-    crd::s3,
-    schemars::{self, JsonSchema},
-};
+use stackable_operator::schemars::{self, JsonSchema};
+use url::Url;
 
-use super::commons::{HdfsConnection, MetastoreConnection};
+use super::commons::HiveMetastoreConnection;
 
-// This struct is similar to [`super::hive::HiveConnector`], but we do not `#[serde(flatten)]` it here, to avoid changing
-// stuff there and missing that these settings don't apply to other connectors (such as Iceberg or Delta Lake).
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IcebergConnector {
-    /// Optional connection to a Hive Metastore, which will be used as a storage for metadata.
+pub enum IcebergCatalogConnection {
+    /// (Recommended) use a REST catalog to store metadata.
+    Rest(IcebergRestCatalogConnection),
+
+    /// Use a Hive metastore to store metadata.
+    HiveMetastore(HiveMetastoreConnection),
+
+    /// The operator doesn't configure any catalog, the user needs to do that,
+    /// e.g. using `configOverrides`.
+    UserProvided {},
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IcebergRestCatalogConnection {
+    /// URL of the rest catalog server.
+    pub uri: Url,
+
+    /// How to authenticate against the REST catalog.
+    #[serde(default)]
+    pub security: IcebergRestCatalogSecurity,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum IcebergRestCatalogSecurity {
+    /// Don't authenticate against the REST catalog (chosen by default).
+    None {},
+
+    /// Use OAuth2 to authenticate against the REST catalog.
     ///
-    /// The connection is optional, as Iceberg also supports other catalogs, such as a REST catalog,
-    /// which (currently) can only be added using configOverrides.
-    pub metastore: Option<MetastoreConnection>,
+    /// Note that we only support configuring a subset of Trino's properties, you might need to use
+    /// `configOverrides` to be able to set all [available properties](https://trino.io/docs/current/object-storage/metastores.html#iceberg-specific-metastores).
+    #[serde(rename_all = "camelCase")]
+    OAuth2 {
+        /// The endpoint to retrieve access token from OAuth2 Server.
+        server_uri: Url,
 
-    /// Connection to an S3 store.
-    /// Please make sure that the underlying Hive metastore also has access to the S3 store.
-    /// Learn more about S3 configuration in the [S3 concept docs](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
-    pub s3: Option<s3::v1alpha1::InlineConnectionOrReference>,
+        /// The credential to present to the REST catalog.
+        credential: IcebergRestCatalogOAuthCredential,
+    },
+}
 
-    /// Connection to an HDFS cluster.
-    /// Please make sure that the underlying Hive metastore also has access to the HDFS.
-    pub hdfs: Option<HdfsConnection>,
+impl Default for IcebergRestCatalogSecurity {
+    fn default() -> Self {
+        Self::None {}
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum IcebergRestCatalogOAuthCredential {
+    /// Authenticate using a bearer token.
+    ///
+    /// The Secret needs to contain the `token` key.
+    TokenSecretName(String),
+
+    // The credential to exchange for a token in the OAuth2 client credentials flow with the server.
+    ///
+    /// The Secret needs to contain the `username` and `password` keys.
+    CredentialSecretName(String),
 }

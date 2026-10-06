@@ -476,7 +476,7 @@ impl v1alpha1::TrinoConfig {
     pub(crate) fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
-        trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],
+        trino_catalogs: &[catalog::v1alpha2::TrinoCatalog],
         opa_config: Option<&v1alpha1::TrinoAuthorizationOpaConfig>,
     ) -> v1alpha1::TrinoConfigFragment {
         let (cpu_min, cpu_max, memory) = match role {

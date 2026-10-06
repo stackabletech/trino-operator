@@ -7,75 +7,86 @@ use stackable_operator::{
 
 use crate::crd::{
     APP_NAME, TrinoRole,
-    catalog::{self, TrinoCatalogConnector},
+    catalog::{
+        self,
+        commons::HiveMetastoreConnection,
+        iceberg::IcebergCatalogConnection,
+        v1alpha2::{IcebergConnector, TrinoCatalogConnector},
+    },
     v1alpha1,
 };
 
 pub fn get_affinity(
     cluster_name: &str,
     role: &TrinoRole,
-    trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],
+    trino_catalogs: &[catalog::v1alpha2::TrinoCatalog],
     opa_config: Option<&v1alpha1::TrinoAuthorizationOpaConfig>,
 ) -> StackableAffinityFragment {
     let affinity_between_cluster_pods = affinity_between_cluster_pods(APP_NAME, cluster_name, 20);
     let mut affinities = vec![affinity_between_cluster_pods];
-    let additional_affinities: Vec<_> = match role {
-        TrinoRole::Coordinator => trino_catalogs
-            .iter()
-            .filter_map(|catalog| match &catalog.spec.connector {
-                TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
-                TrinoCatalogConnector::Iceberg(iceberg) => iceberg
-                    .metastore
-                    .as_ref()
-                    .map(|metastore| &metastore.config_map),
-                TrinoCatalogConnector::DeltaLake(delta_lake) => {
-                    Some(&delta_lake.metastore.config_map)
-                }
-                TrinoCatalogConnector::BlackHole(_)
-                | TrinoCatalogConnector::Generic(_)
-                | TrinoCatalogConnector::GoogleSheet(_)
-                | TrinoCatalogConnector::Postgresql(_)
-                | TrinoCatalogConnector::Tpcds(_)
-                | TrinoCatalogConnector::Tpch(_) => None,
-            })
-            .map(|hive_cluster_name| {
-                affinity_between_role_pods(
-                    "hive",
-                    hive_cluster_name.as_ref(), // The discovery cm has the same name as the HiveCluster itself
-                    "metastore",
-                    50,
-                )
-            })
-            .collect(),
-        TrinoRole::Worker => trino_catalogs
-            .iter()
-            .filter_map(|catalog| match &catalog.spec.connector {
-                TrinoCatalogConnector::Hive(hive) => {
-                    hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
-                }
-                TrinoCatalogConnector::Iceberg(iceberg) => {
-                    iceberg.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
-                }
-                TrinoCatalogConnector::DeltaLake(delta_lake) => {
-                    delta_lake.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
-                }
-                TrinoCatalogConnector::BlackHole(_)
-                | TrinoCatalogConnector::Generic(_)
-                | TrinoCatalogConnector::GoogleSheet(_)
-                | TrinoCatalogConnector::Postgresql(_)
-                | TrinoCatalogConnector::Tpcds(_)
-                | TrinoCatalogConnector::Tpch(_) => None,
-            })
-            .map(|hdfs_cluster_name| {
-                affinity_between_role_pods(
-                    "hdfs",
-                    hdfs_cluster_name.as_ref(), // The discovery cm has the same name as the HdfsCluster itself
-                    "datanode",
-                    50,
-                )
-            })
-            .collect(),
-    };
+    let additional_affinities: Vec<_> =
+        match role {
+            TrinoRole::Coordinator => trino_catalogs
+                .iter()
+                .filter_map(|catalog| match &catalog.spec.connector {
+                    TrinoCatalogConnector::Hive(hive) => Some(&hive.metastore.config_map),
+                    TrinoCatalogConnector::Iceberg(IcebergConnector {
+                        catalog:
+                            IcebergCatalogConnection::HiveMetastore(HiveMetastoreConnection {
+                                config_map,
+                            }),
+                        ..
+                    }) => Some(config_map),
+                    // No Hive metastore is used
+                    TrinoCatalogConnector::Iceberg(_) => None,
+                    TrinoCatalogConnector::DeltaLake(delta_lake) => {
+                        Some(&delta_lake.metastore.config_map)
+                    }
+                    TrinoCatalogConnector::BlackHole(_)
+                    | TrinoCatalogConnector::Generic(_)
+                    | TrinoCatalogConnector::GoogleSheet(_)
+                    | TrinoCatalogConnector::Postgresql(_)
+                    | TrinoCatalogConnector::Tpcds(_)
+                    | TrinoCatalogConnector::Tpch(_) => None,
+                })
+                .map(|hive_cluster_name| {
+                    affinity_between_role_pods(
+                        "hive",
+                        hive_cluster_name.as_ref(), // The discovery cm has the same name as the HiveCluster itself
+                        "metastore",
+                        50,
+                    )
+                })
+                .collect(),
+            TrinoRole::Worker => trino_catalogs
+                .iter()
+                .filter_map(|catalog| match &catalog.spec.connector {
+                    TrinoCatalogConnector::Hive(hive) => {
+                        hive.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                    }
+                    TrinoCatalogConnector::Iceberg(iceberg) => {
+                        iceberg.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                    }
+                    TrinoCatalogConnector::DeltaLake(delta_lake) => {
+                        delta_lake.hdfs.as_ref().map(|hdfs| &hdfs.config_map)
+                    }
+                    TrinoCatalogConnector::BlackHole(_)
+                    | TrinoCatalogConnector::Generic(_)
+                    | TrinoCatalogConnector::GoogleSheet(_)
+                    | TrinoCatalogConnector::Postgresql(_)
+                    | TrinoCatalogConnector::Tpcds(_)
+                    | TrinoCatalogConnector::Tpch(_) => None,
+                })
+                .map(|hdfs_cluster_name| {
+                    affinity_between_role_pods(
+                        "hdfs",
+                        hdfs_cluster_name.as_ref(), // The discovery cm has the same name as the HdfsCluster itself
+                        "datanode",
+                        50,
+                    )
+                })
+                .collect(),
+        };
     affinities.extend(additional_affinities);
 
     // Only the coordinator talks to OPA (it does the authorization checks for the whole cluster),
@@ -261,7 +272,7 @@ mod tests {
               hdfs:
                 configMap: simple-hdfs
         "#;
-        let hive_catalog_1: catalog::v1alpha1::TrinoCatalog =
+        let hive_catalog_1: catalog::v1alpha2::TrinoCatalog =
             yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
@@ -275,7 +286,7 @@ mod tests {
           connector:
             tpch: {}
         "#;
-        let tpch_catalog: catalog::v1alpha1::TrinoCatalog =
+        let tpch_catalog: catalog::v1alpha2::TrinoCatalog =
             yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
@@ -293,7 +304,7 @@ mod tests {
                   s3:
                     reference: minio
             "#;
-        let hive_catalog_2: catalog::v1alpha1::TrinoCatalog =
+        let hive_catalog_2: catalog::v1alpha2::TrinoCatalog =
             yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let merged_config = crate::controller::validate::merged_role_group_config(
