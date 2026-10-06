@@ -4,8 +4,8 @@
 //! Trino ships the OpenLineage event listener as a **core** plugin, so nothing needs to be added
 //! to the image; the listener runs on the **coordinator only**. This module produces:
 //!
-//! * the connection-derived `event-listener.properties` settings (transport type/URL, namespace
-//!   and — when authentication is configured — the bearer-token reference),
+//! * the connection-derived `event-listener.properties` settings (transport type/URL, namespace,
+//!   job name format and, when authentication is configured, the bearer-token reference),
 //! * the Kubernetes [`Volume`]s/[`VolumeMount`]s for the backend CA certificate and the token
 //!   Secret, and
 //! * the init-container commands that import a `SecretClass` CA into the client truststore.
@@ -22,16 +22,13 @@ use stackable_operator::{
     commons::tls_verification::{
         CaCert, TlsClientDetails, TlsClientDetailsError, TlsServerVerification, TlsVerification,
     },
-    crd::openlineage::{
-        self,
-        v1alpha1::{OpenLineageConfig, OpenLineageTransport},
-    },
+    crd::openlineage::{self, v1alpha1::OpenLineageTransport},
     k8s_openapi::api::core::v1::{SecretVolumeSource, Volume, VolumeMount},
 };
 
 use crate::{
     controller::build::command,
-    crd::{OPENLINEAGE_AUTH_SECRET_KEY, STACKABLE_CLIENT_TLS_DIR},
+    crd::{OPENLINEAGE_AUTH_SECRET_KEY, STACKABLE_CLIENT_TLS_DIR, v1alpha1::TrinoLineageConfig},
 };
 
 /// Directory the OpenLineage bearer-token Secret is mounted at on the coordinator. Referenced from
@@ -64,6 +61,9 @@ pub const OPENLINEAGE_TRANSPORT_ENDPOINT_KEY: &str =
 pub const OPENLINEAGE_TRANSPORT_API_KEY_KEY: &str = "openlineage-event-listener.transport.api-key";
 /// The OpenLineage namespace lineage is reported under.
 pub const OPENLINEAGE_NAMESPACE_KEY: &str = "openlineage-event-listener.namespace";
+/// Format for the emitted OpenLineage job name. Set from
+/// `spec.clusterConfig.lineage.jobNameFormat`, which defaults to `$QUERY_ID`.
+pub const OPENLINEAGE_JOB_NAME_FORMAT_KEY: &str = "openlineage-event-listener.job.name-format";
 /// The URI identifying this Trino cluster in emitted lineage. Computed from the coordinator service
 /// at ConfigMap-build time (see [`crate::controller::build::properties::event_listener_properties`]).
 pub const OPENLINEAGE_TRINO_URI_KEY: &str = "openlineage-event-listener.trino.uri";
@@ -109,7 +109,7 @@ impl ResolvedLineageConfig {
     /// Resolves the OpenLineage connection (inline or referenced), backend TLS trust and (optional)
     /// authentication into the coordinator-side configuration.
     pub async fn from_config(
-        lineage: &OpenLineageConfig,
+        lineage: &TrinoLineageConfig,
         client: &Client,
         namespace: &str,
     ) -> Result<Self, Error> {
@@ -119,6 +119,7 @@ impl ResolvedLineageConfig {
         let mut init_container_extra_start_commands = Vec::new();
 
         let connection = lineage
+            .open_lineage
             .connection
             .clone()
             .resolve(client, namespace)
@@ -147,12 +148,16 @@ impl ResolvedLineageConfig {
         );
         properties.insert(
             OPENLINEAGE_NAMESPACE_KEY.to_string(),
-            lineage.namespace.clone(),
+            lineage.open_lineage.namespace.clone(),
+        );
+        properties.insert(
+            OPENLINEAGE_JOB_NAME_FORMAT_KEY.to_string(),
+            lineage.job_name_format.clone(),
         );
 
         // Backend TLS: mount and import a `SecretClass` CA into the client truststore. WebPKI and
         // no verification need nothing (WebPKI is trusted via the system bundle already seeded into
-        // the truststore; without server verification the URL is plain `http`).
+        // the truststore; without server verification there is no CA to trust).
         let (tls_volumes, tls_mounts) = http
             .tls
             .volumes_and_mounts()
@@ -234,7 +239,7 @@ mod tests {
 
     #[test]
     fn verification_none_yields_no_truststore_commands() {
-        // For OpenLineage `verification.none` means no server verification, i.e. plain http.
+        // `verification.none` still uses https, but there is no CA to import.
         assert!(
             openlineage_tls_truststore_commands(&tls_details(Some(TlsVerification::None {})))
                 .is_empty()

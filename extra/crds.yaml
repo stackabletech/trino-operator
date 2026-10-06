@@ -990,6 +990,12 @@ spec:
                           reference:
                             type: string
                         type: object
+                      jobNameFormat:
+                        default: $QUERY_ID
+                        description: |-
+                          Format of the OpenLineage job name emitted for each query. Accepts an arbitrary string
+                          with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables.
+                        type: string
                       namespace:
                         default: default
                         description: The OpenLineage namespace lineage is reported under.

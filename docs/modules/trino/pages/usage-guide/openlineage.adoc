@@ -42,12 +42,14 @@ spec:
             #       caCert:
             #         secretClass: marquez-ca
       # namespace: trino-lineage # <3>
+      # jobNameFormat: "$QUERY_ID" # <5>
   ...
 ----
 <1> Adding the `lineage` block enables OpenLineage event emission. Omit it entirely to leave OpenLineage off (the default).
 <2> The OpenLineage backend connection. Use `inline` (shown here) to define the connection directly, or `reference: <name>` to point at an `OpenLineageConnection` resource in the same namespace. Required. The connection selects a transport; `http` is currently the only one supported.
 <3> Optional. The OpenLineage namespace events are reported under. Defaults to `default`.
 <4> Optional. URL path of the endpoint events are POSTed to, mapped onto `openlineage-event-listener.transport.endpoint`. Defaults to `/api/v1/lineage`.
+<5> Optional. Sets the OpenLineage job name format (`openlineage-event-listener.job.name-format`). Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. Defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
 
 The `OpenLineageConnection` resource (`lineage.stackable.tech`) is a reusable definition of a connection to an OpenLineage backend, provided by the Stackable operator library.
 Reference it to share one backend definition across multiple clusters:

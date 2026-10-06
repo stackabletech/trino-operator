@@ -296,7 +296,7 @@ pub mod versioned {
         /// Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
         /// Trino cluster.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        pub lineage: Option<openlineage::v1alpha1::OpenLineageConfig>,
+        pub lineage: Option<TrinoLineageConfig>,
 
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
@@ -304,6 +304,19 @@ pub mod versioned {
         /// to learn how to configure log aggregation with Vector.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub vector_aggregator_config_map_name: Option<ConfigMapName>,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoLineageConfig {
+        // no doc - it's in the struct.
+        #[serde(flatten)]
+        pub open_lineage: openlineage::v1alpha1::OpenLineageConfig,
+
+        /// Format of the OpenLineage job name emitted for each query. Accepts an arbitrary string
+        /// with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables.
+        #[serde(default = "TrinoLineageConfig::default_job_name_format")]
+        pub job_name_format: String,
     }
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -372,6 +385,12 @@ pub mod versioned {
     pub struct TrinoClusterStatus {
         #[serde(default)]
         pub conditions: Vec<ClusterCondition>,
+    }
+}
+
+impl v1alpha1::TrinoLineageConfig {
+    pub fn default_job_name_format() -> String {
+        "$QUERY_ID".to_string()
     }
 }
 
@@ -871,6 +890,53 @@ mod tests {
         assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
     }
 
+    #[test]
+    fn lineage_config_is_flattened() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+          clusterConfig:
+            catalogLabelSelector: {}
+            lineage:
+              connection:
+                reference: marquez
+              namespace: trino-lineage
+              jobNameFormat: trino-$QUERY_ID
+        "#;
+        let trino: v1alpha1::TrinoCluster =
+            serde_yaml::from_str(input).expect("illegal test input");
+        let lineage = trino
+            .spec
+            .cluster_config
+            .lineage
+            .expect("lineage is configured");
+        assert_eq!(lineage.open_lineage.namespace, "trino-lineage");
+        assert_eq!(lineage.job_name_format, "trino-$QUERY_ID");
+    }
+
+    #[test]
+    fn lineage_job_name_format_defaults_to_query_id() {
+        let lineage: v1alpha1::TrinoLineageConfig = serde_yaml::from_str(indoc::indoc! {"
+            connection:
+              reference: marquez
+        "})
+        .expect("illegal test input");
+        assert_eq!(lineage.job_name_format, "$QUERY_ID");
+    }
+
     impl RoundtripTestData for v1alpha1::TrinoClusterSpec {
         fn roundtrip_test_data() -> Vec<Self> {
             stackable_operator::utils::yaml_from_str_singleton_map(indoc::indoc! {r#"
@@ -914,6 +980,11 @@ mod tests {
                             - s3://exchange-bucket/
                           connection:
                             reference: minio
+                  lineage:
+                    connection:
+                      reference: marquez
+                    namespace: trino-lineage
+                    jobNameFormat: trino-$QUERY_ID
                   vectorAggregatorConfigMapName: vector-aggregator-discovery
                 coordinators:
                   config:
