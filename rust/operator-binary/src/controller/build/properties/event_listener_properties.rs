@@ -129,7 +129,8 @@ mod tests {
     }
 
     fn coordinator_rg(cluster: &ValidatedCluster) -> TrinoRoleGroupConfig {
-        cluster.role_group_configs[&TrinoRole::Coordinator]
+        cluster
+            .role_group_configs(&TrinoRole::Coordinator)
             .values()
             .next()
             .unwrap()

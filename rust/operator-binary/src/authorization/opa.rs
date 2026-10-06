@@ -145,7 +145,7 @@ impl TrinoOpaConfig {
         self.tls_secret_class.as_ref().map(|_| {
             format!(
                 "/stackable/secrets/{opa_tls_volume_name}",
-                opa_tls_volume_name = &*OPA_TLS_VOLUME_NAME
+                opa_tls_volume_name = *OPA_TLS_VOLUME_NAME
             )
         })
     }
@@ -154,6 +154,12 @@ impl TrinoOpaConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constant does not panic.
+        let _ = *OPA_TLS_VOLUME_NAME;
+    }
 
     fn minimal_opa() -> TrinoOpaConfig {
         TrinoOpaConfig {

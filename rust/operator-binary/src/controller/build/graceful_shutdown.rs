@@ -62,16 +62,13 @@ pub fn graceful_shutdown_config_properties(
     }
 }
 
-/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups, read from the
-/// validated [`ValidatedCluster::role_group_configs`].
+/// Returns the minimal `gracefulShutdownTimeout` across all worker role-groups
 fn min_worker_graceful_shutdown_timeout(
     cluster: &ValidatedCluster,
 ) -> stackable_operator::shared::time::Duration {
     cluster
-        .role_group_configs
-        .get(&TrinoRole::Worker)
-        .into_iter()
-        .flat_map(|groups| groups.values())
+        .worker_role_group_configs
+        .values()
         .filter_map(|rg| rg.config.graceful_shutdown_timeout)
         .min()
         .unwrap_or(DEFAULT_WORKER_GRACEFUL_SHUTDOWN_TIMEOUT)
@@ -142,7 +139,9 @@ pub fn add_graceful_shutdown_config(
 
 #[cfg(test)]
 mod tests {
-    use stackable_operator::shared::time::Duration;
+    use stackable_operator::{
+        shared::time::Duration, v2::builder::pod::container::new_container_builder,
+    };
 
     use super::*;
     use crate::{
@@ -151,6 +150,7 @@ mod tests {
             MINIMAL_TRINO_YAML, empty_derefs, validated_cluster_from_yaml,
             validated_cluster_from_yaml_with_derefs,
         },
+        crd::Container,
     };
 
     /// A worker role group without an explicit `gracefulShutdownTimeout` falls back to the
@@ -306,13 +306,14 @@ mod tests {
     #[test]
     fn worker_termination_grace_period_adds_overhead_and_sets_pre_stop() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let merged = &cluster.role_group_configs[&TrinoRole::Worker]
+        let merged = &cluster
+            .worker_role_group_configs
             .values()
             .next()
-            .unwrap()
+            .expect("the fixture defines a worker role group")
             .config;
         let mut pod_builder = PodBuilder::new();
-        let mut trino_builder = ContainerBuilder::new("trino").unwrap();
+        let mut trino_builder = new_container_builder(Container::Trino.name());
         add_graceful_shutdown_config(
             &cluster,
             &TrinoRole::Worker,
@@ -320,35 +321,39 @@ mod tests {
             &mut pod_builder,
             &mut trino_builder,
         )
-        .unwrap();
+        .expect("the graceful shutdown config applies to the worker");
 
         // Default worker timeout 3600s + 2 * 30s grace + 10s safety = 3670s.
-        let spec = pod_builder.build_template().spec.unwrap();
+        let spec = pod_builder
+            .build_template()
+            .spec
+            .expect("the pod template has a spec");
         assert_eq!(spec.termination_grace_period_seconds, Some(3670));
 
         let command = trino_builder
             .build()
             .lifecycle
-            .unwrap()
+            .expect("the worker container has a lifecycle")
             .pre_stop
-            .unwrap()
+            .expect("the worker lifecycle has a pre-stop hook")
             .exec
-            .unwrap()
+            .expect("the pre-stop hook is an exec action")
             .command
-            .unwrap();
+            .expect("the exec action has a command");
         assert!(command.iter().any(|arg| arg.contains("sleep 3670")));
     }
 
     #[test]
     fn coordinator_termination_grace_period_has_no_overhead_or_pre_stop() {
         let cluster = validated_cluster_from_yaml(MINIMAL_TRINO_YAML);
-        let merged = &cluster.role_group_configs[&TrinoRole::Coordinator]
+        let merged = &cluster
+            .coordinator_role_group_configs
             .values()
             .next()
-            .unwrap()
+            .expect("the fixture defines a coordinator role group")
             .config;
         let mut pod_builder = PodBuilder::new();
-        let mut trino_builder = ContainerBuilder::new("trino").unwrap();
+        let mut trino_builder = new_container_builder(Container::Trino.name());
         add_graceful_shutdown_config(
             &cluster,
             &TrinoRole::Coordinator,
@@ -356,10 +361,13 @@ mod tests {
             &mut pod_builder,
             &mut trino_builder,
         )
-        .unwrap();
+        .expect("the graceful shutdown config applies to the coordinator");
 
         // The coordinator default timeout (900s) is used verbatim, with no overhead.
-        let spec = pod_builder.build_template().spec.unwrap();
+        let spec = pod_builder
+            .build_template()
+            .spec
+            .expect("the pod template has a spec");
         assert_eq!(spec.termination_grace_period_seconds, Some(900));
         // Coordinators do not get a graceful-shutdown pre-stop hook.
         assert!(trino_builder.build().lifecycle.is_none());

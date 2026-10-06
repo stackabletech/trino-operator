@@ -7,8 +7,9 @@ use stackable_operator::{
 };
 
 use crate::{
-    controller::{ValidatedCluster, controller_name, operator_name, product_name},
+    controller::ValidatedCluster,
     crd::TrinoRole,
+    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME, PRODUCT_NAME},
 };
 
 /// Builds the [`PodDisruptionBudget`] for the given `role`, or `None` if PDBs are disabled.
@@ -29,10 +30,10 @@ pub fn build_pdb(
     let role_name: RoleName = role.into();
     let pdb = pod_disruption_budget_builder_with_role(
         cluster,
-        &product_name(),
+        &PRODUCT_NAME,
         &role_name,
-        &operator_name(),
-        &controller_name(),
+        &OPERATOR_NAME,
+        &CONTROLLER_NAME,
     )
     .with_max_unavailable(max_unavailable)
     .build();
@@ -46,10 +47,8 @@ pub fn build_pdb(
 /// contribute nothing, as their size is not known at reconcile time.
 fn worker_count(cluster: &ValidatedCluster) -> u16 {
     cluster
-        .role_group_configs
-        .get(&TrinoRole::Worker)
-        .into_iter()
-        .flat_map(|groups| groups.values())
+        .worker_role_group_configs
+        .values()
         .filter_map(|rg| rg.replicas)
         .sum()
 }

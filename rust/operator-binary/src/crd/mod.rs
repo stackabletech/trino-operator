@@ -5,7 +5,7 @@ pub mod client_protocol;
 pub mod discovery;
 pub mod fault_tolerant_execution;
 
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, ops::Deref, str::FromStr};
 
 use affinity::get_affinity;
 use serde::{Deserialize, Serialize};
@@ -21,29 +21,34 @@ use stackable_operator::{
         },
     },
     config::{fragment::Fragment, merge::Merge},
+    constant,
     crd::{authentication::core, openlineage},
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt},
     memory::{BinaryMultiple, MemoryQuantity},
     product_logging::{self, spec::Logging},
-    role_utils::{GenericRoleConfig, Role},
+    role_utils::GenericRoleConfig,
     schemars::{self, JsonSchema},
     shared::time::Duration,
     status::condition::{ClusterCondition, HasStatusCondition},
     v2::{
+        builder::pod::container::EnvVarName,
         config_overrides::KeyValueConfigOverrides,
         role_group_utils::ResourceNames,
-        role_utils::JavaCommonConfig,
+        role_utils::{JavaCommonConfig, Role},
         types::{
             common::Port,
-            kubernetes::{ConfigMapName, ListenerClassName, NamespaceName, SecretClassName},
+            kubernetes::{
+                ConfigMapName, ContainerName, ListenerClassName, NamespaceName, SecretClassName,
+                SecretKey,
+            },
             operator::{ClusterName, RoleGroupName, RoleName},
         },
     },
     versioned::versioned,
 };
-use strum::{Display, EnumIter, EnumString};
+use strum::{Display, EnumIter};
 
 use crate::crd::discovery::TrinoPodRef;
 
@@ -81,17 +86,21 @@ pub const STACKABLE_MOUNT_SERVER_TLS_DIR: &str = "/stackable/mount_server_tls";
 pub const STACKABLE_MOUNT_INTERNAL_TLS_DIR: &str = "/stackable/mount_internal_tls";
 // store pws
 pub const STACKABLE_TLS_STORE_PASSWORD: &str = "changeit";
-// secret vars
-pub const ENV_INTERNAL_SECRET: &str = "INTERNAL_SECRET";
-pub const ENV_SPOOLING_SECRET: &str = "SPOOLING_SECRET";
+// Env vars mounting the shared random Secrets, and the keys under which the Secrets store
+// their value. Name and key deliberately share the same string, so `${ENV:...}` references in
+// the generated properties match the Secret contents.
+constant!(pub ENV_INTERNAL_SECRET: EnvVarName = "INTERNAL_SECRET");
+constant!(pub INTERNAL_SECRET_SECRET_KEY: SecretKey = "INTERNAL_SECRET");
+constant!(pub ENV_SPOOLING_SECRET: EnvVarName = "SPOOLING_SECRET");
+constant!(pub SPOOLING_SECRET_SECRET_KEY: SecretKey = "SPOOLING_SECRET");
 // OpenLineage
 /// Fixed key that must hold the OpenLineage HTTP transport bearer token inside the Secret named by
 /// `credentialsSecretName` on the connection used in `spec.clusterConfig.lineage`.
 pub const OPENLINEAGE_AUTH_SECRET_KEY: &str = "apiKey";
 // TLS
-const TLS_DEFAULT_SECRET_CLASS: &str = "tls";
+constant!(TLS_DEFAULT_SECRET_CLASS: SecretClassName = "tls");
 // Listener
-pub const DEFAULT_LISTENER_CLASS: &str = "cluster-internal";
+constant!(pub DEFAULT_LISTENER_CLASS: ListenerClassName = "cluster-internal");
 // Logging
 pub const MAX_TRINO_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
     value: 10.0,
@@ -382,8 +391,7 @@ impl Default for v1alpha1::TrinoCoordinatorRoleConfig {
 }
 
 fn coordinator_default_listener_class() -> ListenerClassName {
-    ListenerClassName::from_str(DEFAULT_LISTENER_CLASS)
-        .expect("the default listener class name must be valid")
+    DEFAULT_LISTENER_CLASS.clone()
 }
 
 impl Default for v1alpha1::TrinoTls {
@@ -396,52 +404,38 @@ impl Default for v1alpha1::TrinoTls {
 }
 
 fn tls_secret_class_default() -> Option<SecretClassName> {
-    Some(
-        SecretClassName::from_str(TLS_DEFAULT_SECRET_CLASS)
-            .expect("the default TLS SecretClass name must be valid"),
-    )
+    Some(TLS_DEFAULT_SECRET_CLASS.clone())
 }
 
-#[derive(
-    Clone,
-    Debug,
-    Deserialize,
-    Display,
-    EnumIter,
-    Eq,
-    Hash,
-    JsonSchema,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    Serialize,
-    EnumString,
-)]
+constant!(COORDINATOR_ROLE_NAME: RoleName = "coordinator");
+constant!(WORKER_ROLE_NAME: RoleName = "worker");
+
+#[derive(Clone, Debug, EnumIter, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd)]
 pub enum TrinoRole {
-    #[strum(serialize = "coordinator")]
     Coordinator,
-    #[strum(serialize = "worker")]
     Worker,
+}
+
+impl Deref for TrinoRole {
+    type Target = RoleName;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            TrinoRole::Coordinator => &COORDINATOR_ROLE_NAME,
+            TrinoRole::Worker => &WORKER_ROLE_NAME,
+        }
+    }
 }
 
 impl From<TrinoRole> for RoleName {
     fn from(value: TrinoRole) -> Self {
-        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
+        RoleName::clone(&value)
     }
 }
 
 impl From<&TrinoRole> for RoleName {
     fn from(value: &TrinoRole) -> Self {
-        RoleName::from_str(&value.to_string()).expect("a TrinoRole is a valid role name")
-    }
-}
-
-impl TrinoRole {
-    pub fn listener_class_name(&self, trino: &v1alpha1::TrinoCluster) -> Option<ListenerClassName> {
-        match self {
-            Self::Coordinator => Some(trino.spec.coordinators.role_config.listener_class.clone()),
-            Self::Worker => None,
-        }
+        RoleName::clone(value)
     }
 }
 
@@ -472,11 +466,31 @@ pub enum Container {
     Trino,
 }
 
+// Typed container names. They must match the strum `Display` (kebab-case) of the variants above,
+// which is pinned by a unit test.
+constant!(PREPARE_CONTAINER_NAME: ContainerName = "prepare");
+constant!(VECTOR_CONTAINER_NAME: ContainerName = "vector");
+constant!(PASSWORD_FILE_UPDATER_CONTAINER_NAME: ContainerName = "password-file-updater");
+constant!(TRINO_CONTAINER_NAME: ContainerName = "trino");
+
+impl Container {
+    /// The typed container name of this variant.
+    pub fn name(&self) -> &'static ContainerName {
+        match self {
+            Container::Prepare => &PREPARE_CONTAINER_NAME,
+            Container::Vector => &VECTOR_CONTAINER_NAME,
+            Container::PasswordFileUpdater => &PASSWORD_FILE_UPDATER_CONTAINER_NAME,
+            Container::Trino => &TRINO_CONTAINER_NAME,
+        }
+    }
+}
+
 impl v1alpha1::TrinoConfig {
     pub(crate) fn default_config(
         cluster_name: &str,
         role: &TrinoRole,
         trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],
+        opa_config: Option<&v1alpha1::TrinoAuthorizationOpaConfig>,
     ) -> v1alpha1::TrinoConfigFragment {
         let (cpu_min, cpu_max, memory) = match role {
             TrinoRole::Coordinator => ("500m", "2", "4Gi"),
@@ -496,7 +510,7 @@ impl v1alpha1::TrinoConfig {
 
         v1alpha1::TrinoConfigFragment {
             logging: product_logging::spec::default_logging(),
-            affinity: get_affinity(cluster_name, role, trino_catalogs),
+            affinity: get_affinity(cluster_name, role, trino_catalogs, opa_config),
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity(cpu_min.to_string())),
@@ -516,28 +530,19 @@ impl v1alpha1::TrinoConfig {
     }
 }
 
+/// The replica count lower bound used for enumerating role groups when this is not set explicitly (in such cases Kubernetes
+/// runs a single pod for a `StatefulSet`).
+const COORDINATOR_REPLICAS_IF_UNSET: u16 = 1;
+
 impl v1alpha1::TrinoCluster {
-    /// Returns the given role (both roles are required by the CRD).
-    pub fn role(&self, role_variant: &TrinoRole) -> TrinoRoleType {
-        match role_variant {
-            TrinoRole::Coordinator => {
-                extract_role_from_coordinator_config(self.spec.coordinators.to_owned())
-            }
-            TrinoRole::Worker => self.spec.workers.to_owned(),
-        }
-    }
-
-    pub fn generic_role_config(&self, role: &TrinoRole) -> &GenericRoleConfig {
-        match role {
-            TrinoRole::Coordinator => &self.spec.coordinators.role_config.common,
-            TrinoRole::Worker => &self.spec.workers.role_config,
-        }
-    }
-
     /// List all coordinator pods expected to form the cluster
     ///
     /// We try to predict the pods here rather than looking at the current cluster state in order to
     /// avoid instance churn.
+    ///
+    /// A role group without an explicit `replicas` counts will be assigned a single pod by Kubernetes. Counting it as
+    /// zero would yield no pod refs at all for a single-role-group cluster, and the first of these
+    /// is what sets `discovery.uri`.
     pub fn coordinator_pods(
         &self,
         namespace: &NamespaceName,
@@ -562,10 +567,12 @@ impl v1alpha1::TrinoCluster {
                         .expect("a role group name is a valid role group name"),
                 };
                 let ns = ns.clone();
-                (0..rolegroup.replicas.unwrap_or(0)).map(move |i| TrinoPodRef {
-                    namespace: ns.clone(),
-                    role_group_service_name: resource_names.headless_service_name().to_string(),
-                    pod_name: format!("{}-{i}", resource_names.stateful_set_name()),
+                (0..rolegroup.replicas.unwrap_or(COORDINATOR_REPLICAS_IF_UNSET)).map(move |i| {
+                    TrinoPodRef {
+                        namespace: ns.clone(),
+                        role_group_service_name: resource_names.headless_service_name().to_string(),
+                        pod_name: format!("{}-{i}", resource_names.stateful_set_name()),
+                    }
                 })
             })
     }
@@ -586,17 +593,6 @@ impl v1alpha1::TrinoCluster {
     }
 }
 
-/// Converts the coordinator role (which carries the coordinator-specific `role_config`) into the
-/// generic [`TrinoRoleType`]. Only the `role_config` type parameter differs between the two; the
-/// `config` and `role_groups` carry over unchanged.
-fn extract_role_from_coordinator_config(fragment: TrinoCoordinatorRoleType) -> TrinoRoleType {
-    Role {
-        config: fragment.config,
-        role_config: fragment.role_config.common,
-        role_groups: fragment.role_groups,
-    }
-}
-
 impl HasStatusCondition for v1alpha1::TrinoCluster {
     fn conditions(&self) -> Vec<ClusterCondition> {
         match &self.status {
@@ -609,8 +605,35 @@ impl HasStatusCondition for v1alpha1::TrinoCluster {
 #[cfg(test)]
 mod tests {
     use stackable_operator::versioned::test_utils::RoundtripTestData;
+    use strum::IntoEnumIterator;
 
     use super::*;
+
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constants does not panic.
+        let _ = *ENV_INTERNAL_SECRET;
+        let _ = *INTERNAL_SECRET_SECRET_KEY;
+        let _ = *ENV_SPOOLING_SECRET;
+        let _ = *SPOOLING_SECRET_SECRET_KEY;
+        let _ = *TLS_DEFAULT_SECRET_CLASS;
+        let _ = *DEFAULT_LISTENER_CLASS;
+        let _ = *COORDINATOR_ROLE_NAME;
+        let _ = *WORKER_ROLE_NAME;
+        let _ = *PREPARE_CONTAINER_NAME;
+        let _ = *VECTOR_CONTAINER_NAME;
+        let _ = *PASSWORD_FILE_UPDATER_CONTAINER_NAME;
+        let _ = *TRINO_CONTAINER_NAME;
+    }
+
+    /// The typed container names returned by `name` must agree with the strum `Display` of
+    /// `Container`, which operator-rs's `Logging<T>` requires and uses in error messages.
+    #[test]
+    fn container_names_match_display() {
+        for container in Container::iter() {
+            assert_eq!(container.name().to_string(), container.to_string());
+        }
+    }
 
     /// The user-provided server TLS SecretClass as `Option<&str>`, used by these CRD-defaulting
     /// assertions.
@@ -658,10 +681,13 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
         assert_eq!(
             internal_secret_class(&trino),
-            Some(TLS_DEFAULT_SECRET_CLASS)
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
         );
 
         let input = r#"
@@ -690,7 +716,7 @@ mod tests {
         assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
         assert_eq!(
             internal_secret_class(&trino),
-            Some(TLS_DEFAULT_SECRET_CLASS)
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
         );
 
         let input = r#"
@@ -743,7 +769,10 @@ mod tests {
         "#;
         let trino: v1alpha1::TrinoCluster =
             serde_yaml::from_str(input).expect("illegal test input");
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
         assert_eq!(
             internal_secret_class(&trino),
             Some("simple-trino-internal-tls")
@@ -775,9 +804,12 @@ mod tests {
             serde_yaml::from_str(input).expect("illegal test input");
         assert_eq!(
             internal_secret_class(&trino),
-            Some(TLS_DEFAULT_SECRET_CLASS)
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
         );
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -806,7 +838,10 @@ mod tests {
             internal_secret_class(&trino),
             Some("simple-trino-internal-tls")
         );
-        assert_eq!(server_secret_class(&trino), Some(TLS_DEFAULT_SECRET_CLASS));
+        assert_eq!(
+            server_secret_class(&trino),
+            Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
+        );
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1

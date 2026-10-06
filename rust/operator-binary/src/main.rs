@@ -9,11 +9,13 @@ use futures::{FutureExt, TryFutureExt, stream::StreamExt};
 use stackable_operator::{
     YamlSchema,
     cli::{Command, RunArguments},
-    crd::authentication::core,
+    crd::{authentication::core, listener},
     eos::EndOfSupportChecker,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
-        core::v1::{ConfigMap, Service},
+        core::v1::{ConfigMap, Service, ServiceAccount},
+        policy::v1::PodDisruptionBudget,
+        rbac::v1::RoleBinding,
     },
     kube::{
         CustomResourceExt as _, ResourceExt,
@@ -29,6 +31,7 @@ use stackable_operator::{
     shared::yaml::SerializeOptions,
     telemetry::Tracing,
     utils::signal::{self, SignalWatcher},
+    webhook::health::HealthCheckRegistry,
 };
 
 use crate::{
@@ -37,7 +40,7 @@ use crate::{
         catalog::{TrinoCatalog, TrinoCatalogVersion},
         v1alpha1,
     },
-    trino_controller::{FULL_CONTROLLER_NAME, OPERATOR_NAME},
+    trino_controller::{FULL_CONTROLLER_NAME, TRINO_OPERATOR_NAME},
     webhooks::conversion::create_webhook_server,
 };
 
@@ -51,7 +54,14 @@ mod trino_controller;
 mod webhooks;
 
 mod built_info {
+    use std::{str::FromStr, sync::LazyLock};
+
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
+
+    pub static PKG_VERSION_SEMVER: LazyLock<semver::Version> = LazyLock::new(|| {
+        semver::Version::from_str(PKG_VERSION)
+            .expect("PKG_VERSION must be able to be parsed as semver")
+    });
 }
 
 #[derive(Parser)]
@@ -104,14 +114,25 @@ async fn main() -> anyhow::Result<()> {
                     .map(anyhow::Ok);
 
             let client = stackable_operator::client::initialize_operator(
-                Some(OPERATOR_NAME.to_string()),
+                Some(TRINO_OPERATOR_NAME.to_string()),
                 &common.cluster_info,
             )
             .await?;
 
+            let mut readiness_checks = HealthCheckRegistry::new();
+            let trino_cluster_crd_check = readiness_checks.register(format!(
+                "CRD {crd} established",
+                crd = v1alpha1::TrinoCluster::crd_name()
+            ));
+            let trino_catalog_crd_check = readiness_checks.register(format!(
+                "CRD {crd} established",
+                crd = crd::catalog::v1alpha1::TrinoCatalog::crd_name()
+            ));
+
             let webhook_server = create_webhook_server(
                 &operator_environment,
                 maintenance.disable_crd_maintenance,
+                readiness_checks,
                 client.as_kube_client(),
             )
             .await?;
@@ -138,15 +159,32 @@ async fn main() -> anyhow::Result<()> {
 
             let trino_controller = cluster_controller
                 .owns(
+                    watch_namespace.get_api::<DeserializeGuard<ConfigMap>>(&client),
+                    watcher::Config::default(),
+                )
+                .owns(
+                    watch_namespace
+                        .get_api::<DeserializeGuard<listener::v1alpha1::Listener>>(&client),
+                    watcher::Config::default(),
+                )
+                .owns(
+                    watch_namespace.get_api::<DeserializeGuard<PodDisruptionBudget>>(&client),
+                    watcher::Config::default(),
+                )
+                .owns(
+                    watch_namespace.get_api::<DeserializeGuard<RoleBinding>>(&client),
+                    watcher::Config::default(),
+                )
+                .owns(
                     watch_namespace.get_api::<DeserializeGuard<Service>>(&client),
                     watcher::Config::default(),
                 )
                 .owns(
-                    watch_namespace.get_api::<DeserializeGuard<StatefulSet>>(&client),
+                    watch_namespace.get_api::<DeserializeGuard<ServiceAccount>>(&client),
                     watcher::Config::default(),
                 )
                 .owns(
-                    watch_namespace.get_api::<DeserializeGuard<ConfigMap>>(&client),
+                    watch_namespace.get_api::<DeserializeGuard<StatefulSet>>(&client),
                     watcher::Config::default(),
                 )
                 .watches(
@@ -216,7 +254,11 @@ async fn main() -> anyhow::Result<()> {
                 .map(anyhow::Ok);
 
             let delayed_trino_controller = async {
-                signal::crd_established(&client, v1alpha1::TrinoCluster::crd_name(), None).await?;
+                signal::crd_established(&client, v1alpha1::TrinoCluster::crd_name()).await?;
+                trino_cluster_crd_check.mark_passed();
+                signal::crd_established(&client, crd::catalog::v1alpha1::TrinoCatalog::crd_name())
+                    .await?;
+                trino_catalog_crd_check.mark_passed();
                 trino_controller.await
             };
 

@@ -15,7 +15,6 @@ impl ToCatalogConfig for IcebergConnector {
         catalog_name: &TrinoCatalogName,
         catalog_namespace: &NamespaceName,
         client: &Client,
-        trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         let mut config = CatalogConfig::new(catalog_name, CONNECTOR_NAME);
 
@@ -28,36 +27,18 @@ impl ToCatalogConfig for IcebergConnector {
 
         if let Some(metastore) = &self.metastore {
             metastore
-                .extend_catalog_config(
-                    &mut config,
-                    catalog_name,
-                    catalog_namespace,
-                    client,
-                    trino_version,
-                )
+                .extend_catalog_config(&mut config, catalog_name, catalog_namespace, client)
                 .await?;
         }
 
         if let Some(ref s3) = self.s3 {
-            s3.extend_catalog_config(
-                &mut config,
-                catalog_name,
-                catalog_namespace,
-                client,
-                trino_version,
-            )
-            .await?;
+            s3.extend_catalog_config(&mut config, catalog_name, catalog_namespace, client)
+                .await?;
         }
 
         if let Some(ref hdfs) = self.hdfs {
-            hdfs.extend_catalog_config(
-                &mut config,
-                catalog_name,
-                catalog_namespace,
-                client,
-                trino_version,
-            )
-            .await?;
+            hdfs.extend_catalog_config(&mut config, catalog_name, catalog_namespace, client)
+                .await?;
         }
 
         Ok(config)

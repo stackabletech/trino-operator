@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, marker::PhantomData, str::FromStr};
 
 use stackable_operator::{
     commons::{
@@ -14,19 +14,15 @@ use stackable_operator::{
         rbac::v1::RoleBinding,
     },
     kube::{Resource, api::ObjectMeta},
-    kvp::Labels,
     memory::{BinaryMultiple, MemoryQuantity},
     shared::time::Duration,
     v2::{
         HasName, HasUid, NameIsValidLabelValue,
-        kvp::label::{recommended_labels, role_group_selector},
         role_group_utils::ResourceNames,
         role_utils,
         types::{
-            kubernetes::{ListenerClassName, NamespaceName, SecretClassName, Uid},
-            operator::{
-                ClusterName, ControllerName, OperatorName, ProductName, ProductVersion, RoleName,
-            },
+            kubernetes::{ListenerClassName, NamespaceName, SecretClassName, SecretName, Uid},
+            operator::{ClusterName, ProductVersion},
         },
     },
 };
@@ -40,12 +36,14 @@ use crate::{
         fault_tolerant_execution::ResolvedFaultTolerantExecutionConfig,
         lineage::ResolvedLineageConfig,
     },
-    crd::{APP_NAME, TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
-    trino_controller::{CONTROLLER_NAME, OPERATOR_NAME},
+    crd::{TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
+    trino_controller::PRODUCT_NAME,
 };
 
+pub(crate) mod apply;
 pub(crate) mod build;
 pub(crate) mod dereference;
+pub(crate) mod update_status;
 pub(crate) mod validate;
 
 pub use stackable_operator::v2::product_logging::framework::STACKABLE_LOG_DIR;
@@ -57,19 +55,44 @@ pub const MAX_PREPARE_LOG_FILE_SIZE: MemoryQuantity = MemoryQuantity {
     unit: BinaryMultiple::Mebi,
 };
 
-pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> String {
-    format!("{cluster_name}-internal-secret")
+pub(crate) fn shared_internal_secret_name(cluster_name: &ClusterName) -> SecretName {
+    const SUFFIX: &str = "-internal-secret";
+
+    const _: () = assert!(
+        ClusterName::MAX_LENGTH + SUFFIX.len() <= SecretName::MAX_LENGTH,
+        "The string `<cluster_name>-internal-secret` must not exceed the limit of Secret names."
+    );
+    // A ClusterName is an RFC 1035 label; appending the suffix keeps it an RFC 1123 subdomain.
+    let _ = ClusterName::IS_RFC_1123_SUBDOMAIN_NAME;
+
+    SecretName::from_str(&format!("{cluster_name}{SUFFIX}")).expect("is a valid Secret name")
 }
 
-pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> String {
-    format!("{cluster_name}-spooling-secret")
+pub(crate) fn shared_spooling_secret_name(cluster_name: &ClusterName) -> SecretName {
+    const SUFFIX: &str = "-spooling-secret";
+
+    const _: () = assert!(
+        ClusterName::MAX_LENGTH + SUFFIX.len() <= SecretName::MAX_LENGTH,
+        "The string `<cluster_name>-spooling-secret` must not exceed the limit of Secret names."
+    );
+    // A ClusterName is an RFC 1035 label; appending the suffix keeps it an RFC 1123 subdomain.
+    let _ = ClusterName::IS_RFC_1123_SUBDOMAIN_NAME;
+
+    SecretName::from_str(&format!("{cluster_name}{SUFFIX}")).expect("is a valid Secret name")
 }
 
-// Placeholder version label value for resources whose labels must not change after deployment.
-stackable_operator::constant!(UNVERSIONED_PRODUCT_VERSION: ProductVersion = "none");
+/// Marker for prepared Kubernetes resources which are not applied yet.
+pub struct Prepared;
+
+/// Marker for Kubernetes resources which have been applied to the Kubernetes cluster.
+pub struct Applied;
 
 /// Every Kubernetes resource produced by the client-free [`build()`](build::build) step.
-pub struct KubernetesResources {
+///
+/// `T` marks whether these resources are only [`Prepared`] or already [`Applied`]. The marker
+/// lets the type system enforce, for example, that the cluster status is derived from the
+/// resources the API server returned rather than from the ones we merely built.
+pub struct KubernetesResources<T> {
     pub stateful_sets: Vec<StatefulSet>,
     pub services: Vec<Service>,
     pub listeners: Vec<Listener>,
@@ -77,6 +100,7 @@ pub struct KubernetesResources {
     pub pod_disruption_budgets: Vec<PodDisruptionBudget>,
     pub service_accounts: Vec<ServiceAccount>,
     pub role_bindings: Vec<RoleBinding>,
+    pub status: PhantomData<T>,
 }
 
 #[derive(Clone, Debug)]
@@ -136,15 +160,26 @@ impl ValidatedTrinoConfig {
     }
 }
 
-/// Per-role configuration extracted during validation.
+/// The coordinator's validated role-level configuration.
 ///
-/// Lets the reconciler and build steps consume this controller-owned type instead of re-reading
-/// the raw [`v1alpha1::TrinoCluster`].
+/// Separate from the worker's because the two are different types in the CRD:
+/// [`v1alpha1::TrinoCoordinatorRoleConfig`] carries a `listener_class` for which the worker's
+/// `GenericRoleConfig` has no equivalent. One shared type would have to make that field an
+/// `Option` — mandatory for one role, meaningless for the other — leaving every reader to work
+/// out which role it is holding.
 #[derive(Clone, Debug)]
-pub struct ValidatedRoleConfig {
+pub struct ValidatedCoordinatorRoleConfig {
     pub pdb: stackable_operator::commons::pdb::PdbConfig,
-    /// The listener class for the role's group listener, if it has one (coordinator only).
-    pub listener_class: Option<ListenerClassName>,
+    /// The listener class of the coordinator's group listener. Not optional: the CRD defaults it.
+    pub listener_class: ListenerClassName,
+}
+
+/// The worker's validated role-level configuration.
+///
+/// Workers have no group listener, so there is no listener class to carry.
+#[derive(Clone, Debug)]
+pub struct ValidatedWorkerRoleConfig {
+    pub pdb: stackable_operator::commons::pdb::PdbConfig,
 }
 
 /// The validated TrinoCluster. The output of the validate step.
@@ -166,45 +201,107 @@ pub struct ValidatedCluster {
     /// parsed once from the resolved image's app version label value.
     pub product_version: ProductVersion,
     pub cluster_config: ValidatedClusterConfig,
-    pub role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
-    pub role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
+    /// The coordinator's role-level config.
+    pub coordinator_config: ValidatedCoordinatorRoleConfig,
+    /// The validated config of every coordinator role group, keyed by role group name.
+    pub coordinator_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+    /// The worker's role-level config.
+    pub worker_config: ValidatedWorkerRoleConfig,
+    /// The validated config of every worker role group, keyed by role group name.
+    pub worker_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+}
+
+/// The non-derived inputs to [`ValidatedCluster::new`].
+///
+/// Named fields, so the two same-typed role-group maps cannot be swapped silently.
+#[derive(Debug)]
+pub(crate) struct ValidatedClusterParams {
+    pub name: ClusterName,
+    pub namespace: NamespaceName,
+    pub uid: Uid,
+    pub image: ResolvedProductImage,
+    pub numeric_product_version: u16,
+    pub cluster_config: ValidatedClusterConfig,
+    pub coordinator_config: ValidatedCoordinatorRoleConfig,
+    pub coordinator_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+    pub worker_config: ValidatedWorkerRoleConfig,
+    pub worker_role_group_configs: BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
 }
 
 impl ValidatedCluster {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        name: ClusterName,
-        namespace: NamespaceName,
-        uid: Uid,
-        image: ResolvedProductImage,
-        numeric_product_version: u16,
-        cluster_config: ValidatedClusterConfig,
-        role_configs: BTreeMap<TrinoRole, ValidatedRoleConfig>,
-        role_group_configs: BTreeMap<TrinoRole, BTreeMap<RoleGroupName, TrinoRoleGroupConfig>>,
-    ) -> Self {
-        Self {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                namespace: Some(namespace.to_string()),
-                uid: Some(uid.to_string()),
-                ..ObjectMeta::default()
-            },
+    /// Derives `metadata` from `name`, `namespace` and `uid`, and `product_version` from
+    /// `image`, so neither can disagree with its source.
+    pub(crate) fn new(params: ValidatedClusterParams) -> Self {
+        let ValidatedClusterParams {
             name,
             namespace,
             uid,
-            product_version: ProductVersion::from_str(&image.app_version_label_value)
-                .expect("the app version label value is a valid product version"),
             image,
             numeric_product_version,
             cluster_config,
-            role_configs,
-            role_group_configs,
+            coordinator_config,
+            coordinator_role_group_configs,
+            worker_config,
+            worker_role_group_configs,
+        } = params;
+
+        Self {
+            metadata: Self::object_meta(&name, &namespace, &uid),
+            product_version: Self::product_version(&image),
+            name,
+            namespace,
+            uid,
+            image,
+            numeric_product_version,
+            cluster_config,
+            coordinator_config,
+            coordinator_role_group_configs,
+            worker_config,
+            worker_role_group_configs,
         }
     }
 
-    /// The validated per-role config for `role`, if the role is defined.
-    pub(crate) fn role_config(&self, role: &TrinoRole) -> Option<&ValidatedRoleConfig> {
-        self.role_configs.get(role)
+    /// The `ObjectMeta` a `ValidatedCluster` carries so it can own the objects built from it.
+    ///
+    /// The uid is required: Kubernetes rejects owner references without one.
+    fn object_meta(name: &ClusterName, namespace: &NamespaceName, uid: &Uid) -> ObjectMeta {
+        ObjectMeta {
+            name: Some(name.to_string()),
+            namespace: Some(namespace.to_string()),
+            uid: Some(uid.to_string()),
+            ..ObjectMeta::default()
+        }
+    }
+
+    /// The product version of the resolved image.
+    ///
+    /// `app_version_label_value` is constructed to be a valid label value, so it is also a valid
+    /// `ProductVersion`.
+    fn product_version(image: &ResolvedProductImage) -> ProductVersion {
+        ProductVersion::from_str(&image.app_version_label_value)
+            .expect("the app version label value is a valid product version")
+    }
+
+    /// The role groups of `role`.
+    ///
+    /// A lookup, not a search: both roles always exist, because the CRD makes `coordinators` and
+    /// `workers` non-optional, so there is no `Option` to unwrap.
+    pub(crate) fn role_group_configs(
+        &self,
+        role: &TrinoRole,
+    ) -> &BTreeMap<RoleGroupName, TrinoRoleGroupConfig> {
+        match role {
+            TrinoRole::Coordinator => &self.coordinator_role_group_configs,
+            TrinoRole::Worker => &self.worker_role_group_configs,
+        }
+    }
+
+    /// The PodDisruptionBudget config of `role`.
+    pub(crate) fn pdb(&self, role: &TrinoRole) -> &stackable_operator::commons::pdb::PdbConfig {
+        match role {
+            TrinoRole::Coordinator => &self.coordinator_config.pdb,
+            TrinoRole::Worker => &self.worker_config.pdb,
+        }
     }
 
     /// Whether the (client-facing) server TLS is enabled.
@@ -237,7 +334,7 @@ impl ValidatedCluster {
     pub fn cluster_resource_names(&self) -> role_utils::ResourceNames {
         role_utils::ResourceNames {
             cluster_name: self.name.clone(),
-            product_name: product_name(),
+            product_name: PRODUCT_NAME.clone(),
         }
     }
 
@@ -266,54 +363,6 @@ impl ValidatedCluster {
             self.role_group_resource_names(role, role_group_name)
                 .role_group_config_map()
         )
-    }
-
-    /// A [`TrinoRole`] as a type-safe [`RoleName`].
-    fn recommended_labels_with(
-        &self,
-        version: &ProductVersion,
-        role_name: &RoleName,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        recommended_labels(
-            self,
-            &product_name(),
-            version,
-            &operator_name(),
-            &controller_name(),
-            role_name,
-            role_group_name,
-        )
-    }
-
-    /// Recommended labels for a role-group resource (using the resolved product version).
-    pub fn recommended_labels(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
-        self.recommended_labels_for(&role.into(), role_group_name)
-    }
-
-    /// Recommended labels for a resource that is not tied to a concrete [`TrinoRole`] (e.g. the
-    /// cluster-shared RBAC resources), using a free-form role/role-group label value.
-    pub fn recommended_labels_for(
-        &self,
-        role_name: &RoleName,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        self.recommended_labels_with(&self.product_version, role_name, role_group_name)
-    }
-
-    /// Recommended labels with the constant [`UNVERSIONED_PRODUCT_VERSION`], for resources whose
-    /// labels must not change after creation (e.g. listener PVC templates).
-    pub fn unversioned_recommended_labels(
-        &self,
-        role: &TrinoRole,
-        role_group_name: &RoleGroupName,
-    ) -> Labels {
-        self.recommended_labels_with(&UNVERSIONED_PRODUCT_VERSION, &role.into(), role_group_name)
-    }
-
-    /// Selector labels matching the pods of a role group.
-    pub fn role_group_selector(&self, role: &TrinoRole, role_group_name: &RoleGroupName) -> Labels {
-        role_group_selector(self, &product_name(), &role.into(), role_group_name)
     }
 }
 
@@ -362,21 +411,6 @@ impl NameIsValidLabelValue for ValidatedCluster {
     fn to_label_value(&self) -> String {
         self.name.to_label_value()
     }
-}
-
-/// The product name (`trino`) as a type-safe label value.
-pub(crate) fn product_name() -> ProductName {
-    ProductName::from_str(APP_NAME).expect("'trino' is a valid product name")
-}
-
-/// The operator name as a type-safe label value.
-pub(crate) fn operator_name() -> OperatorName {
-    OperatorName::from_str(OPERATOR_NAME).expect("the operator name is a valid label value")
-}
-
-/// The controller name as a type-safe label value.
-pub(crate) fn controller_name() -> ControllerName {
-    ControllerName::from_str(CONTROLLER_NAME).expect("the controller name is a valid label value")
 }
 
 /// The expected `app.kubernetes.io/version` label value for the given product version.
@@ -449,22 +483,4 @@ pub(crate) fn validated_cluster() -> ValidatedCluster {
     };
 
     validate::validate(&minimal_trino(), &derefs, &operator_env).expect("validate should succeed")
-}
-
-#[cfg(test)]
-mod tests {
-    use stackable_operator::v2::types::operator::RoleName;
-    use strum::IntoEnumIterator;
-
-    use crate::crd::TrinoRole;
-
-    /// Locks the invariant behind the `expect` in the `From<TrinoRole> for RoleName` impls:
-    /// every `TrinoRole` variant (present and future) must serialise to a valid `RoleName`.
-    #[test]
-    fn every_trino_role_serialises_to_a_valid_role_name() {
-        for role in TrinoRole::iter() {
-            let _: RoleName = (&role).into();
-            let _: RoleName = role.into();
-        }
-    }
 }

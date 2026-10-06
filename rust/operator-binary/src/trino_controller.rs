@@ -1,32 +1,37 @@
-//! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`]
-use std::sync::Arc;
+//! Ensures that `Pod`s are configured and running for each [`v1alpha1::TrinoCluster`].
+//!
+//! This is the controller driver: it runs the
+//! `dereference -> validate -> build -> apply -> update_status` pipeline. The validated cluster
+//! type and the individual steps live under the [`crate::controller`] module tree; this file is
+//! kept next to `main.rs` for consistency with the other Stackable operators.
+
+use std::{str::FromStr, sync::Arc};
 
 use const_format::concatcp;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     cluster_resources::ClusterResourceApplyStrategy,
-    commons::random_secret_creation,
+    constant,
     kube::{
+        Resource,
         core::{DeserializeGuard, error_boundary},
         runtime::controller::Action,
     },
     logging::controller::ReconcilerError,
     shared::time::Duration,
-    status::condition::{
-        compute_conditions, operations::ClusterOperationsConditionBuilder,
-        statefulset::StatefulSetConditionBuilder,
-    },
-    v2::cluster_resources::cluster_resources_new,
+    v2::types::operator::{ControllerName, OperatorName, ProductName},
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
     controller::{
-        ValidatedCluster, build, controller_name, dereference, operator_name, product_name,
-        shared_internal_secret_name, shared_spooling_secret_name, validate,
+        apply::{self, Applier, ensure_random_secrets},
+        build, dereference,
+        update_status::{self, update_status},
+        validate,
     },
-    crd::{ENV_INTERNAL_SECRET, ENV_SPOOLING_SECRET, v1alpha1},
+    crd::{APP_NAME, v1alpha1},
 };
 
 pub struct Ctx {
@@ -34,32 +39,30 @@ pub struct Ctx {
     pub operator_environment: OperatorEnvironmentOptions,
 }
 
-pub const OPERATOR_NAME: &str = "trino.stackable.tech";
-pub const CONTROLLER_NAME: &str = "trinocluster";
-pub const FULL_CONTROLLER_NAME: &str = concatcp!(CONTROLLER_NAME, '.', OPERATOR_NAME);
+pub const TRINO_OPERATOR_NAME: &str = "trino.stackable.tech";
+pub const TRINO_CONTROLLER_NAME: &str = "trinocluster";
+pub const FULL_CONTROLLER_NAME: &str = concatcp!(TRINO_CONTROLLER_NAME, '.', TRINO_OPERATOR_NAME);
+
+constant!(pub(crate) PRODUCT_NAME: ProductName = APP_NAME);
+constant!(pub(crate) OPERATOR_NAME: OperatorName = TRINO_OPERATOR_NAME);
+constant!(pub(crate) CONTROLLER_NAME: ControllerName = TRINO_CONTROLLER_NAME);
 
 pub(crate) const CONTAINER_IMAGE_BASE_NAME: &str = "trino";
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
 #[strum_discriminants(derive(IntoStaticStr))]
 pub enum Error {
-    #[snafu(display("failed to delete orphaned resources"))]
-    DeleteOrphanedResources {
-        source: stackable_operator::cluster_resources::Error,
-    },
-
     #[snafu(display("failed to build the Kubernetes resources"))]
     BuildResources { source: build::Error },
 
-    #[snafu(display("failed to apply Kubernetes resource"))]
-    ApplyResource {
-        source: stackable_operator::cluster_resources::Error,
-    },
+    #[snafu(display("failed to ensure the shared random Secrets exist"))]
+    EnsureSecrets { source: apply::Error },
 
-    #[snafu(display("failed to update status"))]
-    ApplyStatus {
-        source: stackable_operator::client::Error,
-    },
+    #[snafu(display("failed to apply the Kubernetes resources"))]
+    ApplyResources { source: apply::Error },
+
+    #[snafu(display("failed to update the cluster status"))]
+    UpdateStatus { source: update_status::Error },
 
     #[snafu(display("invalid TrinoCluster object"))]
     InvalidTrinoCluster {
@@ -71,11 +74,6 @@ pub enum Error {
 
     #[snafu(display("failed to validate cluster"))]
     ValidateCluster { source: validate::Error },
-
-    #[snafu(display("failed to create internal secret"))]
-    CreateInternalSecret {
-        source: random_secret_creation::Error,
-    },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -91,6 +89,10 @@ pub async fn reconcile_trino(
     ctx: Arc<Ctx>,
 ) -> Result<Action> {
     tracing::info!("Starting reconcile");
+
+    if trino.meta().deletion_timestamp.is_some() {
+        return Ok(Action::await_change());
+    }
 
     let trino = trino
         .0
@@ -115,129 +117,31 @@ pub async fn reconcile_trino(
         "Validated TrinoCluster"
     );
 
-    let mut cluster_resources = cluster_resources_new(
-        &product_name(),
-        &operator_name(),
-        &controller_name(),
-        &validated_cluster.name,
-        &validated_cluster.namespace,
-        &validated_cluster.uid,
-        ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
-        &trino.spec.object_overrides,
-    );
-
-    ensure_random_secrets(client, &validated_cluster).await?;
-
+    // build (no client required)
     let resources = build::build(&validated_cluster, &client.kubernetes_cluster_info)
         .context(BuildResourcesSnafu)?;
 
-    let mut sts_cond_builder = StatefulSetConditionBuilder::default();
-
-    for service_account in resources.service_accounts {
-        cluster_resources
-            .add(client, service_account)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for role_binding in resources.role_bindings {
-        cluster_resources
-            .add(client, role_binding)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for service in resources.services {
-        cluster_resources
-            .add(client, service)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for listener in resources.listeners {
-        cluster_resources
-            .add(client, listener)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for config_map in resources.config_maps {
-        cluster_resources
-            .add(client, config_map)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    for pdb in resources.pod_disruption_budgets {
-        cluster_resources
-            .add(client, pdb)
-            .await
-            .context(ApplyResourceSnafu)?;
-    }
-
-    // Note: The StatefulSet needs to be applied after all ConfigMaps and Secrets it mounts
-    // to prevent unnecessary Pod restarts.
-    // See https://github.com/stackabletech/commons-operator/issues/111 for details.
-    for stateful_set in resources.stateful_sets {
-        sts_cond_builder.add(
-            cluster_resources
-                .add(client, stateful_set)
-                .await
-                .context(ApplyResourceSnafu)?,
-        );
-    }
-
-    let cluster_operation_cond_builder =
-        ClusterOperationsConditionBuilder::new(&trino.spec.cluster_operation);
-
-    let status = v1alpha1::TrinoClusterStatus {
-        conditions: compute_conditions(
-            trino,
-            &[&sts_cond_builder, &cluster_operation_cond_builder],
-        ),
-    };
-
-    cluster_resources
-        .delete_orphaned_resources(client)
+    // apply (client required)
+    ensure_random_secrets(client, &validated_cluster)
         .await
-        .context(DeleteOrphanedResourcesSnafu)?;
-    client
-        .apply_patch_status(OPERATOR_NAME, trino, &status)
+        .context(EnsureSecretsSnafu)?;
+
+    let applied = Applier::new(
+        client,
+        &validated_cluster,
+        ClusterResourceApplyStrategy::from(&trino.spec.cluster_operation),
+        &trino.spec.object_overrides,
+    )
+    .apply(resources)
+    .await
+    .context(ApplyResourcesSnafu)?;
+
+    // update status (client required)
+    update_status(client, trino, applied)
         .await
-        .context(ApplyStatusSnafu)?;
+        .context(UpdateStatusSnafu)?;
 
     Ok(Action::await_change())
-}
-
-/// Ensures the two shared random Secrets (internal communication and spooling) exist, creating
-/// any that are missing.
-async fn ensure_random_secrets(
-    client: &stackable_operator::client::Client,
-    cluster: &ValidatedCluster,
-) -> Result<()> {
-    random_secret_creation::create_random_secret_if_not_exists(
-        &shared_internal_secret_name(&cluster.name),
-        ENV_INTERNAL_SECRET,
-        512,
-        cluster,
-        client,
-    )
-    .await
-    .context(CreateInternalSecretSnafu)?;
-
-    // This secret is created even if spooling is not configured.
-    // Trino currently requires the secret to be exactly 256 bits long.
-    random_secret_creation::create_random_secret_if_not_exists(
-        &shared_spooling_secret_name(&cluster.name),
-        ENV_SPOOLING_SECRET,
-        32,
-        cluster,
-        client,
-    )
-    .await
-    .context(CreateInternalSecretSnafu)?;
-
-    Ok(())
 }
 
 pub fn error_policy(
@@ -256,8 +160,12 @@ mod tests {
     use std::str::FromStr;
 
     use stackable_operator::{
-        cli::OperatorEnvironmentOptions, commons::networking::DomainName,
-        k8s_openapi::api::core::v1::ConfigMap, utils::cluster_info::KubernetesClusterInfo,
+        cli::OperatorEnvironmentOptions,
+        client::Client,
+        commons::networking::DomainName,
+        k8s_openapi::api::core::v1::ConfigMap,
+        kube::{Client as KubeClient, Config},
+        utils::cluster_info::KubernetesClusterInfo,
         v2::builder::pod::container::EnvVarName,
     };
 
@@ -271,6 +179,14 @@ mod tests {
         controller::{RoleGroupName, dereference::DereferencedObjects},
         crd::{ENV_SPOOLING_SECRET, TrinoRole, v1alpha1},
     };
+
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constants does not panic.
+        let _ = *PRODUCT_NAME;
+        let _ = *OPERATOR_NAME;
+        let _ = *CONTROLLER_NAME;
+    }
 
     async fn build_config_map(trino_yaml: &str) -> ConfigMap {
         let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
@@ -345,15 +261,12 @@ mod tests {
 
         let trino_role = TrinoRole::Coordinator;
         let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
-        let recommended_labels =
-            validated_cluster.recommended_labels(&trino_role, &role_group_name);
 
         build::resource::config_map::build_rolegroup_config_map(
             &validated_cluster,
             &trino_role,
             &role_group_name,
             &cluster_info,
-            &recommended_labels,
         )
         .expect("build_rolegroup_config_map should succeed")
     }
@@ -459,7 +372,8 @@ mod tests {
         let config = cm.get("config.properties").unwrap();
         assert!(config.contains("protocol.spooling.enabled=true"));
         assert!(config.contains(&format!(
-            "protocol.spooling.shared-secret-key=${{ENV\\:{ENV_SPOOLING_SECRET}}}"
+            "protocol.spooling.shared-secret-key=${{ENV\\:{env_spooling_secret}}}",
+            env_spooling_secret = ENV_SPOOLING_SECRET.as_ref()
         )));
         assert!(config.contains("foo=bar"));
 
@@ -573,7 +487,8 @@ mod tests {
         let validated_cluster =
             validate::validate(&trino, &derefs, &operator_env).expect("validate should succeed");
 
-        let env = &validated_cluster.role_group_configs[&TrinoRole::Coordinator]
+        let env = &validated_cluster
+            .coordinator_role_group_configs
             .values()
             .next()
             .unwrap()
@@ -585,5 +500,55 @@ mod tests {
         assert_eq!(value("COMMON_VAR").as_deref(), Some("group-value"));
         assert_eq!(value("GROUP_VAR").as_deref(), Some("group-value"));
         assert_eq!(value("ROLE_VAR").as_deref(), Some("role-value"));
+    }
+
+    /// The client points at a closed port, so any API call would fail the reconciliation: an `Ok`
+    /// proves that a cluster being deleted returns before the reconciler touches the Kubernetes
+    /// API, and because the spec is invalid, before the [`DeserializeGuard`] is unwrapped.
+    #[test]
+    fn reconcile_exits_early_for_deleted_cluster() {
+        let trino = serde_yaml::from_str(
+            r#"
+apiVersion: trino.stackable.tech/v1alpha1
+kind: TrinoCluster
+metadata:
+  name: trino
+  namespace: default
+  deletionTimestamp: "2026-08-14T12:00:00Z"
+spec: {}
+"#,
+        )
+        .expect("YAML parses; the invalid spec is captured inside the DeserializeGuard");
+
+        let action = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("current-thread tokio runtime")
+            .block_on(async {
+                let ctx = Arc::new(Ctx {
+                    client: Client::new(
+                        KubeClient::try_from(Config::new(
+                            "http://127.0.0.1:1".parse().expect("valid static URI"),
+                        ))
+                        .expect("client from static config"),
+                        None,
+                        "default".to_owned(),
+                        KubernetesClusterInfo {
+                            cluster_domain: DomainName::from_str("cluster.local")
+                                .expect("valid cluster domain"),
+                        },
+                    ),
+                    operator_environment: OperatorEnvironmentOptions {
+                        operator_namespace: "stackable-operators".to_owned(),
+                        operator_service_name: "trino-operator".to_owned(),
+                        image_repository: "oci.stackable.tech/sdp".to_owned(),
+                    },
+                });
+
+                reconcile_trino(Arc::new(trino), ctx).await
+            })
+            .expect("a deleted cluster reconciles without any API call");
+
+        assert_eq!(action, Action::await_change());
     }
 }

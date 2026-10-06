@@ -64,10 +64,6 @@ pub const OPENLINEAGE_TRANSPORT_ENDPOINT_KEY: &str =
 pub const OPENLINEAGE_TRANSPORT_API_KEY_KEY: &str = "openlineage-event-listener.transport.api-key";
 /// The OpenLineage namespace lineage is reported under.
 pub const OPENLINEAGE_NAMESPACE_KEY: &str = "openlineage-event-listener.namespace";
-/// Format for the emitted OpenLineage job name. Set from `spec.clusterConfig.lineage.jobName`.
-/// Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP`
-/// substitution variables (Trino defaults to `$QUERY_ID` when unset).
-pub const OPENLINEAGE_JOB_NAME_FORMAT_KEY: &str = "openlineage-event-listener.job.name-format";
 /// The URI identifying this Trino cluster in emitted lineage. Computed from the coordinator service
 /// at ConfigMap-build time (see [`crate::controller::build::properties::event_listener_properties`]).
 pub const OPENLINEAGE_TRINO_URI_KEY: &str = "openlineage-event-listener.trino.uri";
@@ -76,6 +72,11 @@ pub const OPENLINEAGE_TRINO_URI_KEY: &str = "openlineage-event-listener.trino.ur
 pub enum Error {
     #[snafu(display("failed to resolve the OpenLineage connection"))]
     ResolveConnection {
+        source: openlineage::v1alpha1::OpenLineageError,
+    },
+
+    #[snafu(display("failed to build the OpenLineage HTTP transport URL"))]
+    TransportUrl {
         source: openlineage::v1alpha1::OpenLineageError,
     },
 
@@ -134,9 +135,11 @@ impl ResolvedLineageConfig {
             OPENLINEAGE_TRANSPORT_TYPE_KEY.to_string(),
             OPENLINEAGE_TRANSPORT_TYPE_HTTP.to_string(),
         );
+        // Trino takes the backend origin and the endpoint path as separate properties.
+        let transport_url = http.url().context(TransportUrlSnafu)?;
         properties.insert(
             OPENLINEAGE_TRANSPORT_URL_KEY.to_string(),
-            http.transport_url(),
+            transport_url.origin().ascii_serialization(),
         );
         properties.insert(
             OPENLINEAGE_TRANSPORT_ENDPOINT_KEY.to_string(),
@@ -146,14 +149,6 @@ impl ResolvedLineageConfig {
             OPENLINEAGE_NAMESPACE_KEY.to_string(),
             lineage.namespace.clone(),
         );
-
-        // The stable OpenLineage job name format. When unset, Trino defaults to `$QUERY_ID`.
-        if let Some(job_name) = &lineage.job_name {
-            properties.insert(
-                OPENLINEAGE_JOB_NAME_FORMAT_KEY.to_string(),
-                job_name.clone(),
-            );
-        }
 
         // Backend TLS: mount and import a `SecretClass` CA into the client truststore. WebPKI and
         // no verification need nothing (WebPKI is trusted via the system bundle already seeded into

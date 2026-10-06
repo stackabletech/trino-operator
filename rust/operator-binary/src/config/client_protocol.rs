@@ -105,7 +105,7 @@ impl ResolvedClientProtocolConfig {
                     ("protocol.spooling.enabled".to_string(), "true".to_string()),
                     (
                         "protocol.spooling.shared-secret-key".to_string(),
-                        format!("${{ENV:{ENV_SPOOLING_SECRET}}}"),
+                        format!("${{ENV:{env_var}}}", env_var = ENV_SPOOLING_SECRET.as_ref()),
                     ),
                 ]);
             }

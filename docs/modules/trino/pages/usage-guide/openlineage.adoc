@@ -35,21 +35,19 @@ spec:
           http:
             host: marquez
             port: 5000
-            # path: /api/v1/lineage # <5>
+            # path: /api/v1/lineage # <4>
             # tls:
             #   verification:
             #     server:
             #       caCert:
             #         secretClass: marquez-ca
       # namespace: trino-lineage # <3>
-      # jobName: "$QUERY_ID" # <4>
   ...
 ----
 <1> Adding the `lineage` block enables OpenLineage event emission. Omit it entirely to leave OpenLineage off (the default).
 <2> The OpenLineage backend connection. Use `inline` (shown here) to define the connection directly, or `reference: <name>` to point at an `OpenLineageConnection` resource in the same namespace. Required. The connection selects a transport; `http` is currently the only one supported.
 <3> Optional. The OpenLineage namespace events are reported under. Defaults to `default`.
-<4> Optional. Sets the OpenLineage job name format (`openlineage-event-listener.job.name-format`). Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. When unset, Trino defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
-<5> Optional. URL path of the endpoint events are POSTed to, mapped onto `openlineage-event-listener.transport.endpoint`. Defaults to `/api/v1/lineage`.
+<4> Optional. URL path of the endpoint events are POSTed to, mapped onto `openlineage-event-listener.transport.endpoint`. Defaults to `/api/v1/lineage`.
 
 The `OpenLineageConnection` resource (`lineage.stackable.tech`) is a reusable definition of a connection to an OpenLineage backend, provided by the Stackable operator library.
 Reference it to share one backend definition across multiple clusters:
@@ -66,7 +64,7 @@ spec:
     port: 5000
 ----
 
-The transport scheme is `https` when `tls.verification.server` is configured, otherwise `http`.
+The transport scheme is `https` when `tls` is configured, otherwise `http`.
 When the connection verifies the server against a `secretClass` CA (as in the commented `tls` block above), the operator mounts that SecretClass certificate into the coordinator and adds it to the trust store, so the OpenLineage listener trusts the backend's certificate.
 
 IMPORTANT: With TLS server verification, the `host` must match a Subject Alternative Name in the backend's certificate. Use the exact hostname the certificate was issued for (for an in-cluster backend, typically its full service FQDN such as `marquez.<namespace>.svc.cluster.local`), otherwise the TLS handshake fails and no events are delivered.
