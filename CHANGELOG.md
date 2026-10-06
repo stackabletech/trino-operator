@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
   ([#944]).
 - Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
+- Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#924]).
 
 ### Changed
 
@@ -61,6 +62,7 @@ All notable changes to this project will be documented in this file.
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 [#923]: https://github.com/stackabletech/trino-operator/pull/923
+[#924]: https://github.com/stackabletech/trino-operator/pull/924
 [#925]: https://github.com/stackabletech/trino-operator/pull/925
 [#928]: https://github.com/stackabletech/trino-operator/pull/928
 [#932]: https://github.com/stackabletech/trino-operator/pull/932

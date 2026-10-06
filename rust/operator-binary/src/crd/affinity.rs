@@ -8,12 +8,14 @@ use stackable_operator::{
 use crate::crd::{
     APP_NAME, TrinoRole,
     catalog::{self, TrinoCatalogConnector},
+    v1alpha1,
 };
 
 pub fn get_affinity(
     cluster_name: &str,
     role: &TrinoRole,
     trino_catalogs: &[catalog::v1alpha1::TrinoCatalog],
+    opa_config: Option<&v1alpha1::TrinoAuthorizationOpaConfig>,
 ) -> StackableAffinityFragment {
     let affinity_between_cluster_pods = affinity_between_cluster_pods(APP_NAME, cluster_name, 20);
     let mut affinities = vec![affinity_between_cluster_pods];
@@ -75,6 +77,20 @@ pub fn get_affinity(
             .collect(),
     };
     affinities.extend(additional_affinities);
+
+    // Only the coordinator talks to OPA (it does the authorization checks for the whole cluster),
+    // so we only co-locate the coordinator with the OPA Pods.
+    if let Some(opa_config) = opa_config
+        && role == &TrinoRole::Coordinator
+    {
+        affinities.push(affinity_between_role_pods(
+            "opa",
+            &opa_config.opa.config_map_name, // The discovery cm has the same name as the OpaCluster itself
+            "server",
+            50,
+        ));
+    }
+
     StackableAffinityFragment {
         pod_affinity: Some(PodAffinity {
             preferred_during_scheduling_ignored_during_execution: Some(affinities),
@@ -104,6 +120,7 @@ mod tests {
             },
             apimachinery::pkg::apis::meta::v1::LabelSelector,
         },
+        utils::yaml_from_str_singleton_map,
     };
 
     use super::*;
@@ -200,7 +217,7 @@ mod tests {
     #[rstest]
     #[case(TrinoRole::Coordinator)]
     #[case(TrinoRole::Worker)]
-    fn test_hms_and_hdfs_affinity(#[case] role: TrinoRole) {
+    fn test_hms_hdfs_and_opa_affinity(#[case] role: TrinoRole) {
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster
@@ -213,6 +230,10 @@ mod tests {
             catalogLabelSelector:
               matchLabels:
                 trino: simple-trino
+            authorization:
+              opa:
+                configMapName: simple-opa
+                package: trino
           coordinators:
             roleGroups:
               default:
@@ -223,7 +244,7 @@ mod tests {
                 replicas: 1
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -240,9 +261,8 @@ mod tests {
               hdfs:
                 configMap: simple-hdfs
         "#;
-        let deserializer = serde_yaml::Deserializer::from_str(input);
         let hive_catalog_1: catalog::v1alpha1::TrinoCatalog =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+            yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
         apiVersion: trino.stackable.tech/v1alpha1
@@ -255,9 +275,8 @@ mod tests {
           connector:
             tpch: {}
         "#;
-        let deserializer = serde_yaml::Deserializer::from_str(input);
         let tpch_catalog: catalog::v1alpha1::TrinoCatalog =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+            yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
             apiVersion: trino.stackable.tech/v1alpha1
@@ -274,9 +293,8 @@ mod tests {
                   s3:
                     reference: minio
             "#;
-        let deserializer = serde_yaml::Deserializer::from_str(input);
         let hive_catalog_2: catalog::v1alpha1::TrinoCatalog =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+            yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let merged_config = crate::controller::validate::merged_role_group_config(
             &trino,
@@ -339,6 +357,27 @@ mod tests {
                                 (
                                     "app.kubernetes.io/component".to_string(),
                                     "metastore".to_string(),
+                                ),
+                            ])),
+                            ..LabelSelector::default()
+                        }),
+                        topology_key: "kubernetes.io/hostname".to_string(),
+                        ..PodAffinityTerm::default()
+                    },
+                    weight: 50,
+                });
+                expected_affinities.push(WeightedPodAffinityTerm {
+                    pod_affinity_term: PodAffinityTerm {
+                        label_selector: Some(LabelSelector {
+                            match_labels: Some(BTreeMap::from([
+                                ("app.kubernetes.io/name".to_string(), "opa".to_string()),
+                                (
+                                    "app.kubernetes.io/instance".to_string(),
+                                    "simple-opa".to_string(),
+                                ),
+                                (
+                                    "app.kubernetes.io/component".to_string(),
+                                    "server".to_string(),
                                 ),
                             ])),
                             ..LabelSelector::default()

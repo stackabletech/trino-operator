@@ -313,6 +313,7 @@ where
         &trino.name_any(),
         trino_role,
         &dereferenced_objects.catalog_definitions,
+        trino.get_opa_config(),
     );
 
     let mut role_groups = BTreeMap::new();
