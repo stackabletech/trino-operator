@@ -2,14 +2,13 @@ use std::collections::BTreeMap;
 
 use stackable_operator::{
     k8s_openapi::api::core::v1::{Service, ServicePort, ServiceSpec},
-    kvp::Labels,
     v2::builder::service::{Scheme, Scraping, prometheus_annotations, prometheus_labels},
 };
 
 use crate::{
     controller::{
         RoleGroupName, ValidatedCluster,
-        build::{object_meta, ports},
+        build::{object_meta, ports, recommended_labels_for_role_group_resources},
     },
     crd::{METRICS_PORT, METRICS_PORT_NAME, TrinoRole},
 };
@@ -20,7 +19,6 @@ pub fn build_rolegroup_headless_service(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
     role_group_name: &RoleGroupName,
-    recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
     ports: Vec<ServicePort>,
 ) -> Service {
@@ -31,7 +29,7 @@ pub fn build_rolegroup_headless_service(
                 .role_group_resource_names(role, role_group_name)
                 .headless_service_name()
                 .to_string(),
-            recommended_labels.clone(),
+            recommended_labels_for_role_group_resources(cluster, role, role_group_name),
         )
         .build(),
         spec: Some(ServiceSpec {
@@ -52,7 +50,6 @@ pub fn build_rolegroup_metrics_service(
     cluster: &ValidatedCluster,
     role: &TrinoRole,
     role_group_name: &RoleGroupName,
-    recommended_labels: &Labels,
     selector: BTreeMap<String, String>,
 ) -> Service {
     Service {
@@ -62,7 +59,7 @@ pub fn build_rolegroup_metrics_service(
                 .role_group_resource_names(role, role_group_name)
                 .metrics_service_name()
                 .to_string(),
-            recommended_labels.clone(),
+            recommended_labels_for_role_group_resources(cluster, role, role_group_name),
         )
         .with_labels(prometheus_labels(&Scraping::Enabled))
         .with_annotations(prometheus_annotations(
@@ -112,7 +109,7 @@ mod tests {
     use stackable_operator::v2::types::operator::RoleGroupName;
 
     use super::*;
-    use crate::controller::{app_version_label, validated_cluster};
+    use crate::controller::{app_version_label, build::role_group_selector, validated_cluster};
 
     /// Every metrics Service must carry the Prometheus scrape label and the
     /// `prometheus.io/path|port|scheme|scrape` annotations, or Prometheus stops discovering the
@@ -122,17 +119,11 @@ mod tests {
         let cluster = validated_cluster();
         let role = TrinoRole::Coordinator;
         let role_group_name: RoleGroupName = "default".parse().expect("valid role group name");
-        // Mirrors how `build()` derives the label arguments.
-        let recommended_labels = cluster.recommended_labels(&role, &role_group_name);
-        let selector = cluster.role_group_selector(&role, &role_group_name);
 
-        let service = build_rolegroup_metrics_service(
-            &cluster,
-            &role,
-            &role_group_name,
-            &recommended_labels,
-            selector.into(),
-        );
+        let selector = role_group_selector(&cluster, &role, &role_group_name);
+
+        let service =
+            build_rolegroup_metrics_service(&cluster, &role, &role_group_name, selector.into());
 
         assert_eq!(
             json!({

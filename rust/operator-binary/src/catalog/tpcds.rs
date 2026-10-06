@@ -15,7 +15,6 @@ impl ToCatalogConfig for TpcdsConnector {
         catalog_name: &TrinoCatalogName,
         _catalog_namespace: &NamespaceName,
         _client: &Client,
-        _trino_version: u16,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
         // No additional properties needed
         Ok(CatalogConfig::new(catalog_name, CONNECTOR_NAME))

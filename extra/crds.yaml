@@ -6,7 +6,6 @@ metadata:
 spec:
   group: trino.stackable.tech
   names:
-    categories: []
     kind: TrinoCluster
     plural: trinoclusters
     shortNames:
@@ -14,8 +13,7 @@ spec:
     singular: trinocluster
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
@@ -1486,7 +1484,8 @@ spec:
                     default: {}
                     description: |-
                       `envOverrides` configure environment variables to be set in the Pods.
-                      It is a map from strings to strings - environment variables and the value to set.
+                      It is a map from environment variable names to their values. The names are validated to be
+                      valid environment variable names.
                       Read the
                       [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                       for more information and consult the operator specific usage guide to find out about
@@ -2094,7 +2093,8 @@ spec:
                           default: {}
                           description: |-
                             `envOverrides` configure environment variables to be set in the Pods.
-                            It is a map from strings to strings - environment variables and the value to set.
+                            It is a map from environment variable names to their values. The names are validated to be
+                            valid environment variable names.
                             Read the
                             [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                             for more information and consult the operator specific usage guide to find out about
@@ -2191,12 +2191,13 @@ spec:
                     description: Version of the product, e.g. `1.4.1`.
                     type: string
                   pullPolicy:
-                    default: Always
                     description: '[Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the image.'
                     enum:
                     - IfNotPresent
                     - Always
                     - Never
+                    - null
+                    nullable: true
                     type: string
                   pullSecrets:
                     description: '[Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry.'
@@ -2222,11 +2223,46 @@ spec:
                     type: string
                   stackableVersion:
                     description: |-
-                      Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
+                      Stackable version of the product, e.g. `26.7.0` or `0.0.0-dev`.
 
-                      If not specified, the operator will use its own version, e.g. `23.4.1`. When using a nightly
+                      If not specified, the operator will use its own version, e.g. `26.7.1`. When using a nightly
                       operator or a PR version, it will use the nightly `0.0.0-dev` image.
+
+                      If this is used in combination with `stackableVersionPolicy: LatestPatch`, the correct
+                      floating tag is computed automatically, e.g. `26.7.0` becomes `26.7` for the product image.
                     nullable: true
+                    type: string
+                  stackableVersionPolicy:
+                    default: Exact
+                    description: |-
+                      Configure the Stackable version policy. Defaults to `Exact`.
+
+                      Currently, two variants are supported:
+
+                      - `Exact`, which uses the exact, fully-qualified, canonical version of a product image.
+                      - `LatestPatch`, referencing a floating tag which always points to the latest patch version
+                        in the current release line. The current release line is either automatically derived by
+                        the operator based on its own version, or can be overridden with `stackableVersion`.
+
+                      A potential newer image is only pulled when Pods are rotated or their containers are
+                      restarted. Pods are NOT rotated and containers are NOT restarted automatically when a new
+                      image is available. This behaviour makes this a passive update mechanism, rather than an
+                      active one.
+
+                      It should be noted that when this field is set to `LatestPatch`, the operator automatically
+                      uses `Always` as the pull policy for product images. If set to `Exact`, `IfNotPresent` is
+                      used. Explicitly setting `pullPolicy` takes precedence.
+
+                      ### Examples
+
+                      - The `stackableVersion` field is not set, the operator falls back to its own version, eg.
+                        26.7.0. If this field is set to `LatestPatch`, the `26.7` floating tag will be used for
+                        product images, else, `26.7.0` will be used.
+                      - The `stackableVersion` field is set to `26.3.0`. If this field is set to `LatestPatch`,
+                        the `26.3` floating tag will be used for product images, else, `26.3.0` will be used.
+                    enum:
+                    - Exact
+                    - LatestPatch
                     type: string
                 type: object
               objectOverrides:
@@ -2765,7 +2801,8 @@ spec:
                     default: {}
                     description: |-
                       `envOverrides` configure environment variables to be set in the Pods.
-                      It is a map from strings to strings - environment variables and the value to set.
+                      It is a map from environment variable names to their values. The names are validated to be
+                      valid environment variable names.
                       Read the
                       [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                       for more information and consult the operator specific usage guide to find out about
@@ -3365,7 +3402,8 @@ spec:
                           default: {}
                           description: |-
                             `envOverrides` configure environment variables to be set in the Pods.
-                            It is a map from strings to strings - environment variables and the value to set.
+                            It is a map from environment variable names to their values. The names are validated to be
+                            valid environment variable names.
                             Read the
                             [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
                             for more information and consult the operator specific usage guide to find out about
@@ -3501,15 +3539,12 @@ metadata:
 spec:
   group: trino.stackable.tech
   names:
-    categories: []
     kind: TrinoCatalog
     plural: trinocatalogs
-    shortNames: []
     singular: trinocatalog
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
@@ -4294,4 +4329,3 @@ spec:
         type: object
     served: true
     storage: true
-    subresources: {}

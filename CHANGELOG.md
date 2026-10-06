@@ -6,22 +6,74 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
+  ([#944]).
+- Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
 - Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#923]).
 
 ### Changed
 
+- BREAKING: `spec.image.stackableVersion` must now be a full, valid semver version, e.g. `26.7.1`.
+  Abbreviated values such as `26.7` are no longer accepted ([#944]).
+- BREAKING: `spec.image.pullPolicy` now defaults to `IfNotPresent` for non-floating tags instead of
+  always defaulting to `Always` ([#944]).
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
-- Bump `stackable-operator` to 0.114.0 ([#918]).
+- Bump `stackable-operator` to 0.118.0 ([#918], [#932], [#944]).
 - The RBAC ServiceAccount and RoleBinding are now built with the operator-rs `v2::rbac`
   functions and carry the full set of recommended labels ([#913]).
 - BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
   Previously a TrinoCluster missing either role was accepted by the API server but failed reconciliation ([#913]).
+- The reconciler now applies resources and derives the cluster status in discrete
+  apply and update_status steps for the `trino_controller` ([#923]).
+- All product containers now run with `securityContext.runAsNonRoot` set to `true` to improve security ([#925]).
+- Internal operator refactoring: the Trino version is no longer passed to the catalog configuration,
+  as no catalog uses it for version-dependent behaviour anymore ([#928]).
+- Environment variable overrides (`envOverrides`) are now merged into the operator-set
+  environment variables by name, so an override replaces the operator's value instead of
+  producing a duplicated entry whose precedence depended on Kubernetes' duplicate-name
+  handling ([#932]).
+- BREAKING: Remove the `app.kubernetes.io/component` and `app.kubernetes.io/role-group` labels
+  from the resources they don't apply to, and the `app.kubernetes.io/version` label from PVC
+  templates (all previously set to the placeholder value `none`). After the operator upgrade,
+  delete each coordinator StatefulSet so that the operator immediately recreates it with the
+  new labels ([#932]).
+- Make operations infallible where dependent on static inputs ([#939], [#943]).
+- Internal operator refactoring: the validated cluster carries each role's configuration in its own
+  typed fields instead of maps keyed by role, and the coordinator's role config is no longer
+  converted to the worker's shape and its listener class recovered afterwards ([#945]).
+- Bump stackable-operator to 0.119.0 ([#949]).
+
+### Fixed
+
+- Fix a longstanding problem of including empty `categories`, `shortNames` and `additionalPrinterColumns` in the CRDs,
+  which could cause problems with GitOps tools (e.g. ArgoCD) reporting a diff in the custom resources.
+  See [our internal issue](https://github.com/stackabletech/hdfs-operator/issues/626) and [the fix](https://github.com/kube-rs/kube/pull/2042) for details ([#925]).
+- `S3Connection`s without a `tls` section are accepted again and configured as `s3.endpoint=http://...`.
+  Trino's native S3 file system takes the transport from the endpoint scheme, so requiring TLS was never necessary ([#928]).
+- The operator now watches all resources that it creates and early-exits the reconcile action when the
+  cluster is marked for deletion ([#934]).
+- A coordinator role group that does not set `replicas` is now counted as one replica instead of zero
+  when predicting the coordinator pods. Kubernetes runs a single pod for a `StatefulSet` with
+  `replicas: null`, but counting it as zero left `discovery.uri` out of `config.properties`
+  altogether, so no pod could find the coordinator ([#945]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 [#923]: https://github.com/stackabletech/trino-operator/pull/923
+<<<<<<< HEAD
+=======
+[#925]: https://github.com/stackabletech/trino-operator/pull/925
+[#928]: https://github.com/stackabletech/trino-operator/pull/928
+[#932]: https://github.com/stackabletech/trino-operator/pull/932
+[#934]: https://github.com/stackabletech/trino-operator/pull/934
+[#939]: https://github.com/stackabletech/trino-operator/pull/939
+[#943]: https://github.com/stackabletech/trino-operator/pull/943
+[#944]: https://github.com/stackabletech/trino-operator/pull/944
+[#945]: https://github.com/stackabletech/trino-operator/pull/945
+[#949]: https://github.com/stackabletech/trino-operator/pull/949
+>>>>>>> origin/main
 
 ## [26.7.0] - 2026-07-21
 
