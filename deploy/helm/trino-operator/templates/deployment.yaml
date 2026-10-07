@@ -84,6 +84,14 @@ spec:
 
             {{- include "trino-operator.telemetry.envVars" . | nindent 12 }}
             {{- include "trino-operator.maintenance.envVars" . | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: 8443
+              scheme: HTTPS
+            periodSeconds: 3
+            failureThreshold: 30
+            timeoutSeconds: 3
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
