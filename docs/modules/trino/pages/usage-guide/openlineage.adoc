@@ -3,8 +3,8 @@
 :keywords: OpenLineage, data lineage, event listener, Marquez, Trino
 
 https://openlineage.io/[OpenLineage] is an open standard for data lineage collection.
-Trino ships an https://trino.io/docs/current/admin/event-listeners-openlineage.html[OpenLineage event listener] as a core plugin, which emits a lineage event for every executed query.
-The Trino operator can configure this listener automatically, so lineage from all queries run on the cluster is sent to an OpenLineage-compatible backend such as https://marquezproject.github.io/marquez/[Marquez], without any manual configuration.
+Trino ships an https://trino.io/docs/current/admin/event-listeners-openlineage.html[OpenLineage event listener] as a core plugin, which emits lineage events for the queries run on the cluster.
+The `spec.clusterConfig.lineage` block in the TrinoCluster custom resource configures the OpenLineage event listener and its connection to a backend.
 
 When configured, the operator:
 
@@ -15,11 +15,15 @@ When configured, the operator:
 
 The event listener runs on the coordinator only; workers are not affected.
 
-NOTE: The Trino OpenLineage plugin only emits events for data-modifying query types (`INSERT`, `DELETE`, `MERGE`, `UPDATE`, `ALTER_TABLE_EXECUTE` and `DATA_DEFINITION`) by default; plain `SELECT` queries are filtered out. Adjust `openlineage-event-listener.trino.include-query-types` via config overrides (see below) to change this.
+[IMPORTANT]
+====
+By default, `SELECT` queries do *not* emit any lineage events, so a cluster that only reads data produces no lineage at all.
+To also capture reads, set `openlineage-event-listener.trino.include-query-types` as shown in <<include-select-queries>>.
+====
 
 == Enabling OpenLineage
 
-OpenLineage is configured through `clusterConfig.lineage.connection`, which either inlines an OpenLineage connection or references a standalone `OpenLineageConnection` resource by name:
+OpenLineage is configured through `spec.clusterConfig.lineage.connection`, which either inlines an OpenLineage connection or references a standalone `OpenLineageConnection` resource by name:
 
 [source,yaml]
 ----
@@ -47,11 +51,11 @@ spec:
   ...
 ----
 <1> Adding the `lineage` block enables OpenLineage event emission. Omit it entirely to leave OpenLineage off (the default).
-<2> The OpenLineage backend connection. Use `inline` (shown here) to define the connection directly, or `reference: <name>` to point at an `OpenLineageConnection` resource in the same namespace. Required. The connection selects a transport; `http` is currently the only one supported.
+<2> Required. The OpenLineage backend connection. Use `inline` (shown here) to define the connection directly, or `reference: <name>` to point at an `OpenLineageConnection` resource in the same namespace.
 <3> Optional. The OpenLineage namespace events are reported under. Defaults to `default`.
-<4> Optional. URL path of the endpoint events are POSTed to, mapped onto `openlineage-event-listener.transport.endpoint`. Defaults to `/api/v1/lineage`.
-<5> Optional. Sets the OpenLineage job name format (`openlineage-event-listener.job.name-format`). Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. Defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
-<6> Optional. Sets `openlineage-event-listener.trino.uri`, from which Trino derives the namespace of every dataset it reports: the scheme is replaced with `trino`, so `https://trino-prod` yields datasets such as `trino://trino-prod` / `catalog.schema.table`. The URI is only an identifier and is never connected to. Defaults to `https://<name of the TrinoCluster>.<its namespace>` when empty or unset, so equally named TrinoClusters in different namespaces report distinct datasets. Set it explicitly to keep dataset identities stable across Kubernetes clusters or namespace moves.
+<4> Optional. URL path of the endpoint events are POSTed to. Defaults to `/api/v1/lineage`.
+<5> Optional. Sets the OpenLineage job name format. Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. Defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
+<6> Optional. Sets `openlineage-event-listener.trino.uri`, from which Trino derives the namespace of every dataset it reports. The URI is only an identifier and is never connected to. Defaults to `https://<name of the TrinoCluster>.<its namespace>` when empty or unset. Set it explicitly to keep dataset identities stable across Kubernetes clusters or namespace moves.
 
 The `OpenLineageConnection` resource (`lineage.stackable.tech`) is a reusable definition of a connection to an OpenLineage backend, provided by the Stackable operator library.
 Reference it to share one backend definition across multiple clusters:
@@ -68,10 +72,10 @@ spec:
     port: 5000
 ----
 
-The transport scheme is `https` when `tls` is configured, otherwise `http`.
-When the connection verifies the server against a `secretClass` CA (as in the commented `tls` block above), the operator mounts that SecretClass certificate into the coordinator and adds it to the trust store, so the OpenLineage listener trusts the backend's certificate.
-
-IMPORTANT: With TLS server verification, the `host` must match a Subject Alternative Name in the backend's certificate. Use the exact hostname the certificate was issued for (for an in-cluster backend, typically its full service FQDN such as `marquez.<namespace>.svc.cluster.local`), otherwise the TLS handshake fails and no events are delivered.
+[IMPORTANT]
+====
+With TLS server verification, the `host` must match a Subject Alternative Name in the backend's certificate. Use the exact hostname the certificate was issued for (for an in-cluster backend, typically its full service FQDN such as `marquez.<namespace>.svc.cluster.local`), otherwise the TLS handshake fails and no events are delivered.
+====
 
 [#authentication]
 == Authentication
@@ -108,7 +112,7 @@ stringData:
 <2> The Secret must be in the cluster's namespace so it can be projected into the coordinator.
 <3> The token must be stored under the fixed key `apiKey`. The token is mounted as a file into the coordinator and resolved into the event listener configuration at startup, so it never appears in the ConfigMap or the pod's environment.
 
-The operator translates this into the OpenLineage HTTP transport's `api-key` (bearer) authentication.
+The operator translates this into the OpenLineage HTTP transport's `openlineage-event-listener.transport.api-key` (bearer) authentication.
 Combine it with the `tls` block above when the backend also needs TLS server verification.
 
 == Overriding the generated configuration
@@ -122,7 +126,24 @@ spec:
   coordinators:
     configOverrides:
       event-listener.properties:
-        openlineage-event-listener.trino.uri: "https://trino.example.com:8443"
+        openlineage-event-listener.transport.timeout: "10s"
 ----
 
 Event listeners run on the coordinator, so `event-listener.properties` overrides only take effect on the coordinator role.
+
+[#include-select-queries]
+=== Emitting lineage for `SELECT` queries
+
+`openlineage-event-listener.trino.include-query-types` controls which query types emit lineage events.
+It replaces the default list, so repeat the default types when adding `SELECT`:
+
+[source,yaml]
+----
+spec:
+  coordinators:
+    configOverrides:
+      event-listener.properties:
+        openlineage-event-listener.trino.include-query-types: "SELECT,INSERT,DELETE,MERGE,UPDATE,ALTER_TABLE_EXECUTE,DATA_DEFINITION"
+----
+
+Every `SELECT` then produces a `START` and a `COMPLETE` (or `FAIL`) event, which can noticeably increase the load on the lineage backend for clusters serving many interactive or dashboard queries.
