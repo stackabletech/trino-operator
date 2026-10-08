@@ -258,7 +258,7 @@ mod tests {
             yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
+        apiVersion: trino.stackable.tech/v1alpha2
         kind: TrinoCatalog
         metadata:
           name: hive-1
@@ -276,7 +276,7 @@ mod tests {
             yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
+        apiVersion: trino.stackable.tech/v1alpha2
         kind: TrinoCatalog
         metadata:
           name: tpch
@@ -290,7 +290,7 @@ mod tests {
             yaml_from_str_singleton_map(input).expect("illegal test input");
 
         let input = r#"
-            apiVersion: trino.stackable.tech/v1alpha1
+            apiVersion: trino.stackable.tech/v1alpha2
             kind: TrinoCatalog
             metadata:
               name: hive-2

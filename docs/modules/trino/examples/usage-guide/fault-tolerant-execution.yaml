@@ -96,7 +96,7 @@ stringData:
   accessKey: minio-access-key
   secretKey: minio-secret-key
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: tpch

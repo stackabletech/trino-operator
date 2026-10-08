@@ -43,7 +43,7 @@ mod tests {
     #[test]
     fn test_cr_parsing() {
         let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
+        apiVersion: trino.stackable.tech/v1alpha2
         kind: TrinoCatalog
         metadata:
           name: postgres
