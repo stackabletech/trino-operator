@@ -65,6 +65,6 @@ pub enum IcebergRestCatalogOAuthCredential {
 
     // The credential to exchange for a token in the OAuth2 client credentials flow with the server.
     ///
-    /// The Secret needs to contain the `username` and `password` keys.
+    /// The Secret needs to contain the `clientId` and `clientSecret` keys.
     CredentialSecretName(String),
 }

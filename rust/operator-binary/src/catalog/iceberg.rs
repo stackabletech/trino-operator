@@ -98,23 +98,23 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
                 match credential {
                     IcebergRestCatalogOAuthCredential::CredentialSecretName(secret_name) => {
                         // We can't use `add_env_property_from_secret`, as we need to concatenate
-                        // user and password in the Trino configuration. So instead we come up with
-                        // our own envs and bind them.
+                        // clientId and clientSecret in the Trino configuration. So instead we come
+                        // up with our own envs and bind them.
                         let property = "iceberg.rest-catalog.oauth2.credential";
                         let base_env_name = calculate_env_name(catalog_name, property);
-                        let username_env_name = format!("{base_env_name}_USERNAME");
-                        let password_env_name = format!("{base_env_name}_PASSWORD");
+                        let client_id_env_name = format!("{base_env_name}_CLIENT_ID");
+                        let client_secret_env_name = format!("{base_env_name}_CLIENT_SECRET");
                         catalog_config.add_property(
                             property,
-                            format!("${{ENV:{username_env_name}}}:${{ENV:{password_env_name}}}"),
+                            format!("${{ENV:{client_id_env_name}}}:${{ENV:{client_secret_env_name}}}"),
                         );
 
                         catalog_config.env_bindings.push(EnvVar {
-                            name: username_env_name,
+                            name: client_id_env_name,
                             value_from: Some(EnvVarSource {
                                 secret_key_ref: Some(SecretKeySelector {
                                     name: secret_name.to_owned(),
-                                    key: "username".to_owned(),
+                                    key: "clientId".to_owned(),
                                     ..Default::default()
                                 }),
                                 ..Default::default()
@@ -122,11 +122,11 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
                             ..Default::default()
                         });
                         catalog_config.env_bindings.push(EnvVar {
-                            name: password_env_name,
+                            name: client_secret_env_name,
                             value_from: Some(EnvVarSource {
                                 secret_key_ref: Some(SecretKeySelector {
                                     name: secret_name.to_owned(),
-                                    key: "password".to_owned(),
+                                    key: "clientSecret".to_owned(),
                                     ..Default::default()
                                 }),
                                 ..Default::default()
