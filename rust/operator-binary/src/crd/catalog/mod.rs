@@ -390,6 +390,16 @@ mod tests {
           - connector:
               iceberg:
                 catalog:
+                  rest:
+                    uri: https://my.secure.rest
+                    security:
+                      oAuth2:
+                        serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
+                        credential:
+                          tokenSecretName: my-keycloak-token
+          - connector:
+              iceberg:
+                catalog:
                   userProvided: {}
           - connector:
               tpcds: {}
