@@ -44,6 +44,7 @@ All notable changes to this project will be documented in this file.
   typed fields instead of maps keyed by role, and the coordinator's role config is no longer
   converted to the worker's shape and its listener class recovered afterwards ([#945]).
 - Bump stackable-operator to 0.119.0 ([#949]).
+- test: Bump vector-aggregator to 0.58.0 ([#953]).
 
 ### Fixed
 
@@ -74,6 +75,7 @@ All notable changes to this project will be documented in this file.
 [#944]: https://github.com/stackabletech/trino-operator/pull/944
 [#945]: https://github.com/stackabletech/trino-operator/pull/945
 [#949]: https://github.com/stackabletech/trino-operator/pull/949
+[#953]: https://github.com/stackabletech/trino-operator/pull/953
 
 ## [26.7.0] - 2026-07-21
 
