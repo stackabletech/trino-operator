@@ -4,13 +4,13 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
 };
 
-use super::commons::{HdfsConnection, MetastoreConnection};
+use super::commons::{HdfsConnection, HiveMetastoreConnection};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HiveConnector {
     /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
-    pub metastore: MetastoreConnection,
+    pub metastore: HiveMetastoreConnection,
 
     /// Connection to an S3 store.
     /// Please make sure that the underlying Hive metastore also has access to the S3 store.

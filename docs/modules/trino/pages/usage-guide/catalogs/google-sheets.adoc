@@ -9,7 +9,7 @@ Consult the {trino-google-sheets-connector}[official documentation] on how to us
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: gsheet

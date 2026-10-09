@@ -38,12 +38,12 @@ pub enum Property {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crd::catalog::{TrinoCatalogConnector, v1alpha1};
+    use crate::crd::catalog::v1alpha1;
 
     #[test]
     fn test_cr_parsing() {
         let input = r#"
-        apiVersion: trino.stackable.tech/v1alpha1
+        apiVersion: trino.stackable.tech/v1alpha2
         kind: TrinoCatalog
         metadata:
           name: postgres
@@ -71,7 +71,7 @@ mod tests {
 
         assert_eq!(
             catalog.spec.connector,
-            TrinoCatalogConnector::Generic(GenericConnector {
+            v1alpha1::TrinoCatalogConnector::Generic(GenericConnector {
                 connector_name: "postgresql".to_string(),
                 properties: BTreeMap::from([
                     (

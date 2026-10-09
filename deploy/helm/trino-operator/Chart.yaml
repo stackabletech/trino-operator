@@ -32,7 +32,7 @@ annotations:
       displayName: TrinoCluster
       description: A Trino cluster stacklet. This resource is managed by the Stackable operator for Trino.
     - kind: TrinoCatalog
-      version: v1alpha1
+      version: v1alpha2
       name: trinocatalogs.trino.stackable.tech
       displayName: TrinoCatalog
       description: The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.

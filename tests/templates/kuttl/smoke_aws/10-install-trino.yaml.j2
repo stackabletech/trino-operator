@@ -70,7 +70,7 @@ stringData:
   alice: alice
   bob: bob
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: hive
@@ -86,7 +86,7 @@ spec:
       hdfs:
         configMap: hdfs
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: iceberg
@@ -102,7 +102,7 @@ spec:
       hdfs:
         configMap: hdfs
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: tpch

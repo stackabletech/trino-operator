@@ -78,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Crd => {
             TrinoCluster::merged_crd(TrinoClusterVersion::V1Alpha1)?
                 .print_yaml_schema(built_info::PKG_VERSION, &SerializeOptions::default())?;
-            TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1)?
+            TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha2)?
                 .print_yaml_schema(built_info::PKG_VERSION, &SerializeOptions::default())?;
         }
         Command::Run(RunArguments {
