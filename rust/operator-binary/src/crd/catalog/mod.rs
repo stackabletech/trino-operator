@@ -386,7 +386,7 @@ mod tests {
                       oAuth2:
                         serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
                         credential:
-                          credentialSecretName: my-keycloak-credentials
+                          credentialsSecretName: my-keycloak-credentials
           - connector:
               iceberg:
                 catalog:
