@@ -13,8 +13,8 @@ use crate::{
     crd::catalog::{
         TrinoCatalogName,
         iceberg::{
-            IcebergCatalogConnection, IcebergRestCatalogConnection,
-            IcebergRestCatalogOAuthCredential, IcebergRestCatalogAuthentication,
+            IcebergCatalogConnection, IcebergRestCatalogAuthentication,
+            IcebergRestCatalogConnection, IcebergRestCatalogOAuthCredential,
         },
         v1alpha2::IcebergConnector,
     },
@@ -106,7 +106,9 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
                         let client_secret_env_name = format!("{base_env_name}_CLIENT_SECRET");
                         catalog_config.add_property(
                             property,
-                            format!("${{ENV:{client_id_env_name}}}:${{ENV:{client_secret_env_name}}}"),
+                            format!(
+                                "${{ENV:{client_id_env_name}}}:${{ENV:{client_secret_env_name}}}"
+                            ),
                         );
 
                         catalog_config.env_bindings.push(EnvVar {

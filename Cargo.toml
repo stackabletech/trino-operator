@@ -31,5 +31,5 @@ tracing = "0.1"
 url = "2.5"
 
 [patch."https://github.com/stackabletech/operator-rs.git"]
-stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", branch = "feat/from_docs" }
+stackable-operator = { git = "https://github.com/stackabletech//operator-rs.git", branch = "feat/track-changed-types" }
 # stackable-operator = { path = "../operator-rs/crates/stackable-operator" }

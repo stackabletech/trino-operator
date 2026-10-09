@@ -35,13 +35,14 @@ use crate::crd::catalog::{
 #[versioned(
     version(name = "v1alpha1"),
     version(name = "v1alpha2"),
+    options(k8s(experimental_conversion_tracking)),
     crates(
         kube_core = "stackable_operator::kube::core",
         kube_client = "stackable_operator::kube::client",
         k8s_openapi = "stackable_operator::k8s_openapi",
         schemars = "stackable_operator::schemars",
         versioned = "stackable_operator::versioned",
-    )
+    ),
 )]
 pub mod versioned {
     /// The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
@@ -59,9 +60,11 @@ pub mod versioned {
     pub struct TrinoCatalogSpec {
         /// The name of the catalog
         #[serde(default)]
+        #[versioned(nested)]
         pub name: TrinoCatalogNameSpec,
 
         /// The `connector` defines which connector is used.
+        #[versioned(nested)]
         pub connector: TrinoCatalogConnector,
 
         /// The `configOverrides` allow overriding arbitrary Trino settings.
@@ -120,6 +123,7 @@ pub mod versioned {
         Hive(HiveConnector),
 
         /// An [Apache Iceberg](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/iceberg) connector.
+        #[versioned(nested)]
         Iceberg(IcebergConnector),
 
         /// An [PostgreSQL](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/postgresql) connector.
@@ -189,9 +193,9 @@ impl Default for v1alpha2::TrinoCatalogNameSpec {
 impl From<IcebergCatalogConnection> for Option<HiveMetastoreConnection> {
     fn from(value: IcebergCatalogConnection) -> Self {
         match value {
-            IcebergCatalogConnection::Rest(_iceberg_rest_catalog_connection) => {
-                todo!("Puh, how should we map REST to old?")
-            }
+            // A REST catalog can't be represented in v1alpha1. The value is tracked in the status
+            // and restored when upgrading again. This is also ensured using the roundtrip tests.
+            IcebergCatalogConnection::Rest(_) => None,
             IcebergCatalogConnection::HiveMetastore(hive_metastore_connection) => {
                 Some(hive_metastore_connection)
             }
