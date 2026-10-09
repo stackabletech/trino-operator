@@ -268,6 +268,7 @@ pub fn validate(
         authorization: dereferenced_objects.trino_opa_config.clone(),
         fault_tolerant_execution: dereferenced_objects.resolved_fte_config.clone(),
         client_protocol: dereferenced_objects.resolved_client_protocol_config.clone(),
+        lineage: dereferenced_objects.resolved_lineage_config.clone(),
         coordinator_pod_refs: trino.coordinator_pods(&namespace).collect(),
         catalogs,
     };
@@ -386,6 +387,7 @@ pub(crate) fn merged_role_group_config(
         trino_opa_config: None,
         resolved_fte_config: None,
         resolved_client_protocol_config: None,
+        resolved_lineage_config: None,
     };
     let role_groups = match trino_role {
         TrinoRole::Coordinator => {
@@ -427,6 +429,7 @@ mod tests {
             trino_opa_config: None,
             resolved_fte_config: None,
             resolved_client_protocol_config: None,
+            resolved_lineage_config: None,
         }
     }
 

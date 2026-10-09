@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `spec.clusterConfig.lineage` to emit [OpenLineage](https://openlineage.io/) lineage events ([#914]).
 - Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
   ([#944]).
 - Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
@@ -61,6 +62,7 @@ All notable changes to this project will be documented in this file.
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
+[#914]: https://github.com/stackabletech/trino-operator/pull/914
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 [#923]: https://github.com/stackabletech/trino-operator/pull/923
 [#924]: https://github.com/stackabletech/trino-operator/pull/924

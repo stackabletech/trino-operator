@@ -22,7 +22,7 @@ use stackable_operator::{
     },
     config::{fragment::Fragment, merge::Merge},
     constant,
-    crd::authentication::core,
+    crd::{authentication::core, openlineage},
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt},
@@ -93,6 +93,10 @@ constant!(pub ENV_INTERNAL_SECRET: EnvVarName = "INTERNAL_SECRET");
 constant!(pub INTERNAL_SECRET_SECRET_KEY: SecretKey = "INTERNAL_SECRET");
 constant!(pub ENV_SPOOLING_SECRET: EnvVarName = "SPOOLING_SECRET");
 constant!(pub SPOOLING_SECRET_SECRET_KEY: SecretKey = "SPOOLING_SECRET");
+// OpenLineage
+/// Fixed key that must hold the OpenLineage HTTP transport bearer token inside the Secret named by
+/// `credentialsSecretName` on the connection used in `spec.clusterConfig.lineage`.
+pub const OPENLINEAGE_AUTH_SECRET_KEY: &str = "apiKey";
 // TLS
 constant!(TLS_DEFAULT_SECRET_CLASS: SecretClassName = "tls");
 // Listener
@@ -205,6 +209,10 @@ pub mod versioned {
         // File name defined in [`crate::controller::build::properties::ConfigFileName`]
         #[serde(default, rename = "spooling-manager.properties")]
         pub spooling_manager_properties: KeyValueConfigOverrides,
+
+        // File name defined in [`crate::controller::build::properties::ConfigFileName`]
+        #[serde(default, rename = "event-listener.properties")]
+        pub event_listener_properties: KeyValueConfigOverrides,
     }
 
     #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
@@ -285,12 +293,37 @@ pub mod versioned {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub client_protocol: Option<client_protocol::ClientProtocolConfig>,
 
+        /// Emit [OpenLineage](https://openlineage.io/) lineage events for the queries run on this
+        /// Trino cluster.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub lineage: Option<TrinoLineageConfig>,
+
         /// Name of the Vector aggregator [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery).
         /// It must contain the key `ADDRESS` with the address of the Vector aggregator.
         /// Follow the [logging tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/logging-vector-aggregator)
         /// to learn how to configure log aggregation with Vector.
         #[serde(skip_serializing_if = "Option::is_none")]
         pub vector_aggregator_config_map_name: Option<ConfigMapName>,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TrinoLineageConfig {
+        // no doc - it's in the struct.
+        #[serde(flatten)]
+        pub open_lineage: openlineage::v1alpha1::OpenLineageConfig,
+
+        /// Format of the OpenLineage job name emitted for each query. Accepts an arbitrary string
+        /// with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables.
+        #[serde(default = "TrinoLineageConfig::default_job_name_format")]
+        pub job_name_format: String,
+
+        /// URI identifying this Trino cluster in the emitted lineage. Trino replaces its scheme
+        /// with `trino` and uses the result as the namespace of every dataset (table) it reports,
+        /// e.g. `trino://my-trino`. It is never connected to, so it does not have to be reachable.
+        /// Defaults to `https://<name of the TrinoCluster>.<its namespace>` when empty or unset.
+        #[serde(default)]
+        pub dataset_namespace_uri: String,
     }
 
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -359,6 +392,12 @@ pub mod versioned {
     pub struct TrinoClusterStatus {
         #[serde(default)]
         pub conditions: Vec<ClusterCondition>,
+    }
+}
+
+impl v1alpha1::TrinoLineageConfig {
+    pub fn default_job_name_format() -> String {
+        "$QUERY_ID".to_string()
     }
 }
 
@@ -858,6 +897,55 @@ mod tests {
         assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
     }
 
+    #[test]
+    fn lineage_config_is_flattened() {
+        let input = r#"
+        apiVersion: trino.stackable.tech/v1alpha1
+        kind: TrinoCluster
+        metadata:
+          name: simple-trino
+        spec:
+          image:
+            productVersion: "481"
+          coordinators:
+            roleGroups:
+              default:
+                replicas: 1
+          workers:
+            roleGroups:
+              default:
+                replicas: 1
+          clusterConfig:
+            catalogLabelSelector: {}
+            lineage:
+              connection:
+                reference: marquez
+              namespace: trino-lineage
+              jobNameFormat: trino-$QUERY_ID
+              datasetNamespaceUri: https://trino-prod
+        "#;
+        let trino: v1alpha1::TrinoCluster =
+            serde_yaml::from_str(input).expect("illegal test input");
+        let lineage = trino
+            .spec
+            .cluster_config
+            .lineage
+            .expect("lineage is configured");
+        assert_eq!(lineage.open_lineage.namespace, "trino-lineage");
+        assert_eq!(lineage.job_name_format, "trino-$QUERY_ID");
+        assert_eq!(lineage.dataset_namespace_uri, "https://trino-prod");
+    }
+
+    #[test]
+    fn lineage_job_name_format_defaults_to_query_id() {
+        let lineage: v1alpha1::TrinoLineageConfig = serde_yaml::from_str(indoc::indoc! {"
+            connection:
+              reference: marquez
+        "})
+        .expect("illegal test input");
+        assert_eq!(lineage.job_name_format, "$QUERY_ID");
+    }
+
     impl RoundtripTestData for v1alpha1::TrinoClusterSpec {
         fn roundtrip_test_data() -> Vec<Self> {
             stackable_operator::utils::yaml_from_str_singleton_map(indoc::indoc! {r#"
@@ -901,6 +989,12 @@ mod tests {
                             - s3://exchange-bucket/
                           connection:
                             reference: minio
+                  lineage:
+                    connection:
+                      reference: marquez
+                    namespace: trino-lineage
+                    jobNameFormat: trino-$QUERY_ID
+                    datasetNamespaceUri: https://trino-prod
                   vectorAggregatorConfigMapName: vector-aggregator-discovery
                 coordinators:
                   config:
