@@ -96,7 +96,7 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
                     server_uri.as_str(),
                 );
                 match credential {
-                    IcebergRestCatalogOAuthCredential::CredentialSecretName(secret_name) => {
+                    IcebergRestCatalogOAuthCredential::CredentialsSecretName(secret_name) => {
                         // We can't use `add_env_property_from_secret`, as we need to concatenate
                         // clientId and clientSecret in the Trino configuration. So instead we come
                         // up with our own envs and bind them.

@@ -4113,9 +4113,9 @@ spec:
                                         - required:
                                           - tokenSecretName
                                         - required:
-                                          - credentialSecretName
+                                          - credentialsSecretName
                                         properties:
-                                          credentialSecretName:
+                                          credentialsSecretName:
                                             description: The Secret needs to contain the `clientId` and `clientSecret` keys.
                                             type: string
                                           tokenSecretName:
