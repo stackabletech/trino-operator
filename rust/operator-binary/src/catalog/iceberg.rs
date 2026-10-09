@@ -14,7 +14,7 @@ use crate::{
         TrinoCatalogName,
         iceberg::{
             IcebergCatalogConnection, IcebergRestCatalogConnection,
-            IcebergRestCatalogOAuthCredential, IcebergRestCatalogSecurity,
+            IcebergRestCatalogOAuthCredential, IcebergRestCatalogAuthentication,
         },
         v1alpha2::IcebergConnector,
     },
@@ -82,11 +82,11 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
         catalog_config.add_property("iceberg.rest-catalog.uri", self.uri.as_str());
 
         // We explicitly use a match here to catch further additions
-        match &self.security {
-            IcebergRestCatalogSecurity::None {} => {
+        match &self.authentication {
+            IcebergRestCatalogAuthentication::None {} => {
                 catalog_config.add_property("iceberg.rest-catalog.security", "NONE");
             }
-            IcebergRestCatalogSecurity::OAuth2 {
+            IcebergRestCatalogAuthentication::OAuth2 {
                 server_uri,
                 credential,
             } => {

@@ -4087,7 +4087,7 @@ spec:
                           rest:
                             description: (Recommended) use a REST catalog to store metadata.
                             properties:
-                              security:
+                              authentication:
                                 default:
                                   none: {}
                                 description: How to authenticate against the REST catalog.

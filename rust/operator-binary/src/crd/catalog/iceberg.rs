@@ -26,12 +26,12 @@ pub struct IcebergRestCatalogConnection {
 
     /// How to authenticate against the REST catalog.
     #[serde(default)]
-    pub security: IcebergRestCatalogSecurity,
+    pub authentication: IcebergRestCatalogAuthentication,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum IcebergRestCatalogSecurity {
+pub enum IcebergRestCatalogAuthentication {
     /// Don't authenticate against the REST catalog (chosen by default).
     None {},
 
@@ -49,7 +49,7 @@ pub enum IcebergRestCatalogSecurity {
     },
 }
 
-impl Default for IcebergRestCatalogSecurity {
+impl Default for IcebergRestCatalogAuthentication {
     fn default() -> Self {
         Self::None {}
     }

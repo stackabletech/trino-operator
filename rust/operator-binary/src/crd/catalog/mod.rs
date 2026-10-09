@@ -382,7 +382,7 @@ mod tests {
                 catalog:
                   rest:
                     uri: https://my.secure.rest
-                    security:
+                    authentication:
                       oAuth2:
                         serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
                         credential:
@@ -392,7 +392,7 @@ mod tests {
                 catalog:
                   rest:
                     uri: https://my.secure.rest
-                    security:
+                    authentication:
                       oAuth2:
                         serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
                         credential:
