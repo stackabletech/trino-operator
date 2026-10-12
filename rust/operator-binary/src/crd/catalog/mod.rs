@@ -159,7 +159,7 @@ pub mod versioned {
 
                 The connection is optional, as Iceberg also supports other catalogs, such as a REST catalog,
                 which (currently) can only be added using configOverrides.
-            "#
+            "#,
         ))]
         pub catalog: IcebergCatalogConnection,
 
