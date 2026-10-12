@@ -42,7 +42,7 @@ use crate::crd::catalog::{
         k8s_openapi = "stackable_operator::k8s_openapi",
         schemars = "stackable_operator::schemars",
         versioned = "stackable_operator::versioned",
-    ),
+    )
 )]
 pub mod versioned {
     /// The TrinoCatalog resource can be used to define catalogs in Kubernetes objects.
