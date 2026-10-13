@@ -547,9 +547,9 @@ commands:
         hive.security=allow-all
         s3.aws-access-key=${ENV\:CATALOG_HIVE_S3_AWS_ACCESS_KEY}
         s3.aws-secret-key=${ENV\:CATALOG_HIVE_S3_AWS_SECRET_KEY}
-        s3.endpoint=https\://minio\:9000/
+        s3.endpoint=https\://garage.__NAMESPACE__.svc.cluster.local\:9000/
         s3.path-style-access=true
-        s3.region=us-east-1
+        s3.region=region-1
       iceberg.properties: |
         connector.name=iceberg
         fs.hadoop.enabled=true
@@ -559,9 +559,9 @@ commands:
         iceberg.security=allow-all
         s3.aws-access-key=${ENV\:CATALOG_ICEBERG_S3_AWS_ACCESS_KEY}
         s3.aws-secret-key=${ENV\:CATALOG_ICEBERG_S3_AWS_SECRET_KEY}
-        s3.endpoint=https\://minio\:9000/
+        s3.endpoint=https\://garage.__NAMESPACE__.svc.cluster.local\:9000/
         s3.path-style-access=true
-        s3.region=us-east-1
+        s3.region=region-1
       postgresql.properties: |
         connection-password=${ENV\:POSTGRESQL_POSTGRESQL_DATABASE_PASSWORD}
         connection-url=jdbc\:postgresql\://postgresql\:5432/hive
@@ -598,9 +598,9 @@ commands:
         hive.security=allow-all
         s3.aws-access-key=${ENV\:CATALOG_HIVE_S3_AWS_ACCESS_KEY}
         s3.aws-secret-key=${ENV\:CATALOG_HIVE_S3_AWS_SECRET_KEY}
-        s3.endpoint=https\://minio\:9000/
+        s3.endpoint=https\://garage.__NAMESPACE__.svc.cluster.local\:9000/
         s3.path-style-access=true
-        s3.region=us-east-1
+        s3.region=region-1
       iceberg.properties: |
         connector.name=iceberg
         fs.hadoop.enabled=true
@@ -610,9 +610,9 @@ commands:
         iceberg.security=allow-all
         s3.aws-access-key=${ENV\:CATALOG_ICEBERG_S3_AWS_ACCESS_KEY}
         s3.aws-secret-key=${ENV\:CATALOG_ICEBERG_S3_AWS_SECRET_KEY}
-        s3.endpoint=https\://minio\:9000/
+        s3.endpoint=https\://garage.__NAMESPACE__.svc.cluster.local\:9000/
         s3.path-style-access=true
-        s3.region=us-east-1
+        s3.region=region-1
       postgresql.properties: |
         connection-password=${ENV\:POSTGRESQL_POSTGRESQL_DATABASE_PASSWORD}
         connection-url=jdbc\:postgresql\://postgresql\:5432/hive
