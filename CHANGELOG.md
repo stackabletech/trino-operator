@@ -64,7 +64,6 @@ All notable changes to this project will be documented in this file.
 
 - Remove support for 479 ([#956]).
 
-
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
