@@ -84,11 +84,9 @@ commands:
 {% if test_scenario['values']['trino'].startswith("477") %}
         -Dfile.encoding=UTF-8
         -XX:+EnableDynamicAgentLoading
-{% elif test_scenario['values']['trino'].startswith("479") %}
-        -Dfile.encoding=UTF-8
-        -XX:+EnableDynamicAgentLoading
-        --add-modules=jdk.incubator.vector
 {% elif test_scenario['values']['trino'].startswith("481") %}
+        --add-modules=jdk.incubator.vector
+{% elif test_scenario['values']['trino'].startswith("483") %}
         --add-modules=jdk.incubator.vector
 {% endif %}
         # Arguments from jvmArgumentOverrides
@@ -342,11 +340,9 @@ commands:
 {% if test_scenario['values']['trino'].startswith("477") %}
         -Dfile.encoding=UTF-8
         -XX:+EnableDynamicAgentLoading
-{% elif test_scenario['values']['trino'].startswith("479") %}
-        -Dfile.encoding=UTF-8
-        -XX:+EnableDynamicAgentLoading
-        --add-modules=jdk.incubator.vector
 {% elif test_scenario['values']['trino'].startswith("481") %}
+        --add-modules=jdk.incubator.vector
+{% elif test_scenario['values']['trino'].startswith("483") %}
         --add-modules=jdk.incubator.vector
 {% endif %}
         # Arguments from jvmArgumentOverrides

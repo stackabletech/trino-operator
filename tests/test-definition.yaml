@@ -20,7 +20,7 @@ dimensions:
     values:
       - "477"
       - "481"
-      - "483,oci.stackable.tech/sdp/trino:483-stackable0.0.0-dev-amd64"
+      - "483"
       # To use a custom image, add a comma and the full name after the product version
       # - 481,oci.stackable.tech/sdp/trino:481-stackable0.0.0-dev
   - name: trino-latest
