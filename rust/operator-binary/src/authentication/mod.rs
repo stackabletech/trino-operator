@@ -593,7 +593,7 @@ mod tests {
     const SEARCH_BASE: &str = "searchbase";
 
     fn setup_file_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
-        let input = deserialize(&format!(
+        let input = stackable_operator::utils::yaml_from_str_singleton_map(&format!(
             r#"
         metadata:
           name: {name}
@@ -603,7 +603,8 @@ mod tests {
               userCredentialsSecret:
                 name: {name}
         "#
-        ));
+        ))
+        .unwrap();
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
@@ -612,7 +613,7 @@ mod tests {
     }
 
     fn setup_ldap_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
-        let input = deserialize(&format!(
+        let input = stackable_operator::utils::yaml_from_str_singleton_map(&format!(
             r#"
         metadata:
           name: {name}
@@ -622,7 +623,8 @@ mod tests {
               hostname: {HOST_NAME}
               searchBase: {SEARCH_BASE}
         "#
-        ));
+        ))
+        .unwrap();
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
@@ -634,7 +636,7 @@ mod tests {
         name: &str,
         secret_class: &str,
     ) -> ResolvedAuthenticationClassRef {
-        let input = deserialize(&format!(
+        let input = stackable_operator::utils::yaml_from_str_singleton_map(&format!(
             r#"
             apiVersion: authentication.stackable.tech/v1alpha1
             kind: AuthenticationClass
@@ -648,7 +650,8 @@ mod tests {
                   bindCredentials:
                     secretClass: {secret_class}
             "#
-        ));
+        ))
+        .unwrap();
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
@@ -926,13 +929,5 @@ mod tests {
         let auth_config = setup_authentication_config();
         // expect one file user password db update container
         assert_eq!(auth_config.sidecar_containers.len(), 1);
-    }
-
-    /// Helper function to deserialize objects with serde. We need this singleton map handling, otherwise
-    /// untagged enums will not deserialize correctly.
-    fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(
-        input: &'de str,
-    ) -> T {
-        stackable_operator::utils::yaml_from_str_singleton_map(input).unwrap()
     }
 }
