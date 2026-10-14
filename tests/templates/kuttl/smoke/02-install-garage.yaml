@@ -2,4 +2,4 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  - script: kubectl -n $NAMESPACE apply -f garage.yaml
+  - script: kubectl -n $NAMESPACE apply -f 02_garage.yaml
