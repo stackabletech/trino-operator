@@ -667,7 +667,7 @@ mod tests {
             catalogLabelSelector: {}
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         assert_eq!(
             server_secret_class(&trino),
             Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
@@ -699,7 +699,7 @@ mod tests {
               serverSecretClass: simple-trino-server-tls
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
         assert_eq!(
             internal_secret_class(&trino),
@@ -729,7 +729,7 @@ mod tests {
               internalSecretClass: null
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         assert_eq!(server_secret_class(&trino), None);
         assert_eq!(internal_secret_class(&trino), None);
 
@@ -755,7 +755,7 @@ mod tests {
               internalSecretClass: simple-trino-internal-tls
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         assert_eq!(
             server_secret_class(&trino),
             Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
@@ -788,7 +788,7 @@ mod tests {
             catalogLabelSelector: {}
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         assert_eq!(
             internal_secret_class(&trino),
             Some(TLS_DEFAULT_SECRET_CLASS.as_ref())
@@ -820,7 +820,7 @@ mod tests {
               internalSecretClass: simple-trino-internal-tls
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         assert_eq!(
             internal_secret_class(&trino),
             Some("simple-trino-internal-tls")
@@ -853,7 +853,7 @@ mod tests {
               internalSecretClass: null
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         assert_eq!(internal_secret_class(&trino), None);
         assert_eq!(server_secret_class(&trino), Some("simple-trino-server-tls"));
     }

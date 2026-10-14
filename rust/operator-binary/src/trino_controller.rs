@@ -189,9 +189,8 @@ mod tests {
     }
 
     async fn build_config_map(trino_yaml: &str) -> ConfigMap {
-        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
         let mut trino: v1alpha1::TrinoCluster =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+            stackable_operator::utils::yaml_from_str_singleton_map(trino_yaml)
                 .expect("invalid test input");
         trino.metadata.namespace = Some("default".to_owned());
         trino.metadata.uid = Some("e6ac237d-a6d4-43a1-8135-f36506110912".to_owned());
@@ -465,9 +464,8 @@ mod tests {
               default:
                 replicas: 1
         "#;
-        let deserializer = serde_yaml::Deserializer::from_str(trino_yaml);
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+            stackable_operator::utils::yaml_from_str_singleton_map(trino_yaml).unwrap();
 
         let derefs = DereferencedObjects {
             resolved_authentication_classes: Vec::new(),
@@ -505,7 +503,7 @@ mod tests {
     /// API, and because the spec is invalid, before the [`DeserializeGuard`] is unwrapped.
     #[test]
     fn reconcile_exits_early_for_deleted_cluster() {
-        let trino = serde_yaml::from_str(
+        let trino = yaml_serde::from_str(
             r#"
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCluster

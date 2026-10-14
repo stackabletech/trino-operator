@@ -292,7 +292,7 @@ mod tests {
 
     fn construct_jvm_config(trino_cluster: &str) -> String {
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(trino_cluster).expect("illegal test input");
+            yaml_serde::from_str(trino_cluster).expect("illegal test input");
 
         // Merge + validate via the shared production path; the role + role-group
         // `jvmArgumentOverrides` end up merged in `product_specific_common_config`.
