@@ -240,9 +240,8 @@ mod tests {
             principalClaim: preferred_username
         "#
         );
-        let deserializer = serde_yaml::Deserializer::from_str(&input);
         let oidc_auth_provider: oidc::v1alpha1::AuthenticationProvider =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+            stackable_operator::utils::yaml_from_str_singleton_map(&input).unwrap();
 
         OidcAuthenticator::new(
             auth_class_name.to_string(),
