@@ -45,6 +45,7 @@ All notable changes to this project will be documented in this file.
   converted to the worker's shape and its listener class recovered afterwards ([#945]).
 - Bump stackable-operator to 0.119.0 ([#949]).
 - Bump `stackable-operator` to 0.121.0 and replace the unmaintained `serde_yaml` with `yaml_serde` ([#957]).
+- All pods now set `securityContext.seccompProfile.type` to `RuntimeDefault` ([#957]).
 - test: Bump vector-aggregator to 0.58.0 ([#953]).
 
 ### Fixed
