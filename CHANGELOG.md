@@ -46,7 +46,7 @@ All notable changes to this project will be documented in this file.
 - Bump stackable-operator to 0.119.0 ([#949]).
 - Bump `stackable-operator` to 0.121.0 and replace the unmaintained `serde_yaml` with `yaml_serde` ([#957]).
 - All pods now set `securityContext.seccompProfile.type` to `RuntimeDefault` ([#957]).
-- test: Bump vector-aggregator to 0.58.0 ([#953]).
+- Support Vector 0.58.0 ([#953], [#959]).
 
 ### Fixed
 
@@ -83,6 +83,7 @@ All notable changes to this project will be documented in this file.
 [#953]: https://github.com/stackabletech/trino-operator/pull/953
 [#956]: https://github.com/stackabletech/trino-operator/pull/956
 [#957]: https://github.com/stackabletech/trino-operator/pull/957
+[#959]: https://github.com/stackabletech/trino-operator/pull/959
 
 ## [26.7.0] - 2026-07-21
 
