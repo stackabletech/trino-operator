@@ -8,7 +8,7 @@ export NAMESPACE=default
 export CLUSTER_NAME=trino
 export ROLE_NAME=coordinator
 export ROLE_GROUP_NAME=default
-export VECTOR_AGGREGATOR_ADDRESS=vector-aggregator
+export VECTOR_AGGREGATOR_ADDRESS=http://vector-aggregator:6000
 export VECTOR_FILE_LOG_LEVEL=info
 
 # Required because vector.yaml contains ${...} placeholders
