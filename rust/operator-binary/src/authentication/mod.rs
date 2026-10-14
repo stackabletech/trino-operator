@@ -672,13 +672,10 @@ mod tests {
                   principalClaim: preferred_username
             "#,
         );
-        let deserializer = yaml_serde::Deserializer::from_str(&input);
 
         ResolvedAuthenticationClassRef {
-            authentication_class: yaml_serde::with::singleton_map_recursive::deserialize(
-                deserializer,
-            )
-            .unwrap(),
+            authentication_class: stackable_operator::utils::yaml_from_str_singleton_map(&input)
+                .unwrap(),
             client_auth_options: Some(oidc::v1alpha1::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
@@ -931,12 +928,11 @@ mod tests {
         assert_eq!(auth_config.sidecar_containers.len(), 1);
     }
 
-    /// Helper function to deserialize objects with serde. We need this 'singleton_map_recursive' thing, otherwise
+    /// Helper function to deserialize objects with serde. We need this singleton map handling, otherwise
     /// untagged enums will not deserialize correctly.
     fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(
         input: &'de str,
     ) -> T {
-        let deserializer = yaml_serde::Deserializer::from_str(input);
-        yaml_serde::with::singleton_map_recursive::deserialize(deserializer).unwrap()
+        stackable_operator::utils::yaml_from_str_singleton_map(input).unwrap()
     }
 }

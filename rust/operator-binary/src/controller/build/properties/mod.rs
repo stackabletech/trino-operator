@@ -100,10 +100,8 @@ pub(crate) mod test_support {
                     name: {name}
             "#
         );
-        let deserializer = yaml_serde::Deserializer::from_str(&yaml);
-        let authentication_class =
-            yaml_serde::with::singleton_map_recursive::deserialize(deserializer)
-                .expect("invalid test AuthenticationClass");
+        let authentication_class = stackable_operator::utils::yaml_from_str_singleton_map(&yaml)
+            .expect("invalid test AuthenticationClass");
         ResolvedAuthenticationClassRef {
             authentication_class,
             client_auth_options: None,
