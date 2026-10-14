@@ -1,15 +1,19 @@
 #!/usr/bin/env sh
 
-# Trino emits airlift timestamps as UTC (trailing `Z`). The shared transform matches the `Z`
-# literally, so `parse_timestamp` assumes the host timezone; pin it to UTC (as the pods run) to
-# keep the tests deterministic regardless of the host's timezone.
-TZ=UTC \
-DATA_DIR=/stackable/log/_vector-state \
-LOG_DIR=/stackable/log \
-NAMESPACE=default \
-CLUSTER_NAME=trino \
-ROLE_NAME=coordinator \
-ROLE_GROUP_NAME=default \
-VECTOR_AGGREGATOR_ADDRESS=vector-aggregator \
-VECTOR_FILE_LOG_LEVEL=info \
+set -eu
+
+export DATA_DIR=/stackable/log/_vector-state
+export LOG_DIR=/stackable/log
+export NAMESPACE=default
+export CLUSTER_NAME=trino
+export ROLE_NAME=coordinator
+export ROLE_GROUP_NAME=default
+export VECTOR_AGGREGATOR_ADDRESS=http://vector-aggregator:6000
+export VECTOR_FILE_LOG_LEVEL=info
+
+# Required because vector.yaml contains ${...} placeholders
+export VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION=true
+
+vector validate --no-environment vector.yaml
+
 vector test vector.yaml vector-test.yaml
