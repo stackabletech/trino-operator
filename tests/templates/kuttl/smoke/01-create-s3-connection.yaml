@@ -1,0 +1,5 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: envsubst '$NAMESPACE' < 01_s3-connection.yaml | kubectl apply -n $NAMESPACE -f -

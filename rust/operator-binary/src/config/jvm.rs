@@ -127,10 +127,8 @@ fn recommended_trino_jvm_args(product_version: u16) -> Result<Vec<String>, Error
             "-XX:+EnableDynamicAgentLoading".to_owned(),
         ]),
         // Copied from:
-        // - https://trino.io/docs/479/installation/deployment.html#jvm-config.
-        //   However, the docs are wrong: https://github.com/trinodb/trino/commit/1ddb0f9976fcd9917aaf0b689ca0acc8635e24f1.
-        //   According to the commit we need to add "--add-modules=jdk.incubator.vector"
-        479 => Ok(vec![
+        // - https://trino.io/docs/481/installation/deployment.html#jvm-config
+        481 => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),
@@ -143,13 +141,11 @@ fn recommended_trino_jvm_args(product_version: u16) -> Result<Vec<String>, Error
             "-XX:PerBytecodeRecompilationCutoff=10000".to_owned(),
             "-Djdk.attach.allowAttachSelf=true".to_owned(),
             "-Djdk.nio.maxCachedBufferSize=2000000".to_owned(),
-            "-Dfile.encoding=UTF-8".to_owned(),
-            "-XX:+EnableDynamicAgentLoading".to_owned(),
             "--add-modules=jdk.incubator.vector".to_owned(),
         ]),
         // Copied from:
-        // - https://trino.io/docs/481/installation/deployment.html#jvm-config
-        481 => Ok(vec![
+        // - https://trino.io/docs/483/installation/deployment.html#jvm-config
+        483 => Ok(vec![
             "-XX:InitialRAMPercentage=80".to_owned(),
             "-XX:MaxRAMPercentage=80".to_owned(),
             "-XX:G1HeapRegionSize=32M".to_owned(),

@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
   ([#944]).
 - Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
 - Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#924]).
+- Add support for 483 ([#956]).
 
 ### Changed
 
@@ -59,6 +60,10 @@ All notable changes to this project will be documented in this file.
   `replicas: null`, but counting it as zero left `discovery.uri` out of `config.properties`
   altogether, so no pod could find the coordinator ([#945]).
 
+### Removed
+
+- Remove support for 479 ([#956]).
+
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
@@ -74,6 +79,7 @@ All notable changes to this project will be documented in this file.
 [#945]: https://github.com/stackabletech/trino-operator/pull/945
 [#949]: https://github.com/stackabletech/trino-operator/pull/949
 [#953]: https://github.com/stackabletech/trino-operator/pull/953
+[#956]: https://github.com/stackabletech/trino-operator/pull/956
 
 ## [26.7.0] - 2026-07-21
 

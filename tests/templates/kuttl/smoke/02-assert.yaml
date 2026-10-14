@@ -1,0 +1,12 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 600
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garage
+status:
+  readyReplicas: 1
+  replicas: 1

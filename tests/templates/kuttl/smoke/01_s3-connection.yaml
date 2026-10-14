@@ -1,0 +1,43 @@
+---
+apiVersion: s3.stackable.tech/v1alpha1
+kind: S3Connection
+metadata:
+  name: garage
+spec:
+  # Must be the FQDN, that is the only name the "tls" SecretClass puts into the
+  # certificate for the service=garage scope used in garage.yaml.
+  host: "garage.${NAMESPACE}.svc.cluster.local"
+  port: 9000
+  # The region must match the s3_region in garage.yaml.
+  region:
+    name: region-1
+  accessStyle: Path
+  credentials:
+    secretClass: s3-credentials-class
+  tls:
+    verification:
+      server:
+        caCert:
+          secretClass: tls
+---
+apiVersion: secrets.stackable.tech/v1alpha1
+kind: SecretClass
+metadata:
+  name: s3-credentials-class
+spec:
+  backend:
+    k8sSearch:
+      searchNamespace:
+        pod: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: garage-credentials
+  labels:
+    secrets.stackable.tech/class: s3-credentials-class
+stringData:
+  # Garage requires the GK<24 hex> key id format and a 64 hex char secret.
+  # Must match the GARAGE_DEFAULT_* variables in garage.yaml.
+  accessKey: GK31c0ffee31c0ffee31c0ffee
+  secretKey: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
