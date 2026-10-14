@@ -672,10 +672,10 @@ mod tests {
                   principalClaim: preferred_username
             "#,
         );
-        let deserializer = serde_yaml::Deserializer::from_str(&input);
+        let deserializer = yaml_serde::Deserializer::from_str(&input);
 
         ResolvedAuthenticationClassRef {
-            authentication_class: serde_yaml::with::singleton_map_recursive::deserialize(
+            authentication_class: yaml_serde::with::singleton_map_recursive::deserialize(
                 deserializer,
             )
             .unwrap(),
@@ -936,7 +936,7 @@ mod tests {
     fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(
         input: &'de str,
     ) -> T {
-        let deserializer = serde_yaml::Deserializer::from_str(input);
-        serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
+        let deserializer = yaml_serde::Deserializer::from_str(input);
+        yaml_serde::with::singleton_map_recursive::deserialize(deserializer).unwrap()
     }
 }

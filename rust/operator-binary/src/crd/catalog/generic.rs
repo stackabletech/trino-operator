@@ -65,9 +65,9 @@ mod tests {
                     name: my-postgresql-credentials-secret
                     key: password
         "#;
-        let deserializer = serde_yaml::Deserializer::from_str(input);
+        let deserializer = yaml_serde::Deserializer::from_str(input);
         let catalog: v1alpha1::TrinoCatalog =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+            yaml_serde::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         assert_eq!(
             catalog.spec.connector,

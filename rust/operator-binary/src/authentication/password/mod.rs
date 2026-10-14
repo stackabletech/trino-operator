@@ -206,7 +206,7 @@ mod tests {
     const LDAP_AUTH_CLASS_2: &str = "ldap-auth-2";
 
     fn ldap_provider() -> ldap::v1alpha1::AuthenticationProvider {
-        serde_yaml::from_str::<ldap::v1alpha1::AuthenticationProvider>(
+        yaml_serde::from_str::<ldap::v1alpha1::AuthenticationProvider>(
             "
             hostname: my-ldap
             ",

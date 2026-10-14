@@ -332,8 +332,8 @@ mod tests {
     use super::*;
 
     fn parse_config(config_yaml: &str) -> FaultTolerantExecutionConfig {
-        let deserializer = serde_yaml::Deserializer::from_str(config_yaml);
-        serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+        let deserializer = yaml_serde::Deserializer::from_str(config_yaml);
+        yaml_serde::with::singleton_map_recursive::deserialize(deserializer)
             .expect("invalid test input")
     }
 

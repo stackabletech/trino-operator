@@ -152,7 +152,7 @@ mod tests {
                 replicas: 1
         "#;
         let trino: v1alpha1::TrinoCluster =
-            serde_yaml::from_str(input).expect("illegal test input");
+            yaml_serde::from_str(input).expect("illegal test input");
         let merged_config =
             crate::controller::validate::merged_role_group_config(&trino, &role, "default", &[])
                 .config;

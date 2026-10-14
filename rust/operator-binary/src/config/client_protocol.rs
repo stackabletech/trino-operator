@@ -130,8 +130,8 @@ mod tests {
                     reference: test-s3-connection
         "#};
 
-        let deserializer = serde_yaml::Deserializer::from_str(config_yaml);
-        let config = serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+        let deserializer = yaml_serde::Deserializer::from_str(config_yaml);
+        let config = yaml_serde::with::singleton_map_recursive::deserialize(deserializer)
             .expect("invalid test input");
 
         let resolved_spooling_config = ResolvedClientProtocolConfig::from_config(
