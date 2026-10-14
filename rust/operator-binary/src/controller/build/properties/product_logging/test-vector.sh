@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+set -eu
+
 export DATA_DIR=/stackable/log/_vector-state
 export LOG_DIR=/stackable/log
 export NAMESPACE=default
