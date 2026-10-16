@@ -256,7 +256,7 @@ mod tests {
     }
 
     fn lineage_config(yaml: &str) -> TrinoLineageConfig {
-        serde_yaml::from_str(yaml).expect("illegal test input")
+        yaml_serde::from_str(yaml).expect("illegal test input")
     }
 
     #[test]

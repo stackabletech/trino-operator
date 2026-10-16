@@ -437,7 +437,7 @@ mod tests {
         yaml: &str,
         derefs: &DereferencedObjects,
     ) -> std::result::Result<ValidatedCluster, Error> {
-        let trino: v1alpha1::TrinoCluster = serde_yaml::from_str(yaml).expect("invalid test YAML");
+        let trino: v1alpha1::TrinoCluster = yaml_serde::from_str(yaml).expect("invalid test YAML");
         let operator_env = OperatorEnvironmentOptions {
             operator_namespace: "stackable-operators".to_string(),
             operator_service_name: "trino-operator".to_string(),

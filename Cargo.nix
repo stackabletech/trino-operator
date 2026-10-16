@@ -508,7 +508,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             usesDefaultFeatures = false;
             features = [ "clone-impls" "full" "parsing" "printing" "proc-macro" "visit-mut" ];
           }
@@ -1220,7 +1220,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "full" ];
           }
         ];
@@ -1247,9 +1247,9 @@ rec {
       };
       "combine" = rec {
         crateName = "combine";
-        version = "4.6.8";
+        version = "4.6.9";
         edition = "2018";
-        sha256 = "0ppwzwdmszpan9ybx1myc6ldg5zih2sazf9idckdxrh9gn9j1hyg";
+        sha256 = "14izj50knw6rgl6ky3903k43pnl6qjgyw4d30n6ljdb4jykfnmj3";
         authors = [
           "Markus Westerlind <marwes91@gmail.com>"
         ];
@@ -1767,7 +1767,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "full" "extra-traits" ];
           }
         ];
@@ -1823,17 +1823,17 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
 
       };
       "defmt" = rec {
         crateName = "defmt";
-        version = "1.1.1";
+        version = "1.2.0";
         edition = "2021";
         links = "defmt";
-        sha256 = "1lc8xlfj700xqjmvp7n9hhc1czgpaqkq960iqw6d5fwk9zz3p5g2";
+        sha256 = "1qg3w0w7f0fn74xp60aci37swsjz6hbrqp3pngbm9js0qxd7k874";
         authors = [
           "The Knurling-rs developers"
         ];
@@ -1854,9 +1854,9 @@ rec {
       };
       "defmt-macros" = rec {
         crateName = "defmt-macros";
-        version = "1.1.1";
+        version = "1.2.0";
         edition = "2021";
-        sha256 = "1s2zkcbaj1l306ph1n1gsfm6vzc2sah4acl1qc6pw4x2ghpcgnds";
+        sha256 = "0rl3dlnl8lc4dqzdnr6q0vrpjz3qmdca5641334rbi4rpmbb02w4";
         procMacro = true;
         libName = "defmt_macros";
         authors = [
@@ -1877,7 +1877,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 2.0.119";
+            packageId = "syn 3.0.9";
             features = [ "full" "extra-traits" ];
           }
         ];
@@ -1886,9 +1886,9 @@ rec {
       };
       "defmt-parser" = rec {
         crateName = "defmt-parser";
-        version = "1.0.0";
+        version = "1.1.0";
         edition = "2021";
-        sha256 = "0gpfky9sssil5qfaix5wxcwiqk7snszhl5gq3vcwkrxjncs07mhh";
+        sha256 = "1849z1vp502s77sip4wzj6jimjl6x5vr7b2ivp2mds1dzdlqz5bi";
         libName = "defmt_parser";
         authors = [
           "The Knurling-rs developers"
@@ -2008,9 +2008,9 @@ rec {
       };
       "deranged" = rec {
         crateName = "deranged";
-        version = "0.5.8";
-        edition = "2021";
-        sha256 = "0711df3w16vx80k55ivkwzwswziinj4dz05xci3rvmn15g615n3w";
+        version = "0.5.9";
+        edition = "2024";
+        sha256 = "13nj445c8frp617vx84g1m5yp1gg63sg09gscbf907xdw8nfg7cy";
         authors = [
           "Jacob Pratt <jacob@jhpratt.dev>"
         ];
@@ -2191,7 +2191,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
         features = {
@@ -2399,7 +2399,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "visit" "visit-mut" ];
           }
         ];
@@ -2647,7 +2647,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
         features = {
@@ -2655,9 +2655,9 @@ rec {
       };
       "equivalent" = rec {
         crateName = "equivalent";
-        version = "1.0.2";
+        version = "1.0.3";
         edition = "2015";
-        sha256 = "03swzqznragy8n0x31lqc78g2af054jwivp7lkrbrc0khz74lyl7";
+        sha256 = "09nqddaa84mix3vil6r02jlmya3qypi4j45dhzb8yphf83ap9l80";
 
       };
       "errno" = rec {
@@ -3106,7 +3106,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "full" ];
           }
         ];
@@ -5346,9 +5346,9 @@ rec {
       };
       "jsonpath-rust" = rec {
         crateName = "jsonpath-rust";
-        version = "1.0.11";
+        version = "1.0.12";
         edition = "2021";
-        sha256 = "0l8y689h8km6wyd6f0bw9zv1rn06wksfjl42amd340x1rba94f6j";
+        sha256 = "1mzd3dg7qy1g6h8v81qnmkvp712nx2727qkgb1nyd44k9266di5i";
         libName = "jsonpath_rust";
         authors = [
           "BorisZhguchev <zhguchev@gmail.com>"
@@ -5465,13 +5465,13 @@ rec {
       };
       "k8s-version" = rec {
         crateName = "k8s-version";
-        version = "0.1.3";
+        version = "0.1.4";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         libName = "k8s_version";
         authors = [
@@ -6202,12 +6202,25 @@ rec {
         };
         resolvedDefaultFeatures = [ "arch" "default" ];
       };
+      "libyaml-rs" = rec {
+        crateName = "libyaml-rs";
+        version = "0.3.0";
+        edition = "2021";
+        crateBin = [];
+        sha256 = "0xy7bp2dkr7i2vms63cigb087k7salh95ya4njvilf9ldzd6s4if";
+        libName = "libyaml_rs";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+          "YAML Organization <noreply@yaml.org>"
+        ];
+
+      };
       "libz-sys" = rec {
         crateName = "libz-sys";
-        version = "1.1.29";
+        version = "1.1.30";
         edition = "2018";
         links = "z";
-        sha256 = "1n98kqya7a7a0cxf5n5z3g13rj7a1vqxynk2xc7bja1qfxbrdg45";
+        sha256 = "06fy8rg2grraaf222846pq55akl6sslmdjj6zla346dzdlza447p";
         libName = "libz_sys";
         authors = [
           "Alex Crichton <alex@alexcrichton.com>"
@@ -7404,9 +7417,9 @@ rec {
       };
       "pest" = rec {
         crateName = "pest";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "1yhr35ds3c5ww7nvh9nvs842p40nmwgqj7ql4z3accwbld5kfs5m";
+        sha256 = "08xvj2lwj450ki4mmr5s369pfgk5fq6vy8kyki1b7hybm5ha8izx";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -7443,9 +7456,9 @@ rec {
       };
       "pest_derive" = rec {
         crateName = "pest_derive";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "0zygma96zndmadjsg6m353ak48ziab55c8mb43zsmsscj95ihvmn";
+        sha256 = "0i7g26dkang3zyl0hvcfdfsaz713i77r70v0n6d53xq8fxllcgi0";
         procMacro = true;
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
@@ -7471,9 +7484,9 @@ rec {
       };
       "pest_generator" = rec {
         crateName = "pest_generator";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "150nhpb5mh4vx1gmgl3fmix953pmy3r595xg4sk59pp4cz97hx58";
+        sha256 = "1mflbrhm9abanrgf43fdhhj0psfgyf635kvkzin3v3a518sfcjp8";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -7497,7 +7510,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
         features = {
@@ -7509,9 +7522,9 @@ rec {
       };
       "pest_meta" = rec {
         crateName = "pest_meta";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "1qb9r2akz8q1wbvwmdipiaq06km3m8wn27w3kcssqha2icj6z62g";
+        sha256 = "04774dlh7acgf8hzl0w11dbp4q3ay3qwvxfqixcydg1x5grr4zxm";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -8251,7 +8264,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
 
@@ -8917,9 +8930,9 @@ rec {
       };
       "rustls" = rec {
         crateName = "rustls";
-        version = "0.23.45";
+        version = "0.23.46";
         edition = "2021";
-        sha256 = "0d6n90q52x5cjyxb6bwcnf9hwg6yb31cwr63rk8n5yfjqwqxfh8d";
+        sha256 = "1pwg7i8drr70374amj96952cils9mpwyijd5rx1mqdp9q3c3pqa8";
         dependencies = [
           {
             name = "log";
@@ -8986,9 +8999,9 @@ rec {
       };
       "rustls-native-certs" = rec {
         crateName = "rustls-native-certs";
-        version = "0.8.4";
+        version = "0.8.5";
         edition = "2021";
-        sha256 = "0kgazl8zc1sv63qg179bz96ilzh56lzfa5k92ji7d265f4kibdfs";
+        sha256 = "1i5f916arhb4gc5qipmn6d8p81q87fv549xda969i7s6qxfky1sa";
         libName = "rustls_native_certs";
         dependencies = [
           {
@@ -9274,9 +9287,9 @@ rec {
       };
       "schemars" = rec {
         crateName = "schemars";
-        version = "1.2.2";
+        version = "1.2.3";
         edition = "2021";
-        sha256 = "0jng632s64njf9vghr3i1l4m15h4y85m5vhg7vkwdkdnjg978wk8";
+        sha256 = "0vnzz8smh3ixzy297898mwzfx0r5aadz2vxsbafwlxsaywk8hl5b";
         authors = [
           "Graham Esau <gesau@hotmail.co.uk>"
         ];
@@ -9353,9 +9366,9 @@ rec {
       };
       "schemars_derive" = rec {
         crateName = "schemars_derive";
-        version = "1.2.2";
+        version = "1.2.3";
         edition = "2021";
-        sha256 = "1fp2wkdk32nv66swy7k7pz7sxygn634snlppih5jzbs6ddqng36r";
+        sha256 = "0sgwpzi91y6ibw7ns4wpqzgm9ddnmi7q8ia62am62zgsjhhakhz1";
         procMacro = true;
         authors = [
           "Graham Esau <gesau@hotmail.co.uk>"
@@ -9375,13 +9388,13 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
         devDependencies = [
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "extra-traits" ];
           }
         ];
@@ -9763,7 +9776,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             usesDefaultFeatures = false;
             features = [ "clone-impls" "derive" "parsing" "printing" "proc-macro" ];
           }
@@ -9795,7 +9808,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             usesDefaultFeatures = false;
             features = [ "clone-impls" "derive" "parsing" "printing" ];
           }
@@ -9907,38 +9920,6 @@ rec {
           {
             name = "serde";
             packageId = "serde";
-          }
-        ];
-
-      };
-      "serde_yaml" = rec {
-        crateName = "serde_yaml";
-        version = "0.9.34+deprecated";
-        edition = "2021";
-        sha256 = "0isba1fjyg3l6rxk156k600ilzr8fp7crv82rhal0rxz5qd1m2va";
-        authors = [
-          "David Tolnay <dtolnay@gmail.com>"
-        ];
-        dependencies = [
-          {
-            name = "indexmap";
-            packageId = "indexmap";
-          }
-          {
-            name = "itoa";
-            packageId = "itoa";
-          }
-          {
-            name = "ryu";
-            packageId = "ryu";
-          }
-          {
-            name = "serde";
-            packageId = "serde";
-          }
-          {
-            name = "unsafe-libyaml";
-            packageId = "unsafe-libyaml";
           }
         ];
 
@@ -10422,8 +10403,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         libName = "stackable_certs";
         authors = [
@@ -10520,13 +10501,13 @@ rec {
       };
       "stackable-operator" = rec {
         crateName = "stackable-operator";
-        version = "0.120.0";
+        version = "0.121.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         libName = "stackable_operator";
         authors = [
@@ -10629,10 +10610,6 @@ rec {
             packageId = "serde_json";
           }
           {
-            name = "serde_yaml";
-            packageId = "serde_yaml";
-          }
-          {
             name = "sha2";
             packageId = "sha2";
             features = [ "oid" ];
@@ -10701,6 +10678,10 @@ rec {
             name = "xml";
             packageId = "xml";
           }
+          {
+            name = "yaml_serde";
+            packageId = "yaml_serde";
+          }
         ];
         features = {
           "certs" = [ "dep:stackable-certs" ];
@@ -10724,8 +10705,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         procMacro = true;
         libName = "stackable_operator_derive";
@@ -10747,20 +10728,20 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
 
       };
       "stackable-shared" = rec {
         crateName = "stackable-shared";
-        version = "0.1.2";
+        version = "0.2.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         libName = "stackable_shared";
         authors = [
@@ -10799,10 +10780,6 @@ rec {
             features = [ "derive" ];
           }
           {
-            name = "serde_yaml";
-            packageId = "serde_yaml";
-          }
-          {
             name = "snafu";
             packageId = "snafu 0.9.2";
           }
@@ -10815,6 +10792,10 @@ rec {
             name = "time";
             packageId = "time";
             optional = true;
+          }
+          {
+            name = "yaml_serde";
+            packageId = "yaml_serde";
           }
         ];
         devDependencies = [
@@ -10840,8 +10821,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         libName = "stackable_telemetry";
         authors = [
@@ -10998,10 +10979,6 @@ rec {
             packageId = "serde_json";
           }
           {
-            name = "serde_yaml";
-            packageId = "serde_yaml";
-          }
-          {
             name = "snafu";
             packageId = "snafu 0.9.2";
           }
@@ -11024,6 +11001,10 @@ rec {
             name = "tracing";
             packageId = "tracing";
           }
+          {
+            name = "yaml_serde";
+            packageId = "yaml_serde";
+          }
         ];
         buildDependencies = [
           {
@@ -11038,8 +11019,8 @@ rec {
             packageId = "rstest";
           }
           {
-            name = "serde_yaml";
-            packageId = "serde_yaml";
+            name = "yaml_serde";
+            packageId = "yaml_serde";
           }
         ];
         features = {
@@ -11048,13 +11029,13 @@ rec {
       };
       "stackable-versioned" = rec {
         crateName = "stackable-versioned";
-        version = "0.12.0";
+        version = "0.13.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         libName = "stackable_versioned";
         authors = [
@@ -11082,10 +11063,6 @@ rec {
             packageId = "serde_json";
           }
           {
-            name = "serde_yaml";
-            packageId = "serde_yaml";
-          }
-          {
             name = "snafu";
             packageId = "snafu 0.9.2";
           }
@@ -11093,18 +11070,22 @@ rec {
             name = "stackable-versioned-macros";
             packageId = "stackable-versioned-macros";
           }
+          {
+            name = "yaml_serde";
+            packageId = "yaml_serde";
+          }
         ];
 
       };
       "stackable-versioned-macros" = rec {
         crateName = "stackable-versioned-macros";
-        version = "0.12.0";
+        version = "0.13.0";
         edition = "2024";
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         procMacro = true;
         libName = "stackable_versioned_macros";
@@ -11155,7 +11136,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
 
@@ -11167,8 +11148,8 @@ rec {
         workspace_member = null;
         src = pkgs.fetchgit {
           url = "https://github.com/stackabletech/operator-rs.git";
-          rev = "e9016793939521e4253315fd937b3cc728aa94a7";
-          sha256 = "0v067fk30dc1zxcsyv9wzrfybbnpbpqiqx6s4z9krw7qah35w8m6";
+          rev = "433ac4fe45418d39631e683fac74cb49e11911f6";
+          sha256 = "1dax2l1ghd609k19z4kznpnk5v40xbl84qwwxlfvwjamvf7jj6mm";
         };
         libName = "stackable_webhook";
         authors = [
@@ -11490,11 +11471,11 @@ rec {
         };
         resolvedDefaultFeatures = [ "clone-impls" "default" "derive" "extra-traits" "full" "parsing" "printing" "proc-macro" "visit" "visit-mut" ];
       };
-      "syn 3.0.8" = rec {
+      "syn 3.0.9" = rec {
         crateName = "syn";
-        version = "3.0.8";
+        version = "3.0.9";
         edition = "2021";
-        sha256 = "08n64gc43mrcq1b8il3dcj6vlcawkwq9dxr44vqpx3ydffins081";
+        sha256 = "0fw28lhl90kls24q2h2sp39yjb0lsvz5cwh9fd3f3w3v9kp8v36p";
         authors = [
           "David Tolnay <dtolnay@gmail.com>"
         ];
@@ -11566,7 +11547,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             usesDefaultFeatures = false;
             features = [ "derive" "parsing" "printing" "clone-impls" "visit" "extra-traits" ];
           }
@@ -11659,7 +11640,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
           }
         ];
 
@@ -11883,9 +11864,9 @@ rec {
       };
       "tokio" = rec {
         crateName = "tokio";
-        version = "1.53.2";
+        version = "1.53.3";
         edition = "2021";
-        sha256 = "0i202ksji8q2asvii0adzgi8m0z93z3j7apn62qfh8d6qzy92pz9";
+        sha256 = "0kny1nnbpy11dllv6ncxy3n804wh0ddn3msq78rxl744f7x3acyf";
         authors = [
           "Tokio Contributors <team@tokio.rs>"
         ];
@@ -12023,7 +12004,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "full" ];
           }
         ];
@@ -13305,18 +13286,6 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
-      "unsafe-libyaml" = rec {
-        crateName = "unsafe-libyaml";
-        version = "0.2.11";
-        edition = "2021";
-        crateBin = [];
-        sha256 = "0qdq69ffl3v5pzx9kzxbghzn0fzn266i1xn70y88maybz9csqfk7";
-        libName = "unsafe_libyaml";
-        authors = [
-          "David Tolnay <dtolnay@gmail.com>"
-        ];
-
-      };
       "untrusted" = rec {
         crateName = "untrusted";
         version = "0.9.0";
@@ -13701,7 +13670,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "visit" "visit-mut" "full" "extra-traits" ];
           }
           {
@@ -15195,6 +15164,45 @@ rec {
         ];
 
       };
+      "yaml_serde" = rec {
+        crateName = "yaml_serde";
+        version = "0.10.7";
+        edition = "2021";
+        sha256 = "0679p5sc2zaz7afchb32nradn9jr07w2ngmdpf4ycswsiah2kdrk";
+        authors = [
+          "YAML Organization <noreply@yaml.org>"
+        ];
+        dependencies = [
+          {
+            name = "indexmap";
+            packageId = "indexmap";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "itoa";
+            packageId = "itoa";
+          }
+          {
+            name = "libyaml-rs";
+            packageId = "libyaml-rs";
+          }
+          {
+            name = "ryu";
+            packageId = "ryu";
+          }
+          {
+            name = "serde";
+            packageId = "serde";
+            usesDefaultFeatures = false;
+            features = [ "alloc" ];
+          }
+        ];
+        features = {
+          "default" = [ "std" ];
+          "std" = [ "serde/std" "indexmap/std" ];
+        };
+        resolvedDefaultFeatures = [ "default" "std" ];
+      };
       "yoke" = rec {
         crateName = "yoke";
         version = "0.8.3";
@@ -15251,7 +15259,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "fold" "visit" ];
           }
           {
@@ -15263,9 +15271,9 @@ rec {
       };
       "zerocopy" = rec {
         crateName = "zerocopy";
-        version = "0.8.62";
+        version = "0.8.63";
         edition = "2021";
-        sha256 = "17asjqfdkqmxsx42myw1x5jlb28m5axlf9ifldqpbiy7dbsjnl46";
+        sha256 = "1n1fm40mq4adw83hvn56j6rhnph0lldccx11jq01l6863f7izzp5";
         dependencies = [
           {
             name = "zerocopy-derive";
@@ -15295,9 +15303,9 @@ rec {
       };
       "zerocopy-derive" = rec {
         crateName = "zerocopy-derive";
-        version = "0.8.62";
+        version = "0.8.63";
         edition = "2021";
-        sha256 = "06lx0gigf0j5pvp4dhlrv636b4mib37ijzlcc3i62rdhailj0msl";
+        sha256 = "0zqc4g3yf378dkbsr68h1jjx3n0d4k4zvnxf83bv8gr9hfnd6fl6";
         procMacro = true;
         libName = "zerocopy_derive";
         dependencies = [
@@ -15367,7 +15375,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "fold" "visit" ];
           }
           {
@@ -15534,7 +15542,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 3.0.8";
+            packageId = "syn 3.0.9";
             features = [ "extra-traits" ];
           }
         ];
