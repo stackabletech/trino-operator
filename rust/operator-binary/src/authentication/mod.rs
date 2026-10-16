@@ -593,7 +593,7 @@ mod tests {
     const SEARCH_BASE: &str = "searchbase";
 
     fn setup_file_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
-        let input = deserialize(&format!(
+        let input = stackable_operator::utils::yaml_from_str_singleton_map(&format!(
             r#"
         metadata:
           name: {name}
@@ -603,7 +603,8 @@ mod tests {
               userCredentialsSecret:
                 name: {name}
         "#
-        ));
+        ))
+        .unwrap();
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
@@ -612,7 +613,7 @@ mod tests {
     }
 
     fn setup_ldap_auth_class(name: &str) -> ResolvedAuthenticationClassRef {
-        let input = deserialize(&format!(
+        let input = stackable_operator::utils::yaml_from_str_singleton_map(&format!(
             r#"
         metadata:
           name: {name}
@@ -622,7 +623,8 @@ mod tests {
               hostname: {HOST_NAME}
               searchBase: {SEARCH_BASE}
         "#
-        ));
+        ))
+        .unwrap();
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
@@ -634,7 +636,7 @@ mod tests {
         name: &str,
         secret_class: &str,
     ) -> ResolvedAuthenticationClassRef {
-        let input = deserialize(&format!(
+        let input = stackable_operator::utils::yaml_from_str_singleton_map(&format!(
             r#"
             apiVersion: authentication.stackable.tech/v1alpha1
             kind: AuthenticationClass
@@ -648,7 +650,8 @@ mod tests {
                   bindCredentials:
                     secretClass: {secret_class}
             "#
-        ));
+        ))
+        .unwrap();
 
         ResolvedAuthenticationClassRef {
             authentication_class: input,
@@ -672,13 +675,10 @@ mod tests {
                   principalClaim: preferred_username
             "#,
         );
-        let deserializer = serde_yaml::Deserializer::from_str(&input);
 
         ResolvedAuthenticationClassRef {
-            authentication_class: serde_yaml::with::singleton_map_recursive::deserialize(
-                deserializer,
-            )
-            .unwrap(),
+            authentication_class: stackable_operator::utils::yaml_from_str_singleton_map(&input)
+                .unwrap(),
             client_auth_options: Some(oidc::v1alpha1::ClientAuthenticationOptions {
                 client_credentials_secret_ref: "my-oidc-secret".to_string(),
                 extra_scopes: Vec::new(),
@@ -929,14 +929,5 @@ mod tests {
         let auth_config = setup_authentication_config();
         // expect one file user password db update container
         assert_eq!(auth_config.sidecar_containers.len(), 1);
-    }
-
-    /// Helper function to deserialize objects with serde. We need this 'singleton_map_recursive' thing, otherwise
-    /// untagged enums will not deserialize correctly.
-    fn deserialize<'de, T: stackable_operator::k8s_openapi::serde::Deserialize<'de>>(
-        input: &'de str,
-    ) -> T {
-        let deserializer = serde_yaml::Deserializer::from_str(input);
-        serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap()
     }
 }

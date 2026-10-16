@@ -31,7 +31,7 @@ spec:
       metastore:
         configMap: hive
       s3:
-        reference: minio
+        reference: garage
       hdfs:
         configMap: hdfs
 ---
@@ -47,7 +47,7 @@ spec:
       metastore:
         configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
       s3:
-        reference: minio
+        reference: garage
       hdfs:
         configMap: hdfs
 ---

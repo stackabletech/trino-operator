@@ -71,7 +71,7 @@ transforms:
 
         timestamp_string, err = string(event.timestamp)
         if err == null {
-          parsed_timestamp, err = parse_timestamp(timestamp_string, "%Y-%m-%dT%H:%M:%S.%fZ")
+          parsed_timestamp, err = parse_timestamp(timestamp_string, "%Y-%m-%dT%H:%M:%S.%fZ", timezone: "Etc/UTC")
           if err == null {
             .timestamp = parsed_timestamp
           } else {
@@ -108,7 +108,9 @@ transforms:
   # Extends the processed files with the fields "container" and "file"
   extended_logs_files:
     inputs:
-      - processed_files_*
+      - processed_files_stdout
+      - processed_files_stderr
+      - processed_files_airlift
     type: remap
     source: |
       del(.source_type)
@@ -146,7 +148,8 @@ transforms:
   # Add the fields "namespace", "cluster", "role" and "roleGroup" to all logs
   extended_logs:
     inputs:
-      - extended_logs_*
+      - extended_logs_files
+      - extended_logs_vector
     type: remap
     source: |
       .namespace = "${NAMESPACE}"
@@ -160,4 +163,8 @@ sinks:
     inputs:
       - extended_logs
     type: vector
-    address: ${VECTOR_AGGREGATOR_ADDRESS}
+    routing:
+      endpoints:
+        - ${VECTOR_AGGREGATOR_ADDRESS}
+    compression: zstd
+    keepalive: {}

@@ -159,7 +159,7 @@ mod tests {
 
     fn setup_test_authenticator() -> LdapAuthenticator {
         let auth_provider =
-            serde_yaml::from_str::<ldap::v1alpha1::AuthenticationProvider>(&format!(
+            yaml_serde::from_str::<ldap::v1alpha1::AuthenticationProvider>(&format!(
                 r#"
             hostname: {LDAP_HOST_NAME}
             searchBase: {LDAP_SEARCH_BASE}

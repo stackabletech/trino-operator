@@ -14,4 +14,4 @@ kind: ConfigMap
 metadata:
   name: trino-vector-aggregator-discovery
 data:
-  ADDRESS: trino-vector-aggregator:6123
+  ADDRESS: http://trino-vector-aggregator:6123

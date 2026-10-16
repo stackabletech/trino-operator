@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
   ([#944]).
 - Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
 - Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#924]).
+- Add support for 483 ([#956]).
 
 ### Changed
 
@@ -44,6 +45,10 @@ All notable changes to this project will be documented in this file.
   converted to the worker's shape and its listener class recovered afterwards ([#945]).
 - Bump stackable-operator to 0.119.0 ([#949]).
 - test: Bump vector-aggregator to 0.58.0 ([#953]).
+- test: Update OPA to 1.20.2 in integration tests ([#958]).
+- Bump `stackable-operator` to 0.121.0 and replace the unmaintained `serde_yaml` with `yaml_serde` ([#957]).
+- All pods now set `securityContext.seccompProfile.type` to `RuntimeDefault` ([#957]).
+- Support Vector 0.58.0 ([#953], [#959]).
 
 ### Fixed
 
@@ -58,6 +63,10 @@ All notable changes to this project will be documented in this file.
   when predicting the coordinator pods. Kubernetes runs a single pod for a `StatefulSet` with
   `replicas: null`, but counting it as zero left `discovery.uri` out of `config.properties`
   altogether, so no pod could find the coordinator ([#945]).
+
+### Removed
+
+- Remove support for 479 ([#956]).
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
@@ -74,6 +83,10 @@ All notable changes to this project will be documented in this file.
 [#945]: https://github.com/stackabletech/trino-operator/pull/945
 [#949]: https://github.com/stackabletech/trino-operator/pull/949
 [#953]: https://github.com/stackabletech/trino-operator/pull/953
+[#956]: https://github.com/stackabletech/trino-operator/pull/956
+[#957]: https://github.com/stackabletech/trino-operator/pull/957
+[#958]: https://github.com/stackabletech/trino-operator/pull/958
+[#959]: https://github.com/stackabletech/trino-operator/pull/959
 
 ## [26.7.0] - 2026-07-21
 

@@ -454,7 +454,7 @@ pub(crate) const MINIMAL_TRINO_YAML: &str = r#"
 /// Parses [`MINIMAL_TRINO_YAML`] into a [`v1alpha1::TrinoCluster`].
 #[cfg(test)]
 pub(crate) fn minimal_trino() -> v1alpha1::TrinoCluster {
-    serde_yaml::from_str(MINIMAL_TRINO_YAML).expect("invalid test TrinoCluster YAML")
+    yaml_serde::from_str(MINIMAL_TRINO_YAML).expect("invalid test TrinoCluster YAML")
 }
 
 /// The validated [`MINIMAL_TRINO_YAML`] cluster with empty dereferenced inputs. The common test

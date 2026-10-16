@@ -75,7 +75,7 @@ pub(crate) mod test_support {
         yaml: &str,
         derefs: DereferencedObjects,
     ) -> ValidatedCluster {
-        let trino: v1alpha1::TrinoCluster = serde_yaml::from_str(yaml).expect("invalid test YAML");
+        let trino: v1alpha1::TrinoCluster = yaml_serde::from_str(yaml).expect("invalid test YAML");
         let operator_env = OperatorEnvironmentOptions {
             operator_namespace: "stackable-operators".to_string(),
             operator_service_name: "trino-operator".to_string(),
@@ -100,10 +100,8 @@ pub(crate) mod test_support {
                     name: {name}
             "#
         );
-        let deserializer = serde_yaml::Deserializer::from_str(&yaml);
-        let authentication_class =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
-                .expect("invalid test AuthenticationClass");
+        let authentication_class = stackable_operator::utils::yaml_from_str_singleton_map(&yaml)
+            .expect("invalid test AuthenticationClass");
         ResolvedAuthenticationClassRef {
             authentication_class,
             client_auth_options: None,

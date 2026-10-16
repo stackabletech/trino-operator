@@ -1,0 +1,182 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage
+data:
+  # https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/
+  garage.toml: |
+    metadata_dir = "/var/lib/garage/meta"
+    data_dir = "/var/lib/garage/data"
+    db_engine = "lmdb"
+
+    # Single node, no redundancy. Test data is disposable (emptyDir).
+    replication_factor = 1
+
+    # Throwaway value, this cluster is never joined by another node.
+    rpc_secret = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    rpc_bind_addr = "[::]:3901"
+    rpc_public_addr = "127.0.0.1:3901"
+
+    [s3_api]
+    # Garage rejects requests signed for a different region, so this must match
+    # the region every client signs with (s3-connection.yaml for the products
+    # configured by the operators, and the upload in 04-prepare-bucket.yaml).
+    # The name is a provider agnostic one.
+    s3_region = "region-1"
+    api_bind_addr = "[::]:3900"
+
+    [admin]
+    api_bind_addr = "[::]:3903"
+  # Garage terminates no TLS on any endpoint, so nginx does it and forwards to
+  # Garage on loopback. Mounted over /etc/nginx/nginx.conf, hence the full file.
+  nginx.conf: |
+    events {}
+    http {
+      server {
+        listen 9000 ssl;
+        ssl_certificate /stackable/tls/tls.crt;
+        ssl_certificate_key /stackable/tls/tls.key;
+
+        # Don't buffer or size-limit object uploads.
+        client_max_body_size 0;
+
+        location / {
+          proxy_pass http://127.0.0.1:3900;
+          # Must be the original Host, it is part of the SigV4 signature.
+          proxy_set_header Host $http_host;
+          proxy_http_version 1.1;
+          proxy_buffering off;
+          proxy_request_buffering off;
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage
+spec:
+  selector:
+    app: garage
+  ports:
+    - name: https
+      port: 9000
+      targetPort: https
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garage
+  labels:
+    app: garage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: garage
+  template:
+    metadata:
+      labels:
+        app: garage
+    spec:
+      containers:
+        - name: garage
+          image: oci.stackable.tech/stackable/dxflrs/garage:v2.4.1
+          imagePullPolicy: IfNotPresent
+          # The image has no entrypoint. --single-node creates the cluster
+          # layout, --default-bucket creates the bucket and the access key from
+          # the GARAGE_DEFAULT_* variables below (implies --default-access-key).
+          command:
+            - /garage
+            - server
+            - --single-node
+            - --default-bucket
+          env:
+            - name: GARAGE_DEFAULT_BUCKET
+              value: trino
+            # Garage requires the GK<24 hex> key id format and a 64 hex char
+            # secret. These are also set in s3-connection.yaml.
+            - name: GARAGE_DEFAULT_ACCESS_KEY
+              value: GK31c0ffee31c0ffee31c0ffee
+            - name: GARAGE_DEFAULT_SECRET_KEY
+              value: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+          ports:
+            - name: rpc
+              containerPort: 3901
+            - name: admin
+              containerPort: 3903
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: admin
+          volumeMounts:
+            - name: config
+              mountPath: /etc/garage.toml
+              subPath: garage.toml
+            - name: data
+              mountPath: /var/lib/garage
+          # The LimitRange in 00-limit-range.yaml rejects Pods without limits,
+          # and caps them at 5x the CPU request and 1x the memory request.
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+        - name: nginx
+          image: docker.io/library/nginx:1.29-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: https
+              containerPort: 9000
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: tls
+              mountPath: /stackable/tls
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+        # The Garage image ships no S3 client, so this is where the test data is
+        # uploaded from, see 04-prepare-bucket.yaml. It talks to Garage over
+        # loopback, which keeps the upload out of the TLS and DNS picture.
+        - name: s3-client
+          image: docker.io/curlimages/curl:8.17.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sleep
+            - infinity
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: garage
+        - name: data
+          emptyDir: {}
+        - name: tls
+          ephemeral:
+            volumeClaimTemplate:
+              metadata:
+                annotations:
+                  secrets.stackable.tech/class: tls
+                  secrets.stackable.tech/scope: service=garage
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: "1"
+                storageClassName: secrets.stackable.tech
