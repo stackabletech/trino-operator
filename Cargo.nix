@@ -1247,9 +1247,9 @@ rec {
       };
       "combine" = rec {
         crateName = "combine";
-        version = "4.6.8";
+        version = "4.6.9";
         edition = "2018";
-        sha256 = "0ppwzwdmszpan9ybx1myc6ldg5zih2sazf9idckdxrh9gn9j1hyg";
+        sha256 = "14izj50knw6rgl6ky3903k43pnl6qjgyw4d30n6ljdb4jykfnmj3";
         authors = [
           "Markus Westerlind <marwes91@gmail.com>"
         ];
@@ -1830,10 +1830,10 @@ rec {
       };
       "defmt" = rec {
         crateName = "defmt";
-        version = "1.1.1";
+        version = "1.2.0";
         edition = "2021";
         links = "defmt";
-        sha256 = "1lc8xlfj700xqjmvp7n9hhc1czgpaqkq960iqw6d5fwk9zz3p5g2";
+        sha256 = "1qg3w0w7f0fn74xp60aci37swsjz6hbrqp3pngbm9js0qxd7k874";
         authors = [
           "The Knurling-rs developers"
         ];
@@ -1854,9 +1854,9 @@ rec {
       };
       "defmt-macros" = rec {
         crateName = "defmt-macros";
-        version = "1.1.1";
+        version = "1.2.0";
         edition = "2021";
-        sha256 = "1s2zkcbaj1l306ph1n1gsfm6vzc2sah4acl1qc6pw4x2ghpcgnds";
+        sha256 = "0rl3dlnl8lc4dqzdnr6q0vrpjz3qmdca5641334rbi4rpmbb02w4";
         procMacro = true;
         libName = "defmt_macros";
         authors = [
@@ -1877,7 +1877,7 @@ rec {
           }
           {
             name = "syn";
-            packageId = "syn 2.0.119";
+            packageId = "syn 3.0.9";
             features = [ "full" "extra-traits" ];
           }
         ];
@@ -1886,9 +1886,9 @@ rec {
       };
       "defmt-parser" = rec {
         crateName = "defmt-parser";
-        version = "1.0.0";
+        version = "1.1.0";
         edition = "2021";
-        sha256 = "0gpfky9sssil5qfaix5wxcwiqk7snszhl5gq3vcwkrxjncs07mhh";
+        sha256 = "1849z1vp502s77sip4wzj6jimjl6x5vr7b2ivp2mds1dzdlqz5bi";
         libName = "defmt_parser";
         authors = [
           "The Knurling-rs developers"
@@ -7417,9 +7417,9 @@ rec {
       };
       "pest" = rec {
         crateName = "pest";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "1yhr35ds3c5ww7nvh9nvs842p40nmwgqj7ql4z3accwbld5kfs5m";
+        sha256 = "08xvj2lwj450ki4mmr5s369pfgk5fq6vy8kyki1b7hybm5ha8izx";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -7456,9 +7456,9 @@ rec {
       };
       "pest_derive" = rec {
         crateName = "pest_derive";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "0zygma96zndmadjsg6m353ak48ziab55c8mb43zsmsscj95ihvmn";
+        sha256 = "0i7g26dkang3zyl0hvcfdfsaz713i77r70v0n6d53xq8fxllcgi0";
         procMacro = true;
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
@@ -7484,9 +7484,9 @@ rec {
       };
       "pest_generator" = rec {
         crateName = "pest_generator";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "150nhpb5mh4vx1gmgl3fmix953pmy3r595xg4sk59pp4cz97hx58";
+        sha256 = "1mflbrhm9abanrgf43fdhhj0psfgyf635kvkzin3v3a518sfcjp8";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
@@ -7522,9 +7522,9 @@ rec {
       };
       "pest_meta" = rec {
         crateName = "pest_meta";
-        version = "2.9.3";
+        version = "2.9.4";
         edition = "2021";
-        sha256 = "1qb9r2akz8q1wbvwmdipiaq06km3m8wn27w3kcssqha2icj6z62g";
+        sha256 = "04774dlh7acgf8hzl0w11dbp4q3ay3qwvxfqixcydg1x5grr4zxm";
         authors = [
           "Dragoș Tiselice <dragostiselice@gmail.com>"
         ];
