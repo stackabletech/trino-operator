@@ -375,7 +375,7 @@ pub(crate) fn merged_role_group_config(
     trino: &v1alpha1::TrinoCluster,
     trino_role: &TrinoRole,
     role_group: &str,
-    trino_catalogs: &[crate::crd::catalog::v1alpha1::TrinoCatalog],
+    trino_catalogs: &[crate::crd::catalog::v1alpha2::TrinoCatalog],
 ) -> TrinoRoleGroupConfig {
     // The shared test clusters do not enable the Vector agent, so no aggregator ConfigMap name is
     // required here.

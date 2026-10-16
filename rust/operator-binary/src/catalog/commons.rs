@@ -23,13 +23,13 @@ use crate::{
         CONFIG_DIR_NAME,
         catalog::{
             TrinoCatalogName,
-            commons::{HdfsConnection, MetastoreConnection},
+            commons::{HdfsConnection, HiveMetastoreConnection},
         },
     },
 };
 
 #[async_trait]
-impl ExtendCatalogConfig for MetastoreConnection {
+impl ExtendCatalogConfig for HiveMetastoreConnection {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
