@@ -17,7 +17,7 @@ metadata:
   name: simple-trino
 spec:
   image:
-    productVersion: "481"
+    productVersion: "483"
   clusterConfig:
     tls:
       internalSecretClass: trino-internal-tls # <1>
@@ -81,7 +81,7 @@ metadata:
   name: simple-hive-derby
 spec:
   image:
-    productVersion: 4.2.0
+    productVersion: 4.2.1
   clusterConfig:
     database:
       connString: jdbc:derby:;databaseName=/tmp/metastore_db;create=true
