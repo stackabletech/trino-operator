@@ -4110,9 +4110,9 @@ spec:
                                     - required:
                                       - tokenSecretName
                                     - required:
-                                      - credentialsSecretName
+                                      - clientCredentialsSecretName
                                     properties:
-                                      credentialsSecretName:
+                                      clientCredentialsSecretName:
                                         description: |-
                                           The credentials to exchange for a token in the OAuth2 client credentials flow with the server.
                                           Mutually exclusive with `tokenSecretName`.
@@ -4126,7 +4126,7 @@ spec:
                                       tokenSecretName:
                                         description: |-
                                           Authenticate using a bearer token.
-                                          Mutually exclusive with `credentialsSecretName`.
+                                          Mutually exclusive with `clientCredentialsSecretName`.
 
                                           The Secret needs to contain the `token` key.
                                         type: string
