@@ -44,7 +44,8 @@ pub enum IcebergRestCatalogAuthentication {
         /// The endpoint to retrieve access token from OAuth2 Server.
         server_uri: Url,
 
-        /// The credential to present to the REST catalog.
+        // No docs will show up.
+        #[serde(flatten)]
         credential: IcebergRestCatalogOAuthCredential,
     },
 }
@@ -59,11 +60,13 @@ impl Default for IcebergRestCatalogAuthentication {
 #[serde(rename_all = "camelCase")]
 pub enum IcebergRestCatalogOAuthCredential {
     /// Authenticate using a bearer token.
+    /// Mutually exclusive with `credentialsSecretName`.
     ///
     /// The Secret needs to contain the `token` key.
     TokenSecretName(String),
 
-    // The credentials to exchange for a token in the OAuth2 client credentials flow with the server.
+    /// The credentials to exchange for a token in the OAuth2 client credentials flow with the server.
+    /// Mutually exclusive with `tokenSecretName`.
     ///
     /// The Secret needs to contain the `clientId` and `clientSecret` keys.
     CredentialsSecretName(String),

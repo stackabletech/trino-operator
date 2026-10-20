@@ -4106,31 +4106,31 @@ spec:
 
                                       Note that we only support configuring a subset of Trino's properties, you might need to use
                                       `configOverrides` to be able to set all [available properties](https://trino.io/docs/current/object-storage/metastores.html#iceberg-specific-metastores).
+                                    oneOf:
+                                    - required:
+                                      - tokenSecretName
+                                    - required:
+                                      - credentialsSecretName
                                     properties:
-                                      credential:
-                                        description: The credential to present to the REST catalog.
-                                        oneOf:
-                                        - required:
-                                          - tokenSecretName
-                                        - required:
-                                          - credentialsSecretName
-                                        properties:
-                                          credentialsSecretName:
-                                            description: The Secret needs to contain the `clientId` and `clientSecret` keys.
-                                            type: string
-                                          tokenSecretName:
-                                            description: |-
-                                              Authenticate using a bearer token.
+                                      credentialsSecretName:
+                                        description: |-
+                                          The credentials to exchange for a token in the OAuth2 client credentials flow with the server.
+                                          Mutually exclusive with `tokenSecretName`.
 
-                                              The Secret needs to contain the `token` key.
-                                            type: string
-                                        type: object
+                                          The Secret needs to contain the `clientId` and `clientSecret` keys.
+                                        type: string
                                       serverUri:
                                         description: The endpoint to retrieve access token from OAuth2 Server.
                                         format: uri
                                         type: string
+                                      tokenSecretName:
+                                        description: |-
+                                          Authenticate using a bearer token.
+                                          Mutually exclusive with `credentialsSecretName`.
+
+                                          The Secret needs to contain the `token` key.
+                                        type: string
                                     required:
-                                    - credential
                                     - serverUri
                                     type: object
                                 type: object
