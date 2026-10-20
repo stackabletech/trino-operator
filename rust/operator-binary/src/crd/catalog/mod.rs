@@ -389,7 +389,7 @@ mod tests {
                     authentication:
                       oAuth2:
                         serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
-                        credentialsSecretName: my-keycloak-credentials
+                        clientCredentialsSecretName: my-keycloak-credentials
           - connector:
               iceberg:
                 catalog:
@@ -407,8 +407,8 @@ mod tests {
                     authentication:
                       oAuth2:
                         serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
-                        credentialsSecretName: my-keycloak-credentials
-                        # Note that we specify credentialsSecretName and tokenSecretName, which Kubernetes would reject at the same time
+                        clientCredentialsSecretName: my-keycloak-credentials
+                        # Note that we specify clientCredentialsSecretName and tokenSecretName, which Kubernetes would reject at the same time
                         tokenSecretName: my-keycloak-token
           - connector:
               iceberg:

@@ -60,7 +60,7 @@ impl Default for IcebergRestCatalogAuthentication {
 #[serde(rename_all = "camelCase")]
 pub enum IcebergRestCatalogOAuthCredential {
     /// Authenticate using a bearer token.
-    /// Mutually exclusive with `credentialsSecretName`.
+    /// Mutually exclusive with `clientCredentialsSecretName`.
     ///
     /// The Secret needs to contain the `token` key.
     TokenSecretName(String),
@@ -69,5 +69,5 @@ pub enum IcebergRestCatalogOAuthCredential {
     /// Mutually exclusive with `tokenSecretName`.
     ///
     /// The Secret needs to contain the `clientId` and `clientSecret` keys.
-    CredentialsSecretName(String),
+    ClientCredentialsSecretName(String),
 }
