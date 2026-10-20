@@ -48,6 +48,7 @@ All notable changes to this project will be documented in this file.
 - Replace the unmaintained `serde_yaml` with `yaml_serde` ([#957]).
 - All pods now set `securityContext.seccompProfile.type` to `RuntimeDefault` ([#957]).
 - Support Vector 0.58.0 ([#953], [#959], [#960]).
+- test: Bump hive to 4.2.1 ([#961]).
 
 ### Fixed
 
@@ -87,6 +88,7 @@ All notable changes to this project will be documented in this file.
 [#958]: https://github.com/stackabletech/trino-operator/pull/958
 [#959]: https://github.com/stackabletech/trino-operator/pull/959
 [#960]: https://github.com/stackabletech/trino-operator/pull/960
+[#961]: https://github.com/stackabletech/trino-operator/pull/961
 
 ## [26.7.0] - 2026-07-21
 
