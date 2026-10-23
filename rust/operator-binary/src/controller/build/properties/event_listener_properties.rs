@@ -8,7 +8,8 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    controller::{TrinoRoleGroupConfig, ValidatedCluster},
+    config::lineage::OPENLINEAGE_TRINO_URI_KEY,
+    controller::{TrinoRoleGroupConfig, ValidatedCluster, build::ports},
     crd::TrinoRole,
 };
 
@@ -30,12 +31,42 @@ pub fn build(
 
     if let Some(lineage) = &cluster.cluster_config.lineage {
         props.extend(lineage.properties.clone());
+        props.insert(
+            OPENLINEAGE_TRINO_URI_KEY.to_string(),
+            dataset_namespace_uri(cluster, lineage.dataset_namespace_uri.as_deref()),
+        );
     }
 
     // User overrides (highest precedence).
     props.extend(rg.config_overrides.event_listener_properties.clone());
 
     props
+}
+
+/// The `trino.uri` Trino derives the dataset namespace from: the user-provided
+/// `datasetNamespaceUri`, or the address of the coordinator Service
+/// (`<scheme>://<coordinator service name>:<port>`) when there is none (the CRD default).
+///
+/// Trino turns the URI into the dataset namespace `trino://<host>:<port>`. Other OpenLineage
+/// producers that read from this Trino (e.g. Airflow's Trino connection) name the same datasets
+/// after the host and port they connect to, so defaulting to the coordinator Service address makes
+/// both sides report identical dataset identities.
+///
+/// This function intentionally returns a `String` rather than an `Url` object.
+/// Behaviour change: Url normalises its input, so the rendered result differs from before:
+/// - The URI gets a trailing slash, for example https://simple-trino-coordinator:8443/.
+/// - A default port is dropped, so a user-provided https://trino-prod:443 becomes https://trino-prod/.
+///
+fn dataset_namespace_uri(cluster: &ValidatedCluster, user_provided: Option<&str>) -> String {
+    match user_provided {
+        Some(uri) => uri.to_string(),
+        None => format!(
+            "{scheme}://{cluster_name}-coordinator:{port}",
+            scheme = ports::exposed_protocol(cluster),
+            cluster_name = cluster.name,
+            port = ports::exposed_port(cluster),
+        ),
+    }
 }
 
 #[cfg(test)]
@@ -46,8 +77,7 @@ mod tests {
     use crate::{
         config::lineage::{
             EVENT_LISTENER_NAME_KEY, OPENLINEAGE_NAMESPACE_KEY, OPENLINEAGE_TRANSPORT_API_KEY_KEY,
-            OPENLINEAGE_TRANSPORT_TYPE_KEY, OPENLINEAGE_TRANSPORT_URL_KEY,
-            OPENLINEAGE_TRINO_URI_KEY, ResolvedLineageConfig,
+            OPENLINEAGE_TRANSPORT_TYPE_KEY, OPENLINEAGE_TRANSPORT_URL_KEY, ResolvedLineageConfig,
         },
         controller::{
             ValidatedCluster,
@@ -73,10 +103,6 @@ mod tests {
                 "http://marquez:5000".to_string(),
             ),
             (OPENLINEAGE_NAMESPACE_KEY.to_string(), "default".to_string()),
-            (
-                OPENLINEAGE_TRINO_URI_KEY.to_string(),
-                "https://simple-trino.dev".to_string(),
-            ),
         ]);
         if with_auth {
             properties.insert(
@@ -86,6 +112,7 @@ mod tests {
         }
         ResolvedLineageConfig {
             properties,
+            dataset_namespace_uri: None,
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
             init_container_extra_start_commands: Vec::new(),
@@ -148,10 +175,52 @@ mod tests {
         assert_eq!(props.get(OPENLINEAGE_NAMESPACE_KEY).unwrap(), "default");
         assert_eq!(
             props.get(OPENLINEAGE_TRINO_URI_KEY).unwrap(),
-            "https://simple-trino.dev"
+            "https://simple-trino-coordinator:8443"
         );
         // No auth configured -> no api-key.
         assert!(!props.contains_key(OPENLINEAGE_TRANSPORT_API_KEY_KEY));
+    }
+
+    #[test]
+    fn trino_uri_defaults_to_http_coordinator_service_without_server_tls() {
+        let yaml = MINIMAL_TRINO_YAML.replace(
+            "catalogLabelSelector: {}",
+            "catalogLabelSelector: {}\n            tls:\n              serverSecretClass: null\n              internalSecretClass: null",
+        );
+        let mut derefs = empty_derefs();
+        derefs.resolved_lineage_config = Some(resolved_lineage(false));
+        let cluster =
+            crate::controller::build::properties::test_support::validated_cluster_from_yaml_with_derefs(
+                &yaml,
+                derefs,
+            );
+        let rg = coordinator_rg(&cluster);
+        let props = build(&cluster, TrinoRole::Coordinator, &rg);
+
+        assert_eq!(
+            props.get(OPENLINEAGE_TRINO_URI_KEY).unwrap(),
+            "http://simple-trino-coordinator:8080"
+        );
+    }
+
+    #[test]
+    fn trino_uri_uses_user_provided_dataset_namespace_uri() {
+        let mut derefs = empty_derefs();
+        let mut lineage = resolved_lineage(false);
+        lineage.dataset_namespace_uri = Some("https://trino-prod:443".to_string());
+        derefs.resolved_lineage_config = Some(lineage);
+        let cluster =
+            crate::controller::build::properties::test_support::validated_cluster_from_yaml_with_derefs(
+                MINIMAL_TRINO_YAML,
+                derefs,
+            );
+        let rg = coordinator_rg(&cluster);
+        let props = build(&cluster, TrinoRole::Coordinator, &rg);
+
+        assert_eq!(
+            props.get(OPENLINEAGE_TRINO_URI_KEY).unwrap(),
+            "https://trino-prod:443"
+        );
     }
 
     #[test]

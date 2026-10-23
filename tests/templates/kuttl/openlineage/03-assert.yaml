@@ -15,9 +15,10 @@ commands:
       echo "$CM" | grep -q "event-listener.config-files=/stackable/rwconfig/event-listener.properties"
       # jobNameFormat maps to the OpenLineage job name format.
       echo "$CM" | grep -q "openlineage-event-listener.job.name-format=trino-"
-      # datasetNamespaceUri defaults to https://<TrinoCluster name>.<namespace>. Java properties escape `:`,
+      # datasetNamespaceUri defaults to the coordinator Service address (server TLS is on by default).
+      # Java properties escape `:`,
       # so drop backslashes before matching.
-      echo "$CM" | tr -d '\\' | grep -q "openlineage-event-listener.trino.uri=https://trino-openlineage.$NAMESPACE"
+      echo "$CM" | tr -d '\\' | grep -q "openlineage-event-listener.trino.uri=https://trino-openlineage-coordinator:8443"
   # Workers must NOT get an event listener configured.
   - script: |
       ! kubectl get -n "$NAMESPACE" configmap trino-openlineage-worker-default -o yaml | grep -q "event-listener.properties"

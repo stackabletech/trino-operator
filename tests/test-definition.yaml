@@ -165,6 +165,21 @@ suites:
             expr: last
           - name: zookeeper
             expr: last
+          - name: openlineage-use-tls
+            expr: last
+          - name: openlineage-use-auth
+            expr: last
+          - name: use-tls
+            expr: last
+          - name: use-internal-tls
+            expr: last
+          - name: use-authentication
+            expr: last
+          - name: ldap-use-tls
+            expr: last
+          - name: s3-use-tls
+            expr: last
+
   - name: smoke-latest
     # Useful during development
     select:

@@ -55,7 +55,7 @@ spec:
 <3> Optional. The OpenLineage namespace events are reported under. Defaults to `default`.
 <4> Optional. URL path of the endpoint events are POSTed to. Defaults to `/api/v1/lineage`.
 <5> Optional. Sets the OpenLineage job name format. Accepts an arbitrary string with optional `$QUERY_ID`, `$USER`, `$SOURCE` and `$CLIENT_IP` substitution variables. Defaults to `$QUERY_ID`. See the link:https://trino.io/docs/current/admin/event-listeners-openlineage.html[Trino OpenLineage event listener documentation {external-link-icon}^].
-<6> Optional. Sets `openlineage-event-listener.trino.uri`, from which Trino derives the namespace of every dataset it reports. The URI is only an identifier and is never connected to. Defaults to `https://<name of the TrinoCluster>.<its namespace>` when empty or unset. Set it explicitly to keep dataset identities stable across Kubernetes clusters or namespace moves.
+<6> Optional. Sets `openlineage-event-listener.trino.uri`, from which Trino derives the namespace of every dataset it reports. The URI is only an identifier and is never connected to. Defaults to the coordinator Service address `<scheme>://<coordinator service name>:<port>` (`http` and `8080` when server TLS is disabled) when empty or unset, which yields the same dataset namespace (`trino://<coordinator service name>:8443`) that other OpenLineage producers, such as Airflow, report when they connect to that Service. Set it explicitly if they connect via a different host or port.
 
 The `OpenLineageConnection` resource (`lineage.stackable.tech`) is a reusable definition of a connection to an OpenLineage backend, provided by the Stackable operator library.
 Reference it to share one backend definition across multiple clusters:

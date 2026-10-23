@@ -320,8 +320,9 @@ pub mod versioned {
 
         /// URI identifying this Trino cluster in the emitted lineage. Trino replaces its scheme
         /// with `trino` and uses the result as the namespace of every dataset (table) it reports,
-        /// e.g. `trino://my-trino`. It is never connected to, so it does not have to be reachable.
-        /// Defaults to `https://<name of the TrinoCluster>.<its namespace>` when empty or unset.
+        /// e.g. `trino://my-trino:8443`. It is never connected to, so it does not have to be reachable.
+        /// Defaults to the address of the coordinator Service, `<scheme>://<coordinator service name>:<port>`.
+        /// This matches the dataset namespace other OpenLineage producers, such as Airflow, report for the same Trino.
         #[serde(default)]
         pub dataset_namespace_uri: String,
     }

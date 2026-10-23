@@ -417,6 +417,7 @@ mod tests {
         let mut derefs = empty_derefs();
         derefs.resolved_lineage_config = Some(ResolvedLineageConfig {
             properties: BTreeMap::new(),
+            dataset_namespace_uri: None,
             volumes: Vec::new(),
             volume_mounts: Vec::new(),
             init_container_extra_start_commands: Vec::new(),
