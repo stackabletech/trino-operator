@@ -4,7 +4,7 @@ use stackable_operator::{
     schemars::{self, JsonSchema},
 };
 
-use super::commons::{HdfsConnection, MetastoreConnection};
+use super::commons::{HdfsConnection, HiveMetastoreConnection};
 
 // This struct is similar to [`super::hive::HiveConnector`], but we do not `#[serde(flatten)]` it here, to avoid changing
 // stuff there and missing that these settings don't apply to other connectors (such as Iceberg or Delta Lake).
@@ -12,7 +12,7 @@ use super::commons::{HdfsConnection, MetastoreConnection};
 #[serde(rename_all = "camelCase")]
 pub struct DeltaLakeConnector {
     /// Mandatory connection to a Hive Metastore, which will be used as a storage for metadata.
-    pub metastore: MetastoreConnection,
+    pub metastore: HiveMetastoreConnection,
 
     /// Connection to an S3 store.
     /// Please make sure that the underlying Hive metastore also has access to the S3 store.

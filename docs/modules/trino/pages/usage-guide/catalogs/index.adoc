@@ -14,7 +14,7 @@ You can create a catalog using the `TrinoCatalog` object as follows.
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: hive-catalog
@@ -33,7 +33,7 @@ spec:
           credentials:
             secretClass: minio-credentials
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: iceberg
@@ -70,7 +70,7 @@ This example illustrates how to use config overrides and config removals
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 spec:
   # Add some properties
@@ -118,6 +118,7 @@ The Trino catalog will be called `my_postgres`:
 
 [source,yaml]
 ----
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: my-postgres

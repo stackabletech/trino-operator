@@ -10,7 +10,10 @@ use stackable_operator::{
 
 use crate::{
     catalog::{FromTrinoCatalogError, ToCatalogConfig},
-    crd::catalog::{TrinoCatalogConnector, TrinoCatalogName, v1alpha1},
+    crd::catalog::{
+        TrinoCatalogName,
+        v1alpha2::{self, TrinoCatalogConnector},
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -107,7 +110,7 @@ impl CatalogConfig {
 
     pub async fn from_catalog(
         catalog_name: &TrinoCatalogName,
-        catalog: &v1alpha1::TrinoCatalog,
+        catalog: &v1alpha2::TrinoCatalog,
         client: &Client,
         catalog_namespace: &NamespaceName,
     ) -> Result<CatalogConfig, FromTrinoCatalogError> {
@@ -144,7 +147,7 @@ impl CatalogConfig {
     }
 }
 
-fn calculate_env_name(catalog_name: &TrinoCatalogName, property: impl Into<String>) -> String {
+pub fn calculate_env_name(catalog_name: &TrinoCatalogName, property: impl Into<String>) -> String {
     let catalog = catalog_name.to_string().replace(['.', '-'], "_");
     let property = property.into().replace(['.', '-'], "_");
     format!("CATALOG_{catalog}_{property}").to_uppercase()

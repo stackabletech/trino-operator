@@ -6,7 +6,7 @@ use stackable_operator::{
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MetastoreConnection {
+pub struct HiveMetastoreConnection {
     /// Name of the [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery) providing information about the Hive metastore.
     pub config_map: ConfigMapName,
 }

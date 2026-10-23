@@ -19,7 +19,7 @@ status:
   readyReplicas: 2
   replicas: 2
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: tpch

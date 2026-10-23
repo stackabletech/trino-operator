@@ -36,7 +36,7 @@ pub async fn create_webhook_server(
 ) -> Result<WebhookServer, Error> {
     let crds_and_handlers = vec![
         (
-            TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1).context(MergeCrdSnafu)?,
+            TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha2).context(MergeCrdSnafu)?,
             TrinoCatalog::try_convert as fn(_) -> _,
         ),
         (
