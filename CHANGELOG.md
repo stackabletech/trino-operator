@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
   always defaulting to `Always` ([#944]).
 - Internal operator refactoring: introduce a build() step in the reconciler that
   assembles all relevant Kubernetes resources before anything is applied ([#909]).
-- Bump `stackable-operator` to 0.118.0 ([#918], [#932], [#944]).
+- Bump `stackable-operator` to 0.121.0 ([#918], [#932], [#944], [#949], [#957]).
 - The RBAC ServiceAccount and RoleBinding are now built with the operator-rs `v2::rbac`
   functions and carry the full set of recommended labels ([#913]).
 - BREAKING: The `coordinators` and `workers` roles are now required by the CRD.
@@ -44,12 +44,12 @@ All notable changes to this project will be documented in this file.
 - Internal operator refactoring: the validated cluster carries each role's configuration in its own
   typed fields instead of maps keyed by role, and the coordinator's role config is no longer
   converted to the worker's shape and its listener class recovered afterwards ([#945]).
-- Bump stackable-operator to 0.119.0 ([#949]).
 - test: Bump vector-aggregator to 0.58.0 ([#953]).
 - test: Update OPA to 1.20.2 in integration tests ([#958]).
-- Bump `stackable-operator` to 0.121.0 and replace the unmaintained `serde_yaml` with `yaml_serde` ([#957]).
+- Replace the unmaintained `serde_yaml` with `yaml_serde` ([#957]).
 - All pods now set `securityContext.seccompProfile.type` to `RuntimeDefault` ([#957]).
-- Support Vector 0.58.0 ([#953], [#959]).
+- Support Vector 0.58.0 ([#953], [#959], [#960]).
+- test: Bump hive to 4.2.1 ([#961]).
 
 ### Fixed
 
@@ -89,6 +89,8 @@ All notable changes to this project will be documented in this file.
 [#957]: https://github.com/stackabletech/trino-operator/pull/957
 [#958]: https://github.com/stackabletech/trino-operator/pull/958
 [#959]: https://github.com/stackabletech/trino-operator/pull/959
+[#960]: https://github.com/stackabletech/trino-operator/pull/960
+[#961]: https://github.com/stackabletech/trino-operator/pull/961
 
 ## [26.7.0] - 2026-07-21
 
