@@ -50,6 +50,7 @@ All notable changes to this project will be documented in this file.
 - All pods now set `securityContext.seccompProfile.type` to `RuntimeDefault` ([#957]).
 - Support Vector 0.58.0 ([#953], [#959], [#960]).
 - test: Bump hive to 4.2.1 ([#961]).
+- The operator Deployment runs with a restricted security context and a read-only root filesystem, so it can be deployed into namespaces that enforce the `restricted` Pod Security Standard ([#963]).
 
 ### Fixed
 
@@ -91,6 +92,7 @@ All notable changes to this project will be documented in this file.
 [#959]: https://github.com/stackabletech/trino-operator/pull/959
 [#960]: https://github.com/stackabletech/trino-operator/pull/960
 [#961]: https://github.com/stackabletech/trino-operator/pull/961
+[#963]: https://github.com/stackabletech/trino-operator/pull/963
 
 ## [26.7.0] - 2026-07-21
 
