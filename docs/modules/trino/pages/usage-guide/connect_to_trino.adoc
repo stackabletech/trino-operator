@@ -1,14 +1,15 @@
 = Connecting to Trino
-:description: Learn how to connect to Trino using trino-cli, DBeaver, or Python. Includes setup for SSL/TLS, OpenID Connect, and basic authentication.
+:description: Learn how to connect to Trino using Superset, trino-cli, DBeaver, Python or Power BI. Includes setup for SSL/TLS, OpenID Connect, and basic authentication.
 
 :trino-jdbc: https://trino.io/docs/current/client/jdbc.html
-:starburst-odbc: https://docs.starburst.io/data-consumer/clients/odbc.html
+:stackable-odbc: https://github.com/stackabletech/stackable-odbc-trino
 :trino-cli: https://trino.io/docs/current/client/cli.html
 :dbeaver: https://dbeaver.io
 :trino-python-client: https://github.com/trinodb/trino-python-client
 
 Trino offers an SQL endpoint via a HTTP API.
-An {trino-jdbc}[open source JDBC driver] does exist as well as a proprietary {starburst-odbc}[ODBC driver].
+Trino provides an {trino-jdbc}[open-source JDBC driver].
+For ODBC, Stackable provides the open-source {stackable-odbc}[Stackable ODBC driver for Trino], which is not part of SDP and isn't covered by Stackable support.
 
 Multiple SQL clients can be used to connect to Trino as described below.
 
@@ -93,6 +94,10 @@ As the last step you can click on _Finish_ and start using the Trino connection.
 
 TIP: In case you are using OpenID connect, set the `externalAuthentication` property to `true` and don't provide and username or password.
 A browser window will be opened, which might require you to log in.
+
+== Connect with Power BI
+
+xref:home:guides:connecting-power-bi.adoc[] covers Power BI Desktop, the Power BI Service and Power BI Report Server.
 
 == Connect with Python
 
