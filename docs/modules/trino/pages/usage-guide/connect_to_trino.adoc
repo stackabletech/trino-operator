@@ -97,7 +97,7 @@ A browser window will be opened, which might require you to log in.
 
 == Connect with Power BI
 
-xref:home:guides:connecting-power-bi.adoc[] covers Power BI Desktop, the Power BI Service and Power BI Report Server.
+xref:guides:connecting-power-bi.adoc[] covers Power BI Desktop, the Power BI Service and Power BI Report Server.
 
 == Connect with Python
 
