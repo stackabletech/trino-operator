@@ -323,6 +323,10 @@ pub mod versioned {
         /// e.g. `trino://my-trino:8443`. It is never connected to, so it does not have to be reachable.
         /// Defaults to the address of the coordinator Service, `<scheme>://<coordinator service name>:<port>`.
         /// This matches the dataset namespace other OpenLineage producers, such as Airflow, report for the same Trino.
+        //
+        // Note: This intentionally is a String (instead of an [`url::Url`]), as we want to
+        // preserve the exact string the user enters, see the docs on the `dataset_namespace_uri`
+        // function for details.
         #[serde(default)]
         pub dataset_namespace_uri: String,
     }
