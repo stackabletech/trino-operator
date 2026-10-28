@@ -1,6 +1,6 @@
 //! Builders that turn a `ValidatedCluster` into Kubernetes resource contents.
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, str::FromStr};
 
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
@@ -10,7 +10,7 @@ use stackable_operator::{
     v2::{
         builder::meta::ownerreference_from_resource,
         kvp::label,
-        types::operator::{RoleGroupName, RoleName},
+        types::operator::{ProductVersion, RoleGroupName, RoleName},
     },
 };
 
@@ -38,6 +38,10 @@ pub mod graceful_shutdown;
 pub mod ports;
 pub mod properties;
 pub mod resource;
+
+// Placeholder value for the `app.kubernetes.io/version` label on resources whose labels are
+// immutable once deployed. See `recommended_labels_for_unversioned_role_group_resources`.
+stackable_operator::constant!(UNVERSIONED_PRODUCT_VERSION: ProductVersion = "none");
 
 #[derive(Snafu, Debug)]
 pub enum Error {
@@ -211,14 +215,25 @@ pub(crate) fn recommended_labels_for_role_group_resources(
     )
 }
 
+/// The recommended labels for role-group resources that carry no product version.
+///
+/// The `app.kubernetes.io/version` label is set to the placeholder `none` rather than being
+/// omitted, because that is what operator versions up to 26.7 wrote. Omitting it would change the
+/// `volumeClaimTemplates` of already deployed StatefulSets, and since those templates are
+/// immutable, Kubernetes rejects the update and the operator can no longer reconcile the
+/// StatefulSet.
+///
+/// This is also why `label::recommended_labels_for_unversioned_role_group_resources`, which drops
+/// the label entirely, is not used here.
 pub(crate) fn recommended_labels_for_unversioned_role_group_resources(
     cluster: &ValidatedCluster,
     role_name: &RoleName,
     role_group_name: &RoleGroupName,
 ) -> Labels {
-    label::recommended_labels_for_unversioned_role_group_resources(
+    label::recommended_labels_for_role_group_resources(
         &cluster.name,
         &PRODUCT_NAME,
+        &UNVERSIONED_PRODUCT_VERSION,
         &OPERATOR_NAME,
         &CONTROLLER_NAME,
         role_name,
@@ -241,7 +256,7 @@ mod tests {
         commons::networking::DomainName, kube::Resource, utils::cluster_info::KubernetesClusterInfo,
     };
 
-    use super::build;
+    use super::{UNVERSIONED_PRODUCT_VERSION, build};
     use crate::controller::validated_cluster;
 
     /// Collects the `.metadata.name`s of the given resources, sorted for stable comparison.
@@ -252,6 +267,12 @@ mod tests {
             .collect();
         names.sort();
         names
+    }
+
+    #[test]
+    fn test_constants() {
+        // Test that dereferencing the constant does not panic.
+        let _ = *UNVERSIONED_PRODUCT_VERSION;
     }
 
     #[test]
