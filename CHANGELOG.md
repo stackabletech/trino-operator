@@ -35,11 +35,8 @@ All notable changes to this project will be documented in this file.
   environment variables by name, so an override replaces the operator's value instead of
   producing a duplicated entry whose precedence depended on Kubernetes' duplicate-name
   handling ([#932]).
-- BREAKING: Remove the `app.kubernetes.io/component` and `app.kubernetes.io/role-group` labels
-  from the resources they don't apply to, and the `app.kubernetes.io/version` label from PVC
-  templates (all previously set to the placeholder value `none`). After the operator upgrade,
-  delete each coordinator StatefulSet so that the operator immediately recreates it with the
-  new labels ([#932]).
+- Remove the `app.kubernetes.io/component` and `app.kubernetes.io/role-group` labels from the
+  resources they don't apply to ([#932], [#966]).
 - Make operations infallible where dependent on static inputs ([#939], [#943]).
 - Internal operator refactoring: the validated cluster carries each role's configuration in its own
   typed fields instead of maps keyed by role, and the coordinator's role config is no longer
@@ -93,6 +90,7 @@ All notable changes to this project will be documented in this file.
 [#960]: https://github.com/stackabletech/trino-operator/pull/960
 [#961]: https://github.com/stackabletech/trino-operator/pull/961
 [#963]: https://github.com/stackabletech/trino-operator/pull/963
+[#966]: https://github.com/stackabletech/trino-operator/pull/966
 
 ## [26.7.0] - 2026-07-21
 
