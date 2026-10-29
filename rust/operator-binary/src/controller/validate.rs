@@ -10,6 +10,7 @@ use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     commons::product_image_selection,
     config::fragment,
+    crd::containerdebug,
     kube::ResourceExt as _,
     product_logging::spec::Logging,
     v2::{
@@ -84,6 +85,12 @@ pub enum Error {
     #[snafu(display("failed to resolve and merge config for role group {role_group}"))]
     FailedToResolveConfig {
         source: fragment::ValidationError,
+        role_group: RoleGroupName,
+    },
+
+    #[snafu(display("invalid containerdebug configuration for role group {role_group}"))]
+    InvalidContainerDebugConfig {
+        source: containerdebug::Error,
         role_group: RoleGroupName,
     },
 
@@ -336,8 +343,8 @@ where
             role_group: role_group_name.clone(),
         })?;
         role_groups.insert(
-            role_group_name,
-            into_role_group_config(merged, vector_aggregator_config_map_name)?,
+            role_group_name.clone(),
+            into_role_group_config(merged, &role_group_name, vector_aggregator_config_map_name)?,
         );
     }
 
@@ -348,16 +355,22 @@ where
 /// [`TrinoRoleGroupConfig`] consumed by the build steps.
 fn into_role_group_config(
     merged: RoleGroup<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>,
+    role_group_name: &RoleGroupName,
     vector_aggregator_config_map_name: &Option<ConfigMapName>,
 ) -> Result<TrinoRoleGroupConfig> {
     let replicas = merged.replicas;
     let common = merged.config;
 
+    let containerdebug = common.config.containerdebug.validate().with_context(|_| {
+        InvalidContainerDebugConfigSnafu {
+            role_group: role_group_name.clone(),
+        }
+    })?;
     let logging = validate_logging(&common.config.logging, vector_aggregator_config_map_name)?;
 
     Ok(RoleGroupConfig {
         replicas,
-        config: ValidatedTrinoConfig::from_merged(common.config, logging),
+        config: ValidatedTrinoConfig::from_merged(common.config, containerdebug, logging),
         config_overrides: common.config_overrides,
         env_overrides: common.env_overrides.into(),
         cli_overrides: common.cli_overrides,
@@ -407,7 +420,10 @@ pub(crate) fn merged_role_group_config(
 mod tests {
     use std::{collections::BTreeMap, str::FromStr};
 
-    use stackable_operator::cli::OperatorEnvironmentOptions;
+    use stackable_operator::{
+        cli::OperatorEnvironmentOptions,
+        crd::containerdebug::{DEFAULT_INTERVAL, ValidatedContainerDebugConfig},
+    };
 
     use super::{Error, RoleGroupName, validate};
     use crate::{
@@ -538,6 +554,17 @@ mod tests {
         assert_eq!(
             validated.coordinator_config.listener_class.to_string(),
             "cluster-internal"
+        );
+
+        // Nothing is set in the fixture, so `containerdebug` runs with the operator defaults.
+        let default_role_group = RoleGroupName::from_str("default").expect("valid role group name");
+        assert_eq!(
+            validated.coordinator_role_group_configs[&default_role_group]
+                .config
+                .containerdebug,
+            ValidatedContainerDebugConfig::Enabled {
+                interval: DEFAULT_INTERVAL
+            }
         );
 
         // One `default` role group per role; the Vector agent is off.
@@ -674,5 +701,36 @@ mod tests {
 
         let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
         assert!(matches!(err, Error::ParseRoleGroupName { .. }));
+    }
+
+    #[test]
+    fn rejects_zero_containerdebug_interval() {
+        let yaml = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "481"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                config:
+                  containerdebug:
+                    interval: 0s
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#;
+
+        let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
+        assert!(matches!(err, Error::InvalidContainerDebugConfig { .. }));
     }
 }
