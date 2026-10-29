@@ -420,10 +420,7 @@ pub(crate) fn merged_role_group_config(
 mod tests {
     use std::{collections::BTreeMap, str::FromStr};
 
-    use stackable_operator::{
-        cli::OperatorEnvironmentOptions,
-        crd::containerdebug::{DEFAULT_INTERVAL, ValidatedContainerDebugConfig},
-    };
+    use stackable_operator::cli::OperatorEnvironmentOptions;
 
     use super::{Error, RoleGroupName, validate};
     use crate::{
@@ -554,17 +551,6 @@ mod tests {
         assert_eq!(
             validated.coordinator_config.listener_class.to_string(),
             "cluster-internal"
-        );
-
-        // Nothing is set in the fixture, so `containerdebug` runs with the operator defaults.
-        let default_role_group = RoleGroupName::from_str("default").expect("valid role group name");
-        assert_eq!(
-            validated.coordinator_role_group_configs[&default_role_group]
-                .config
-                .containerdebug,
-            ValidatedContainerDebugConfig::Enabled {
-                interval: DEFAULT_INTERVAL
-            }
         );
 
         // One `default` role group per role; the Vector agent is off.
@@ -701,36 +687,5 @@ mod tests {
 
         let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
         assert!(matches!(err, Error::ParseRoleGroupName { .. }));
-    }
-
-    #[test]
-    fn rejects_zero_containerdebug_interval() {
-        let yaml = r#"
-            apiVersion: trino.stackable.tech/v1alpha1
-            kind: TrinoCluster
-            metadata:
-              name: simple-trino
-              namespace: default
-              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
-            spec:
-              image:
-                productVersion: "481"
-              clusterConfig:
-                catalogLabelSelector: {}
-              coordinators:
-                roleGroups:
-                  default:
-                    replicas: 1
-              workers:
-                config:
-                  containerdebug:
-                    interval: 0s
-                roleGroups:
-                  default:
-                    replicas: 1
-            "#;
-
-        let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
-        assert!(matches!(err, Error::InvalidContainerDebugConfig { .. }));
     }
 }

@@ -893,17 +893,17 @@ mod tests {
         assert_eq!(containerdebug[0].value.as_deref(), Some("/custom/log/dir"));
     }
 
-    /// The trino container starts `containerdebug` from the role group's validated config.
+    /// The trino container starts `containerdebug` from the role group's validated config. The
+    /// command itself is owned (and tested) by operator-rs, so only the wiring is checked here.
     #[rstest]
-    #[case::enabled(
-        ValidatedContainerDebugConfig::Enabled { interval: Duration::from_minutes_unchecked(10) },
-        Some("containerdebug --output=/stackable/log/containerdebug-state.json --loop=10m &")
-    )]
-    #[case::disabled(ValidatedContainerDebugConfig::Disabled, None)]
+    #[case::enabled(ValidatedContainerDebugConfig::Enabled {
+        interval: Duration::from_minutes_unchecked(10)
+    })]
+    #[case::disabled(ValidatedContainerDebugConfig::Disabled)]
     fn trino_container_starts_containerdebug_from_config(
         #[case] containerdebug: ValidatedContainerDebugConfig,
-        #[case] expected: Option<&str>,
     ) {
+        let expected = containerdebug.background_command(STACKABLE_LOG_DIR);
         let cluster = validated_cluster();
         let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
         let mut role_group_config =
@@ -929,7 +929,7 @@ mod tests {
         assert_eq!(
             args.lines()
                 .find(|line| line.starts_with("containerdebug ")),
-            expected,
+            expected.as_deref(),
             "args: {args}"
         );
     }
