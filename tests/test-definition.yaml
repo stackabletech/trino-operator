@@ -57,16 +57,16 @@ dimensions:
       - "false"
   - name: use-tls
     values:
-      - "true"
       - "false"
+      - "true"
   - name: s3-use-tls
     values:
-      - "true"
       - "false"
+      - "true"
   - name: use-internal-tls
     values:
-      - "true"
       - "false"
+      - "true"
   - name: ldap-use-tls
     values:
       - "false"
