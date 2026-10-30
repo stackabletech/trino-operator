@@ -51,6 +51,23 @@ pub enum FromTrinoCatalogError {
     GetPostgresConnectionDetails {
         source: stackable_operator::database_connections::Error,
     },
+
+    #[snafu(display("failed to build the URL of the Iceberg REST catalog or its OAuth2 server"))]
+    BuildIcebergRestUrl {
+        source: crate::crd::catalog::iceberg::HttpEndpointError,
+    },
+
+    #[snafu(display(
+        "failed to configure the TLS volumes of the Iceberg REST catalog or its OAuth2 server"
+    ))]
+    ConfigureIcebergRestTls {
+        source: stackable_operator::commons::tls_verification::TlsClientDetailsError,
+    },
+
+    #[snafu(display(
+        "Trino does not support disabling the TLS verification of the Iceberg REST catalog or its OAuth2 server"
+    ))]
+    IcebergRestTlsNoVerificationNotSupported,
 }
 
 #[async_trait]

@@ -4120,19 +4120,85 @@ spec:
 
                                           The Secret needs to contain the `clientId` and `clientSecret` keys.
                                         type: string
-                                      serverUri:
+                                      server:
                                         description: |-
-                                          The token endpoint of the OAuth2 server. It is used to
+                                          The OAuth2 server endpoint, which needs to point to the token endpoint.
+                                          It is used to
 
                                           * fetch a token using the client credentials (`clientCredentialsSecretName`) and
                                           * refresh the token before it expires. A static token (`tokenSecretName`) is only
                                             refreshed if it is a JWT with an `exp` claim, otherwise the endpoint is never called.
 
                                           It is required nevertheless, as without it the Iceberg client would fall back to the
-                                          deprecated `<uri>/v1/oauth/tokens` endpoint of the REST catalog, which is planned to be
+                                          deprecated `/v1/oauth/tokens` endpoint of the REST catalog, which is planned to be
                                           removed (see <https://github.com/apache/iceberg/issues/10537>).
-                                        format: uri
-                                        type: string
+                                        properties:
+                                          hostname:
+                                            description: |-
+                                              Hostname of the server without any protocol, port or path.
+                                              For example: `iceberg-rest-catalog.example.com`.
+                                            type: string
+                                          path:
+                                            default: /
+                                            description: Path of the endpoint on the server, e.g. `/catalog`. Defaults to `/`.
+                                            type: string
+                                          port:
+                                            description: |-
+                                              Port the server listens on.
+                                              Defaults to 443 if TLS is used and to 80 otherwise.
+                                            format: uint16
+                                            maximum: 65535.0
+                                            minimum: 0.0
+                                            nullable: true
+                                            type: integer
+                                          tls:
+                                            description: Use a TLS connection. If not specified no TLS will be used.
+                                            nullable: true
+                                            properties:
+                                              verification:
+                                                description: The verification method used to verify the certificates of the server and/or the client.
+                                                oneOf:
+                                                - required:
+                                                  - none
+                                                - required:
+                                                  - server
+                                                properties:
+                                                  none:
+                                                    description: Use TLS but don't verify certificates.
+                                                    type: object
+                                                  server:
+                                                    description: Use TLS and a CA certificate to verify the server.
+                                                    properties:
+                                                      caCert:
+                                                        description: CA cert to verify the server.
+                                                        oneOf:
+                                                        - required:
+                                                          - webPki
+                                                        - required:
+                                                          - secretClass
+                                                        properties:
+                                                          secretClass:
+                                                            description: |-
+                                                              Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                              Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
+                                                              so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                                            type: string
+                                                          webPki:
+                                                            description: |-
+                                                              Use TLS and the CA certificates trusted by the common web browsers to verify the server.
+                                                              This can be useful when you e.g. use public AWS S3 or other public available services.
+                                                            type: object
+                                                        type: object
+                                                    required:
+                                                    - caCert
+                                                    type: object
+                                                type: object
+                                            required:
+                                            - verification
+                                            type: object
+                                        required:
+                                        - hostname
+                                        type: object
                                       tokenSecretName:
                                         description: |-
                                           Authenticate using a bearer token.
@@ -4141,15 +4207,74 @@ spec:
                                           The Secret needs to contain the `token` key.
                                         type: string
                                     required:
-                                    - serverUri
+                                    - server
                                     type: object
                                 type: object
-                              uri:
-                                description: URL of the rest catalog server.
-                                format: uri
+                              hostname:
+                                description: |-
+                                  Hostname of the server without any protocol, port or path.
+                                  For example: `iceberg-rest-catalog.example.com`.
                                 type: string
+                              path:
+                                default: /
+                                description: Path of the endpoint on the server, e.g. `/catalog`. Defaults to `/`.
+                                type: string
+                              port:
+                                description: |-
+                                  Port the server listens on.
+                                  Defaults to 443 if TLS is used and to 80 otherwise.
+                                format: uint16
+                                maximum: 65535.0
+                                minimum: 0.0
+                                nullable: true
+                                type: integer
+                              tls:
+                                description: Use a TLS connection. If not specified no TLS will be used.
+                                nullable: true
+                                properties:
+                                  verification:
+                                    description: The verification method used to verify the certificates of the server and/or the client.
+                                    oneOf:
+                                    - required:
+                                      - none
+                                    - required:
+                                      - server
+                                    properties:
+                                      none:
+                                        description: Use TLS but don't verify certificates.
+                                        type: object
+                                      server:
+                                        description: Use TLS and a CA certificate to verify the server.
+                                        properties:
+                                          caCert:
+                                            description: CA cert to verify the server.
+                                            oneOf:
+                                            - required:
+                                              - webPki
+                                            - required:
+                                              - secretClass
+                                            properties:
+                                              secretClass:
+                                                description: |-
+                                                  Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                                  Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
+                                                  so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                                type: string
+                                              webPki:
+                                                description: |-
+                                                  Use TLS and the CA certificates trusted by the common web browsers to verify the server.
+                                                  This can be useful when you e.g. use public AWS S3 or other public available services.
+                                                type: object
+                                            type: object
+                                        required:
+                                        - caCert
+                                        type: object
+                                    type: object
+                                required:
+                                - verification
+                                type: object
                             required:
-                            - uri
+                            - hostname
                             type: object
                           userProvided:
                             description: |-

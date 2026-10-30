@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use snafu::ResultExt;
 use stackable_operator::{
     client::Client, k8s_openapi::api::core::v1::SecretKeySelector,
     v2::types::kubernetes::NamespaceName,
@@ -8,11 +9,16 @@ use crate::{
     catalog::{
         ExtendCatalogConfig, FromTrinoCatalogError, ToCatalogConfig,
         config::{CatalogConfig, calculate_env_name},
+        from_trino_catalog_error::{
+            BuildIcebergRestUrlSnafu, ConfigureIcebergRestTlsSnafu,
+            IcebergRestTlsNoVerificationNotSupportedSnafu,
+        },
     },
+    config,
     crd::catalog::{
         TrinoCatalogName,
         iceberg::{
-            IcebergCatalogConnection, IcebergRestCatalogAuthentication,
+            HttpEndpoint, IcebergCatalogConnection, IcebergRestCatalogAuthentication,
             IcebergRestCatalogConnection, IcebergRestCatalogOAuthCredential,
         },
         v1alpha2::IcebergConnector,
@@ -78,22 +84,24 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
         _client: &Client,
     ) -> Result<(), FromTrinoCatalogError> {
         catalog_config.add_property("iceberg.catalog.type", "rest");
-        catalog_config.add_property("iceberg.rest-catalog.uri", self.uri.as_str());
+        catalog_config.add_property(
+            "iceberg.rest-catalog.uri",
+            self.endpoint.url().context(BuildIcebergRestUrlSnafu)?,
+        );
+        add_endpoint_tls(catalog_config, &self.endpoint)?;
 
         // We explicitly use a match here to catch further additions
         match &self.authentication {
             IcebergRestCatalogAuthentication::None {} => {
                 catalog_config.add_property("iceberg.rest-catalog.security", "NONE");
             }
-            IcebergRestCatalogAuthentication::OAuth2 {
-                server_uri,
-                credential,
-            } => {
+            IcebergRestCatalogAuthentication::OAuth2 { server, credential } => {
                 catalog_config.add_property("iceberg.rest-catalog.security", "OAUTH2");
                 catalog_config.add_property(
                     "iceberg.rest-catalog.oauth2.server-uri",
-                    server_uri.as_str(),
+                    server.url().context(BuildIcebergRestUrlSnafu)?,
                 );
+                add_endpoint_tls(catalog_config, server)?;
                 match credential {
                     IcebergRestCatalogOAuthCredential::ClientCredentialsSecretName(secret_name) => {
                         // We can't use `add_env_property_from_secret`, as we need to concatenate
@@ -143,4 +151,24 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
 
         Ok(())
     }
+}
+
+/// Adds the CA certificate of the given endpoint (if any) to the truststore of Trino.
+fn add_endpoint_tls(
+    catalog_config: &mut CatalogConfig,
+    endpoint: &HttpEndpoint,
+) -> Result<(), FromTrinoCatalogError> {
+    let (volumes, mounts) = endpoint
+        .tls
+        .volumes_and_mounts()
+        .context(ConfigureIcebergRestTlsSnafu)?;
+    catalog_config.volumes.extend(volumes);
+    catalog_config.volume_mounts.extend(mounts);
+
+    catalog_config.init_container_extra_start_commands.extend(
+        config::tls::tls_truststore_commands(&endpoint.tls)
+            .map_err(|_| IcebergRestTlsNoVerificationNotSupportedSnafu.build())?,
+    );
+
+    Ok(())
 }

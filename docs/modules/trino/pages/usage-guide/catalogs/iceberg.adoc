@@ -23,11 +23,25 @@ spec:
     iceberg:
       catalog:
         rest:
-          uri: https://iceberg-rest-catalog.example.com  # <2>
-          authentication:  # <3>
+          hostname: iceberg-rest-catalog.example.com  # <2>
+          port: 9001  # <3>
+          path: /catalog  # <4>
+          tls:  # <5>
+            verification:
+              server:
+                caCert:
+                  secretClass: tls
+          authentication:  # <6>
             oAuth2:
-              serverUri: https://idp.example.com/oauth2/token  # <4>
-              clientCredentialsSecretName: trino-iceberg-client  # <5>
+              server:  # <7>
+                hostname: idp.example.com
+                path: /oauth2/token
+                tls:
+                  verification:
+                    server:
+                      caCert:
+                        webPki: {}
+              clientCredentialsSecretName: trino-iceberg-client  # <8>
       s3:
         inline:
           host: test-minio
@@ -45,19 +59,24 @@ stringData:
   clientSecret: my-client-secret
 ----
 <1> The name of the catalog as it will appear in Trino
-<2> The URI of the REST catalog server
-<3> Optional, defaults to no authentication
-<4> The token endpoint of the OAuth2 server, see <<oauth2-server-uri>>
-<5> Name of a Secret containing the `clientId` and `clientSecret` keys, which are exchanged for a token using the OAuth2 client credentials flow.
+<2> The hostname of the REST catalog server
+<3> Optional, defaults to 443 if TLS is used and to 80 otherwise
+<4> Optional, defaults to `/`
+<5> Optional, uses the same TLS configuration as xref:usage-guide/s3.adoc#tls[S3 connections].
+    If not specified, no TLS is used. Disabling the TLS verification (`verification.none`) is not supported.
+<6> Optional, defaults to no authentication
+<7> The token endpoint of the OAuth2 server, see <<oauth2-server>>.
+    It takes the same `hostname`, `port`, `path` and `tls` fields as the REST catalog.
+<8> Name of a Secret containing the `clientId` and `clientSecret` keys, which are exchanged for a token using the OAuth2 client credentials flow.
     Alternatively, use `tokenSecretName` to pass a Secret containing a static bearer token in the `token` key.
 
 The operator only supports a subset of the https://trino.io/docs/current/object-storage/metastores.html#rest-catalog[REST catalog properties].
 Use `configOverrides` to set additional ones.
 
-[#oauth2-server-uri]
-=== OAuth2 server URI
+[#oauth2-server]
+=== OAuth2 server
 
-`serverUri` is the token endpoint of the OAuth2 server.
+`oAuth2.server` points to the token endpoint of the OAuth2 server.
 What it is used for depends on the credential:
 
 * `clientCredentialsSecretName`: Trino fetches its token from this endpoint on startup and refreshes it there before it expires.
@@ -66,8 +85,8 @@ What it is used for depends on the credential:
   If the refresh fails, Trino logs a warning and keeps using the current token.
   A token that isn't a JWT is never refreshed, so the endpoint is never called.
 
-`serverUri` is required even for tokens that are never refreshed.
-Without it, the Iceberg client used by Trino would fall back to the deprecated `<uri>/v1/oauth/tokens` endpoint of the REST catalog, which is planned to be removed (see https://github.com/apache/iceberg/issues/10537[apache/iceberg#10537]).
+The OAuth2 server is required even for tokens that are never refreshed.
+Without it, the Iceberg client used by Trino would fall back to the deprecated `/v1/oauth/tokens` endpoint of the REST catalog, which is planned to be removed (see https://github.com/apache/iceberg/issues/10537[apache/iceberg#10537]).
 
 == Example Iceberg Hive metastore configuration
 

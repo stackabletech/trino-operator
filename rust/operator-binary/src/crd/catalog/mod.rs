@@ -383,33 +383,68 @@ mod tests {
               iceberg:
                 catalog:
                   rest:
-                    uri: https://my.rest.com/iceberg
+                    hostname: my.rest.com
           - connector:
               iceberg:
                 catalog:
                   rest:
-                    uri: https://my.secure.rest
+                    hostname: my.rest.com
+                    port: 9001
+                    path: /iceberg
+          - connector:
+              iceberg:
+                catalog:
+                  rest:
+                    hostname: my.secure.rest
+                    tls:
+                      verification:
+                        server:
+                          caCert:
+                            secretClass: tls
                     authentication:
                       oAuth2:
-                        serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
+                        server:
+                          hostname: keycloak.default.svc.cluster.local
+                          port: 8443
+                          path: /realms/test/protocol/openid-connect/token
+                          tls:
+                            verification:
+                              server:
+                                caCert:
+                                  secretClass: tls
                         clientCredentialsSecretName: my-keycloak-credentials
           - connector:
               iceberg:
                 catalog:
                   rest:
-                    uri: https://my.secure.rest
+                    hostname: my.secure.rest
+                    tls:
+                      verification:
+                        server:
+                          caCert:
+                            webPki: {}
                     authentication:
                       oAuth2:
-                        serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
+                        server:
+                          hostname: idp.example.com
+                          path: /oauth2/token
+                          tls:
+                            verification:
+                              server:
+                                caCert:
+                                  webPki: {}
                         tokenSecretName: my-keycloak-token
           - connector:
               iceberg:
                 catalog:
                   rest:
-                    uri: https://my.secure.rest
+                    hostname: my.secure.rest
                     authentication:
                       oAuth2:
-                        serverUri: https://keycloak.default.svc.cluster.local:8443/realms/test/protocol/openid-connect/token
+                        server:
+                          hostname: keycloak.default.svc.cluster.local
+                          port: 8080
+                          path: /realms/test/protocol/openid-connect/token
                         clientCredentialsSecretName: my-keycloak-credentials
                         # Note that we specify clientCredentialsSecretName and tokenSecretName, which Kubernetes would reject at the same time
                         tokenSecretName: my-keycloak-token
