@@ -27,6 +27,7 @@ snafu = "0.9"
 strum = { version = "0.28", features = ["derive"] }
 tokio = { version = "1.53", features = ["full"] }
 tracing = "0.1"
+url = "2.5"
 yaml_serde = "0.10"
 
 [patch."https://github.com/stackabletech/operator-rs.git"]

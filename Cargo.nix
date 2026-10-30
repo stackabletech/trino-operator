@@ -11003,6 +11003,10 @@ rec {
             packageId = "tracing";
           }
           {
+            name = "url";
+            packageId = "url";
+          }
+          {
             name = "yaml_serde";
             packageId = "yaml_serde";
           }

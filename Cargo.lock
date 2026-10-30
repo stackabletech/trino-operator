@@ -3313,6 +3313,7 @@ dependencies = [
  "strum",
  "tokio",
  "tracing",
+ "url",
  "yaml_serde",
 ]
 
