@@ -151,7 +151,7 @@ impl ResolvedLineageConfig {
         );
         properties.insert(
             OPENLINEAGE_TRANSPORT_ENDPOINT_KEY.to_string(),
-            http.path.clone(),
+            transport_url.path().into(),
         );
         properties.insert(
             OPENLINEAGE_NAMESPACE_KEY.to_string(),
