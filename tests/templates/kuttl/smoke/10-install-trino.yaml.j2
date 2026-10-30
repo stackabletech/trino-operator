@@ -75,6 +75,8 @@ spec:
       database: hive
       credentialsSecretName: my-postgresql-credentials-secret
 ---
+# Deliberately kept at v1alpha1: All other TrinoCatalogs use the storage version v1alpha2, so this is
+# the only one that goes through the conversion webhook.
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:

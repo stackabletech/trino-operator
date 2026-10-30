@@ -4109,27 +4109,40 @@ spec:
                                       `configOverrides` to be able to set all [available properties](https://trino.io/docs/current/object-storage/metastores.html#iceberg-specific-metastores).
                                     oneOf:
                                     - required:
-                                      - tokenSecretName
+                                      - token
                                     - required:
-                                      - clientCredentialsSecretName
+                                      - clientCredentials
                                     properties:
-                                      clientCredentialsSecretName:
+                                      clientCredentials:
                                         description: |-
                                           The credentials to exchange for a token in the OAuth2 client credentials flow with the server.
-                                          Mutually exclusive with `tokenSecretName`.
-
-                                          The Secret needs to contain the `clientId` and `clientSecret` keys.
-                                        maxLength: 253
-                                        minLength: 1
-                                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
-                                        type: string
+                                          Mutually exclusive with `token`.
+                                        properties:
+                                          scopes:
+                                            description: |-
+                                              The scopes to request from the server.
+                                              If not specified, the `catalog` scope is requested. Specifying scopes replaces this default.
+                                            items:
+                                              type: string
+                                            type: array
+                                          secretName:
+                                            description: |-
+                                              Name of the Secret containing the client credentials.
+                                              The Secret needs to contain the `clientId` and `clientSecret` keys.
+                                            maxLength: 253
+                                            minLength: 1
+                                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                            type: string
+                                        required:
+                                        - secretName
+                                        type: object
                                       server:
                                         description: |-
                                           The OAuth2 server endpoint, which needs to point to the token endpoint.
                                           It is used to
 
-                                          * fetch a token using the client credentials (`clientCredentialsSecretName`) and
-                                          * refresh the token before it expires. A static token (`tokenSecretName`) is only
+                                          * fetch a token using the client credentials (`clientCredentials`) and
+                                          * refresh the token before it expires. A static token (`token`) is only
                                             refreshed if it is a JWT with an `exp` claim, otherwise the endpoint is never called.
 
                                           It is required nevertheless, as without it the Iceberg client would fall back to the
@@ -4207,16 +4220,22 @@ spec:
                                         required:
                                         - hostname
                                         type: object
-                                      tokenSecretName:
+                                      token:
                                         description: |-
                                           Authenticate using a bearer token.
-                                          Mutually exclusive with `clientCredentialsSecretName`.
-
-                                          The Secret needs to contain the `token` key.
-                                        maxLength: 253
-                                        minLength: 1
-                                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
-                                        type: string
+                                          Mutually exclusive with `clientCredentials`.
+                                        properties:
+                                          secretName:
+                                            description: |-
+                                              Name of the Secret containing the token.
+                                              The Secret needs to contain the `token` key.
+                                            maxLength: 253
+                                            minLength: 1
+                                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                                            type: string
+                                        required:
+                                        - secretName
+                                        type: object
                                     required:
                                     - server
                                     type: object

@@ -413,7 +413,11 @@ mod tests {
                               server:
                                 caCert:
                                   secretClass: tls
-                        clientCredentialsSecretName: my-keycloak-credentials
+                        clientCredentials:
+                          secretName: my-keycloak-credentials
+                          scopes:
+                            - lakehouse
+                            - read
           - connector:
               iceberg:
                 catalog:
@@ -434,7 +438,8 @@ mod tests {
                               server:
                                 caCert:
                                   webPki: {}
-                        tokenSecretName: my-keycloak-token
+                        token:
+                          secretName: my-keycloak-token
           - connector:
               iceberg:
                 catalog:
@@ -446,9 +451,11 @@ mod tests {
                           hostname: keycloak.default.svc.cluster.local
                           port: 8080
                           path: /realms/test/protocol/openid-connect/token
-                        clientCredentialsSecretName: my-keycloak-credentials
-                        # Note that we specify clientCredentialsSecretName and tokenSecretName, which Kubernetes would reject at the same time
-                        tokenSecretName: my-keycloak-token
+                        clientCredentials:
+                          secretName: my-keycloak-credentials
+                        # Note that we specify clientCredentials and token, which Kubernetes would reject at the same time
+                        token:
+                          secretName: my-keycloak-token
           - connector:
               iceberg:
                 catalog:

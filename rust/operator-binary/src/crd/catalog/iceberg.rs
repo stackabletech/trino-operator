@@ -59,8 +59,8 @@ pub enum IcebergRestCatalogAuthentication {
         /// The OAuth2 server endpoint, which needs to point to the token endpoint.
         /// It is used to
         ///
-        /// * fetch a token using the client credentials (`clientCredentialsSecretName`) and
-        /// * refresh the token before it expires. A static token (`tokenSecretName`) is only
+        /// * fetch a token using the client credentials (`clientCredentials`) and
+        /// * refresh the token before it expires. A static token (`token`) is only
         ///   refreshed if it is a JWT with an `exp` claim, otherwise the endpoint is never called.
         ///
         /// It is required nevertheless, as without it the Iceberg client would fall back to the
@@ -84,16 +84,27 @@ impl Default for IcebergRestCatalogAuthentication {
 #[serde(rename_all = "camelCase")]
 pub enum IcebergRestCatalogOAuthCredential {
     /// Authenticate using a bearer token.
-    /// Mutually exclusive with `clientCredentialsSecretName`.
-    ///
-    /// The Secret needs to contain the `token` key.
-    TokenSecretName(SecretName),
+    /// Mutually exclusive with `clientCredentials`.
+    #[serde(rename_all = "camelCase")]
+    Token {
+        /// Name of the Secret containing the token.
+        /// The Secret needs to contain the `token` key.
+        secret_name: SecretName,
+    },
 
     /// The credentials to exchange for a token in the OAuth2 client credentials flow with the server.
-    /// Mutually exclusive with `tokenSecretName`.
-    ///
-    /// The Secret needs to contain the `clientId` and `clientSecret` keys.
-    ClientCredentialsSecretName(SecretName),
+    /// Mutually exclusive with `token`.
+    #[serde(rename_all = "camelCase")]
+    ClientCredentials {
+        /// Name of the Secret containing the client credentials.
+        /// The Secret needs to contain the `clientId` and `clientSecret` keys.
+        secret_name: SecretName,
+
+        /// The scopes to request from the server.
+        /// If not specified, the `catalog` scope is requested. Specifying scopes replaces this default.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        scopes: Vec<String>,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]

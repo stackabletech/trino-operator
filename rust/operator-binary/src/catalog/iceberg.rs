@@ -85,74 +85,95 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
         _catalog_namespace: &NamespaceName,
         _client: &Client,
     ) -> Result<(), FromTrinoCatalogError> {
-        catalog_config.add_property("iceberg.catalog.type", "rest");
-        catalog_config.add_property(
-            "iceberg.rest-catalog.uri",
-            self.endpoint.url().context(BuildIcebergRestUrlSnafu)?,
-        );
-        add_endpoint_tls(catalog_config, &self.endpoint)?;
+        add_rest_catalog_config(self, catalog_config, catalog_name)
+    }
+}
 
-        // We explicitly use a match here to catch further additions
-        match &self.authentication {
-            IcebergRestCatalogAuthentication::None {} => {
-                catalog_config.add_property("iceberg.rest-catalog.security", "NONE");
-            }
-            IcebergRestCatalogAuthentication::OAuth2 { server, credential } => {
-                catalog_config.add_property("iceberg.rest-catalog.security", "OAUTH2");
-                catalog_config.add_property(
-                    "iceberg.rest-catalog.oauth2.server-uri",
-                    server.url().context(BuildIcebergRestUrlSnafu)?,
-                );
-                add_endpoint_tls(catalog_config, server)?;
-                match credential {
-                    IcebergRestCatalogOAuthCredential::ClientCredentialsSecretName(secret_name) => {
-                        // We can't use `add_env_property_from_secret`, as we need to concatenate
-                        // clientId and clientSecret in the Trino configuration. So instead we come
-                        // up with our own envs and bind them.
-                        let property = "iceberg.rest-catalog.oauth2.credential";
-                        let base_env_name = calculate_env_name(catalog_name, property);
-                        let client_id_env_name = format!("{base_env_name}_CLIENT_ID");
-                        let client_secret_env_name = format!("{base_env_name}_CLIENT_SECRET");
-                        catalog_config.add_property(
-                            property,
-                            format!(
-                                "${{ENV:{client_id_env_name}}}:${{ENV:{client_secret_env_name}}}"
-                            ),
-                        );
+/// Adds the configuration of the given REST catalog. Split out of
+/// [`ExtendCatalogConfig::extend_catalog_config`], as it doesn't need a [`Client`], which makes it
+/// testable.
+fn add_rest_catalog_config(
+    rest_catalog: &IcebergRestCatalogConnection,
+    catalog_config: &mut CatalogConfig,
+    catalog_name: &TrinoCatalogName,
+) -> Result<(), FromTrinoCatalogError> {
+    catalog_config.add_property("iceberg.catalog.type", "rest");
+    catalog_config.add_property(
+        "iceberg.rest-catalog.uri",
+        rest_catalog
+            .endpoint
+            .url()
+            .context(BuildIcebergRestUrlSnafu)?,
+    );
+    add_endpoint_tls(catalog_config, &rest_catalog.endpoint)?;
 
-                        catalog_config.add_env_from_secret(
-                            client_id_env_name,
-                            SecretKeySelector {
-                                name: secret_name.to_string(),
-                                key: CLIENT_ID_SECRET_KEY.to_owned(),
-                                ..Default::default()
-                            },
-                        );
-                        catalog_config.add_env_from_secret(
-                            client_secret_env_name,
-                            SecretKeySelector {
-                                name: secret_name.to_string(),
-                                key: CLIENT_SECRET_SECRET_KEY.to_owned(),
-                                ..Default::default()
-                            },
-                        );
-                    }
-                    IcebergRestCatalogOAuthCredential::TokenSecretName(secret_name) => {
-                        catalog_config.add_env_property_from_secret(
-                            "iceberg.rest-catalog.oauth2.token",
-                            SecretKeySelector {
-                                name: secret_name.to_string(),
-                                key: "token".to_owned(),
-                                ..Default::default()
-                            },
-                        )
+    // We explicitly use a match here to catch further additions
+    match &rest_catalog.authentication {
+        IcebergRestCatalogAuthentication::None {} => {
+            catalog_config.add_property("iceberg.rest-catalog.security", "NONE");
+        }
+        IcebergRestCatalogAuthentication::OAuth2 { server, credential } => {
+            catalog_config.add_property("iceberg.rest-catalog.security", "OAUTH2");
+            catalog_config.add_property(
+                "iceberg.rest-catalog.oauth2.server-uri",
+                server.url().context(BuildIcebergRestUrlSnafu)?,
+            );
+            add_endpoint_tls(catalog_config, server)?;
+            match credential {
+                IcebergRestCatalogOAuthCredential::ClientCredentials {
+                    secret_name,
+                    scopes,
+                } => {
+                    // We can't use `add_env_property_from_secret`, as we need to concatenate
+                    // clientId and clientSecret in the Trino configuration. So instead we come
+                    // up with our own envs and bind them.
+                    let property = "iceberg.rest-catalog.oauth2.credential";
+                    let base_env_name = calculate_env_name(catalog_name, property);
+                    let client_id_env_name = format!("{base_env_name}_CLIENT_ID");
+                    let client_secret_env_name = format!("{base_env_name}_CLIENT_SECRET");
+                    catalog_config.add_property(
+                        property,
+                        format!("${{ENV:{client_id_env_name}}}:${{ENV:{client_secret_env_name}}}"),
+                    );
+
+                    catalog_config.add_env_from_secret(
+                        client_id_env_name,
+                        SecretKeySelector {
+                            name: secret_name.to_string(),
+                            key: CLIENT_ID_SECRET_KEY.to_owned(),
+                            ..Default::default()
+                        },
+                    );
+                    catalog_config.add_env_from_secret(
+                        client_secret_env_name,
+                        SecretKeySelector {
+                            name: secret_name.to_string(),
+                            key: CLIENT_SECRET_SECRET_KEY.to_owned(),
+                            ..Default::default()
+                        },
+                    );
+
+                    // Trino only accepts a scope in combination with client credentials.
+                    // OAuth2 (and the Iceberg client) separate multiple scopes by spaces.
+                    if !scopes.is_empty() {
+                        catalog_config
+                            .add_property("iceberg.rest-catalog.oauth2.scope", scopes.join(" "));
                     }
                 }
+                IcebergRestCatalogOAuthCredential::Token { secret_name } => catalog_config
+                    .add_env_property_from_secret(
+                        "iceberg.rest-catalog.oauth2.token",
+                        SecretKeySelector {
+                            name: secret_name.to_string(),
+                            key: "token".to_owned(),
+                            ..Default::default()
+                        },
+                    ),
             }
         }
-
-        Ok(())
     }
+
+    Ok(())
 }
 
 /// Adds the CA certificate of the given endpoint (if any) to the truststore of Trino.
