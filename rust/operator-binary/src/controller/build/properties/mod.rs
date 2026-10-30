@@ -112,6 +112,45 @@ pub(crate) mod test_support {
         }
     }
 
+    /// Minimal cluster YAML with both roles defined, parameterised on the parts the tests vary:
+    ///
+    /// * `tls_secret_class`: the server and internal TLS SecretClass (`null` disables TLS).
+    /// * `coordinator_event_listener_overrides`: the `event-listener.properties` config overrides
+    ///   of the coordinator's `default` role group, as a YAML flow mapping (`{}` for none).
+    pub fn minimal_yaml(
+        tls_secret_class: &str,
+        coordinator_event_listener_overrides: &str,
+    ) -> String {
+        format!(
+            r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "481"
+              clusterConfig:
+                catalogLabelSelector: {{}}
+                tls:
+                  serverSecretClass: {tls_secret_class}
+                  internalSecretClass: {tls_secret_class}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+                    configOverrides:
+                      event-listener.properties: {coordinator_event_listener_overrides}
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#
+        )
+    }
+
     pub const MINIMAL_TRINO_YAML: &str = r#"
         apiVersion: trino.stackable.tech/v1alpha1
         kind: TrinoCluster

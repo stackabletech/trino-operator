@@ -82,7 +82,7 @@ mod tests {
         },
         controller::{
             ValidatedCluster,
-            build::properties::test_support::{MINIMAL_TRINO_YAML, empty_derefs},
+            build::properties::test_support::{MINIMAL_TRINO_YAML, empty_derefs, minimal_yaml},
         },
         crd::TrinoRole,
     };
@@ -184,10 +184,7 @@ mod tests {
 
     #[test]
     fn trino_uri_defaults_to_http_coordinator_service_without_server_tls() {
-        let yaml = MINIMAL_TRINO_YAML.replace(
-            "catalogLabelSelector: {}",
-            "catalogLabelSelector: {}\n            tls:\n              serverSecretClass: null\n              internalSecretClass: null",
-        );
+        let yaml = minimal_yaml("null", "{}");
         let mut derefs = empty_derefs();
         derefs.resolved_lineage_config = Some(resolved_lineage(false));
         let cluster =

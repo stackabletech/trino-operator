@@ -271,8 +271,9 @@ mod tests {
     use crate::{
         config::lineage::ResolvedLineageConfig,
         controller::build::properties::test_support::{
-            MINIMAL_TRINO_YAML, empty_derefs, file_auth_class, validated_cluster_from_yaml,
-            validated_cluster_from_yaml_with_auth, validated_cluster_from_yaml_with_derefs,
+            MINIMAL_TRINO_YAML, empty_derefs, file_auth_class, minimal_yaml,
+            validated_cluster_from_yaml, validated_cluster_from_yaml_with_auth,
+            validated_cluster_from_yaml_with_derefs,
         },
     };
 
@@ -447,11 +448,7 @@ mod tests {
 
     #[test]
     fn coordinator_registers_event_listener_for_overrides_without_lineage() {
-        let yaml = MINIMAL_TRINO_YAML.replacen(
-            "            roleGroups:\n              default:\n                replicas: 1\n",
-            "            roleGroups:\n              default:\n                replicas: 1\n                configOverrides:\n                  event-listener.properties:\n                    event-listener.name: custom\n",
-            1,
-        );
+        let yaml = minimal_yaml("tls", "{event-listener.name: custom}");
         let cluster = validated_cluster_from_yaml(&yaml);
         let props = build(
             &cluster,
