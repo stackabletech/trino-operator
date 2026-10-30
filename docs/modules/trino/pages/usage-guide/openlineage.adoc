@@ -8,10 +8,10 @@ The `spec.clusterConfig.lineage` block in the TrinoCluster custom resource confi
 
 When configured, the operator:
 
-* writes an `event-listener.properties` file on the *coordinator* selecting the OpenLineage plugin and its HTTP transport,
-* points the transport at the backend endpoint (`<scheme>://<host>:<port>`),
-* records this cluster's `trino.uri` and a lineage namespace, and
-* (optionally) imports a backend CA certificate into the coordinator trust store and injects a bearer token for authenticated backends.
+* writes an `event-listener.properties` file on the *coordinator* selecting the OpenLineage plugin and its HTTP transport
+* points the transport at the backend endpoint (`<scheme>://<host>:<port>`)
+* records this cluster's `trino.uri` and a lineage namespace
+* (optionally) imports a backend CA certificate into the coordinator trust store and injects a bearer token for authenticated backends
 
 The event listener runs on the coordinator only; workers are not affected.
 
