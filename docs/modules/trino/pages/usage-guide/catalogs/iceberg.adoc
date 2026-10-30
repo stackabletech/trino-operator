@@ -36,11 +36,6 @@ spec:
               server:  # <7>
                 hostname: idp.example.com
                 path: /oauth2/token
-                tls:
-                  verification:
-                    server:
-                      caCert:
-                        webPki: {}
               clientCredentialsSecretName: trino-iceberg-client  # <8>
       s3:
         inline:
@@ -63,10 +58,11 @@ stringData:
 <3> Optional, defaults to 443 if TLS is used and to 80 otherwise
 <4> Optional, defaults to `/`
 <5> Optional, uses the same TLS configuration as xref:usage-guide/s3.adoc#tls[S3 connections].
-    If not specified, no TLS is used. Disabling the TLS verification (`verification.none`) is not supported.
+    If not specified, TLS is used and the server certificate is verified against the web PKI (`webPki`).
+    Set `tls: null` to connect without TLS. Disabling the TLS verification (`verification.none`) is not supported.
 <6> Optional, defaults to no authentication
 <7> The token endpoint of the OAuth2 server, see <<oauth2-server>>.
-    It takes the same `hostname`, `port`, `path` and `tls` fields as the REST catalog.
+    It takes the same `hostname`, `port`, `path` and `tls` fields as the REST catalog, so it uses TLS with `webPki` verification by default.
 <8> Name of a Secret containing the `clientId` and `clientSecret` keys, which are exchanged for a token using the OAuth2 client credentials flow.
     Alternatively, use `tokenSecretName` to pass a Secret containing a static bearer token in the `token` key.
 

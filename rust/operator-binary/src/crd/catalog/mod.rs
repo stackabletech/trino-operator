@@ -391,6 +391,7 @@ mod tests {
                     hostname: my.rest.com
                     port: 9001
                     path: /iceberg
+                    tls: null
           - connector:
               iceberg:
                 catalog:

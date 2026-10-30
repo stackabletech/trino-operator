@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    commons::{networking::HostName, tls_verification::TlsClientDetails},
+    commons::{networking::HostName, tls_verification::TlsClientDetailsWithSecureDefaults},
     schemars::{self, JsonSchema},
+    v2::types::kubernetes::SecretName,
 };
 use url::Url;
 
@@ -15,9 +16,6 @@ pub enum HttpEndpointError {
         source: url::ParseError,
         endpoint: String,
     },
-
-    #[snafu(display("failed to set scheme {scheme:?} for endpoint URL {endpoint}"))]
-    SetEndpointScheme { scheme: String, endpoint: Url },
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -89,13 +87,13 @@ pub enum IcebergRestCatalogOAuthCredential {
     /// Mutually exclusive with `clientCredentialsSecretName`.
     ///
     /// The Secret needs to contain the `token` key.
-    TokenSecretName(String),
+    TokenSecretName(SecretName),
 
     /// The credentials to exchange for a token in the OAuth2 client credentials flow with the server.
     /// Mutually exclusive with `tokenSecretName`.
     ///
     /// The Secret needs to contain the `clientId` and `clientSecret` keys.
-    ClientCredentialsSecretName(String),
+    ClientCredentialsSecretName(SecretName),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -114,30 +112,22 @@ pub struct HttpEndpoint {
     #[serde(default = "HttpEndpoint::default_path")]
     pub path: String,
 
-    /// Use a TLS connection. If not specified no TLS will be used.
+    /// Configure a TLS connection. If not specified, it defaults to webPki verification.
+    /// Set it to `null` to not use TLS.
     #[serde(flatten)]
-    pub tls: TlsClientDetails,
+    pub tls: TlsClientDetailsWithSecureDefaults,
 }
 
 impl HttpEndpoint {
-    /// Builds the endpoint [`Url`] without a trailing slash in the path.
+    /// Builds the endpoint [`Url`], with trailing slashes removed from the configured path.
     pub fn url(&self) -> Result<Url, HttpEndpointError> {
         let endpoint = format!(
-            "http://{host}:{port}",
+            "{scheme}://{host}:{port}",
+            scheme = if self.tls.uses_tls() { "https" } else { "http" },
             host = self.hostname.as_url_host(),
             port = self.port()
         );
         let mut url = Url::parse(&endpoint).context(ParseEndpointUrlSnafu { endpoint })?;
-
-        if self.tls.uses_tls() {
-            url.set_scheme("https").map_err(|()| {
-                SetEndpointSchemeSnafu {
-                    scheme: "https".to_string(),
-                    endpoint: url.clone(),
-                }
-                .build()
-            })?;
-        }
 
         // Same as for OIDC, as some tools can not cope with a trailing slash
         url.set_path(self.path.trim_end_matches('/'));
@@ -163,13 +153,14 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case::defaults_without_tls("hostname: rest-catalog", "http://rest-catalog/")]
-    #[case::defaults_with_tls(
+    #[case::defaults("hostname: rest-catalog", "https://rest-catalog/")]
+    #[case::without_tls("{hostname: rest-catalog, tls: null}", "http://rest-catalog/")]
+    #[case::explicit_web_pki(
         "{hostname: rest-catalog, tls: {verification: {server: {caCert: {webPki: {}}}}}}",
         "https://rest-catalog/"
     )]
     #[case::port_and_path_without_tls(
-        "{hostname: rest-catalog, port: 9001, path: /catalog}",
+        "{hostname: rest-catalog, port: 9001, path: /catalog, tls: null}",
         "http://rest-catalog:9001/catalog"
     )]
     #[case::port_and_path_with_tls(
@@ -178,9 +169,9 @@ mod tests {
     )]
     #[case::trailing_slashes(
         "{hostname: idp.example.com, path: /realms/test/protocol/openid-connect/token//}",
-        "http://idp.example.com/realms/test/protocol/openid-connect/token"
+        "https://idp.example.com/realms/test/protocol/openid-connect/token"
     )]
-    #[case::ipv6("{hostname: '::1', port: 9001}", "http://[::1]:9001/")]
+    #[case::ipv6("{hostname: '::1', port: 9001}", "https://[::1]:9001/")]
     fn http_endpoint_url(#[case] input: &str, #[case] expected: &str) {
         let endpoint: HttpEndpoint =
             stackable_operator::utils::yaml_from_str_singleton_map(input).unwrap();

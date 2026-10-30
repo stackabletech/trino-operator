@@ -4119,6 +4119,9 @@ spec:
                                           Mutually exclusive with `tokenSecretName`.
 
                                           The Secret needs to contain the `clientId` and `clientSecret` keys.
+                                        maxLength: 253
+                                        minLength: 1
+                                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                         type: string
                                       server:
                                         description: |-
@@ -4152,7 +4155,12 @@ spec:
                                             nullable: true
                                             type: integer
                                           tls:
-                                            description: Use a TLS connection. If not specified no TLS will be used.
+                                            default:
+                                              verification:
+                                                server:
+                                                  caCert:
+                                                    webPki: {}
+                                            description: Configure a TLS connection. If not specified it will default to webPki validation.
                                             nullable: true
                                             properties:
                                               verification:
@@ -4205,6 +4213,9 @@ spec:
                                           Mutually exclusive with `clientCredentialsSecretName`.
 
                                           The Secret needs to contain the `token` key.
+                                        maxLength: 253
+                                        minLength: 1
+                                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                                         type: string
                                     required:
                                     - server
@@ -4229,7 +4240,12 @@ spec:
                                 nullable: true
                                 type: integer
                               tls:
-                                description: Use a TLS connection. If not specified no TLS will be used.
+                                default:
+                                  verification:
+                                    server:
+                                      caCert:
+                                        webPki: {}
+                                description: Configure a TLS connection. If not specified it will default to webPki validation.
                                 nullable: true
                                 properties:
                                   verification:
