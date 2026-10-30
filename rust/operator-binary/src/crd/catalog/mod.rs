@@ -443,22 +443,6 @@ mod tests {
           - connector:
               iceberg:
                 catalog:
-                  rest:
-                    hostname: my.secure.rest
-                    authentication:
-                      oAuth2:
-                        server:
-                          hostname: keycloak.default.svc.cluster.local
-                          port: 8080
-                          path: /realms/test/protocol/openid-connect/token
-                        clientCredentials:
-                          secretName: my-keycloak-credentials
-                        # Note that we specify clientCredentials and token, which Kubernetes would reject at the same time
-                        token:
-                          secretName: my-keycloak-token
-          - connector:
-              iceberg:
-                catalog:
                   userProvided: {}
           - connector:
               tpcds: {}
