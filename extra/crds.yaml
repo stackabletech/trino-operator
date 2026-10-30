@@ -4057,13 +4057,14 @@ spec:
                         description: |-
                           Connection to a metadata catalog, which will be used as a storage for metadata.
 
-                          We support the following backends:
+                          We support the following catalogs:
 
-                          * REST catalog
-                          * Hive metastore
-                          * User provided
+                          * `rest`: An Iceberg REST catalog
+                          * `hiveMetastore`: A Hive metastore
+                          * `userProvided`: The operator doesn't configure a catalog, the user needs to do that,
+                            e.g. using `configOverrides`
 
-                          Details can be found on the corresponding documentation
+                          Learn more in the [Iceberg catalog documentation](https://docs.stackable.tech/home/nightly/trino/usage-guide/catalogs/iceberg).
                         oneOf:
                         - required:
                           - rest
@@ -4150,7 +4151,8 @@ spec:
                       hdfs:
                         description: |-
                           Connection to an HDFS cluster.
-                          Please make sure that the underlying Hive metastore also has access to the HDFS.
+                          Please make sure that the metadata catalog (e.g. the Hive metastore or REST catalog)
+                          also has access to the HDFS.
                         nullable: true
                         properties:
                           configMap:
@@ -4165,7 +4167,8 @@ spec:
                       s3:
                         description: |-
                           Connection to an S3 store.
-                          Please make sure that the underlying Hive metastore also has access to the S3 store.
+                          Please make sure that the metadata catalog (e.g. the Hive metastore or REST catalog)
+                          also has access to the S3 store.
                           Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
                         nullable: true
                         oneOf:
@@ -4993,7 +4996,8 @@ spec:
                       hdfs:
                         description: |-
                           Connection to an HDFS cluster.
-                          Please make sure that the underlying Hive metastore also has access to the HDFS.
+                          Please make sure that the metadata catalog (e.g. the Hive metastore or REST catalog)
+                          also has access to the HDFS.
                         nullable: true
                         properties:
                           configMap:
@@ -5025,7 +5029,8 @@ spec:
                       s3:
                         description: |-
                           Connection to an S3 store.
-                          Please make sure that the underlying Hive metastore also has access to the S3 store.
+                          Please make sure that the metadata catalog (e.g. the Hive metastore or REST catalog)
+                          also has access to the S3 store.
                           Learn more about S3 configuration in the [S3 concept docs](https://docs.stackable.tech/home/nightly/concepts/s3).
                         nullable: true
                         oneOf:

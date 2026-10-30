@@ -143,13 +143,14 @@ pub mod versioned {
     pub struct IcebergConnector {
         /// Connection to a metadata catalog, which will be used as a storage for metadata.
         ///
-        /// We support the following backends:
+        /// We support the following catalogs:
         ///
-        /// * REST catalog
-        /// * Hive metastore
-        /// * User provided
+        /// * `rest`: An Iceberg REST catalog
+        /// * `hiveMetastore`: A Hive metastore
+        /// * `userProvided`: The operator doesn't configure a catalog, the user needs to do that,
+        ///   e.g. using `configOverrides`
         ///
-        /// Details can be found on the corresponding documentation
+        /// Learn more in the [Iceberg catalog documentation](DOCS_BASE_URL_PLACEHOLDER/trino/usage-guide/catalogs/iceberg).
         #[versioned(changed(
             in = "v1alpha2",
             previous_name = "metastore",
@@ -164,12 +165,14 @@ pub mod versioned {
         pub catalog: IcebergCatalogConnection,
 
         /// Connection to an S3 store.
-        /// Please make sure that the underlying Hive metastore also has access to the S3 store.
+        /// Please make sure that the metadata catalog (e.g. the Hive metastore or REST catalog)
+        /// also has access to the S3 store.
         /// Learn more about S3 configuration in the [S3 concept docs](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
         pub s3: Option<stackable_operator::crd::s3::v1alpha1::InlineConnectionOrReference>,
 
         /// Connection to an HDFS cluster.
-        /// Please make sure that the underlying Hive metastore also has access to the HDFS.
+        /// Please make sure that the metadata catalog (e.g. the Hive metastore or REST catalog)
+        /// also has access to the HDFS.
         pub hdfs: Option<HdfsConnection>,
     }
 }
@@ -199,8 +202,8 @@ impl From<IcebergCatalogConnection> for Option<HiveMetastoreConnection> {
             IcebergCatalogConnection::HiveMetastore(hive_metastore_connection) => {
                 Some(hive_metastore_connection)
             }
-            // Earlier the metastore connection was optional, so that users could bring their ow
-            // (e.g. REST catalog, as the operator didn't support that back than).
+            // Earlier the metastore connection was optional, so that users could bring their own
+            // (e.g. a REST catalog, as the operator didn't support that back then).
             IcebergCatalogConnection::UserProvided {} => None,
         }
     }
