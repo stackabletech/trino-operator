@@ -52,8 +52,9 @@ pub fn build(
 /// after the host and port they connect to, so defaulting to the coordinator Service address makes
 /// both sides report identical dataset identities.
 ///
-/// This function intentionally returns a `String` rather than an `Url` object.
-/// Behaviour change: Url normalises its input, so the rendered result differs from before:
+/// This function intentionally returns a `String` rather than a `url::Url` object.
+/// `Url` normalises its input, so the rendered result might not match the expected
+/// literal value:
 /// - The URI gets a trailing slash, for example https://simple-trino-coordinator:8443/.
 /// - A default port is dropped, so a user-provided https://trino-prod:443 becomes https://trino-prod/.
 ///
