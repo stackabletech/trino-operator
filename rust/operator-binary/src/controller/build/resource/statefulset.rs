@@ -796,7 +796,7 @@ fn add_derived_volumes_and_mounts(
 mod tests {
     use rstest::rstest;
     use stackable_operator::{
-        crd::containerdebug::ValidatedContainerDebugConfig,
+        crd::containerdebug::ValidatedContainerdebugConfig,
         k8s_openapi::api::core::v1::{Container as K8sContainer, PodSpec, VolumeMount},
         shared::time::Duration,
         v2::builder::pod::container::EnvVarName,
@@ -896,12 +896,12 @@ mod tests {
     /// The trino container starts `containerdebug` from the role group's validated config. The
     /// command itself is owned (and tested) by operator-rs, so only the wiring is checked here.
     #[rstest]
-    #[case::enabled(ValidatedContainerDebugConfig::Enabled {
+    #[case::enabled(ValidatedContainerdebugConfig::Enabled {
         interval: Duration::from_minutes_unchecked(10)
     })]
-    #[case::disabled(ValidatedContainerDebugConfig::Disabled)]
+    #[case::disabled(ValidatedContainerdebugConfig::Disabled)]
     fn trino_container_starts_containerdebug_from_config(
-        #[case] containerdebug: ValidatedContainerDebugConfig,
+        #[case] containerdebug: ValidatedContainerdebugConfig,
     ) {
         let expected = containerdebug.background_command(STACKABLE_LOG_DIR);
         let cluster = validated_cluster();

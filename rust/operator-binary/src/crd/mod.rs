@@ -24,7 +24,7 @@ use stackable_operator::{
     constant,
     crd::{
         authentication::core,
-        containerdebug::{default_containerdebug_config, v1alpha1::ContainerDebugConfig},
+        containerdebug::{default_containerdebug_config, v1alpha1::ContainerdebugConfig},
     },
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
@@ -229,7 +229,7 @@ pub mod versioned {
         pub affinity: StackableAffinity,
 
         #[fragment_attrs(serde(default))]
-        pub containerdebug: ContainerDebugConfig,
+        pub containerdebug: ContainerdebugConfig,
 
         /// Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
         #[fragment_attrs(serde(default))]

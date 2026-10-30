@@ -89,7 +89,7 @@ pub enum Error {
     },
 
     #[snafu(display("invalid containerdebug configuration for role group {role_group}"))]
-    InvalidContainerDebugConfig {
+    InvalidContainerdebugConfig {
         source: containerdebug::Error,
         role_group: RoleGroupName,
     },
@@ -362,7 +362,7 @@ fn into_role_group_config(
     let common = merged.config;
 
     let containerdebug = common.config.containerdebug.validate().with_context(|_| {
-        InvalidContainerDebugConfigSnafu {
+        InvalidContainerdebugConfigSnafu {
             role_group: role_group_name.clone(),
         }
     })?;
