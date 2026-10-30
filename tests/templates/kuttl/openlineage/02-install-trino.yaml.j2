@@ -1,0 +1,8 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  # `envsubst` injects the kuttl-assigned $NAMESPACE into the (cluster-scoped) SecretClass /
+  # references, so parallel scenarios do not collide.
+  - script: envsubst '$NAMESPACE' < 02_trino.yaml | kubectl apply -n $NAMESPACE -f -
+    timeout: 120
