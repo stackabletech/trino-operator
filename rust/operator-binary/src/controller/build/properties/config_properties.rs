@@ -6,7 +6,10 @@ use snafu::Snafu;
 use stackable_operator::{memory::BinaryMultiple, utils::cluster_info::KubernetesClusterInfo};
 
 use crate::{
-    controller::{TrinoRoleGroupConfig, ValidatedCluster, build::properties::ConfigFileName},
+    controller::{
+        TrinoRoleGroupConfig, ValidatedCluster,
+        build::properties::{ConfigFileName, event_listener_properties},
+    },
     crd::{
         Container, ENV_INTERNAL_SECRET, HTTP_PORT, HTTPS_PORT, MAX_TRINO_LOG_FILES_SIZE,
         RW_CONFIG_DIR_NAME, STACKABLE_INTERNAL_TLS_DIR, STACKABLE_LOG_DIR,
@@ -99,10 +102,10 @@ pub fn build(
         (role == TrinoRole::Coordinator).to_string(),
     );
 
-    // Register the OpenLineage event listener (coordinator only). The `event-listener.properties`
-    // file itself is built by `event_listener_properties` and lands in the read-write config dir;
-    // without this registration Trino would never load it (it does not scan `--etc-dir`).
-    if role == TrinoRole::Coordinator && cluster.cluster_config.lineage.is_some() {
+    // Register the event listener. The `event-listener.properties` file itself is built by
+    // `event_listener_properties` and lands in the read-write config dir; without this
+    // registration Trino would never load it.
+    if !event_listener_properties::build(cluster, role.clone(), rg).is_empty() {
         props.insert(
             EVENT_LISTENER_CONFIG_FILES.to_string(),
             format!(
@@ -436,6 +439,27 @@ mod tests {
         )
         .unwrap();
         // Trino only loads the event listener when it is registered here.
+        assert_eq!(
+            props.get(EVENT_LISTENER_CONFIG_FILES).map(String::as_str),
+            Some("/stackable/rwconfig/event-listener.properties")
+        );
+    }
+
+    #[test]
+    fn coordinator_registers_event_listener_for_overrides_without_lineage() {
+        let yaml = MINIMAL_TRINO_YAML.replacen(
+            "            roleGroups:\n              default:\n                replicas: 1\n",
+            "            roleGroups:\n              default:\n                replicas: 1\n                configOverrides:\n                  event-listener.properties:\n                    event-listener.name: custom\n",
+            1,
+        );
+        let cluster = validated_cluster_from_yaml(&yaml);
+        let props = build(
+            &cluster,
+            TrinoRole::Coordinator,
+            &rg(&cluster, &TrinoRole::Coordinator),
+            &cluster_info(),
+        )
+        .unwrap();
         assert_eq!(
             props.get(EVENT_LISTENER_CONFIG_FILES).map(String::as_str),
             Some("/stackable/rwconfig/event-listener.properties")
