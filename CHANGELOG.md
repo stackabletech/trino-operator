@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 - Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
 - Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#924]).
 - Add support for 483 ([#956]).
+- Support configuring an Iceberg REST catalog in the Iceberg connector, optionally authenticated
+  using OAuth2 client credentials or a bearer token ([#950]).
 
 ### Changed
 
@@ -47,6 +49,10 @@ All notable changes to this project will be documented in this file.
 - Support Vector 0.58.0 ([#953], [#959], [#960]).
 - test: Bump hive to 4.2.1 ([#961]).
 - The operator Deployment runs with a restricted security context and a read-only root filesystem, so it can be deployed into namespaces that enforce the `restricted` Pod Security Standard ([#963]).
+- Add `TrinoCatalog` version `v1alpha2`, which is now the storage version. `v1alpha1` objects are
+  converted automatically. In `v1alpha2`, the optional `spec.connector.iceberg.metastore` is replaced
+  by the required `spec.connector.iceberg.catalog`, which is one of `rest`, `hiveMetastore` or
+  `userProvided` ([#950]).
 
 ### Fixed
 
@@ -80,6 +86,7 @@ All notable changes to this project will be documented in this file.
 [#944]: https://github.com/stackabletech/trino-operator/pull/944
 [#945]: https://github.com/stackabletech/trino-operator/pull/945
 [#949]: https://github.com/stackabletech/trino-operator/pull/949
+[#950]: https://github.com/stackabletech/trino-operator/pull/950
 [#953]: https://github.com/stackabletech/trino-operator/pull/953
 [#956]: https://github.com/stackabletech/trino-operator/pull/956
 [#957]: https://github.com/stackabletech/trino-operator/pull/957
