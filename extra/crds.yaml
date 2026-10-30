@@ -4121,7 +4121,16 @@ spec:
                                           The Secret needs to contain the `clientId` and `clientSecret` keys.
                                         type: string
                                       serverUri:
-                                        description: The endpoint to retrieve access token from OAuth2 Server.
+                                        description: |-
+                                          The token endpoint of the OAuth2 server. It is used to
+
+                                          * fetch a token using the client credentials (`clientCredentialsSecretName`) and
+                                          * refresh the token before it expires. A static token (`tokenSecretName`) is only
+                                            refreshed if it is a JWT with an `exp` claim, otherwise the endpoint is never called.
+
+                                          It is required nevertheless, as without it the Iceberg client would fall back to the
+                                          deprecated `<uri>/v1/oauth/tokens` endpoint of the REST catalog, which is planned to be
+                                          removed (see <https://github.com/apache/iceberg/issues/10537>).
                                         format: uri
                                         type: string
                                       tokenSecretName:

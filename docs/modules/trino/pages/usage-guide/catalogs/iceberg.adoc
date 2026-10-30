@@ -47,12 +47,27 @@ stringData:
 <1> The name of the catalog as it will appear in Trino
 <2> The URI of the REST catalog server
 <3> Optional, defaults to no authentication
-<4> The endpoint to retrieve the access token from
+<4> The token endpoint of the OAuth2 server, see <<oauth2-server-uri>>
 <5> Name of a Secret containing the `clientId` and `clientSecret` keys, which are exchanged for a token using the OAuth2 client credentials flow.
     Alternatively, use `tokenSecretName` to pass a Secret containing a static bearer token in the `token` key.
 
 The operator only supports a subset of the https://trino.io/docs/current/object-storage/metastores.html#rest-catalog[REST catalog properties].
 Use `configOverrides` to set additional ones.
+
+[#oauth2-server-uri]
+=== OAuth2 server URI
+
+`serverUri` is the token endpoint of the OAuth2 server.
+What it is used for depends on the credential:
+
+* `clientCredentialsSecretName`: Trino fetches its token from this endpoint on startup and refreshes it there before it expires.
+* `tokenSecretName`: Trino uses the token as is.
+  If the token is a JWT with an `exp` claim, Trino tries to refresh it before it expires by exchanging it at this endpoint (OAuth2 token exchange).
+  If the refresh fails, Trino logs a warning and keeps using the current token.
+  A token that isn't a JWT is never refreshed, so the endpoint is never called.
+
+`serverUri` is required even for tokens that are never refreshed.
+Without it, the Iceberg client used by Trino would fall back to the deprecated `<uri>/v1/oauth/tokens` endpoint of the REST catalog, which is planned to be removed (see https://github.com/apache/iceberg/issues/10537[apache/iceberg#10537]).
 
 == Example Iceberg Hive metastore configuration
 

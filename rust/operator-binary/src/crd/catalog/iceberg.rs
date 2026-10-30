@@ -41,7 +41,15 @@ pub enum IcebergRestCatalogAuthentication {
     /// `configOverrides` to be able to set all [available properties](https://trino.io/docs/current/object-storage/metastores.html#iceberg-specific-metastores).
     #[serde(rename_all = "camelCase")]
     OAuth2 {
-        /// The endpoint to retrieve access token from OAuth2 Server.
+        /// The token endpoint of the OAuth2 server. It is used to
+        ///
+        /// * fetch a token using the client credentials (`clientCredentialsSecretName`) and
+        /// * refresh the token before it expires. A static token (`tokenSecretName`) is only
+        ///   refreshed if it is a JWT with an `exp` claim, otherwise the endpoint is never called.
+        ///
+        /// It is required nevertheless, as without it the Iceberg client would fall back to the
+        /// deprecated `<uri>/v1/oauth/tokens` endpoint of the REST catalog, which is planned to be
+        /// removed (see <https://github.com/apache/iceberg/issues/10537>).
         server_uri: Url,
 
         // No docs will show up.
