@@ -239,7 +239,7 @@ mod tests {
 
     #[test]
     fn test_crd_generation() {
-        TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha1).unwrap();
+        TrinoCatalog::merged_crd(TrinoCatalogVersion::V1Alpha2).unwrap();
     }
 
     impl RoundtripTestData for v1alpha1::TrinoCatalogSpec {
