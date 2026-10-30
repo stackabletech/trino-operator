@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use stackable_operator::{
-    client::Client,
-    k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector},
+    client::Client, k8s_openapi::api::core::v1::SecretKeySelector,
     v2::types::kubernetes::NamespaceName,
 };
 
@@ -111,30 +110,22 @@ impl ExtendCatalogConfig for IcebergRestCatalogConnection {
                             ),
                         );
 
-                        catalog_config.env_bindings.push(EnvVar {
-                            name: client_id_env_name,
-                            value_from: Some(EnvVarSource {
-                                secret_key_ref: Some(SecretKeySelector {
-                                    name: secret_name.to_owned(),
-                                    key: "clientId".to_owned(),
-                                    ..Default::default()
-                                }),
+                        catalog_config.add_env_from_secret(
+                            client_id_env_name,
+                            SecretKeySelector {
+                                name: secret_name.to_owned(),
+                                key: "clientId".to_owned(),
                                 ..Default::default()
-                            }),
-                            ..Default::default()
-                        });
-                        catalog_config.env_bindings.push(EnvVar {
-                            name: client_secret_env_name,
-                            value_from: Some(EnvVarSource {
-                                secret_key_ref: Some(SecretKeySelector {
-                                    name: secret_name.to_owned(),
-                                    key: "clientSecret".to_owned(),
-                                    ..Default::default()
-                                }),
+                            },
+                        );
+                        catalog_config.add_env_from_secret(
+                            client_secret_env_name,
+                            SecretKeySelector {
+                                name: secret_name.to_owned(),
+                                key: "clientSecret".to_owned(),
                                 ..Default::default()
-                            }),
-                            ..Default::default()
-                        });
+                            },
+                        );
                     }
                     IcebergRestCatalogOAuthCredential::TokenSecretName(secret_name) => {
                         catalog_config.add_env_property_from_secret(

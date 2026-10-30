@@ -79,15 +79,25 @@ impl CatalogConfig {
     ) {
         let property = property.into();
         let env_name = calculate_env_name(&self.name, &property);
+        self.add_env_from_secret(&env_name, secret_key_selector);
+        self.add_property(&property, format!("${{ENV:{env_name}}}"));
+    }
+
+    /// Adds an env var with the given name to every Trino container, which is read from the given
+    /// Secret key. Unlike [`Self::add_env_property_from_secret`], no property is set.
+    pub fn add_env_from_secret(
+        &mut self,
+        env_name: impl Into<String>,
+        secret_key_selector: SecretKeySelector,
+    ) {
         self.env_bindings.push(EnvVar {
-            name: env_name.clone(),
+            name: env_name.into(),
             value_from: Some(EnvVarSource {
                 secret_key_ref: Some(secret_key_selector),
                 ..Default::default()
             }),
             ..Default::default()
         });
-        self.add_property(&property, format!("${{ENV:{env_name}}}"));
     }
 
     pub fn add_env_property_from_config_map(
