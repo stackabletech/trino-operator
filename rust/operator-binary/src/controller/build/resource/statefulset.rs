@@ -376,7 +376,8 @@ pub fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![
-            command::container_trino_args(trino_authentication_config, catalogs).join("\n"),
+            command::container_trino_args(trino_authentication_config, catalogs, merged_config)
+                .join("\n"),
         ])
         .add_env_vars(env.merge(env_overrides.clone()))
         .add_container_ports(container_ports(cluster))
@@ -792,8 +793,11 @@ fn add_derived_volumes_and_mounts(
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
     use stackable_operator::{
+        crd::containerdebug::ValidatedContainerdebugConfig,
         k8s_openapi::api::core::v1::{Container as K8sContainer, PodSpec, VolumeMount},
+        shared::time::Duration,
         v2::builder::pod::container::EnvVarName,
     };
 
@@ -886,6 +890,47 @@ mod tests {
             "exactly one CONTAINERDEBUG_LOG_DIRECTORY entry must survive, got: {containerdebug:?}"
         );
         assert_eq!(containerdebug[0].value.as_deref(), Some("/custom/log/dir"));
+    }
+
+    /// The trino container starts `containerdebug` from the role group's validated config. The
+    /// command itself is owned (and tested) by operator-rs, so only the wiring is checked here.
+    #[rstest]
+    #[case::enabled(ValidatedContainerdebugConfig::Enabled {
+        interval: Duration::from_minutes_unchecked(10)
+    })]
+    #[case::disabled(ValidatedContainerdebugConfig::Disabled)]
+    fn trino_container_starts_containerdebug_from_config(
+        #[case] containerdebug: ValidatedContainerdebugConfig,
+    ) {
+        let expected = containerdebug.background_command(STACKABLE_LOG_DIR);
+        let cluster = validated_cluster();
+        let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
+        let mut role_group_config =
+            cluster.coordinator_role_group_configs[&role_group_name].clone();
+        role_group_config.config.containerdebug = containerdebug;
+
+        let stateful_set = build_rolegroup_statefulset(
+            &cluster,
+            &TrinoRole::Coordinator,
+            &role_group_name,
+            &role_group_config,
+        )
+        .expect("the StatefulSet builds");
+
+        let args = pod_spec(stateful_set)
+            .containers
+            .into_iter()
+            .find(|container| container.name == "trino")
+            .expect("the trino container exists")
+            .args
+            .expect("the trino container has args")
+            .join("\n");
+        assert_eq!(
+            args.lines()
+                .find(|line| line.starts_with("containerdebug ")),
+            expected.as_deref(),
+            "args: {args}"
+        );
     }
 
     /// The operator's own volume mounts are added with `expect`, which relies on every add whose

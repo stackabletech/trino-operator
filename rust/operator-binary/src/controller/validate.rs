@@ -10,6 +10,7 @@ use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     commons::product_image_selection,
     config::fragment,
+    crd::containerdebug,
     kube::ResourceExt as _,
     product_logging::spec::Logging,
     v2::{
@@ -84,6 +85,12 @@ pub enum Error {
     #[snafu(display("failed to resolve and merge config for role group {role_group}"))]
     FailedToResolveConfig {
         source: fragment::ValidationError,
+        role_group: RoleGroupName,
+    },
+
+    #[snafu(display("invalid containerdebug configuration for role group {role_group}"))]
+    InvalidContainerdebugConfig {
+        source: containerdebug::Error,
         role_group: RoleGroupName,
     },
 
@@ -336,8 +343,8 @@ where
             role_group: role_group_name.clone(),
         })?;
         role_groups.insert(
-            role_group_name,
-            into_role_group_config(merged, vector_aggregator_config_map_name)?,
+            role_group_name.clone(),
+            into_role_group_config(merged, &role_group_name, vector_aggregator_config_map_name)?,
         );
     }
 
@@ -348,16 +355,22 @@ where
 /// [`TrinoRoleGroupConfig`] consumed by the build steps.
 fn into_role_group_config(
     merged: RoleGroup<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>,
+    role_group_name: &RoleGroupName,
     vector_aggregator_config_map_name: &Option<ConfigMapName>,
 ) -> Result<TrinoRoleGroupConfig> {
     let replicas = merged.replicas;
     let common = merged.config;
 
+    let containerdebug = common.config.containerdebug.validate().with_context(|_| {
+        InvalidContainerdebugConfigSnafu {
+            role_group: role_group_name.clone(),
+        }
+    })?;
     let logging = validate_logging(&common.config.logging, vector_aggregator_config_map_name)?;
 
     Ok(RoleGroupConfig {
         replicas,
-        config: ValidatedTrinoConfig::from_merged(common.config, logging),
+        config: ValidatedTrinoConfig::from_merged(common.config, containerdebug, logging),
         config_overrides: common.config_overrides,
         env_overrides: common.env_overrides.into(),
         cli_overrides: common.cli_overrides,

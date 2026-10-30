@@ -6,7 +6,7 @@ use stackable_operator::{
         product_image_selection::ResolvedProductImage,
         resources::{NoRuntimeLimits, Resources},
     },
-    crd::listener::v1alpha1::Listener,
+    crd::{containerdebug::ValidatedContainerdebugConfig, listener::v1alpha1::Listener},
     k8s_openapi::api::{
         apps::v1::StatefulSet,
         core::v1::{ConfigMap, Service, ServiceAccount},
@@ -134,6 +134,7 @@ impl ValidatedClusterConfig {
 #[derive(Clone, Debug)]
 pub struct ValidatedTrinoConfig {
     pub affinity: StackableAffinity,
+    pub containerdebug: ValidatedContainerdebugConfig,
     pub graceful_shutdown_timeout: Option<Duration>,
     pub logging: validate::ValidatedLogging,
     pub query_max_memory: Option<String>,
@@ -144,10 +145,15 @@ pub struct ValidatedTrinoConfig {
 
 impl ValidatedTrinoConfig {
     /// Builds the validated config from the merged [`v1alpha1::TrinoConfig`], swapping in the
-    /// already-validated logging.
-    fn from_merged(merged: v1alpha1::TrinoConfig, logging: validate::ValidatedLogging) -> Self {
+    /// already-validated `containerdebug` and logging configuration.
+    fn from_merged(
+        merged: v1alpha1::TrinoConfig,
+        containerdebug: ValidatedContainerdebugConfig,
+        logging: validate::ValidatedLogging,
+    ) -> Self {
         Self {
             affinity: merged.affinity,
+            containerdebug,
             graceful_shutdown_timeout: merged.graceful_shutdown_timeout,
             logging,
             query_max_memory: merged.query_max_memory,

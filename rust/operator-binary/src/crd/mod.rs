@@ -22,7 +22,10 @@ use stackable_operator::{
     },
     config::{fragment::Fragment, merge::Merge},
     constant,
-    crd::authentication::core,
+    crd::{
+        authentication::core,
+        containerdebug::{default_containerdebug_config, v1alpha1::ContainerdebugConfig},
+    },
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     kube::{CustomResource, ResourceExt},
@@ -207,7 +210,7 @@ pub mod versioned {
         pub spooling_manager_properties: KeyValueConfigOverrides,
     }
 
-    #[derive(Clone, Debug, Default, Fragment, JsonSchema, PartialEq)]
+    #[derive(Clone, Debug, Fragment, JsonSchema, PartialEq)]
     #[fragment_attrs(
         derive(
             Clone,
@@ -224,6 +227,9 @@ pub mod versioned {
     pub struct TrinoConfig {
         #[fragment_attrs(serde(default))]
         pub affinity: StackableAffinity,
+
+        #[fragment_attrs(serde(default))]
+        pub containerdebug: ContainerdebugConfig,
 
         /// Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
         #[fragment_attrs(serde(default))]
@@ -498,6 +504,7 @@ impl v1alpha1::TrinoConfig {
         v1alpha1::TrinoConfigFragment {
             logging: product_logging::spec::default_logging(),
             affinity: get_affinity(cluster_name, role, trino_catalogs, opa_config),
+            containerdebug: default_containerdebug_config(),
             resources: ResourcesFragment {
                 cpu: CpuLimitsFragment {
                     min: Some(Quantity(cpu_min.to_string())),

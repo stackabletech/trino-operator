@@ -1012,6 +1012,26 @@ spec:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
                         type: object
+                      containerdebug:
+                        default:
+                          enabled: null
+                          interval: null
+                        description: |-
+                          Configures the `containerdebug` tool, which periodically logs information about the container
+                          environment (such as network interfaces, DNS lookups and disk usage) in the background of the
+                          product container.
+                        properties:
+                          enabled:
+                            description: Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
+                            nullable: true
+                            type: boolean
+                          interval:
+                            description: |-
+                              Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must not be zero.
+                              Defaults to `30m`.
+                            nullable: true
+                            type: string
+                        type: object
                       gracefulShutdownTimeout:
                         description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
                         nullable: true
@@ -1620,6 +1640,26 @@ spec:
                                   nullable: true
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
+                              type: object
+                            containerdebug:
+                              default:
+                                enabled: null
+                                interval: null
+                              description: |-
+                                Configures the `containerdebug` tool, which periodically logs information about the container
+                                environment (such as network interfaces, DNS lookups and disk usage) in the background of the
+                                product container.
+                              properties:
+                                enabled:
+                                  description: Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
+                                  nullable: true
+                                  type: boolean
+                                interval:
+                                  description: |-
+                                    Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must not be zero.
+                                    Defaults to `30m`.
+                                  nullable: true
+                                  type: string
                               type: object
                             gracefulShutdownTimeout:
                               description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
@@ -2329,6 +2369,26 @@ spec:
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
                         type: object
+                      containerdebug:
+                        default:
+                          enabled: null
+                          interval: null
+                        description: |-
+                          Configures the `containerdebug` tool, which periodically logs information about the container
+                          environment (such as network interfaces, DNS lookups and disk usage) in the background of the
+                          product container.
+                        properties:
+                          enabled:
+                            description: Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
+                            nullable: true
+                            type: boolean
+                          interval:
+                            description: |-
+                              Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must not be zero.
+                              Defaults to `30m`.
+                            nullable: true
+                            type: string
+                        type: object
                       gracefulShutdownTimeout:
                         description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
                         nullable: true
@@ -2929,6 +2989,26 @@ spec:
                                   nullable: true
                                   type: object
                                   x-kubernetes-preserve-unknown-fields: true
+                              type: object
+                            containerdebug:
+                              default:
+                                enabled: null
+                                interval: null
+                              description: |-
+                                Configures the `containerdebug` tool, which periodically logs information about the container
+                                environment (such as network interfaces, DNS lookups and disk usage) in the background of the
+                                product container.
+                              properties:
+                                enabled:
+                                  description: Whether `containerdebug` runs in the background of the product container. Defaults to `true`.
+                                  nullable: true
+                                  type: boolean
+                                interval:
+                                  description: |-
+                                    Time between two runs of `containerdebug`, e.g. `30m`, `1h` or `2d`. Must not be zero.
+                                    Defaults to `30m`.
+                                  nullable: true
+                                  type: string
                               type: object
                             gracefulShutdownTimeout:
                               description: Time period Pods have to gracefully shut down, e.g. `30m`, `1h` or `2d`. Consult the operator documentation for details.
