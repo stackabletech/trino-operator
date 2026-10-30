@@ -279,8 +279,7 @@ pub fn build_rolegroup_statefulset(
             .add_volume_mount(&*LISTENER_VOLUME_NAME, LISTENER_VOLUME_DIR)
             .expect("The mount paths are statically defined and there should be no duplicates.");
 
-        // Used for PVC templates that cannot be modified once they are deployed, so a fixed
-        // "none" version is used while keeping the other recommended labels.
+        // The PVC template is immutable once deployed, so its labels must stay stable.
         let unversioned_recommended_labels =
             recommended_labels_for_unversioned_role_group_resources(
                 cluster,
