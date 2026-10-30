@@ -151,10 +151,10 @@ pub mod versioned {
         ///
         /// Details can be found on the corresponding documentation
         #[versioned(changed(
-            since = "v1alpha2",
-            from_name = "metastore",
-            from_type = "Option<HiveMetastoreConnection>",
-            from_docs = r#"
+            in = "v1alpha2",
+            previous_name = "metastore",
+            previous_type = "Option<HiveMetastoreConnection>",
+            previous_docs = r#"
                 Optional connection to a Hive Metastore, which will be used as a storage for metadata.
 
                 The connection is optional, as Iceberg also supports other catalogs, such as a REST catalog,
