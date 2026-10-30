@@ -126,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
             ));
             let trino_catalog_crd_check = readiness_checks.register(format!(
                 "CRD {crd} established",
-                crd = crd::catalog::v1alpha1::TrinoCatalog::crd_name()
+                crd = crd::catalog::v1alpha2::TrinoCatalog::crd_name()
             ));
 
             let webhook_server = create_webhook_server(
@@ -189,7 +189,7 @@ async fn main() -> anyhow::Result<()> {
                 )
                 .watches(
                     watch_namespace
-                        .get_api::<DeserializeGuard<crd::catalog::v1alpha1::TrinoCatalog>>(&client),
+                        .get_api::<DeserializeGuard<crd::catalog::v1alpha2::TrinoCatalog>>(&client),
                     watcher::Config::default(),
                     move |catalog| {
                         // TODO: Filter clusters more precisely based on the catalogLabelSelector to avoid unnecessary reconciles
@@ -256,7 +256,7 @@ async fn main() -> anyhow::Result<()> {
             let delayed_trino_controller = async {
                 signal::crd_established(&client, v1alpha1::TrinoCluster::crd_name()).await?;
                 trino_cluster_crd_check.mark_passed();
-                signal::crd_established(&client, crd::catalog::v1alpha1::TrinoCatalog::crd_name())
+                signal::crd_established(&client, crd::catalog::v1alpha2::TrinoCatalog::crd_name())
                     .await?;
                 trino_catalog_crd_check.mark_passed();
                 trino_controller.await
