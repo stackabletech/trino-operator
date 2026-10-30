@@ -19,16 +19,14 @@ use std::collections::BTreeMap;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
     client::Client,
-    commons::tls_verification::{
-        CaCert, TlsClientDetails, TlsClientDetailsError, TlsServerVerification, TlsVerification,
-    },
+    commons::tls_verification::TlsClientDetailsError,
     crd::openlineage::{self, v1alpha1::OpenLineageTransport},
     k8s_openapi::api::core::v1::{SecretVolumeSource, Volume, VolumeMount},
 };
 
 use crate::{
-    controller::build::command,
-    crd::{OPENLINEAGE_AUTH_SECRET_KEY, STACKABLE_CLIENT_TLS_DIR, v1alpha1::TrinoLineageConfig},
+    config::tls::tls_truststore_commands,
+    crd::{OPENLINEAGE_AUTH_SECRET_KEY, v1alpha1::TrinoLineageConfig},
 };
 
 /// Directory the OpenLineage bearer-token Secret is mounted at on the coordinator. Referenced from
@@ -85,6 +83,11 @@ pub enum Error {
         "failed to build volumes and mounts for the OpenLineage backend TLS CA certificate"
     ))]
     TlsVolumesAndMounts { source: TlsClientDetailsError },
+
+    #[snafu(display(
+        "Trino does not support disabling the TLS verification of the OpenLineage backend"
+    ))]
+    TlsVerificationNotSupported,
 }
 
 /// Everything the coordinator needs to run the OpenLineage event listener, resolved from
@@ -159,16 +162,19 @@ impl ResolvedLineageConfig {
             lineage.job_name_format.clone(),
         );
 
-        // Backend TLS: mount and import a `SecretClass` CA into the client truststore. WebPKI and
-        // no verification need nothing (WebPKI is trusted via the system bundle already seeded into
-        // the truststore; without server verification there is no CA to trust).
+        // Backend TLS: mount and import a `SecretClass` CA into the client truststore. WebPKI needs
+        // nothing (it is trusted via the system bundle already seeded into the truststore).
+        // Disabling verification is rejected: the listener has no option to skip the certificate
+        // check, so the `https` connection would fail its handshake at runtime.
         let (tls_volumes, tls_mounts) = http
             .tls
             .volumes_and_mounts()
             .context(TlsVolumesAndMountsSnafu)?;
         volumes.extend(tls_volumes);
         volume_mounts.extend(tls_mounts);
-        init_container_extra_start_commands.extend(openlineage_tls_truststore_commands(&http.tls));
+        init_container_extra_start_commands.extend(
+            tls_truststore_commands(&http.tls).map_err(|_| Error::TlsVerificationNotSupported)?,
+        );
 
         // Authentication: when the connection sets `credentialsSecretName`, mount that Secret and
         // reference the token via a `${file:...}` placeholder so it is resolved at startup and never
@@ -206,67 +212,5 @@ impl ResolvedLineageConfig {
             volume_mounts,
             init_container_extra_start_commands,
         })
-    }
-}
-
-/// Init-container commands that add the backend's `SecretClass` CA certificate to the client
-/// truststore (which is the JVM default truststore, see `config::jvm`). Returns an empty list when
-/// no import is needed: no TLS, `verification.none` (plain `http`), or WebPKI verification (trusted
-/// via the seeded system bundle).
-fn openlineage_tls_truststore_commands(tls: &TlsClientDetails) -> Vec<String> {
-    match tls.tls.as_ref().map(|tls| &tls.verification) {
-        Some(TlsVerification::Server(TlsServerVerification {
-            ca_cert: CaCert::SecretClass(_),
-        })) => tls
-            .tls_ca_cert_mount_path()
-            .map(|ca_cert| command::add_cert_to_truststore(&ca_cert, STACKABLE_CLIENT_TLS_DIR))
-            .unwrap_or_default(),
-        _ => Vec::new(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use stackable_operator::commons::tls_verification::Tls;
-
-    use super::*;
-
-    fn tls_details(verification: Option<TlsVerification>) -> TlsClientDetails {
-        TlsClientDetails {
-            tls: verification.map(|verification| Tls { verification }),
-        }
-    }
-
-    #[test]
-    fn no_tls_yields_no_truststore_commands() {
-        assert!(
-            openlineage_tls_truststore_commands(&tls_details(None)).is_empty(),
-            "plain http needs no truststore setup"
-        );
-    }
-
-    #[test]
-    fn verification_none_yields_no_truststore_commands() {
-        // `verification.none` still uses https, but there is no CA to import.
-        assert!(
-            openlineage_tls_truststore_commands(&tls_details(Some(TlsVerification::None {})))
-                .is_empty()
-        );
-    }
-
-    #[test]
-    fn webpki_verification_yields_no_truststore_commands() {
-        let details = tls_details(Some(TlsVerification::Server(TlsServerVerification {
-            ca_cert: CaCert::WebPki {},
-        })));
-        assert!(openlineage_tls_truststore_commands(&details).is_empty());
-    }
-
-    #[test]
-    fn secret_class_verification_yields_truststore_commands() {
-        let details = tls_details(Some(TlsVerification::Server(TlsServerVerification {
-            ca_cert: CaCert::SecretClass("openlineage-tls".to_string()),
-        })));
-        assert!(!openlineage_tls_truststore_commands(&details).is_empty());
     }
 }
