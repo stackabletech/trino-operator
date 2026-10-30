@@ -19,7 +19,7 @@ stringData:
   alice: alice
   bob: bob
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: hive
@@ -35,7 +35,7 @@ spec:
       hdfs:
         configMap: hdfs
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: iceberg
@@ -44,14 +44,15 @@ metadata:
 spec:
   connector:
     iceberg:
-      metastore:
-        configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
+      catalog:
+        hiveMetastore:
+          configMap: hive # It's fine to reuse the existing HMS for tests. Not recommended for production though, there a dedicated HMS should be used.
       s3:
         reference: garage
       hdfs:
         configMap: hdfs
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: tpch
@@ -61,7 +62,7 @@ spec:
   connector:
     tpch: {}
 ---
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: postgresql
@@ -74,6 +75,8 @@ spec:
       database: hive
       credentialsSecretName: my-postgresql-credentials-secret
 ---
+# Deliberately kept at v1alpha1: All other TrinoCatalogs use the storage version v1alpha2, so this is
+# the only one that goes through the conversion webhook.
 apiVersion: trino.stackable.tech/v1alpha1
 kind: TrinoCatalog
 metadata:

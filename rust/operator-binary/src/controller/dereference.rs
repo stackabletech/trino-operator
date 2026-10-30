@@ -49,7 +49,7 @@ pub enum Error {
     #[snafu(display("failed to parse {catalog}"))]
     ParseCatalog {
         source: FromTrinoCatalogError,
-        catalog: ObjectRef<catalog::v1alpha1::TrinoCatalog>,
+        catalog: ObjectRef<catalog::v1alpha2::TrinoCatalog>,
     },
 
     #[snafu(display("failed to configure fault tolerant execution"))]
@@ -77,7 +77,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// Kubernetes objects referenced from the TrinoCluster spec, fetched from the cluster.
 pub struct DereferencedObjects {
     pub resolved_authentication_classes: Vec<ResolvedAuthenticationClassRef>,
-    pub catalog_definitions: Vec<catalog::v1alpha1::TrinoCatalog>,
+    pub catalog_definitions: Vec<catalog::v1alpha2::TrinoCatalog>,
     pub catalogs: Vec<CatalogConfig>,
     pub trino_opa_config: Option<TrinoOpaConfig>,
     pub resolved_fte_config: Option<ResolvedFaultTolerantExecutionConfig>,
@@ -97,7 +97,7 @@ pub async fn dereference(
             .context(AuthenticationClassRetrievalSnafu)?;
 
     let catalog_definitions = client
-        .list_with_label_selector::<catalog::v1alpha1::TrinoCatalog>(
+        .list_with_label_selector::<catalog::v1alpha2::TrinoCatalog>(
             namespace.as_ref(),
             &trino.spec.cluster_config.catalog_label_selector,
         )
@@ -168,12 +168,12 @@ pub async fn dereference(
 /// Determines the Trino catalog name based on user settings and the Kubernetes TrinoCatalog object
 /// name.
 fn determine_catalog_name(
-    catalog_name_spec: &catalog::v1alpha1::TrinoCatalogNameSpec,
+    catalog_name_spec: &catalog::v1alpha2::TrinoCatalogNameSpec,
     catalog_object_name: &str,
 ) -> Result<TrinoCatalogName> {
     // A `match` is used because we might support other ways of naming (e.g. custom) later.
     match catalog_name_spec {
-        catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+        catalog::v1alpha2::TrinoCatalogNameSpec::Inferred {
             replace_hyphens_with_underscores,
         } => {
             let mut catalog_name = catalog_object_name.to_owned();
@@ -194,7 +194,7 @@ mod tests {
     fn determine_catalog_name_replaces_hyphens() {
         let inferred = |replace_hyphens_with_underscores| {
             determine_catalog_name(
-                &catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+                &catalog::v1alpha2::TrinoCatalogNameSpec::Inferred {
                     replace_hyphens_with_underscores,
                 },
                 "my-postgres",

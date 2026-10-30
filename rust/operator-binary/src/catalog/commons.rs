@@ -23,13 +23,13 @@ use crate::{
         CONFIG_DIR_NAME,
         catalog::{
             TrinoCatalogName,
-            commons::{HdfsConnection, MetastoreConnection},
+            commons::{HdfsConnection, HiveMetastoreConnection},
         },
     },
 };
 
 #[async_trait]
-impl ExtendCatalogConfig for MetastoreConnection {
+impl ExtendCatalogConfig for HiveMetastoreConnection {
     async fn extend_catalog_config(
         &self,
         catalog_config: &mut CatalogConfig,
@@ -102,7 +102,7 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         }
 
         catalog_config.init_container_extra_start_commands.extend(
-            config::s3::s3_tls_truststore_commands(&s3.tls)
+            config::tls::tls_truststore_commands(&s3.tls)
                 .map_err(|_| S3TlsNoVerificationNotSupportedSnafu.build())?,
         );
 
