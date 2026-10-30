@@ -42,8 +42,9 @@ metadata:
 spec:
   connector:
     iceberg:
-      metastore:
-        configMap: simple-hive
+      catalog:
+        hiveMetastore:
+          configMap: simple-hive
       s3:
         inline:
           host: test-minio

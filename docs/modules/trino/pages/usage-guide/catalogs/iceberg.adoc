@@ -1,11 +1,62 @@
 = Apache Iceberg
 
 Apache Iceberg is a format for huge analytic tables designed to address some of the scaling issues with traditional Hive tables.
-Iceberg depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.
+Iceberg stores table metadata in a metadata catalog, which is configured in `spec.connector.iceberg.catalog`.
+The following catalogs are supported:
+
+* `rest`: An https://trino.io/docs/current/object-storage/metastores.html#rest-catalog[Iceberg REST catalog]
+* `hiveMetastore`: A Hive metastore, using the same metastore ConfigMap as the xref:usage-guide/catalogs/hive.adoc[] connector
+* `userProvided`: The operator doesn't configure a catalog, you need to configure it yourself using `configOverrides`
+
+== Example Iceberg REST catalog configuration
+
+[source,yaml]
+----
+apiVersion: trino.stackable.tech/v1alpha2
+kind: TrinoCatalog
+metadata:
+  name: iceberg  # <1>
+  labels:
+    trino: simple-trino
+spec:
+  connector:
+    iceberg:
+      catalog:
+        rest:
+          uri: https://iceberg-rest-catalog.example.com  # <2>
+          authentication:  # <3>
+            oAuth2:
+              serverUri: https://idp.example.com/oauth2/token  # <4>
+              clientCredentialsSecretName: trino-iceberg-client  # <5>
+      s3:
+        inline:
+          host: test-minio
+          port: 9000
+          accessStyle: Path
+          credentials:
+            secretClass: minio-credentials
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trino-iceberg-client
+stringData:
+  clientId: trino
+  clientSecret: my-client-secret
+----
+<1> The name of the catalog as it will appear in Trino
+<2> The URI of the REST catalog server
+<3> Optional, defaults to no authentication
+<4> The endpoint to retrieve the access token from
+<5> Name of a Secret containing the `clientId` and `clientSecret` keys, which are exchanged for a token using the OAuth2 client credentials flow.
+    Alternatively, use `tokenSecretName` to pass a Secret containing a static bearer token in the `token` key.
+
+The operator only supports a subset of the https://trino.io/docs/current/object-storage/metastores.html#rest-catalog[REST catalog properties].
+Use `configOverrides` to set additional ones.
+
+== Example Iceberg Hive metastore configuration
 
 You can deploy a Hive Metastore Stacklet with the xref:hive:index.adoc[].
-
-== Example Iceberg catalog configuration
 
 [source,yaml]
 ----
@@ -19,8 +70,9 @@ spec:
   connector:
     # Specify iceberg here when defining a iceberg catalog
     iceberg:
-      metastore:
-        configMap: simple-hive  # <2>
+      catalog:
+        hiveMetastore:
+          configMap: simple-hive  # <2>
       s3:
         inline:
           host: test-minio
