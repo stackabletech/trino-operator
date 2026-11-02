@@ -50,7 +50,8 @@ All notable changes to this project will be documented in this file.
 - test: Bump hive to 4.2.1 ([#961]).
 - The operator Deployment runs with a restricted security context and a read-only root filesystem, so it can be deployed into namespaces that enforce the `restricted` Pod Security Standard ([#963]).
 - Add `TrinoCatalog` version `v1alpha2`, which is now the storage version. `v1alpha1` objects are
-  converted automatically. In `v1alpha2`, the optional `spec.connector.iceberg.metastore` is replaced
+  converted automatically by the conversion webhook, which requires the operator to maintain its
+  CRDs (the default). In `v1alpha2`, the optional `spec.connector.iceberg.metastore` is replaced
   by the required `spec.connector.iceberg.catalog`, which is one of `rest`, `hiveMetastore` or
   `userProvided` ([#950]).
 
