@@ -1,0 +1,7 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: kubectl cp -n $NAMESPACE 04_emit_lineage.py trino-test-helper-0:/tmp/
+  - script: kubectl exec -n $NAMESPACE trino-test-helper-0 -- python /tmp/04_emit_lineage.py -c trino-openlineage-coordinator
+    timeout: 120

@@ -102,7 +102,7 @@ impl ExtendCatalogConfig for s3::v1alpha1::InlineConnectionOrReference {
         }
 
         catalog_config.init_container_extra_start_commands.extend(
-            config::s3::s3_tls_truststore_commands(&s3.tls)
+            config::tls::tls_truststore_commands(&s3.tls)
                 .map_err(|_| S3TlsNoVerificationNotSupportedSnafu.build())?,
         );
 

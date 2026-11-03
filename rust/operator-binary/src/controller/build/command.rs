@@ -132,6 +132,17 @@ pub fn container_trino_args(
         )
     ));
 
+    // Resolve the OpenLineage bearer token (if any) in the coordinator's event listener config.
+    // The file only exists on the coordinator; `${file:...}` placeholders are not resolved by Trino
+    // for `event-listener.properties` (trinodb/trino#8245), so we template it here at startup.
+    args.push(format!(
+        "test -f {rw_event_listener_config_file} && config-utils template {rw_event_listener_config_file}",
+        rw_event_listener_config_file = format!(
+            "{RW_CONFIG_DIR_NAME}/{event_listener}",
+            event_listener = ConfigFileName::EventListener
+        )
+    ));
+
     args.push("set -x".to_string());
 
     // Start command

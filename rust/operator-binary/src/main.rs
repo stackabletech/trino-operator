@@ -9,7 +9,7 @@ use futures::{FutureExt, TryFutureExt, stream::StreamExt};
 use stackable_operator::{
     YamlSchema,
     cli::{Command, RunArguments},
-    crd::{authentication::core, listener},
+    crd::{authentication::core, listener, openlineage},
     eos::EndOfSupportChecker,
     k8s_openapi::api::{
         apps::v1::StatefulSet,
@@ -156,6 +156,7 @@ async fn main() -> anyhow::Result<()> {
             let catalog_cluster_store = cluster_controller.store();
             let authentication_class_cluster_store = cluster_controller.store();
             let config_map_cluster_store = cluster_controller.store();
+            let openlineage_connection_cluster_store = cluster_controller.store();
 
             let trino_controller = cluster_controller
                 .owns(
@@ -222,6 +223,22 @@ async fn main() -> anyhow::Result<()> {
                             .state()
                             .into_iter()
                             .filter(move |trino| references_config_map(trino, &config_map))
+                            .map(|trino| ObjectRef::from_obj(&*trino))
+                    },
+                )
+                .watches(
+                    watch_namespace
+                        .get_api::<DeserializeGuard<openlineage::v1alpha1::OpenLineageConnection>>(
+                            &client,
+                        ),
+                    watcher::Config::default(),
+                    move |openlineage_connection| {
+                        openlineage_connection_cluster_store
+                            .state()
+                            .into_iter()
+                            .filter(move |trino| {
+                                references_openlineage_connection(trino, &openlineage_connection)
+                            })
                             .map(|trino| ObjectRef::from_obj(&*trino))
                     },
                 )
@@ -299,6 +316,32 @@ fn references_config_map(
             v1alpha1::TrinoAuthorization::Opa { config } => {
                 config.opa.config_map_name == config_map.name_any()
             }
+        },
+        None => false,
+    }
+}
+
+/// Returns whether the given [`TrinoCluster`](v1alpha1::TrinoCluster) references the given
+/// `OpenLineageConnection` by name, so that changes to the connection trigger a reconcile.
+fn references_openlineage_connection(
+    trino: &DeserializeGuard<v1alpha1::TrinoCluster>,
+    openlineage_connection: &DeserializeGuard<openlineage::v1alpha1::OpenLineageConnection>,
+) -> bool {
+    let Ok(trino) = &trino.0 else {
+        return false;
+    };
+
+    // Connections can only be referenced within the same namespace
+    if trino.namespace() != openlineage_connection.namespace() {
+        return false;
+    }
+
+    match &trino.spec.cluster_config.lineage {
+        Some(lineage) => match &lineage.open_lineage.connection {
+            openlineage::v1alpha1::InlineConnectionOrReference::Reference(name) => {
+                *name == openlineage_connection.name_any()
+            }
+            openlineage::v1alpha1::InlineConnectionOrReference::Inline(_) => false,
         },
         None => false,
     }
