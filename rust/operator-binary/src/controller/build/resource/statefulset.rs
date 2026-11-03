@@ -33,6 +33,7 @@ use stackable_operator::{
             statefulset::restarter_ignore_secret_annotations,
         },
         product_logging::framework::{ValidatedContainerLogConfigChoice, vector_container},
+        rbac::RbacResourceNames,
         types::kubernetes::{SecretClassName, VolumeName},
     },
 };
