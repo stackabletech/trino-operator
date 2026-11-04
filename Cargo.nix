@@ -9002,9 +9002,9 @@ rec {
       };
       "rstest" = rec {
         crateName = "rstest";
-        version = "0.26.1";
+        version = "0.28.0";
         edition = "2021";
-        sha256 = "0jcxhg9mxlr2p9an14algbcq6ax7r0sk1w1kbals5aiv0qy1k8zm";
+        sha256 = "1z6s4vias5x8fcs4fqqwdk1f3bdkk77ambn6vfl8cxhayc9faxmk";
         license = "MIT OR Apache-2.0";
         authors = [
           "Michele d'Amico <michele.damico@gmail.com>"
@@ -9019,6 +9019,7 @@ rec {
             name = "futures-util";
             packageId = "futures-util";
             optional = true;
+            usesDefaultFeatures = false;
           }
           {
             name = "rstest_macros";
@@ -9035,9 +9036,9 @@ rec {
       };
       "rstest_macros" = rec {
         crateName = "rstest_macros";
-        version = "0.26.1";
+        version = "0.28.0";
         edition = "2021";
-        sha256 = "185v185wn2x3llp3nn1i7h44vi5ffnnsj8b1a32m2ygzy08m714w";
+        sha256 = "1sji63c2scrdy7x27fbpwky3aw35nmrvrxxf73x0sfmpnnzjslc8";
         procMacro = true;
         license = "MIT OR Apache-2.0";
         authors = [
@@ -12454,9 +12455,9 @@ rec {
       };
       "toml_edit" = rec {
         crateName = "toml_edit";
-        version = "0.25.17+spec-1.1.0";
+        version = "0.25.18+spec-1.1.0";
         edition = "2024";
-        sha256 = "174w1b2fjg1jb0wi7384v1m59g7ga79458i022gafjakpddisr73";
+        sha256 = "15hkw83x94drmc7d1xgg3j5485pijzfajbr1il6l5f8dsy5ygihy";
         license = "MIT OR Apache-2.0";
         dependencies = [
           {
