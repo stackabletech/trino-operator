@@ -114,7 +114,7 @@ Here too, overriding properties such as `http-server.https.port` will lead to br
 
 == Resource Requests
 
-include::home:concepts:partial$stackable_resource_requests.adoc[]
+include::concepts:partial$stackable_resource_requests.adoc[]
 
 A minimal HA setup consisting of 1 coordinator and 2 worker instances has the following https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/[resource requirements]:
 
