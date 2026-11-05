@@ -312,7 +312,13 @@ pub fn build_rolegroup_statefulset(
             &mut cb_trino,
         )
         .context(InvalidAuthenticationConfigSnafu)?;
-    add_derived_volumes_and_mounts(cluster, &mut pod_builder, &mut cb_prepare, &mut cb_trino)?;
+    add_derived_volumes_and_mounts(
+        cluster,
+        trino_role,
+        &mut pod_builder,
+        &mut cb_prepare,
+        &mut cb_trino,
+    )?;
 
     let mut prepare_args = vec![];
     if let ValidatedContainerLogConfigChoice::Automatic(log_config) =
@@ -345,6 +351,13 @@ pub fn build_rolegroup_statefulset(
             format!("{}/ca.crt", tls_mount_path).as_str(),
             STACKABLE_CLIENT_TLS_DIR,
         ));
+    }
+
+    // Add the OpenLineage backend CA certificate to the truststore if configured (coordinator only).
+    if trino_role == &TrinoRole::Coordinator
+        && let Some(resolved_lineage) = &cluster.cluster_config.lineage
+    {
+        prepare_args.extend(resolved_lineage.init_container_extra_start_commands.clone());
     }
 
     let container_prepare = cb_prepare
@@ -742,10 +755,11 @@ fn add_tls_volumes_and_mounts(
 }
 
 /// Adds the volumes and volume mounts whose names derive from user-supplied resources: the
-/// catalogs, fault-tolerant execution and client spooling. They may collide with each other or
-/// with the operator's own volumes, so the adds stay fallible.
+/// catalogs, fault-tolerant execution, client spooling and OpenLineage. They may collide with each
+/// other or with the operator's own volumes, so the adds stay fallible.
 fn add_derived_volumes_and_mounts(
     cluster: &ValidatedCluster,
+    trino_role: &TrinoRole,
     pod_builder: &mut PodBuilder,
     cb_prepare: &mut ContainerBuilder,
     cb_trino: &mut ContainerBuilder,
@@ -785,6 +799,22 @@ fn add_derived_volumes_and_mounts(
             .context(AddVolumeMountSnafu)?;
         pod_builder
             .add_volumes(resolved_spooling.volumes.clone())
+            .context(AddVolumeSnafu)?;
+    }
+
+    // OpenLineage backend CA certificate and (when authenticated) the bearer-token Secret. The
+    // event listener runs on the coordinator only, so these are mounted there only.
+    if trino_role == &TrinoRole::Coordinator
+        && let Some(resolved_lineage) = &cluster.cluster_config.lineage
+    {
+        cb_prepare
+            .add_volume_mounts(resolved_lineage.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        cb_trino
+            .add_volume_mounts(resolved_lineage.volume_mounts.clone())
+            .context(AddVolumeMountSnafu)?;
+        pod_builder
+            .add_volumes(resolved_lineage.volumes.clone())
             .context(AddVolumeSnafu)?;
     }
 

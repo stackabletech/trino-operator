@@ -1,28 +1,32 @@
+use snafu::Snafu;
 use stackable_operator::commons::tls_verification::{
     CaCert, TlsClientDetails, TlsServerVerification, TlsVerification,
 };
 
 use crate::{controller::build::command, crd::STACKABLE_CLIENT_TLS_DIR};
 
-/// Returned by [`tls_truststore_commands`] when a connection disables TLS verification, which
-/// Trino does not support.
-#[derive(Debug)]
-pub struct TlsVerificationDisabled;
+#[derive(Snafu, Debug)]
+pub enum Error {
+    /// Returned by [`tls_truststore_commands`] when a connection disables TLS verification, which
+    /// Trino does not support for its HTTP and S3 clients.
+    #[snafu(display("disabling the TLS verification is not supported"))]
+    TlsVerificationDisabled,
+}
 
-/// Build the init-container commands that add a server's CA certificate to the client truststore.
+/// Build the init-container commands that add a server's CA certificate to the client truststore
+/// (the JVM default truststore, see `config::jvm`).
 ///
 /// Returns an empty list when no extra trust setup is needed (TLS disabled, or WebPKI
-/// verification), and [`TlsVerificationDisabled`] when TLS verification is turned off (which
-/// Trino rejects). Shared by the spooling/exchange S3 config, the S3 catalog connection and the
-/// Iceberg REST catalog connection.
-pub fn tls_truststore_commands(
-    tls: &TlsClientDetails,
-) -> Result<Vec<String>, TlsVerificationDisabled> {
+/// verification), and [`Error::TlsVerificationDisabled`] when TLS verification is turned off: the
+/// connection would still use `https`, but the client has no way to skip the certificate check,
+/// so the handshake would fail at runtime. Shared by the S3 connections (spooling/exchange and
+/// catalogs), the OpenLineage backend connection and the Iceberg REST catalog connection.
+pub fn tls_truststore_commands(tls: &TlsClientDetails) -> Result<Vec<String>, Error> {
     let Some(tls_config) = tls.tls.as_ref() else {
         return Ok(Vec::new());
     };
     match &tls_config.verification {
-        TlsVerification::None {} => Err(TlsVerificationDisabled),
+        TlsVerification::None {} => Err(Error::TlsVerificationDisabled),
         TlsVerification::Server(TlsServerVerification {
             ca_cert: CaCert::WebPki {},
         }) => Ok(Vec::new()),
