@@ -22,6 +22,8 @@ mod tests {
         assert!(!content.is_empty());
         // The airlift source must be present (Trino's main log format) ...
         assert!(content.contains("files_airlift"));
+        assert!(content.contains("files_tracing_rs"));
+        assert!(content.contains("*.tracing-rs.json"));
         // ... while the aggregator sink must reference the injected address.
         assert!(content.contains("${VECTOR_AGGREGATOR_ADDRESS}"));
     }
