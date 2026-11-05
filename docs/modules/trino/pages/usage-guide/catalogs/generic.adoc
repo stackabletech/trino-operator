@@ -1,4 +1,5 @@
 = Generic
+:description: Generic Trino catalogs for any connector Trino supports, including PostgreSQL, with properties taken from Secrets and ConfigMaps.
 :trino-connector: https://trino.io/docs/current/connector.html
 :trino-psql-connector: https://trino.io/docs/current/connector/postgresql.html
 

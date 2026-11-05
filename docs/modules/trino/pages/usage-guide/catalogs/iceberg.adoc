@@ -1,4 +1,5 @@
 = Apache Iceberg
+:description: Trino catalogs for Apache Iceberg tables, backed by a Hive metastore and stored in S3 or HDFS, with the Stackable operator for Trino.
 
 Apache Iceberg is a format for huge analytic tables designed to address some of the scaling issues with traditional Hive tables.
 Iceberg depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.

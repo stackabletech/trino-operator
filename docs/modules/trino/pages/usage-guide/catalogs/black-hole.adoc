@@ -1,4 +1,5 @@
 = Black Hole
+:description: Trino catalogs for the Black Hole connector, which discards written data and returns empty reads, for testing the performance of other components.
 
 Primarily the https://trino.io/docs/current/connector/blackhole.html[Black Hole connector] is designed for high performance testing of other components.
 It works like the `/dev/null` device on Unix-like operating systems for data writing and like `/dev/null` or `/dev/zero` for data reading.
