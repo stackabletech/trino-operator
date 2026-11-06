@@ -63,8 +63,6 @@ stringData:
 <5> Optional, uses the same TLS configuration as xref:usage-guide/s3.adoc#tls[S3 connections].
     If not specified, TLS is used and the server certificate is verified against the web PKI (`webPki`).
     Set `tls: null` to connect without TLS. Disabling the TLS verification (`verification.none`) is not supported.
-    `tls: null` is kept when creating or replacing a TrinoCatalog, but `kubectl apply` and server-side apply remove it from an existing TrinoCatalog, which brings back the `webPki` default.
-    Use `kubectl replace` or recreate the TrinoCatalog to switch an existing catalog to a connection without TLS.
 <6> Optional, defaults to no authentication
 <7> The token endpoint of the OAuth2 server, see <<oauth2-server>>.
     It takes the same `hostname`, `port`, `path` and `tls` fields as the REST catalog, so it uses TLS with `webPki` verification by default.
