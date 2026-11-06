@@ -1,4 +1,5 @@
 = PostgreSQL
+:description: Trino catalogs for PostgreSQL, covering queries against tables in a PostgreSQL database with credentials taken from a Kubernetes Secret.
 
 The https://trino.io/docs/current/connector/postgresql.html[PostgreSQL connector] provides connectivity to a PostgreSQL databases.
 

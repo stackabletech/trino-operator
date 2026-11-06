@@ -1,4 +1,5 @@
 
 = Cluster Operation
+:description: Cluster operations for Trino, covering how to pause reconciliation of a cluster or stop it entirely through its TrinoCluster resource.
 
 Trino installations can be configured with different cluster operations like pausing reconciliation or stopping the cluster. See xref:concepts:operations/cluster_operations.adoc[cluster operations] for more details.

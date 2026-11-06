@@ -1,4 +1,5 @@
 = Security
+:description: Reference for Trino security settings in the TrinoCluster resource, such as OPA authorization with column masking and the properties it sets.
 
 == Authorization
 
