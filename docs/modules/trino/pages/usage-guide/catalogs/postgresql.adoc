@@ -6,7 +6,7 @@ The https://trino.io/docs/current/connector/postgresql.html[PostgreSQL connector
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   # The name of the catalog as it will appear in Trino

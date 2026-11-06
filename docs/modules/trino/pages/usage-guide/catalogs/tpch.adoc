@@ -7,7 +7,7 @@ This is not a stored data set and is instead a virtual data set generated at que
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   # The name of the catalog as it will appear in Trino
