@@ -1,4 +1,5 @@
 = TPC-DS
+:description: Trino catalogs for the TPC-DS connector, which generates the TPC-DS benchmark data set at query time without storing any data.
 
 The https://trino.io/docs/current/connector/tpcds.html[TPC-DS connector] provides a data source for the TCP-DS benchmark data set.
 This is not a stored data set and is instead a virtual data set generated at query time using a deterministic algorithm.

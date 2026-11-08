@@ -1,4 +1,5 @@
 = Pod placement
+:description: Pod placement for Trino, covering default affinities that keep coordinators and workers together and spread each role across nodes.
 
 You can configure the Pod placement of the Trino pods as described in xref:concepts:operations/pod_placement.adoc[].
 

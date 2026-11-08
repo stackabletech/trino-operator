@@ -1,4 +1,5 @@
 = Google sheets
+:description: Trino catalogs for Google Sheets, covering the service account credentials the connector uses to read spreadsheets through the Google APIs.
 :trino-google-sheets-connector: https://trino.io/docs/current/connector/googlesheets.html
 
 With this connector Trino can connect to Google Sheets.

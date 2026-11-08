@@ -1,4 +1,5 @@
 = Catalogs
+:description: Trino catalogs as TrinoCatalog resources, covering how catalogs are created, added to clusters, overridden and used with generic connectors.
 
 Trino does not have a built-in catalog and instead provides connectors to external data sources.
 This allows Trino to connect to, read from and join a wide variety of data sources.

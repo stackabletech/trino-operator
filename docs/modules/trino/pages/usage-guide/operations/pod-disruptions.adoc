@@ -1,4 +1,5 @@
 = Allowed Pod disruptions
+:description: PodDisruptionBudgets for Trino coordinators and workers, and how to shorten rolling redeployments of clusters with many workers.
 
 You can configure the permitted Pod disruptions for Trino nodes as described in xref:concepts:operations/pod_disruptions.adoc[].
 
