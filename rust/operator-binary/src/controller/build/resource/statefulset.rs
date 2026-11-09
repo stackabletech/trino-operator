@@ -70,7 +70,7 @@ use crate::{
 // called. These are the generic `stackable-telemetry` variables and apply to the whole Trino
 // container, so any other telemetry-based process in it would log into the same directory and the
 // Vector agent would label its events with `container: containerdebug`.
-stackable_operator::constant!(FILE_LOG_DIRECTORY: EnvVarName = "FILE_LOG_DIRECTORY");
+stackable_operator::constant!(pub(crate) FILE_LOG_DIRECTORY: EnvVarName = "FILE_LOG_DIRECTORY");
 stackable_operator::constant!(FILE_LOG_MAX_FILES: EnvVarName = "FILE_LOG_MAX_FILES");
 stackable_operator::constant!(FILE_LOG_ROTATION_PERIOD: EnvVarName = "FILE_LOG_ROTATION_PERIOD");
 

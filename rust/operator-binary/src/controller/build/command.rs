@@ -14,7 +14,7 @@ use crate::{
     config::{client_protocol, fault_tolerant_execution},
     controller::{
         STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR, ValidatedCluster, ValidatedTrinoConfig,
-        build::properties::ConfigFileName,
+        build::{properties::ConfigFileName, resource::statefulset::FILE_LOG_DIRECTORY},
     },
     crd::{
         CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
@@ -151,7 +151,7 @@ pub fn container_trino_args(
 {COMMON_BASH_TRAP_FUNCTIONS}
 {remove_vector_shutdown_file_command}
 prepare_signal_handlers
-mkdir --parents \"$FILE_LOG_DIRECTORY\"
+mkdir --parents \"${file_log_directory}\" || true
 containerdebug --output={STACKABLE_LOG_DIR}/containerdebug-state.json --loop &
 bin/launcher run --etc-dir={RW_CONFIG_DIR_NAME} &
 wait_for_termination $!
@@ -159,6 +159,7 @@ wait_for_termination $!
 ",
         remove_vector_shutdown_file_command =
             remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+        file_log_directory = FILE_LOG_DIRECTORY.as_ref(),
         create_vector_shutdown_file_command =
             create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
     ));
