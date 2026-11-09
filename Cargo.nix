@@ -15401,9 +15401,9 @@ rec {
       };
       "winnow" = rec {
         crateName = "winnow";
-        version = "1.0.4";
+        version = "1.0.5";
         edition = "2021";
-        sha256 = "10fzxipa7lx16172p3aca9j60hzbqgjki2f95kqksd5qywcp7f93";
+        sha256 = "1vvs4zmisyxxp1igpjpi87z26d6wl3q98shcvx68gazhklcr6fwc";
         license = "MIT";
         dependencies = [
           {

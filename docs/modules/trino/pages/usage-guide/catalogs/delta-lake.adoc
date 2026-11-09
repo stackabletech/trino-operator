@@ -1,4 +1,5 @@
 = Delta Lake
+:description: Trino catalogs for Delta Lake tables, backed by a Hive metastore and stored in S3 or HDFS, with the Stackable operator for Trino.
 
 https://delta.io/[Delta Lake] is an open-source storage framework that enables building a Lakehouse architecture with support for multiple compute engines.
 It depends on a Hive metastore being present and makes use of the same metastore ConfigMap used by the Hive connector.
@@ -7,7 +8,7 @@ It depends on a Hive metastore being present and makes use of the same metastore
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   # The name of the catalog as it will appear in Trino

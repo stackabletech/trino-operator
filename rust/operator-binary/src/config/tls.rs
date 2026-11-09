@@ -20,7 +20,7 @@ pub enum Error {
 /// verification), and [`Error::TlsVerificationDisabled`] when TLS verification is turned off: the
 /// connection would still use `https`, but the client has no way to skip the certificate check,
 /// so the handshake would fail at runtime. Shared by the S3 connections (spooling/exchange and
-/// catalogs) and the OpenLineage backend connection.
+/// catalogs), the OpenLineage backend connection and the Iceberg REST catalog connection.
 pub fn tls_truststore_commands(tls: &TlsClientDetails) -> Result<Vec<String>, Error> {
     let Some(tls_config) = tls.tls.as_ref() else {
         return Ok(Vec::new());

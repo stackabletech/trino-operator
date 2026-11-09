@@ -1,4 +1,5 @@
 = Apache Hive
+:description: Trino catalogs for Apache Hive, covering data in S3 or HDFS through a Hive metastore, including Hive clusters not managed by Stackable.
 
 The Apache Hive connector allows Trino to connect to a Hive metastore and query data stored in Apache Hadoop or S3 compatible objects storage.
 
@@ -8,7 +9,7 @@ Deploy a Hive Stacklet with the xref:hive:index.adoc[].
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: hive-catalog  # <1>
@@ -143,7 +144,7 @@ To use the unmanaged Hive metastore we define a TrinoCatalog object in the same 
 
 [source,yaml]
 ----
-apiVersion: trino.stackable.tech/v1alpha1
+apiVersion: trino.stackable.tech/v1alpha2
 kind: TrinoCatalog
 metadata:
   name: clouderahive
