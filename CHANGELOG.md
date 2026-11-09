@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#924]).
 - Add support for 483 ([#956]).
 - Support configuring an Iceberg REST catalog in the Iceberg connector, optionally authenticated
-  using OAuth2 client credentials or a bearer token ([#950]).
+  using OAuth2 client credentials or a bearer token ([#950], [#XXX]).
 
 ### Changed
 
@@ -99,6 +99,7 @@ All notable changes to this project will be documented in this file.
 [#961]: https://github.com/stackabletech/trino-operator/pull/961
 [#963]: https://github.com/stackabletech/trino-operator/pull/963
 [#966]: https://github.com/stackabletech/trino-operator/pull/966
+[#XXX]: https://github.com/stackabletech/trino-operator/pull/XXX
 
 ## [26.7.0] - 2026-07-21
 
