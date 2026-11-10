@@ -1,4 +1,5 @@
 = Configuration, environment & Pod overrides
+:description: Overrides for Trino, covering configuration files, catalog properties, environment variables, Pod specs and JVM arguments per role or role group.
 
 The Stackable Data Platform supports overrides in config files, environment variables and Pod templates.
 Read more about overrides on the xref:concepts:overrides.adoc[overrides concepts page].

@@ -1,4 +1,5 @@
 = Usage guide
+:description: Guides for the Stackable operator for Trino, covering different ways to set up Trino clusters and testing them with Apache Hive and S3 storage.
 
 This section helps you to use the Trino Stackable operator.
 It shows you how to set up a Trino cluster in different ways and to test it with Hive and S3.

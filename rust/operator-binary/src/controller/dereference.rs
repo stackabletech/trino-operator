@@ -18,6 +18,7 @@ use crate::{
     config::{
         client_protocol::{self, ResolvedClientProtocolConfig},
         fault_tolerant_execution::{self, ResolvedFaultTolerantExecutionConfig},
+        lineage::{self, ResolvedLineageConfig},
     },
     crd::{
         authentication::{ResolvedAuthenticationClassRef, resolve_authentication_classes},
@@ -49,7 +50,7 @@ pub enum Error {
     #[snafu(display("failed to parse {catalog}"))]
     ParseCatalog {
         source: FromTrinoCatalogError,
-        catalog: ObjectRef<catalog::v1alpha1::TrinoCatalog>,
+        catalog: ObjectRef<catalog::v1alpha2::TrinoCatalog>,
     },
 
     #[snafu(display("failed to configure fault tolerant execution"))]
@@ -59,6 +60,9 @@ pub enum Error {
 
     #[snafu(display("failed to resolve client protocol configuration"))]
     ClientProtocolConfiguration { source: client_protocol::Error },
+
+    #[snafu(display("failed to resolve OpenLineage configuration"))]
+    OpenLineageConfiguration { source: lineage::Error },
 
     #[snafu(display("invalid OpaConfig"))]
     InvalidOpaConfig {
@@ -77,11 +81,12 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// Kubernetes objects referenced from the TrinoCluster spec, fetched from the cluster.
 pub struct DereferencedObjects {
     pub resolved_authentication_classes: Vec<ResolvedAuthenticationClassRef>,
-    pub catalog_definitions: Vec<catalog::v1alpha1::TrinoCatalog>,
+    pub catalog_definitions: Vec<catalog::v1alpha2::TrinoCatalog>,
     pub catalogs: Vec<CatalogConfig>,
     pub trino_opa_config: Option<TrinoOpaConfig>,
     pub resolved_fte_config: Option<ResolvedFaultTolerantExecutionConfig>,
     pub resolved_client_protocol_config: Option<ResolvedClientProtocolConfig>,
+    pub resolved_lineage_config: Option<ResolvedLineageConfig>,
 }
 
 /// Fetches all Kubernetes objects referenced from the [`v1alpha1::TrinoCluster`] spec.
@@ -97,7 +102,7 @@ pub async fn dereference(
             .context(AuthenticationClassRetrievalSnafu)?;
 
     let catalog_definitions = client
-        .list_with_label_selector::<catalog::v1alpha1::TrinoCatalog>(
+        .list_with_label_selector::<catalog::v1alpha2::TrinoCatalog>(
             namespace.as_ref(),
             &trino.spec.cluster_config.catalog_label_selector,
         )
@@ -155,6 +160,15 @@ pub async fn dereference(
         None => None,
     };
 
+    let resolved_lineage_config = match trino.spec.cluster_config.lineage.as_ref() {
+        Some(lineage) => Some(
+            ResolvedLineageConfig::from_config(lineage, client, namespace.as_ref())
+                .await
+                .context(OpenLineageConfigurationSnafu)?,
+        ),
+        None => None,
+    };
+
     Ok(DereferencedObjects {
         resolved_authentication_classes,
         catalog_definitions,
@@ -162,18 +176,19 @@ pub async fn dereference(
         trino_opa_config,
         resolved_fte_config,
         resolved_client_protocol_config,
+        resolved_lineage_config,
     })
 }
 
 /// Determines the Trino catalog name based on user settings and the Kubernetes TrinoCatalog object
 /// name.
 fn determine_catalog_name(
-    catalog_name_spec: &catalog::v1alpha1::TrinoCatalogNameSpec,
+    catalog_name_spec: &catalog::v1alpha2::TrinoCatalogNameSpec,
     catalog_object_name: &str,
 ) -> Result<TrinoCatalogName> {
     // A `match` is used because we might support other ways of naming (e.g. custom) later.
     match catalog_name_spec {
-        catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+        catalog::v1alpha2::TrinoCatalogNameSpec::Inferred {
             replace_hyphens_with_underscores,
         } => {
             let mut catalog_name = catalog_object_name.to_owned();
@@ -194,7 +209,7 @@ mod tests {
     fn determine_catalog_name_replaces_hyphens() {
         let inferred = |replace_hyphens_with_underscores| {
             determine_catalog_name(
-                &catalog::v1alpha1::TrinoCatalogNameSpec::Inferred {
+                &catalog::v1alpha2::TrinoCatalogNameSpec::Inferred {
                     replace_hyphens_with_underscores,
                 },
                 "my-postgres",

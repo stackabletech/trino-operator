@@ -14,7 +14,7 @@ use crate::{
     config::{client_protocol, fault_tolerant_execution},
     controller::{
         STACKABLE_LOG_CONFIG_DIR, STACKABLE_LOG_DIR, ValidatedCluster, ValidatedTrinoConfig,
-        build::properties::ConfigFileName,
+        build::{properties::ConfigFileName, resource::statefulset::FILE_LOG_DIRECTORY},
     },
     crd::{
         CONFIG_DIR_NAME, Container, RW_CONFIG_DIR_NAME, STACKABLE_CLIENT_TLS_DIR,
@@ -133,6 +133,17 @@ pub fn container_trino_args(
         )
     ));
 
+    // Resolve the OpenLineage bearer token (if any) in the coordinator's event listener config.
+    // The file only exists on the coordinator; `${file:...}` placeholders are not resolved by Trino
+    // for `event-listener.properties` (trinodb/trino#8245), so we template it here at startup.
+    args.push(format!(
+        "test -f {rw_event_listener_config_file} && config-utils template {rw_event_listener_config_file}",
+        rw_event_listener_config_file = format!(
+            "{RW_CONFIG_DIR_NAME}/{event_listener}",
+            event_listener = ConfigFileName::EventListener
+        )
+    ));
+
     args.push("set -x".to_string());
 
     // Start command
@@ -141,6 +152,7 @@ pub fn container_trino_args(
 {COMMON_BASH_TRAP_FUNCTIONS}
 {remove_vector_shutdown_file_command}
 prepare_signal_handlers
+mkdir --parents \"${file_log_directory}\" || true
 {containerdebug_command}
 bin/launcher run --etc-dir={RW_CONFIG_DIR_NAME} &
 wait_for_termination $!
@@ -148,6 +160,7 @@ wait_for_termination $!
 ",
         remove_vector_shutdown_file_command =
             remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+        file_log_directory = FILE_LOG_DIRECTORY.as_ref(),
         containerdebug_command = merged_config
             .containerdebug
             .background_command(STACKABLE_LOG_DIR)

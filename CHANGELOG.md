@@ -6,11 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `spec.clusterConfig.lineage` to emit [OpenLineage](https://openlineage.io/) lineage events ([#914]).
 - Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
   ([#944]).
 - Add `/ready` endpoint to the operator Deployment, which reports the CRD installation status ([#949]).
 - Coordinators now have a default affinity to the OPA Pods when OPA authorization is configured ([#924]).
 - Add support for 483 ([#956]).
+- Support configuring an Iceberg REST catalog in the Iceberg connector, optionally authenticated
+  using OAuth2 client credentials or a bearer token ([#950], [#972]).
+- The logs of the `containerdebug` process are now collected by the Vector agent and forwarded to
+  the Vector aggregator ([#970]).
 
 ### Changed
 
@@ -47,6 +52,11 @@ All notable changes to this project will be documented in this file.
 - Support Vector 0.58.0 ([#953], [#959], [#960]).
 - test: Bump hive to 4.2.1 ([#961]).
 - The operator Deployment runs with a restricted security context and a read-only root filesystem, so it can be deployed into namespaces that enforce the `restricted` Pod Security Standard ([#963]).
+- Add `TrinoCatalog` version `v1alpha2`, which is now the storage version. `v1alpha1` objects are
+  converted automatically by the conversion webhook, which requires the operator to maintain its
+  CRDs (the default). In `v1alpha2`, the optional `spec.connector.iceberg.metastore` is replaced
+  by the required `spec.connector.iceberg.catalog`, which is one of `rest`, `hiveMetastore` or
+  `userProvided` ([#950]).
 
 ### Fixed
 
@@ -61,6 +71,10 @@ All notable changes to this project will be documented in this file.
   when predicting the coordinator pods. Kubernetes runs a single pod for a `StatefulSet` with
   `replicas: null`, but counting it as zero left `discovery.uri` out of `config.properties`
   altogether, so no pod could find the coordinator ([#945]).
+- The `containerdebug` process writes its log file again. The operator set
+  `CONTAINERDEBUG_LOG_DIRECTORY`, which containerdebug stopped reading in its version 0.2.0 when it
+  moved to `stackable-telemetry`; the directory is now set via `FILE_LOG_DIRECTORY`. The file is
+  rotated hourly and at most two files are kept, because rotation is opt-in ([#970]).
 
 ### Removed
 
@@ -68,6 +82,7 @@ All notable changes to this project will be documented in this file.
 
 [#909]: https://github.com/stackabletech/trino-operator/pull/909
 [#913]: https://github.com/stackabletech/trino-operator/pull/913
+[#914]: https://github.com/stackabletech/trino-operator/pull/914
 [#918]: https://github.com/stackabletech/trino-operator/pull/918
 [#923]: https://github.com/stackabletech/trino-operator/pull/923
 [#924]: https://github.com/stackabletech/trino-operator/pull/924
@@ -80,6 +95,7 @@ All notable changes to this project will be documented in this file.
 [#944]: https://github.com/stackabletech/trino-operator/pull/944
 [#945]: https://github.com/stackabletech/trino-operator/pull/945
 [#949]: https://github.com/stackabletech/trino-operator/pull/949
+[#950]: https://github.com/stackabletech/trino-operator/pull/950
 [#953]: https://github.com/stackabletech/trino-operator/pull/953
 [#956]: https://github.com/stackabletech/trino-operator/pull/956
 [#957]: https://github.com/stackabletech/trino-operator/pull/957
@@ -89,6 +105,8 @@ All notable changes to this project will be documented in this file.
 [#961]: https://github.com/stackabletech/trino-operator/pull/961
 [#963]: https://github.com/stackabletech/trino-operator/pull/963
 [#966]: https://github.com/stackabletech/trino-operator/pull/966
+[#970]: https://github.com/stackabletech/trino-operator/pull/970
+[#972]: https://github.com/stackabletech/trino-operator/pull/972
 
 ## [26.7.0] - 2026-07-21
 

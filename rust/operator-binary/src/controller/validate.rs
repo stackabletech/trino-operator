@@ -108,6 +108,19 @@ pub enum Error {
         "The catalog name {catalog_name:?} clashes (there are multiple catalogs with this name). Please make sure there is exactly one catalog for any given name"
     ))]
     ClashingCatalogName { catalog_name: TrinoCatalogName },
+
+    #[snafu(display(
+        "invalid `datasetNamespaceUri` {uri:?}, expected a URI such as \"https://my-trino:8443\""
+    ))]
+    ParseDatasetNamespaceUri {
+        source: url::ParseError,
+        uri: String,
+    },
+
+    #[snafu(display(
+        "invalid `datasetNamespaceUri` {uri:?}: the URI has no host, expected a URI such as \"https://my-trino:8443\""
+    ))]
+    DatasetNamespaceUriWithoutHost { uri: String },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -215,6 +228,14 @@ pub fn validate(
         .vector_aggregator_config_map_name
         .clone();
 
+    if let Some(uri) = dereferenced_objects
+        .resolved_lineage_config
+        .as_ref()
+        .and_then(|lineage| lineage.dataset_namespace_uri.as_deref())
+    {
+        validate_dataset_namespace_uri(uri)?;
+    }
+
     // Each role's role groups are validated from that role's own CRD type: `validate_role_groups`
     // is generic over the role config, so neither role has to be converted to the other's shape.
     //
@@ -275,6 +296,7 @@ pub fn validate(
         authorization: dereferenced_objects.trino_opa_config.clone(),
         fault_tolerant_execution: dereferenced_objects.resolved_fte_config.clone(),
         client_protocol: dereferenced_objects.resolved_client_protocol_config.clone(),
+        lineage: dereferenced_objects.resolved_lineage_config.clone(),
         coordinator_pod_refs: trino.coordinator_pods(&namespace).collect(),
         catalogs,
     };
@@ -294,6 +316,23 @@ pub fn validate(
         worker_config,
         worker_role_group_configs,
     }))
+}
+
+/// Validates the user-provided `datasetNamespaceUri`, so that a typo fails the reconcile instead of
+/// only surfacing once Trino starts.
+///
+/// The parsed [`url::Url`] is discarded: the original string is passed on unchanged, because `Url`
+/// normalises its input (see `event_listener_properties::dataset_namespace_uri`).
+///
+/// A host is required in addition to a successful parse, because `my-trino:8443` parses as the
+/// scheme `my-trino` with the path `8443`, but Trino needs a host and port to derive the namespace.
+fn validate_dataset_namespace_uri(uri: &str) -> Result<()> {
+    let parsed = url::Url::parse(uri).context(ParseDatasetNamespaceUriSnafu { uri })?;
+    snafu::ensure!(
+        parsed.host().is_some(),
+        DatasetNamespaceUriWithoutHostSnafu { uri }
+    );
+    Ok(())
 }
 
 /// Validates every role group of one role, merging default <- role <- role group.
@@ -388,7 +427,7 @@ pub(crate) fn merged_role_group_config(
     trino: &v1alpha1::TrinoCluster,
     trino_role: &TrinoRole,
     role_group: &str,
-    trino_catalogs: &[crate::crd::catalog::v1alpha1::TrinoCatalog],
+    trino_catalogs: &[crate::crd::catalog::v1alpha2::TrinoCatalog],
 ) -> TrinoRoleGroupConfig {
     // The shared test clusters do not enable the Vector agent, so no aggregator ConfigMap name is
     // required here.
@@ -399,6 +438,7 @@ pub(crate) fn merged_role_group_config(
         trino_opa_config: None,
         resolved_fte_config: None,
         resolved_client_protocol_config: None,
+        resolved_lineage_config: None,
     };
     let role_groups = match trino_role {
         TrinoRole::Coordinator => {
@@ -424,7 +464,7 @@ mod tests {
 
     use super::{Error, RoleGroupName, validate};
     use crate::{
-        config::client_protocol::ResolvedClientProtocolConfig,
+        config::{client_protocol::ResolvedClientProtocolConfig, lineage::ResolvedLineageConfig},
         controller::{
             ValidatedCluster, app_version_label, dereference::DereferencedObjects,
             validated_cluster,
@@ -440,6 +480,7 @@ mod tests {
             trino_opa_config: None,
             resolved_fte_config: None,
             resolved_client_protocol_config: None,
+            resolved_lineage_config: None,
         }
     }
 
@@ -659,6 +700,43 @@ mod tests {
         });
 
         assert!(validate_yaml(&minimal_yaml("481"), &derefs).is_ok());
+    }
+
+    fn validate_with_dataset_namespace_uri(uri: &str) -> Result<ValidatedCluster, Error> {
+        let mut derefs = empty_derefs();
+        derefs.resolved_lineage_config = Some(ResolvedLineageConfig {
+            properties: BTreeMap::new(),
+            dataset_namespace_uri: Some(uri.to_string()),
+            volumes: Vec::new(),
+            volume_mounts: Vec::new(),
+            init_container_extra_start_commands: Vec::new(),
+        });
+        validate_yaml(&minimal_yaml("481"), &derefs)
+    }
+
+    #[test]
+    fn valid_dataset_namespace_uris_are_accepted() {
+        for uri in [
+            "https://trino-prod",
+            "https://trino-prod:443",
+            "http://simple-trino-coordinator:8080",
+        ] {
+            assert!(validate_with_dataset_namespace_uri(uri).is_ok(), "{uri}");
+        }
+    }
+
+    #[test]
+    fn dataset_namespace_uri_without_scheme_is_rejected() {
+        // Parses as scheme `my-trino` with path `8443`, i.e. has no host.
+        assert!(matches!(
+            validate_with_dataset_namespace_uri("my-trino:8443"),
+            Err(Error::DatasetNamespaceUriWithoutHost { .. })
+        ));
+        // No scheme at all is a parse error.
+        assert!(matches!(
+            validate_with_dataset_namespace_uri("my-trino"),
+            Err(Error::ParseDatasetNamespaceUri { .. })
+        ));
     }
 
     #[test]

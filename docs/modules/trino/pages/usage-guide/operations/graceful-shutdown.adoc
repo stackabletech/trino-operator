@@ -1,4 +1,5 @@
 = Graceful shutdown
+:description: Graceful shutdown of Trino coordinators and workers, covering how running queries finish and why it requires OPA authorization.
 
 You can configure the graceful shutdown as described in xref:concepts:operations/graceful_shutdown.adoc[].
 
