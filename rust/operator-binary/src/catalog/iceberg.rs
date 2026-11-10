@@ -304,11 +304,11 @@ mod tests {
         let mut expected_properties = BTreeMap::from([
             ("connector.name", "iceberg"),
             ("iceberg.catalog.type", "rest"),
-            ("iceberg.rest-catalog.uri", "https://rest-catalog/"),
+            ("iceberg.rest-catalog.uri", "http://rest-catalog/"),
             ("iceberg.rest-catalog.security", "OAUTH2"),
             (
                 "iceberg.rest-catalog.oauth2.server-uri",
-                "https://idp.example.com/oauth2/token",
+                "http://idp.example.com/oauth2/token",
             ),
             (
                 "iceberg.rest-catalog.oauth2.credential",
@@ -347,11 +347,11 @@ mod tests {
             BTreeMap::from([
                 ("connector.name", "iceberg"),
                 ("iceberg.catalog.type", "rest"),
-                ("iceberg.rest-catalog.uri", "https://rest-catalog/"),
+                ("iceberg.rest-catalog.uri", "http://rest-catalog/"),
                 ("iceberg.rest-catalog.security", "OAUTH2"),
                 (
                     "iceberg.rest-catalog.oauth2.server-uri",
-                    "https://idp.example.com/oauth2/token",
+                    "http://idp.example.com/oauth2/token",
                 ),
                 (
                     "iceberg.rest-catalog.oauth2.token",

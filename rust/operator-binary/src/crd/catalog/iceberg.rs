@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use stackable_operator::{
-    commons::{networking::HostName, tls_verification::TlsClientDetailsWithSecureDefaults},
+    commons::{networking::HostName, tls_verification::TlsClientDetails},
     schemars::{self, JsonSchema},
     v2::types::kubernetes::SecretName,
 };
@@ -123,10 +123,9 @@ pub struct HttpEndpoint {
     #[serde(default = "HttpEndpoint::default_path")]
     pub path: String,
 
-    /// Configure a TLS connection. If not specified, it defaults to webPki verification.
-    /// Set it to `null` to not use TLS.
-    #[serde(flatten)]
-    pub tls: TlsClientDetailsWithSecureDefaults,
+    /// Configure a TLS connection. If not specified, no TLS is used.
+    #[serde(flatten, default)]
+    pub tls: TlsClientDetails,
 }
 
 impl HttpEndpoint {
@@ -164,7 +163,7 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case::defaults("hostname: rest-catalog", "https://rest-catalog/")]
+    #[case::defaults("hostname: rest-catalog", "http://rest-catalog/")]
     #[case::without_tls("{hostname: rest-catalog, tls: null}", "http://rest-catalog/")]
     #[case::explicit_web_pki(
         "{hostname: rest-catalog, tls: {verification: {server: {caCert: {webPki: {}}}}}}",
@@ -180,9 +179,9 @@ mod tests {
     )]
     #[case::trailing_slashes(
         "{hostname: idp.example.com, path: /realms/test/protocol/openid-connect/token//}",
-        "https://idp.example.com/realms/test/protocol/openid-connect/token"
+        "http://idp.example.com/realms/test/protocol/openid-connect/token"
     )]
-    #[case::ipv6("{hostname: '::1', port: 9001}", "https://[::1]:9001/")]
+    #[case::ipv6("{hostname: '::1', port: 9001}", "http://[::1]:9001/")]
     fn http_endpoint_url(#[case] input: &str, #[case] expected: &str) {
         let endpoint: HttpEndpoint =
             stackable_operator::utils::yaml_from_str_singleton_map(input).unwrap();
