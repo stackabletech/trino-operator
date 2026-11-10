@@ -4315,12 +4315,7 @@ spec:
                                             nullable: true
                                             type: integer
                                           tls:
-                                            default:
-                                              verification:
-                                                server:
-                                                  caCert:
-                                                    webPki: {}
-                                            description: Configure a TLS connection. If not specified it will default to webPki validation.
+                                            description: Use a TLS connection. If not specified no TLS will be used.
                                             nullable: true
                                             properties:
                                               verification:
@@ -4406,12 +4401,7 @@ spec:
                                 nullable: true
                                 type: integer
                               tls:
-                                default:
-                                  verification:
-                                    server:
-                                      caCert:
-                                        webPki: {}
-                                description: Configure a TLS connection. If not specified it will default to webPki validation.
+                                description: Use a TLS connection. If not specified no TLS will be used.
                                 nullable: true
                                 properties:
                                   verification:
