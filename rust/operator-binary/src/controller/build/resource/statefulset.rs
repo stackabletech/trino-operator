@@ -2,6 +2,7 @@
 
 use std::str::FromStr;
 
+use const_format::concatcp;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{
     builder::{
@@ -64,12 +65,14 @@ use crate::{
     },
 };
 
-// The env var the `containerdebug` process (running in the background of the `trino`
-// container) logs its tracing information to. See `command::container_trino_args()` for how
-// the process is called.
-stackable_operator::constant!(
-    CONTAINERDEBUG_LOG_DIRECTORY: EnvVarName = "CONTAINERDEBUG_LOG_DIRECTORY"
-);
+// Let the `containerdebug` process (running in the background of the `trino` container) write its
+// tracing information to a file. See `command::container_trino_args()` for how the process is
+// called. These are the generic `stackable-telemetry` variables and apply to the whole Trino
+// container, so any other telemetry-based process in it would log into the same directory and the
+// Vector agent would label its events with `container: containerdebug`.
+stackable_operator::constant!(pub(crate) FILE_LOG_DIRECTORY: EnvVarName = "FILE_LOG_DIRECTORY");
+stackable_operator::constant!(FILE_LOG_MAX_FILES: EnvVarName = "FILE_LOG_MAX_FILES");
+stackable_operator::constant!(FILE_LOG_ROTATION_PERIOD: EnvVarName = "FILE_LOG_ROTATION_PERIOD");
 
 // Typed names for the Pod's volumes, so each volume definition and its matching volume mounts
 // stay in sync. The Vector agent reads its `vector.yaml` from the rolegroup ConfigMap (mounted as
@@ -201,10 +204,16 @@ pub fn build_rolegroup_statefulset(
             .context(AddCatalogEnvVarSnafu)?;
     }
 
-    env = env.with_value(
-        &CONTAINERDEBUG_LOG_DIRECTORY,
-        format!("{STACKABLE_LOG_DIR}/containerdebug"),
-    );
+    env = env
+        // The directory must be exactly one level below the log directory, because the Vector
+        // agent derives the container name from that path segment.
+        .with_value(
+            &FILE_LOG_DIRECTORY,
+            concatcp!(STACKABLE_LOG_DIR, "/containerdebug"),
+        )
+        // Rotation is opt-in, so without these the file would grow unbounded.
+        .with_value(&FILE_LOG_ROTATION_PERIOD, "hourly")
+        .with_value(&FILE_LOG_MAX_FILES, "2");
 
     let requested_secret_lifetime = merged_config
         .requested_secret_lifetime
@@ -267,6 +276,9 @@ pub fn build_rolegroup_statefulset(
         .context(AddVolumeSnafu)?
         .add_empty_dir_volume(
             &*LOG_VOLUME_NAME,
+            // Only the log files listed here are budgeted. The `containerdebug` files in this
+            // volume are rotated by time, not by size, so they have no budget; raising
+            // `FILE_LOG_LEVEL` via `envOverrides` can therefore evict the Pod.
             Some(product_logging::framework::calculate_log_volume_size_limit(
                 &[MAX_TRINO_LOG_FILES_SIZE, MAX_PREPARE_LOG_FILE_SIZE],
             )),
@@ -859,7 +871,9 @@ mod tests {
     #[test]
     fn test_constants() {
         // Test that dereferencing the constants does not panic.
-        let _ = *CONTAINERDEBUG_LOG_DIRECTORY;
+        let _ = *FILE_LOG_DIRECTORY;
+        let _ = *FILE_LOG_MAX_FILES;
+        let _ = *FILE_LOG_ROTATION_PERIOD;
         let _ = *CONFIG_VOLUME_NAME;
         let _ = *RW_CONFIG_VOLUME_NAME;
         let _ = *CATALOG_VOLUME_NAME;
@@ -873,7 +887,7 @@ mod tests {
     }
 
     /// The user-supplied `envOverrides` must be merged in after all operator-set environment
-    /// variables, so that they can override any of them. `CONTAINERDEBUG_LOG_DIRECTORY` is used
+    /// variables, so that they can override any of them. `FILE_LOG_DIRECTORY` is used
     /// as the example here because it is set unconditionally by the operator.
     #[test]
     fn env_overrides_take_precedence_over_operator_set_env_vars() {
@@ -882,7 +896,7 @@ mod tests {
         let mut role_group_config =
             cluster.coordinator_role_group_configs[&role_group_name].clone();
         role_group_config.env_overrides = EnvVarSet::new().with_value(
-            &EnvVarName::from_str("CONTAINERDEBUG_LOG_DIRECTORY").expect("valid env var name"),
+            &EnvVarName::from_str_unsafe("FILE_LOG_DIRECTORY"),
             "/custom/log/dir",
         );
 
@@ -909,12 +923,12 @@ mod tests {
 
         let containerdebug: Vec<_> = env
             .iter()
-            .filter(|env_var| env_var.name == "CONTAINERDEBUG_LOG_DIRECTORY")
+            .filter(|env_var| env_var.name == "FILE_LOG_DIRECTORY")
             .collect();
         assert_eq!(
             containerdebug.len(),
             1,
-            "exactly one CONTAINERDEBUG_LOG_DIRECTORY entry must survive, got: {containerdebug:?}"
+            "exactly one FILE_LOG_DIRECTORY entry must survive, got: {containerdebug:?}"
         );
         assert_eq!(containerdebug[0].value.as_deref(), Some("/custom/log/dir"));
     }

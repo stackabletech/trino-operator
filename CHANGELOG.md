@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 - Add support for 483 ([#956]).
 - Support configuring an Iceberg REST catalog in the Iceberg connector, optionally authenticated
   using OAuth2 client credentials or a bearer token ([#950], [#972]).
+- The logs of the `containerdebug` process are now collected by the Vector agent and forwarded to
+  the Vector aggregator ([#970]).
 
 ### Changed
 
@@ -69,6 +71,10 @@ All notable changes to this project will be documented in this file.
   when predicting the coordinator pods. Kubernetes runs a single pod for a `StatefulSet` with
   `replicas: null`, but counting it as zero left `discovery.uri` out of `config.properties`
   altogether, so no pod could find the coordinator ([#945]).
+- The `containerdebug` process writes its log file again. The operator set
+  `CONTAINERDEBUG_LOG_DIRECTORY`, which containerdebug stopped reading in its version 0.2.0 when it
+  moved to `stackable-telemetry`; the directory is now set via `FILE_LOG_DIRECTORY`. The file is
+  rotated hourly and at most two files are kept, because rotation is opt-in ([#970]).
 
 ### Removed
 
@@ -99,6 +105,7 @@ All notable changes to this project will be documented in this file.
 [#961]: https://github.com/stackabletech/trino-operator/pull/961
 [#963]: https://github.com/stackabletech/trino-operator/pull/963
 [#966]: https://github.com/stackabletech/trino-operator/pull/966
+[#970]: https://github.com/stackabletech/trino-operator/pull/970
 [#972]: https://github.com/stackabletech/trino-operator/pull/972
 
 ## [26.7.0] - 2026-07-21
