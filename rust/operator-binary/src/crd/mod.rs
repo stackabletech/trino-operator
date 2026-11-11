@@ -5,7 +5,7 @@ pub mod client_protocol;
 pub mod discovery;
 pub mod fault_tolerant_execution;
 
-use std::{collections::BTreeMap, ops::Deref, str::FromStr};
+use std::{ops::Deref, str::FromStr};
 
 use affinity::get_affinity;
 use serde::{Deserialize, Serialize};
@@ -25,7 +25,7 @@ use stackable_operator::{
     crd::{authentication::core, openlineage},
     deep_merger::ObjectOverrides,
     k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
-    kube::{CustomResource, ResourceExt},
+    kube::CustomResource,
     memory::{BinaryMultiple, MemoryQuantity},
     product_logging::{self, spec::Logging},
     role_utils::GenericRoleConfig,
@@ -35,22 +35,18 @@ use stackable_operator::{
     v2::{
         builder::pod::container::EnvVarName,
         config_overrides::KeyValueConfigOverrides,
-        role_group_utils::ResourceNames,
         role_utils::{JavaCommonConfig, Role},
         types::{
             common::Port,
             kubernetes::{
-                ConfigMapName, ContainerName, ListenerClassName, NamespaceName, SecretClassName,
-                SecretKey,
+                ConfigMapName, ContainerName, ListenerClassName, SecretClassName, SecretKey,
             },
-            operator::{ClusterName, RoleGroupName, RoleName},
+            operator::RoleName,
         },
     },
     versioned::versioned,
 };
 use strum::{Display, EnumIter};
-
-use crate::crd::discovery::TrinoPodRef;
 
 pub type TrinoCoordinatorRoleType = Role<
     v1alpha1::TrinoConfigFragment,
@@ -561,53 +557,7 @@ impl v1alpha1::TrinoConfig {
     }
 }
 
-/// The replica count lower bound used for enumerating role groups when this is not set explicitly (in such cases Kubernetes
-/// runs a single pod for a `StatefulSet`).
-const COORDINATOR_REPLICAS_IF_UNSET: u16 = 1;
-
 impl v1alpha1::TrinoCluster {
-    /// List all coordinator pods expected to form the cluster
-    ///
-    /// We try to predict the pods here rather than looking at the current cluster state in order to
-    /// avoid instance churn.
-    ///
-    /// A role group without an explicit `replicas` counts will be assigned a single pod by Kubernetes. Counting it as
-    /// zero would yield no pod refs at all for a single-role-group cluster, and the first of these
-    /// is what sets `discovery.uri`.
-    pub fn coordinator_pods(
-        &self,
-        namespace: &NamespaceName,
-    ) -> impl Iterator<Item = TrinoPodRef> + '_ {
-        let ns = namespace.to_string();
-        let cluster_name = ClusterName::from_str(&self.name_any())
-            .expect("a TrinoCluster name is a valid cluster name");
-        let role_name = RoleName::from_str(&TrinoRole::Coordinator.to_string())
-            .expect("the coordinator role name is a valid role name");
-        self.spec
-            .coordinators
-            .role_groups
-            .iter()
-            // Order rolegroups consistently, to avoid spurious downstream rewrites
-            .collect::<BTreeMap<_, _>>()
-            .into_iter()
-            .flat_map(move |(rolegroup_name, rolegroup)| {
-                let resource_names = ResourceNames {
-                    cluster_name: cluster_name.clone(),
-                    role_name: role_name.clone(),
-                    role_group_name: RoleGroupName::from_str(rolegroup_name)
-                        .expect("a role group name is a valid role group name"),
-                };
-                let ns = ns.clone();
-                (0..rolegroup.replicas.unwrap_or(COORDINATOR_REPLICAS_IF_UNSET)).map(move |i| {
-                    TrinoPodRef {
-                        namespace: ns.clone(),
-                        role_group_service_name: resource_names.headless_service_name().to_string(),
-                        pod_name: format!("{}-{i}", resource_names.stateful_set_name()),
-                    }
-                })
-            })
-    }
-
     /// Returns user provided authentication settings
     pub fn get_authentication(&self) -> &Vec<core::v1alpha1::ClientAuthenticationDetails> {
         &self.spec.cluster_config.authentication

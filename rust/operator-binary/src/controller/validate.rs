@@ -18,8 +18,12 @@ use stackable_operator::{
             ValidatedContainerLogConfigChoice, VectorContainerLogConfig,
             validate_logging_configuration_for_container,
         },
+        role_group_utils::ResourceNames,
         role_utils::{JavaCommonConfig, RoleGroup, RoleGroupConfig, with_validated_config},
-        types::kubernetes::ConfigMapName,
+        types::{
+            kubernetes::{ConfigMapName, NamespaceName},
+            operator::{ClusterName, RoleName},
+        },
     },
 };
 use strum::{EnumDiscriminants, IntoStaticStr};
@@ -31,7 +35,7 @@ use crate::{
         ValidatedCoordinatorRoleConfig, ValidatedTls, ValidatedTrinoConfig,
         ValidatedWorkerRoleConfig, dereference::DereferencedObjects,
     },
-    crd::{Container, TrinoRole, catalog::TrinoCatalogName, v1alpha1},
+    crd::{Container, TrinoRole, catalog::TrinoCatalogName, discovery::TrinoPodRef, v1alpha1},
 };
 
 #[derive(Snafu, Debug, EnumDiscriminants)]
@@ -178,6 +182,7 @@ pub fn validate(
     operator_environment: &OperatorEnvironmentOptions,
 ) -> Result<ValidatedCluster> {
     let namespace = get_namespace(trino).context(GetClusterNamespaceSnafu)?;
+    let name = get_cluster_name(trino).context(GetClusterNameSnafu)?;
 
     let image = trino
         .spec
@@ -290,11 +295,10 @@ pub fn validate(
         fault_tolerant_execution: dereferenced_objects.resolved_fte_config.clone(),
         client_protocol: dereferenced_objects.resolved_client_protocol_config.clone(),
         lineage: dereferenced_objects.resolved_lineage_config.clone(),
-        coordinator_pod_refs: trino.coordinator_pods(&namespace).collect(),
+        coordinator_pod_refs: coordinator_pods(&name, &namespace, &coordinator_role_group_configs),
         catalogs,
     };
 
-    let name = get_cluster_name(trino).context(GetClusterNameSnafu)?;
     let uid = get_uid(trino).context(GetClusterUidSnafu)?;
 
     Ok(ValidatedCluster::new(ValidatedClusterParams {
@@ -309,6 +313,44 @@ pub fn validate(
         worker_config,
         worker_role_group_configs,
     }))
+}
+
+/// The replica count lower bound used for enumerating role groups when this is not set explicitly (in such cases Kubernetes
+/// runs a single pod for a `StatefulSet`).
+const COORDINATOR_REPLICAS_IF_UNSET: u16 = 1;
+
+/// List all coordinator pods expected to form the cluster
+///
+/// We try to predict the pods here rather than looking at the current cluster state in order to
+/// avoid instance churn.
+///
+/// A role group without an explicit `replicas` counts will be assigned a single pod by Kubernetes. Counting it as
+/// zero would yield no pod refs at all for a single-role-group cluster, and the first of these
+/// is what sets `discovery.uri`.
+fn coordinator_pods(
+    cluster_name: &ClusterName,
+    namespace: &NamespaceName,
+    role_group_configs: &BTreeMap<RoleGroupName, TrinoRoleGroupConfig>,
+) -> Vec<TrinoPodRef> {
+    let role_name = RoleName::from(&TrinoRole::Coordinator);
+    role_group_configs
+        .iter()
+        .flat_map(|(role_group_name, role_group_config)| {
+            let resource_names = ResourceNames {
+                cluster_name: cluster_name.clone(),
+                role_name: role_name.clone(),
+                role_group_name: role_group_name.clone(),
+            };
+            (0..role_group_config
+                .replicas
+                .unwrap_or(COORDINATOR_REPLICAS_IF_UNSET))
+                .map(move |i| TrinoPodRef {
+                    namespace: namespace.to_string(),
+                    role_group_service_name: resource_names.headless_service_name().to_string(),
+                    pod_name: format!("{}-{i}", resource_names.stateful_set_name()),
+                })
+        })
+        .collect()
 }
 
 /// Validates the user-provided `datasetNamespaceUri`, so that a typo fails the reconcile instead of
@@ -589,6 +631,15 @@ mod tests {
             assert!(!role_group.config.logging.enable_vector_agent);
             assert_eq!(role_group.config.logging.vector_container, None);
         }
+    }
+
+    #[test]
+    fn validate_rejects_cluster_name_longer_than_cluster_name_limit() {
+        let yaml = minimal_yaml("481").replace("simple-trino", &"a".repeat(41));
+
+        let err = validate_yaml(&yaml, &empty_derefs())
+            .expect_err("a 41 character cluster name exceeds the ClusterName limit");
+        assert!(matches!(err, Error::GetClusterName { .. }));
     }
 
     #[test]

@@ -75,6 +75,9 @@ All notable changes to this project will be documented in this file.
   `CONTAINERDEBUG_LOG_DIRECTORY`, which containerdebug stopped reading in its version 0.2.0 when it
   moved to `stackable-telemetry`; the directory is now set via `FILE_LOG_DIRECTORY`. The file is
   rotated hourly and at most two files are kept, because rotation is opt-in ([#970]).
+- A `TrinoCluster` whose name is not a valid cluster name, for example longer than 40 characters,
+  now fails its own reconcile with an error instead of panicking the operator, which then
+  crash-looped and reconciled no `TrinoCluster` at all ([#973]).
 
 ### Removed
 
@@ -107,6 +110,7 @@ All notable changes to this project will be documented in this file.
 [#966]: https://github.com/stackabletech/trino-operator/pull/966
 [#970]: https://github.com/stackabletech/trino-operator/pull/970
 [#972]: https://github.com/stackabletech/trino-operator/pull/972
+[#973]: https://github.com/stackabletech/trino-operator/pull/973
 
 ## [26.7.0] - 2026-07-21
 
