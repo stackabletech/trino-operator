@@ -31,6 +31,10 @@ data:
   # Garage terminates no TLS on any endpoint, so nginx does it and forwards to
   # Garage on loopback. Mounted over /etc/nginx/nginx.conf, hence the full file.
   nginx.conf: |
+    # OpenShift runs the container as an arbitrary UID, which may not write to
+    # /run. This file replaces the one in the image, so it must be set here.
+    pid /tmp/nginx.pid;
+
     events {}
     http {
       server {
@@ -137,6 +141,11 @@ spec:
               subPath: nginx.conf
             - name: tls
               mountPath: /stackable/tls
+            # nginx creates its temp dirs here on startup even though the proxy
+            # buffering above is off, and the image owns /var/cache/nginx by the
+            # image UID, not the arbitrary one OpenShift assigns.
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
           resources:
             requests:
               cpu: 100m
@@ -165,6 +174,8 @@ spec:
           configMap:
             name: garage
         - name: data
+          emptyDir: {}
+        - name: nginx-cache
           emptyDir: {}
         - name: tls
           ephemeral:
