@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
   using OAuth2 client credentials or a bearer token ([#950], [#972]).
 - The logs of the `containerdebug` process are now collected by the Vector agent and forwarded to
   the Vector aggregator ([#970]).
+- Add `containerdebug` config CRD ([#967]).
 
 ### Changed
 
@@ -108,6 +109,7 @@ All notable changes to this project will be documented in this file.
 [#961]: https://github.com/stackabletech/trino-operator/pull/961
 [#963]: https://github.com/stackabletech/trino-operator/pull/963
 [#966]: https://github.com/stackabletech/trino-operator/pull/966
+[#967]: https://github.com/stackabletech/trino-operator/pull/967
 [#970]: https://github.com/stackabletech/trino-operator/pull/970
 [#972]: https://github.com/stackabletech/trino-operator/pull/972
 [#973]: https://github.com/stackabletech/trino-operator/pull/973
