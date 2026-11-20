@@ -11164,7 +11164,7 @@ rec {
       };
       "stackable-trino-operator" = rec {
         crateName = "stackable-trino-operator";
-        version = "26.11.0-rc1";
+        version = "26.11.0";
         edition = "2024";
         crateBin = [
           {
