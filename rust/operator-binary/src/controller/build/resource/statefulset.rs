@@ -402,8 +402,12 @@ pub fn build_rolegroup_statefulset(
             "-c".to_string(),
         ])
         .args(vec![
-            command::container_trino_args(trino_authentication_config, catalogs, merged_config)
-                .join("\n"),
+            command::container_trino_args(
+                trino_authentication_config,
+                catalogs,
+                &merged_config.containerdebug,
+            )
+            .join("\n"),
         ])
         .add_env_vars(env.merge(env_overrides.clone()))
         .add_container_ports(container_ports(cluster))

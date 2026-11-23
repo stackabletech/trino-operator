@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use stackable_operator::{
+    crd::containerdebug::ValidatedContainerdebugConfig,
     product_logging::framework::{
         create_vector_shutdown_file_command, remove_vector_shutdown_file_command,
     },
@@ -87,7 +88,7 @@ pub fn container_prepare_args(
 pub fn container_trino_args(
     authentication_config: &TrinoAuthenticationConfig,
     catalogs: &BTreeMap<TrinoCatalogName, CatalogConfig>,
-    merged_config: &ValidatedTrinoConfig,
+    containerdebug: &ValidatedContainerdebugConfig,
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writable empty folder
@@ -161,8 +162,7 @@ wait_for_termination $!
         remove_vector_shutdown_file_command =
             remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
         file_log_directory = FILE_LOG_DIRECTORY.as_ref(),
-        containerdebug_command = merged_config
-            .containerdebug
+        containerdebug_command = containerdebug
             .background_command(STACKABLE_LOG_DIR)
             .unwrap_or_default(),
         create_vector_shutdown_file_command =
