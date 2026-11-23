@@ -11,7 +11,7 @@ spec:
   coordinators:
     config:
       containerdebug:
-        interval: 1h
+        enabled: false
       logging:
         enableVectorAgent: true
         containers:
