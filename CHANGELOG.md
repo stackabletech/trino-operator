@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
   using OAuth2 client credentials or a bearer token ([#950], [#972]).
 - The logs of the `containerdebug` process are now collected by the Vector agent and forwarded to
   the Vector aggregator ([#970]).
-- Add `containerdebug` config CRD ([#967]).
+- Add the config.containerdebug field to roles and role groups ([#967]).
 
 ### Changed
 
