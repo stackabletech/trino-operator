@@ -10,6 +10,8 @@ spec:
     vectorAggregatorConfigMapName: vector-aggregator-discovery
   coordinators:
     config:
+      containerdebug:
+        enabled: false
       logging:
         enableVectorAgent: true
         containers:
@@ -29,5 +31,7 @@ The label comes from `/stackable/log/containerdebug`, the directory which the op
 Overriding `FILE_LOG_DIRECTORY` with `envOverrides` therefore changes how these logs are aggregated.
 The agent only collects files one level below `/stackable/log`, so a sibling directory such as `/stackable/log/trino` relabels the events instead of dropping them, while any deeper or shallower path stops the aggregation.
 A path outside `/stackable/log` also leaves the size-capped log volume.
+
+The `containerdebug` process can be configured or turned off per role and role group, as described in xref:concepts:observability/containerdebug.adoc#configuration[].
 
 Further information on how to configure logging, can be found in xref:concepts:logging.adoc[].

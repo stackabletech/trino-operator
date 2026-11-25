@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use stackable_operator::{
+    crd::containerdebug::ValidatedContainerdebugConfig,
     product_logging::framework::{
         create_vector_shutdown_file_command, remove_vector_shutdown_file_command,
     },
@@ -87,6 +88,7 @@ pub fn container_prepare_args(
 pub fn container_trino_args(
     authentication_config: &TrinoAuthenticationConfig,
     catalogs: &BTreeMap<TrinoCatalogName, CatalogConfig>,
+    containerdebug: &ValidatedContainerdebugConfig,
 ) -> Vec<String> {
     let mut args = vec![
         // copy config files to a writable empty folder
@@ -152,7 +154,7 @@ pub fn container_trino_args(
 {remove_vector_shutdown_file_command}
 prepare_signal_handlers
 mkdir --parents \"${file_log_directory}\" || true
-containerdebug --output={STACKABLE_LOG_DIR}/containerdebug-state.json --loop &
+{containerdebug_command}
 bin/launcher run --etc-dir={RW_CONFIG_DIR_NAME} &
 wait_for_termination $!
 {create_vector_shutdown_file_command}
@@ -160,6 +162,9 @@ wait_for_termination $!
         remove_vector_shutdown_file_command =
             remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
         file_log_directory = FILE_LOG_DIRECTORY.as_ref(),
+        containerdebug_command = containerdebug
+            .background_command(STACKABLE_LOG_DIR)
+            .unwrap_or_default(),
         create_vector_shutdown_file_command =
             create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
     ));

@@ -10,6 +10,7 @@ use stackable_operator::{
     cli::OperatorEnvironmentOptions,
     commons::product_image_selection,
     config::fragment,
+    crd::containerdebug::{self, ValidatedContainerdebugConfig},
     kube::ResourceExt as _,
     product_logging::spec::Logging,
     v2::{
@@ -88,6 +89,15 @@ pub enum Error {
     #[snafu(display("failed to resolve and merge config for role group {role_group}"))]
     FailedToResolveConfig {
         source: fragment::ValidationError,
+        role_group: RoleGroupName,
+    },
+
+    #[snafu(display(
+        "invalid containerdebug configuration for role {role} role group {role_group}"
+    ))]
+    InvalidContainerdebugConfig {
+        source: containerdebug::Error,
+        role: RoleName,
         role_group: RoleGroupName,
     },
 
@@ -416,9 +426,18 @@ where
         .with_context(|_| FailedToResolveConfigSnafu {
             role_group: role_group_name.clone(),
         })?;
+        let containerdebug = merged
+            .config
+            .config
+            .containerdebug
+            .validate()
+            .with_context(|_| InvalidContainerdebugConfigSnafu {
+                role: (**trino_role).clone(),
+                role_group: role_group_name.clone(),
+            })?;
         role_groups.insert(
             role_group_name,
-            into_role_group_config(merged, vector_aggregator_config_map_name)?,
+            into_role_group_config(merged, containerdebug, vector_aggregator_config_map_name)?,
         );
     }
 
@@ -429,6 +448,7 @@ where
 /// [`TrinoRoleGroupConfig`] consumed by the build steps.
 fn into_role_group_config(
     merged: RoleGroup<v1alpha1::TrinoConfig, JavaCommonConfig, v1alpha1::TrinoConfigOverrides>,
+    containerdebug: ValidatedContainerdebugConfig,
     vector_aggregator_config_map_name: &Option<ConfigMapName>,
 ) -> Result<TrinoRoleGroupConfig> {
     let replicas = merged.replicas;
@@ -438,7 +458,7 @@ fn into_role_group_config(
 
     Ok(RoleGroupConfig {
         replicas,
-        config: ValidatedTrinoConfig::from_merged(common.config, logging),
+        config: ValidatedTrinoConfig::from_merged(common.config, containerdebug, logging),
         config_overrides: common.config_overrides,
         env_overrides: common.env_overrides.into(),
         cli_overrides: common.cli_overrides,
@@ -489,7 +509,10 @@ pub(crate) fn merged_role_group_config(
 mod tests {
     use std::{collections::BTreeMap, str::FromStr};
 
-    use stackable_operator::cli::OperatorEnvironmentOptions;
+    use stackable_operator::{
+        cli::OperatorEnvironmentOptions,
+        crd::containerdebug::{DEFAULT_INTERVAL, ValidatedContainerdebugConfig},
+    };
 
     use super::{Error, RoleGroupName, validate};
     use crate::{
@@ -803,5 +826,91 @@ mod tests {
 
         let err = validate_yaml(yaml, &empty_derefs()).unwrap_err();
         assert!(matches!(err, Error::ParseRoleGroupName { .. }));
+    }
+
+    /// A role `config` that does not mention `containerdebug` still gets the default, so the
+    /// `containerdebug` field of the CRD must be optional.
+    #[test]
+    fn containerdebug_defaults_when_not_configured() {
+        let yaml = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "481"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                config:
+                  gracefulShutdownTimeout: 1h
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#;
+
+        let cluster = validate_yaml(yaml, &empty_derefs()).expect("the cluster is valid");
+        let role_group_name = RoleGroupName::from_str("default").expect("valid role group name");
+
+        assert_eq!(
+            cluster.coordinator_role_group_configs[&role_group_name]
+                .config
+                .containerdebug,
+            ValidatedContainerdebugConfig::Enabled {
+                interval: DEFAULT_INTERVAL
+            }
+        );
+    }
+
+    /// An invalid `containerdebug` config fails the validation, naming the role and role group.
+    #[test]
+    fn zero_containerdebug_interval_fails_validation() {
+        let yaml = r#"
+            apiVersion: trino.stackable.tech/v1alpha1
+            kind: TrinoCluster
+            metadata:
+              name: simple-trino
+              namespace: default
+              uid: "e6ac237d-a6d4-43a1-8135-f36506110912"
+            spec:
+              image:
+                productVersion: "481"
+              clusterConfig:
+                catalogLabelSelector: {}
+              coordinators:
+                roleGroups:
+                  default:
+                    replicas: 1
+              workers:
+                config:
+                  containerdebug:
+                    interval: 0s
+                roleGroups:
+                  default:
+                    replicas: 1
+            "#;
+
+        let error = validate_yaml(yaml, &empty_derefs()).unwrap_err();
+        let chain: Vec<String> =
+            std::iter::successors(Some(&error as &dyn std::error::Error), |error| {
+                error.source()
+            })
+            .map(ToString::to_string)
+            .collect();
+
+        assert_eq!(
+            chain,
+            [
+                "invalid containerdebug configuration for role worker role group default",
+                "the containerdebug interval must not be zero",
+            ]
+        );
     }
 }
