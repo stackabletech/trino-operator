@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add the `config.containerdebug` field to roles and role groups ([#967]).
+
+[#967]: https://github.com/stackabletech/trino-operator/pull/967
+
+## [26.11.0] - 2026-11-20
+
+## [26.11.0-rc1] - 2026-11-19
+
+### Added
+
 - Add `spec.clusterConfig.lineage` to emit [OpenLineage](https://openlineage.io/) lineage events ([#914]).
 - Support floating tags for product images via the new `spec.image.stackableVersionPolicy` field
   ([#944]).
@@ -16,7 +26,6 @@ All notable changes to this project will be documented in this file.
   using OAuth2 client credentials or a bearer token ([#950], [#972]).
 - The logs of the `containerdebug` process are now collected by the Vector agent and forwarded to
   the Vector aggregator ([#970]).
-- Add the `config.containerdebug` field to roles and role groups ([#967]).
 
 ### Changed
 
@@ -109,7 +118,6 @@ All notable changes to this project will be documented in this file.
 [#961]: https://github.com/stackabletech/trino-operator/pull/961
 [#963]: https://github.com/stackabletech/trino-operator/pull/963
 [#966]: https://github.com/stackabletech/trino-operator/pull/966
-[#967]: https://github.com/stackabletech/trino-operator/pull/967
 [#970]: https://github.com/stackabletech/trino-operator/pull/970
 [#972]: https://github.com/stackabletech/trino-operator/pull/972
 [#973]: https://github.com/stackabletech/trino-operator/pull/973
